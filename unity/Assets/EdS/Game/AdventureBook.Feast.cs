@@ -149,5 +149,53 @@ namespace EdS.Game
             IReadOnlyList<FeastWalletLine> wallets = a.FeastWallets;
             return wallets.Count > 0 && wallets[0].Current ? " · " + wallets[0].Name + " " + wallets[0].Coins : "";
         }
+
+        // --- Sous-lot F6 : plats de fête dans l'écran du personnage ------------------------------------------------------------
+
+        private const int DishCells = 4;
+        private readonly List<(Cell Cell, UiText Name)> _dishCells = new List<(Cell, UiText)>();
+        private IReadOnlyList<AdventureSession.FeastDishLine> _dishes = new AdventureSession.FeastDishLine[0];
+        private UiText _dishesTitle;
+
+        /// <summary>Les plats de fête gardés, sous l'aide du sac : une case par plat (icône, nombre), un clic en mange un.</summary>
+        private void BuildDishes(RectTransform page)
+        {
+            _dishesTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 730f, 770f, 712f, 20f, 0f, 0.5f, 14f, true);
+            for (int i = 0; i < DishCells; i++)
+            {
+                int index = i;
+                Cell cell = MakeCell(page, 730f + i * 180f, 788f, 56f, false);
+                UiPointer pointer = UiKit.Pointer(cell.Slab);
+                pointer.Left = () => EatDish(index);
+                UiText name = Text(page, UiFace.Body, 14f, UiKit.Ink, TextAnchor.MiddleLeft, 792f + i * 180f, 816f, 112f, 36f, 0f, 0.5f);
+                name.Wrap();
+                _dishCells.Add((cell, name));
+            }
+        }
+
+        /// <summary>Clic sur un plat : en mange un (un clic, un plat : la liste est relue à chaque image).</summary>
+        private void EatDish(int index)
+        {
+            if (_session != null && index < _dishes.Count) _session.EatFeastDish(_dishes[index].Festival);
+        }
+
+        private void RefreshDishes(AdventureSession a)
+        {
+            _dishes = a.FeastDishes;
+            bool any = _dishes.Count > 0;
+            _dishesTitle.Value = any ? a.Text("text.ui.fete.dishes_title") + " · " + a.Text("text.ui.fete.eat_hint") : "";
+            for (int i = 0; i < _dishCells.Count; i++)
+            {
+                bool used = i < _dishes.Count;
+                UiKit.Show(_dishCells[i].Cell.Rect, used);
+                UiKit.Show(_dishCells[i].Name.Rect, used);
+                if (!used) continue;
+                _dishCells[i].Cell.Icon.sprite = UiKit.Icon(_dishes[i].Icon);
+                UiKit.Show(_dishCells[i].Cell.Icon, _dishCells[i].Cell.Icon.sprite != null);
+                _dishCells[i].Cell.Count.Value = _dishes[i].Count > 1 ? _dishes[i].Count.ToString() : "";
+                _dishCells[i].Cell.Edge.color = UiKit.Alpha(Color.white, 0.6f);
+                _dishCells[i].Name.Value = _dishes[i].Name;
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.38.0-provisoire",
+  "contentVersion": "0.39.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -2057,6 +2057,12 @@
       "text.ui.fete.kind.other": "Article",
       "text.ui.fete.bought": "Acheté : {0} ({1} {2}).",
       "text.ui.fete.caught_up": "Récompense de l'an dernier rattrapée : {0}.",
+      "text.ui.fete.dishes_title": "Plats de fête",
+      "text.ui.fete.eat_hint": "Clic : manger un plat (réconfort, sans effet de combat)",
+      "text.ui.fete.eaten": "Vous mangez : {0}. Un moment de réconfort.",
+      "text.ui.fete.comfort": "Réconforté ({0})",
+      "text.ui.fete.refused.no_dish": "Vous n'avez plus de ce plat.",
+      "text.ui.fete.refused.eat_combat": "Pas en plein combat.",
       "text.ui.fete.refused.done": "Déjà fait aujourd'hui : revenez demain, tant que dure la fête.",
       "text.ui.fete.refused.away": "Le forain n'est pas là.",
       "text.ui.fete.refused.owned": "Vous l'avez déjà.",

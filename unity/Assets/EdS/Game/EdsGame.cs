@@ -753,6 +753,8 @@ namespace EdS.Game
             _seasonView.Sync(a, Time.deltaTime);   // saisons : l'hôte fournit la date, puis teinte, neige et glace pour le rendu
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
+            HumanBodies.Feast = a.FeastNumber;   // sous-lot F6 : aux teintes de la fête d'Orsédia en cours
+            StyleWorld.SetFeast(a.FeastMood);   // sous-lot F6 : l'ambiance de la fête (lumière, brume, lanternes), dehors
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
             // Sous-lot V2.14 : la foule du grand jour de marché ; ses places ne sont calculées qu'une fois montrée (le premier jour de marché vu).
             bool crowd = a.MarketCrowdShown;

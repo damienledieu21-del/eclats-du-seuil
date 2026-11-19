@@ -16,7 +16,20 @@ namespace EdS.Runtime
         public int Number { get; }
 
         /// <summary>Clé du texte du jeu (<c>text.loading.{Id}</c>).</summary>
-        public string TextKey => "text.loading." + Id;
+        public string TextKey => _textKey ?? "text.loading." + Id;
+
+        /// <summary>Sous-lot F6 : fichier de l'image (« ch_fete_01 »), ou null : celui du lieu (<see cref="LoadingScreens.ResourcePath"/>).</summary>
+        public string? File { get; }
+
+        private readonly string? _textKey;
+
+        internal LoadingScreen(int number, string id, string file, string textKey)
+        {
+            Number = number;
+            Id = id;
+            File = file;
+            _textKey = textKey;
+        }
 
         internal LoadingScreen(int number, string id)
         {
@@ -44,6 +57,16 @@ namespace EdS.Runtime
 
         /// <summary>Écran de repli : le village.</summary>
         public static LoadingScreen Default => All[1];
+
+        /// <summary>
+        /// Sous-lot F6 : pendant une fête d'Orsédia, l'écran de chargement est son image d'ambiance (n° <paramref name="feast"/>, 1 à 12 :
+        /// « ch_fete_01 »…), avec son accroche (<paramref name="motto"/>, clé de texte).
+        /// </summary>
+        public static LoadingScreen ForFeast(int feast, string motto)
+        {
+            if (feast < 1 || feast > 12) throw new ArgumentOutOfRangeException(nameof(feast));
+            return new LoadingScreen(100 + feast, "fete_" + feast.ToString("00"), "ch_fete_" + feast.ToString("00"), motto ?? throw new ArgumentNullException(nameof(motto)));
+        }
 
         // Lieu des données (identifiant) -> numéro d'écran. Les plaines n'ont pas d'image à elles : le lieu suivant qui les contient décide.
         private static readonly Dictionary<string, int> PlaceScreens = new Dictionary<string, int>(StringComparer.Ordinal)
@@ -90,7 +113,9 @@ namespace EdS.Runtime
         public static string ResourcePath(LoadingScreen screen, DeviceTier tier)
         {
             if (screen is null) throw new ArgumentNullException(nameof(screen));
-            return "EdsInterface/Chargements/" + (MachineTier.Light(tier) ? "1280" : "1920") + "/ch_" + screen.Number.ToString("00") + "_" + FileSuffix[screen.Number - 1];
+            string folder = "EdsInterface/Chargements/" + (MachineTier.Light(tier) ? "1280" : "1920") + "/";
+            if (screen.File != null) return folder + screen.File;   // sous-lot F6 : l'image d'ambiance de la fête
+            return folder + "ch_" + screen.Number.ToString("00") + "_" + FileSuffix[screen.Number - 1];
         }
 
         private static readonly string[] FileSuffix =
