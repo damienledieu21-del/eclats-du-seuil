@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Rebuilds;
 using EdS.Data.Saves;
+using EdS.Data.Validation;
 
 namespace EdS.World
 {
@@ -40,26 +41,43 @@ namespace EdS.World
         public static long Remaining(SavedRebuild? saved, RebuildNeed need) => need.Amount - (saved?.Of(need.Id) ?? 0);
 
         /// <summary>
-        /// Pourquoi les chantiers gardés ne vont pas avec le catalogue (lieu inconnu, palier au-delà du dernier, apport à un besoin qui n'est
-        /// pas celui du palier en cours, apport au-delà de ce qui est demandé, apport à un lieu reconstruit), ou null s'ils vont.
+        /// Pourquoi les chantiers gardés ne vont pas avec le catalogue (premier écart, voir <see cref="Check"/>), ou null s'ils vont.
         /// </summary>
         public static string? Mismatch(SavedRebuilds saved, RebuildBook book)
         {
+            var report = new ValidationReport();
+            Check(saved, book, report, "$.data.character.rebuilds");
+            return report.IsValid ? null : report.Errors[0].Message;
+        }
+
+        /// <summary>
+        /// Accord des chantiers gardés avec le catalogue, chaque écart avec son chemin et son code : lieu inconnu (<c>UnknownReference</c>),
+        /// palier au-delà du dernier (<c>OutOfRange</c>), apport à un lieu reconstruit (<c>InvalidValue</c>), à un besoin qui n'est pas celui du
+        /// palier en cours (<c>UnknownReference</c>) ou au-delà de ce qui est demandé (<c>OutOfRange</c>). Le catalogue ne fait que grandir
+        /// (DONNEES.md) : un écart vient d'un lieu ou d'un palier retiré, ou d'une sauvegarde d'un autre catalogue.
+        /// </summary>
+        public static void Check(SavedRebuilds saved, RebuildBook book, ValidationReport report, string path)
+        {
             if (saved is null) throw new ArgumentNullException(nameof(saved));
             if (book is null) throw new ArgumentNullException(nameof(book));
+            if (report is null) throw new ArgumentNullException(nameof(report));
             foreach (SavedRebuild r in saved.Entries)
             {
-                if (!(book.Of(r.Site) is RebuildSite site)) return $"lieu « {r.Site} » inconnu";
-                if (r.Stage > site.Stages.Count) return $"« {r.Site} » : {r.Stage} paliers finis, il n'y en a que {site.Stages.Count}";
+                string p = path + "." + r.Site;
+                if (!(book.Of(r.Site) is RebuildSite site)) { report.Add(p, ValidationCode.UnknownReference, $"lieu « {r.Site} » inconnu du catalogue des chantiers."); continue; }
+                if (r.Stage > site.Stages.Count)
+                { report.Add(p + ".stage", ValidationCode.OutOfRange, $"« {r.Site} » : {r.Stage} paliers finis, il n'y en a que {site.Stages.Count}."); continue; }
                 RebuildStage? stage = CurrentStage(r, site);
                 foreach (KeyValuePair<string, long> g in r.Given)
                 {
-                    if (stage is null) return $"« {r.Site} » : apport à un lieu déjà reconstruit";
-                    if (!(stage.Need(g.Key) is RebuildNeed need)) return $"« {r.Site} » : besoin « {g.Key} » hors du palier « {stage.Id} »";
-                    if (g.Value > need.Amount) return $"« {r.Site} » : {g.Value} apportés au besoin « {g.Key} », qui en demande {need.Amount}";
+                    string gp = p + ".given." + g.Key;
+                    if (stage is null) report.Add(gp, ValidationCode.InvalidValue, $"« {r.Site} » : apport à un lieu déjà reconstruit.");
+                    else if (!(stage.Need(g.Key) is RebuildNeed need))
+                        report.Add(gp, ValidationCode.UnknownReference, $"« {r.Site} » : besoin « {g.Key} » hors du palier « {stage.Id} ».");
+                    else if (g.Value > need.Amount)
+                        report.Add(gp, ValidationCode.OutOfRange, $"« {r.Site} » : {g.Value} apportés au besoin « {g.Key} », qui en demande {need.Amount}.");
                 }
             }
-            return null;
         }
 
         /// <summary>

@@ -15,6 +15,7 @@ using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Feasts;
 using EdS.Data.Rebuilds;
+using EdS.Data.Validation;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.WorldBosses;
@@ -313,6 +314,14 @@ namespace EdS.Runtime
             // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
             // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
             // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
+            // Lieux reconstruits (relecture indépendante de la PR #221) : des chantiers gardés hors du catalogue (lieu ou palier retiré) sont
+            // une erreur de chargement, avec chemin et code, comme une donnée refusée ; jamais une exception brute à la mise en jeu.
+            if (_rebuilds != null)
+            {
+                var rebuildReport = new ValidationReport();
+                RebuildRules.Check(save.Character!.Rebuilds, _rebuilds, rebuildReport, "$.data.character.rebuilds");
+                if (!rebuildReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (lieux reconstruits) : {rebuildReport}");
+            }
             (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);
             Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");

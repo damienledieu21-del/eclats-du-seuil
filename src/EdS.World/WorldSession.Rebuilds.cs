@@ -120,7 +120,11 @@ namespace EdS.World
             return RebuildRefusal.None;
         }
 
-        /// <summary>Une créature vaincue compte pour les besoins de combat des chantiers où se tient le personnage (une seule fois chacune).</summary>
+        /// <summary>
+        /// Une créature vaincue compte pour les besoins de combat des chantiers où se tient le personnage (une fois par chantier). Choix
+        /// assumés (relecture indépendante de la PR #221) : deux lieux dont les marges se recouvrent comptent chacun la même mort ; un
+        /// personnage tombé au même tick que sa victime ne la compte pas (il doit être vivant et présent, comme pour les apports).
+        /// </summary>
         private void RebuildDefeat()
         {
             if (!(RebuildsHere is RebuildBook book)) return;

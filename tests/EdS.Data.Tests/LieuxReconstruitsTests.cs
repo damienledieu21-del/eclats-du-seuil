@@ -182,6 +182,17 @@ public class LieuxReconstruitsTests
         Assert.Contains("hors du palier", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 0, Given(("releve", 1))) }), book));
         Assert.Contains("en demande", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 0, Given(("or", 5_001))) }), book));
         Assert.Contains("reconstruit", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 2, Given(("or", 1))) }), book));
+        // Relecture indépendante de la PR #221 : chaque écart avec son chemin et son code (erreur de chargement propre).
+        var report = new ValidationReport();
+        RebuildRules.Check(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1), new SavedRebuild("hameau", 0, Given(("or", 5_001), ("releve", 1))),
+            new SavedRebuild("moulin", 2) }), book, report, "$.data.character.rebuilds");
+        Assert.Equal(new[]
+        {
+            ("$.data.character.rebuilds.abbaye", ValidationCode.UnknownReference),
+            ("$.data.character.rebuilds.hameau.given.or", ValidationCode.OutOfRange),
+            ("$.data.character.rebuilds.hameau.given.releve", ValidationCode.UnknownReference),
+            ("$.data.character.rebuilds.moulin.stage", ValidationCode.OutOfRange),
+        }, report.Errors.Select(e => (e.Path, e.Code)));
     }
 
     private static IEnumerable<KeyValuePair<string, long>> Given(params (string Need, long Amount)[] given) =>
