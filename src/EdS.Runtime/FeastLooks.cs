@@ -17,8 +17,12 @@ namespace EdS.Runtime
         public double Width { get; }
         public double Depth { get; }
 
-        public FeastPiece(string code, double x, double z, double yaw, double width, double depth)
+        /// <summary>Sous-lot F5 : lieu du décor du mois où elle est posée (null pour l'étal).</summary>
+        public string? Place { get; }
+
+        public FeastPiece(string code, double x, double z, double yaw, double width, double depth, string? place = null)
         {
+            Place = place;
             Code = code;
             X = x;
             Z = z;
@@ -77,11 +81,30 @@ namespace EdS.Runtime
         /// l'avant vers les visiteurs, chacune à une place libre (obstacles, étal, forain, autres décorations : <see cref="Margin"/>), sinon pas
         /// posée. Déterministe ; affichage seulement, sans collision.
         /// </summary>
-        public static (double X, double Z, IReadOnlyList<FeastPiece> Pieces) Stall(double x, double z, double face,
-            IReadOnlyList<(string Code, double SizeX, double SizeY, double SizeZ)> decor, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles)
+        public static (double X, double Z, double Yaw, IReadOnlyList<FeastPiece> Pieces) Stall(double x, double z, double face,
+            IReadOnlyList<(string Code, double SizeX, double SizeY, double SizeZ)> decor, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
+            IReadOnlyList<StyleRoad>? roads = null, IReadOnlyList<(double X, double Z)>? avoid = null)
         {
+            // Relecture indépendante de la PR #218 : l'étal lui-même hors des obstacles et des routes : devant le forain si c'est libre, sinon
+            // tourné autour de lui (45° par pas), puis un peu plus loin ; à défaut, devant lui. Le dallage d'une place (route « place_… », où se
+            // tient le forain) n'est pas une rue : l'étal et ses décorations peuvent s'y poser ; jamais sur une rue ni un chemin.
+            roads = Streets(roads);
+            double sx = 0, sz = 0, yaw = face;
+            bool found = false;
+            foreach (double dist in new[] { StallDistance, StallDistance + 1, StallDistance + 2 })
+            {
+                foreach (double turn in new[] { 0.0, 45, -45, 90, -90, 135, -135, 180 })
+                {
+                    double t = (face + turn) * Math.PI / 180, cx = x + dist * Math.Sin(t), cz = z + dist * Math.Cos(t);
+                    if (!Clear(cx, cz, face + turn, StallWidth, StallDepth, obstacles, roads, avoid)) continue;
+                    (sx, sz, yaw, found) = (cx, cz, face + turn, true);
+                    break;
+                }
+                if (found) break;
+            }
+            if (!found) (sx, sz) = (x + StallDistance * Math.Sin(face * Math.PI / 180), z + StallDistance * Math.Cos(face * Math.PI / 180));
+            face = (yaw % 360 + 360) % 360;
             double a = face * Math.PI / 180;
-            double sx = x + StallDistance * Math.Sin(a), sz = z + StallDistance * Math.Cos(a);
             var taken = new List<IReadOnlyList<(double X, double Z)>>(obstacles ?? Array.Empty<IReadOnlyList<(double, double)>>())
             {
                 Box(sx, sz, face, StallWidth, StallDepth),
@@ -96,14 +119,34 @@ namespace EdS.Runtime
                 {
                     // Le repère de l'étal : x le long de l'étal (vers la droite du visiteur), z vers les visiteurs.
                     double px = sx + rx * Math.Cos(a) + rz * Math.Sin(a), pz = sz - rx * Math.Sin(a) + rz * Math.Cos(a);
-                    IReadOnlyList<(double X, double Z, double Radius)> disks = Footprint(px, pz, face, w, d);
-                    if (disks.Any(c => Wave5.FreeSpot(new[] { (c.X, c.Z) }, taken, c.Radius) is null)) continue;
+                    if (!Clear(px, pz, face, w, d, taken, roads, avoid)) continue;
                     pieces.Add(new FeastPiece(code, px, pz, face, w, d));
                     taken.Add(Box(px, pz, face, w, d));
                     break;
                 }
             }
-            return (sx, sz, pieces);
+            return (sx, sz, face, pieces);
+        }
+
+        /// <summary>Les rues et chemins de <paramref name="roads"/>, sans le dallage des places (« place_… »).</summary>
+        public static IReadOnlyList<StyleRoad>? Streets(IReadOnlyList<StyleRoad>? roads) =>
+            roads?.Where(r => !r.Id.StartsWith("place_", StringComparison.Ordinal)).ToList();
+
+        /// <summary>
+        /// L'emprise (<see cref="Footprint"/>) est hors des polygones <paramref name="taken"/>, des routes (bord de la chaussée) et des points
+        /// <paramref name="avoid"/> (PNJ, invités, portes, points sûrs : aucun disque ne les couvre).
+        /// </summary>
+        public static bool Clear(double x, double z, double yaw, double w, double d, IReadOnlyList<IReadOnlyList<(double X, double Z)>> taken,
+            IReadOnlyList<StyleRoad>? roads, IReadOnlyList<(double X, double Z)>? avoid = null)
+        {
+            foreach ((double px, double pz, double r) in Footprint(x, z, yaw, w, d))
+            {
+                if (Wave5.FreeSpot(new[] { (px, pz) }, taken, r) is null) return false;
+                if (roads != null && roads.Count > 0 && TownRules.RoadAt(px, pz, roads).Edge < r) return false;
+                foreach ((double qx, double qz) in avoid ?? Array.Empty<(double, double)>())
+                    if ((px - qx) * (px - qx) + (pz - qz) * (pz - qz) < r * r) return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -118,7 +161,8 @@ namespace EdS.Runtime
             {
                 (-end, 0), (end, 0), (-end, back), (end, back), (-end - 1.0, back + 0.4), (end + 1.0, back + 0.4),
                 (-end - 1.0, 0.8), (end + 1.0, 0.8), (-end, back - 1.4), (end, back - 1.4), (-end - 2.2, 0), (end + 2.2, 0),
-                (-end - 2.2, back), (end + 2.2, back),
+                (-end - 2.2, back), (end + 2.2, back), (-end - 3.4, 0.8), (end + 3.4, 0.8), (-end - 3.4, back - 1.2), (end + 3.4, back - 1.2),
+                (-end, back - 2.6), (end, back - 2.6), (0, back - 2.6), (-end - 1.0, 2.2), (end + 1.0, 2.2),
             };
             for (int i = 0; i < places.Count; i++) yield return places[(slot + i) % places.Count];
         }
@@ -141,6 +185,19 @@ namespace EdS.Runtime
         /// <summary>Sous-lot F5 : lieux où la fête du mois pose ses décorations : la place du village (le forain) et la place du marché du Bourg.</summary>
         public static IReadOnlyList<string> DecorPlaces { get; } = new[] { "bourg", "place_du_marche_de_la_ville" };
 
+        /// <summary>Décision de Damien du 19 novembre 2026 : bâtiments devant la porte desquels la fête pose aussi son décor (auberge, chapelle).</summary>
+        public static IReadOnlyList<string> DecorDoors { get; } = new[] { "auberge", "chapelle" };
+
+        /// <summary>Décision de Damien du 19 novembre 2026 : les portes du Bourg fortifié reçoivent aussi le décor (pièces de porte du Bourg).</summary>
+        public static bool IsTownGate(string piece) => piece == BourgModels.EastGate || piece == BourgModels.WestGate || piece == BourgModels.NorthGate;
+
+        /// <summary>Le point à <paramref name="distance"/> m de (<paramref name="x"/>, <paramref name="z"/>) dans la direction (<paramref name="dx"/>, <paramref name="dz"/>).</summary>
+        public static (double X, double Z) Ahead(double x, double z, double dx, double dz, double distance)
+        {
+            double n = Math.Sqrt(dx * dx + dz * dz);
+            return n < 1e-9 ? (x, z) : (x + dx / n * distance, z + dz / n * distance);
+        }
+
         /// <summary>Distance (m) gardée entre une décoration et une porte (on entre et on sort sans la frôler).</summary>
         public const double DoorClearance = 2.5;
 
@@ -150,8 +207,8 @@ namespace EdS.Runtime
         /// <summary>
         /// Sous-lot F5 (décor du mois) : les décorations de la fête (<paramref name="decor"/> : code et enveloppe X, Y, Z en m), une de chaque
         /// dans chacun des <paramref name="places"/> (id et rectangle), à la première place qui convient sur des cercles autour du centre du lieu
-        /// (4 à 22 m, 16 directions, dans le lieu), tournées vers le centre : emprise (<see cref="FeastPiece.Footprint"/>) hors des obstacles,
-        /// **hors des routes** (bord de la chaussée), à <see cref="DoorClearance"/> m des portes, à <see cref="PeopleClearance"/> m des PNJ, des
+        /// (2 à 22 m, 16 directions, dans le lieu), tournées vers le centre : emprise (<see cref="FeastPiece.Footprint"/>) hors des obstacles,
+        /// **hors des rues et chemins** (bord de la chaussée ; le dallage d'une place, route « place_… », n'en est pas une), à <see cref="DoorClearance"/> m des portes, à <see cref="PeopleClearance"/> m des PNJ, des
         /// invités, des points sûrs et des pièces déjà posées (<paramref name="avoid"/>), sans toucher une autre décoration ni l'étal
         /// (<paramref name="taken"/>). Une décoration sans place n'est pas posée. Déterministe ; affichage seulement, sans collision.
         /// </summary>
@@ -160,6 +217,7 @@ namespace EdS.Runtime
             IReadOnlyList<StyleRoad> roads, IReadOnlyList<(double X, double Z)> doors, IReadOnlyList<(double X, double Z)> avoid,
             IReadOnlyList<IReadOnlyList<(double X, double Z)>>? taken = null)
         {
+            roads = Streets(roads) ?? Array.Empty<StyleRoad>();   // comme l'étal : le dallage d'une place n'est pas une rue
             var used = new List<IReadOnlyList<(double X, double Z)>>(obstacles ?? Array.Empty<IReadOnlyList<(double, double)>>());
             var mine = new List<IReadOnlyList<(double X, double Z)>>(taken ?? Array.Empty<IReadOnlyList<(double, double)>>());
             var pieces = new List<FeastPiece>();
@@ -175,7 +233,7 @@ namespace EdS.Runtime
                         if (px < x0 + 1 || px > x1 - 1 || pz < z0 + 1 || pz > z1 - 1) continue;
                         double yaw = Math.Round(StyleRules.FaceYaw(px, pz, cx, cz) / 15) * 15;
                         if (!Fits(px, pz, yaw, w, d, used, mine, roads, doors, avoid)) continue;
-                        pieces.Add(new FeastPiece(code, px, pz, yaw, w, d));
+                        pieces.Add(new FeastPiece(code, px, pz, yaw, w, d, id));
                         mine.Add(Box(px, pz, yaw, w, d));
                         break;
                     }
@@ -201,10 +259,10 @@ namespace EdS.Runtime
             return true;
         }
 
-        /// <summary>Places essayées autour du centre d'un lieu : cercles de 4 à 22 m, 16 directions, chaque rang commençant ailleurs.</summary>
+        /// <summary>Places essayées autour du centre d'un lieu : cercles de 2 à 22 m, 16 directions, chaque rang commençant ailleurs.</summary>
         private static IEnumerable<(double X, double Z)> Rings(double cx, double cz, int rank)
         {
-            foreach (double r in new[] { 4.0, 6.5, 9.0, 11.5, 14.0, 17.0, 20.0, 22.0 })
+            foreach (double r in new[] { 2.0, 4.0, 6.5, 9.0, 11.5, 14.0, 17.0, 20.0, 22.0 })
                 for (int i = 0; i < 16; i++)
                 {
                     double a = ((i + rank * 5) % 16) * Math.PI / 8 + r * 0.1;

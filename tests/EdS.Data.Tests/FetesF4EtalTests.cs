@@ -116,6 +116,48 @@ public sealed class FetesF4EtalTests
         });
     }
 
+    /// <summary>Aventure ouverte dans la zone <paramref name="zone"/> au jour et à l'heure donnés (données livrées).</summary>
+    private static AdventureSession In(string zone, long day, int hour)
+    {
+        string save = Path.Combine(Path.GetTempPath(), "eds-f4-" + Guid.NewGuid().ToString("N") + ".json");
+        SaveStore.Write(save, new WorldSave(zone, TickAt(day, hour), 0, new[] { PlayerCharacters.PlacesKey }, Hero()));
+        try
+        {
+            return Adventure(save);
+        }
+        finally
+        {
+            File.Delete(save);
+        }
+    }
+
+    [Fact]
+    public void Etal_jamais_en_interieur_ni_hors_de_la_zone_de_l_histoire()
+    {
+        // Relecture indépendante de la PR #218 : le jour du Carnaval, dans l'auberge, ni étal ni décor (le cœur et la vue le refusent).
+        AdventureSession inside = In("zone.auberge", CarnavalDay, 12);
+        Assert.True(inside.Indoors);
+        Assert.False(inside.World.InStoryZone);
+        Assert.Null(inside.World.FeastStall);
+        Assert.Null(inside.FeastStallLook);
+        Assert.Null(inside.FeastStallLayout);
+        AdventureSession outside = In("zone.vallons", CarnavalDay, 12);
+        Assert.NotNull(outside.FeastStallLook);
+        var layout = outside.FeastStallLayout!.Value;
+        Assert.Equal(Feasts.Value.Feast(Carnaval).Stall.Select(r => r.Code), layout.Pieces.Select(p => p.Code));
+        Assert.Contains("FeastStallLook look = adventure.Indoors ? null : adventure.FeastStallLook;", Source("Game/WorldMarkers.Feasts.cs"));
+    }
+
+    [Fact]
+    public void Double_clic_sur_Acheter_un_seul_achat_jusqu_au_rafraichissement()
+    {
+        // Relecture indépendante de la PR #218 : un plat s'achète plusieurs fois : un double clic n'en achète qu'un.
+        string panel = Source("Game/AdventureBook.Feast.cs");
+        Assert.Contains("if (_session == null || row >= _feastLines.Count || _feastBuyLocked) return;", panel);
+        Assert.Contains("_feastBuyLocked = true;", panel);
+        Assert.True(panel.IndexOf("_feastBuyLocked = false;", StringComparison.Ordinal) < panel.IndexOf("_feastLines = a.FeastShopLines();", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Rattrapage_de_l_an_dernier_a_prix_plein_sans_titre()
     {
@@ -202,6 +244,11 @@ public sealed class FetesF4EtalTests
         var obstacles = Obstacles(scenario).Select(o => (IReadOnlyList<(double X, double Z)>)o.EnumerateArray()
             .Select(p => (p[0].GetDouble(), p[1].GetDouble())).ToList()).ToList();
         Assert.True(obstacles.Count > 400);
+        var roads = zone.GetProperty("roads").EnumerateArray().Select(r => new StyleRoad(r.GetProperty("id").GetString()!,
+            r.GetProperty("points").EnumerateArray().Select(p => (p[0].GetDouble(), p[1].GetDouble())).ToList(), r.GetProperty("width").GetDouble(), false)).ToList();
+        var streets = FeastLooks.Streets(roads)!;   // le dallage de la place n'est pas une rue
+        Assert.Contains(roads, r => r.Id == "place_du_bourg");
+        Assert.DoesNotContain(streets, r => r.Id.StartsWith("place_"));
         // Les autres PNJ de la place et les portes : jamais sous une décoration ni sous l'étal.
         var people = story.GetProperty("npcs").EnumerateArray().Where(n => n.GetProperty("id").GetString() != "npc.forain" && n.TryGetProperty("position", out _))
             .Select(n => (n.GetProperty("position")[0].GetDouble(), n.GetProperty("position")[1].GetDouble()))
@@ -212,21 +259,28 @@ public sealed class FetesF4EtalTests
         foreach (Feast feast in Feasts.Value.Feasts.Where(f => f.Stall.Count > 0))
         {
             var decor = feast.Stall.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList();
-            (double sx, double sz, IReadOnlyList<FeastPiece> pieces) = FeastLooks.Stall(fx, fz, face, decor, obstacles);
-            Assert.True(Math.Abs(Math.Sqrt((sx - fx) * (sx - fx) + (sz - fz) * (sz - fz)) - FeastLooks.StallDistance) < 1e-9);
+            (double sx, double sz, double yaw, IReadOnlyList<FeastPiece> pieces) = FeastLooks.Stall(fx, fz, face, decor, obstacles, roads, people);
+            Assert.InRange(Math.Sqrt((sx - fx) * (sx - fx) + (sz - fz) * (sz - fz)), FeastLooks.StallDistance - 1e-9, FeastLooks.StallDistance + 2 + 1e-9);
             Assert.Equal(feast.Stall.Select(r => r.Code), pieces.Select(p => p.Code));   // toutes posées, dans l'ordre des données
-            var stall = FeastLooks.Box(sx, sz, face, FeastLooks.StallWidth, FeastLooks.StallDepth);
-            Assert.All(obstacles, o => Assert.True(StyleRules.InsideDistance(sx, sz, o) < -1.0, feast.Festival + " : étal sur un obstacle"));
+            var stall = FeastLooks.Box(sx, sz, yaw, FeastLooks.StallWidth, FeastLooks.StallDepth);
+            // Relecture indépendante de la PR #218 : l'étal lui-même (son emprise entière) hors des obstacles et des routes, comme les décorations.
+            foreach ((double cx, double cz, double r) in FeastLooks.Footprint(sx, sz, yaw, FeastLooks.StallWidth, FeastLooks.StallDepth))
+            {
+                Assert.All(obstacles, o => Assert.True(StyleRules.InsideDistance(cx, cz, o) <= -r + 1e-9, feast.Festival + " : étal sur un obstacle"));
+                Assert.True(TownRules.RoadAt(cx, cz, streets).Edge >= r - FeastLooks.Margin, feast.Festival + " : étal sur une route");
+                Assert.All(people, q => Assert.True(Math.Sqrt((cx - q.Item1) * (cx - q.Item1) + (cz - q.Item2) * (cz - q.Item2)) >= r, feast.Festival + " : étal sur un PNJ"));
+            }
             foreach (FeastPiece p in pieces)
             {
                 Assert.True(Math.Max(p.Width, p.Depth) <= 2.5, p.Code);   // tient sur un étal (2,5 m au plus)
-                Assert.Equal(face, p.Yaw);   // l'avant vers les visiteurs
+                Assert.Equal(yaw, p.Yaw);   // l'avant vers les visiteurs, comme l'étal
                 foreach ((double cx, double cz, double r) in p.Footprint)
                 {
                     Assert.All(obstacles, o => Assert.True(StyleRules.InsideDistance(cx, cz, o) <= -r + 1e-9, p.Code + " dans un obstacle"));
                     Assert.True(StyleRules.InsideDistance(cx, cz, stall) <= -r + 1e-9, p.Code + " sur l'étal");
+                    Assert.True(TownRules.RoadAt(cx, cz, streets).Edge >= r - FeastLooks.Margin, p.Code + " sur une route");
                     Assert.True(Math.Sqrt((cx - fx) * (cx - fx) + (cz - fz) * (cz - fz)) >= r, p.Code + " sur le forain");
-                    Assert.All(people, q => Assert.True(Math.Sqrt((cx - q.Item1) * (cx - q.Item1) + (cz - q.Item2) * (cz - q.Item2)) >= r - FeastLooks.Margin,
+                    Assert.All(people, q => Assert.True(Math.Sqrt((cx - q.Item1) * (cx - q.Item1) + (cz - q.Item2) * (cz - q.Item2)) >= r,
                         $"{feast.Festival} : {p.Code} sur un PNJ ou une porte ({q.Item1}, {q.Item2})"));
                     foreach (FeastPiece o in pieces.Where(o => o.Code != p.Code))
                         Assert.True(StyleRules.InsideDistance(cx, cz, FeastLooks.Box(o.X, o.Z, o.Yaw, o.Width, o.Depth)) <= -r + 1e-9, $"{p.Code} sur {o.Code}");
@@ -319,7 +373,7 @@ public sealed class FetesF4EtalTests
         // L'étal sur la place : refait quand la fête change, retiré après elle.
         Assert.Contains("SyncFeastStall(adventure);", Source("Game/WorldMarkers.cs"));
         string stall = Source("Game/WorldMarkers.Feasts.cs");
-        Assert.Contains("FeastLooks.Stall(", stall);
+        Assert.Contains("adventure.FeastStallLayout", stall);   // pose calculée par le cœur (FeastLooks.Stall)
         Assert.Contains("if (key == _feastStallKey) return;", stall);
         Assert.Contains("Object.Destroy(_feastStall);", stall);
         Assert.Contains("LotCLook.PlaceFeast(", stall);

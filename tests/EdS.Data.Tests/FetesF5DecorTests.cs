@@ -38,36 +38,49 @@ public sealed class FetesF5DecorTests
     });
 
     [Fact]
-    public void Decor_du_mois_pose_aux_deux_places_sans_bloquer_routes_ni_portes()
+    public void Decor_du_mois_pose_aux_places_validees_sans_bloquer_routes_portes_ni_PNJ()
     {
         AdventureSession a = Session.Value;
         AdventureMap map = a.RegionMap.Whole;
         var obstacles = map.Obstacles.Select(o => (IReadOnlyList<(double X, double Z)>)o.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()).ToList();
         var doors = map.Doors.Select(d => (d.X, d.Z)).ToList();
-        FeastBook book = a.World.FeastBook!;
-        var report = new List<string>();
-        foreach (Feast feast in book.Feasts)
+        var streets = FeastLooks.Streets(map.Roads)!;   // le dallage des places n'est pas une rue (décision de Damien du 19 novembre 2026 : mêmes règles que l'étal)
+        // Relecture indépendante de la PR #219 : les vraies distances : PNJ (places de jour et de pluie), invités, points sûrs, portes,
+        // accessoires du Bourg fortifié ; l'étal du forain et ses décorations.
+        var avoid = a.FeastAvoid().ToList();
+        Assert.Contains(avoid, p => Math.Abs(p.X - (-1088.0)) < 1e-6 && Math.Abs(p.Z - (-37.0)) < 1e-6);   // le forain lui-même
+        avoid.AddRange(map.Bourg.Pieces.Where(b => !BourgModels.IsGround(b.Piece) && b.Covers is null).Select(b => (b.X, b.Z)));
+        // Décisions de Damien du 19 novembre 2026 : deux places, devant l'auberge, parvis de la chapelle, portes du Bourg.
+        var places = a.FeastDecorPlaces();
+        Assert.Equal(new[] { "bourg", "place_du_marche_de_la_ville", "devant:auberge", "devant:chapelle" }, places.Take(4).Select(p => p.Id));
+        Assert.True(places.Count(p => p.Id.StartsWith("porte:", StringComparison.Ordinal)) >= 3);   // chaque porte du Bourg posée (est, ouest, nord…)
+        foreach (Feast feast in a.World.FeastBook!.Feasts)
         {
             IReadOnlyList<FeastPiece> pieces = a.FeastDecorOf(feast);
-            report.Add(feast.Festival + " " + pieces.Count);
-            Assert.Equal(feast.Decorations.Select(r => r.Code).Concat(feast.Decorations.Select(r => r.Code)), pieces.Select(p => p.Code));
+            var stall = a.FeastStallOf(feast)!.Value;
+            var taken = new List<IReadOnlyList<(double X, double Z)>> { FeastLooks.Box(stall.X, stall.Z, stall.Yaw, FeastLooks.StallWidth, FeastLooks.StallDepth) };
+            taken.AddRange(stall.Pieces.Select(p => FeastLooks.Box(p.X, p.Z, p.Yaw, p.Width, p.Depth)));
+            var perPlace = places.ToDictionary(p => p.Id, _ => 0);
             for (int i = 0; i < pieces.Count; i++)
             {
                 FeastPiece p = pieces[i];
-                MapPlace place = map.Places.Single(q => q.Id == (i < 5 ? "bourg" : "place_du_marche_de_la_ville"));
+                var place = places.Single(q => q.Id == p.Place);
                 Assert.InRange(p.X, place.MinX, place.MaxX);
                 Assert.InRange(p.Z, place.MinZ, place.MaxZ);
+                perPlace[place.Id]++;
                 Assert.True(FeastLooks.Fits(p.X, p.Z, p.Yaw, p.Width, p.Depth, obstacles,
-                    pieces.Take(i).Select(o => FeastLooks.Box(o.X, o.Z, o.Yaw, o.Width, o.Depth)).ToList(),
-                    map.Roads, doors, Array.Empty<(double, double)>()), feast.Festival + " " + p.Code);
+                    taken.Concat(pieces.Take(i).Select(o => FeastLooks.Box(o.X, o.Z, o.Yaw, o.Width, o.Depth))).ToList(), streets, doors, avoid), feast.Festival + " " + p.Code);
                 foreach ((double cx, double cz, double r) in p.Footprint)
                 {
-                    Assert.True(TownRules.RoadAt(cx, cz, map.Roads).Edge >= r, p.Code + " sur une route");
+                    Assert.True(TownRules.RoadAt(cx, cz, streets).Edge >= r, p.Code + " sur une route");
                     Assert.All(doors, d => Assert.True(Math.Sqrt((cx - d.X) * (cx - d.X) + (cz - d.Z) * (cz - d.Z)) >= r + FeastLooks.DoorClearance, p.Code + " devant une porte"));
+                    Assert.All(avoid, q => Assert.True(Math.Sqrt((cx - q.X) * (cx - q.X) + (cz - q.Z) * (cz - q.Z)) >= r + FeastLooks.PeopleClearance, p.Code + " sur un PNJ"));
+                    Assert.All(taken, t => Assert.True(StyleRules.InsideDistance(cx, cz, t) <= -r + 1e-9, p.Code + " sur l'étal"));
                 }
             }
+            Assert.True(perPlace.All(kv => kv.Value >= 1) && perPlace["bourg"] == 5 && perPlace["place_du_marche_de_la_ville"] == 5,
+                feast.Festival + " : " + string.Join(", ", perPlace.Select(kv => kv.Key + " " + kv.Value)));
         }
-        Assert.True(report.Count == 12, string.Join(", ", report));
     }
 
     [Fact]
@@ -92,10 +105,35 @@ public sealed class FetesF5DecorTests
         // Le jour du Carnaval : ses cinq décorations aux deux places, calculées une fois.
         AdventureSession a = Session.Value;
         Assert.Equal("festival.carnaval", a.FeastNow?.Festival);
-        Assert.Equal(10, a.FeastDecorPieces.Count);
+        Assert.True(a.FeastDecorPieces.Count >= 17, a.FeastDecorPieces.Count.ToString());
         Assert.Same(a.FeastDecorPieces, a.FeastDecorPieces);
         string view = Source("Game/WorldMarkers.Feasts.cs");
         Assert.Contains("foreach (FeastPiece piece in adventure.FeastDecorPieces)", view);
         Assert.Contains("Object.Destroy(_feastStall);", view);
+    }
+
+    [Fact]
+    public void Fete_commencee_en_interieur_le_decor_vient_en_sortant()
+    {
+        // Relecture indépendante de la PR #219 : en intérieur, rien n'est posé ni retenu ; la clé du calcul porte la zone, et une liste vide
+        // n'est jamais gardée (un retour dehors, ou une sauvegarde reprise en intérieur, calcule le décor du mois).
+        string save = Path.Combine(Path.GetTempPath(), "eds-f5-" + Guid.NewGuid().ToString("N") + ".json");
+        SaveStore.Write(save, new WorldSave("zone.auberge", WorldEventSchedule.TickAt(new WorldClock(50), 13 * 1440 + 12 * 60), 0,
+            new[] { PlayerCharacters.PlacesKey }, Hero()));
+        try
+        {
+            AdventureSession inside = Adventure(save);
+            Assert.True(inside.Indoors);
+            Assert.Equal("festival.carnaval", inside.FeastNow?.Festival);
+            Assert.Empty(inside.FeastDecorPieces);
+        }
+        finally
+        {
+            File.Delete(save);
+        }
+        Assert.NotEmpty(Session.Value.FeastDecorPieces);
+        string code = File.ReadAllText(Path.Combine(Root, "src", "EdS.Runtime", "AdventureSession.Feasts.cs"));
+        Assert.Contains("string key = feast.Festival + \"|\" + World.Definition?.Id;", code);
+        Assert.Contains("if (World.FeastStall is null || !(World.FeastNow is Feast feast)) return Array.Empty<FeastPiece>();", code);
     }
 }

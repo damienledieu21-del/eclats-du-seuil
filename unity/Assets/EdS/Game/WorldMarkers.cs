@@ -249,7 +249,6 @@ namespace EdS.Game
             if (map == null) return;
             List<IReadOnlyList<(double X, double Z)>> obstacles = Wave5View.Polygons(map.Obstacles);
             Transform root = _root.transform;
-            _feastObstacles = obstacles;   // sous-lot F4 : l'étal de fête se pose plus tard (Sync), aux mêmes places libres
             WorldMarker Npc(string word) => byDay.Values.FirstOrDefault(n => StyleRules.Key(n.Id) == "npc" + word);
             MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
             float Yaw(WorldMarker n) => _npcs.TryGetValue(n.Id, out Marker m) ? m.RestYaw : 0f;

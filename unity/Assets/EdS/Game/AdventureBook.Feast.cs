@@ -78,13 +78,21 @@ namespace EdS.Game
         /// <summary>Bouton Acheter de la ligne <paramref name="row"/>.</summary>
         private void BuyFeastRow(int row)
         {
-            if (_session != null && row < _feastLines.Count) _session.BuyFeastOffer(_feastLines[row].Code);
+            // Relecture indépendante de la PR #218 : un double clic n'achète qu'une fois (un plat s'achète plusieurs fois) : la ligne reste
+            // bloquée jusqu'au rafraîchissement suivant du panneau, qui relit les offres.
+            if (_session == null || row >= _feastLines.Count || _feastBuyLocked) return;
+            _feastBuyLocked = true;
+            _session.BuyFeastOffer(_feastLines[row].Code);
         }
+
+        /// <summary>Un achat a été fait depuis le dernier rafraîchissement (les boutons sont bloqués jusqu'à lui).</summary>
+        private bool _feastBuyLocked;
 
         /// <summary>Une image de l'étal ouvert : titre, offres du mois, monnaie de la fête, avancement, règles, autres monnaies.</summary>
         private void RefreshFeast(AdventureSession a)
         {
             if (!a.FeastStallOpen) return;
+            _feastBuyLocked = false;   // les offres sont relues ci-dessous
             if (_tipAnchor != null) ClearTip();   // fiche restée d'une autre page
             _title.Value = a.FeastStallTitle ?? "";
             _subtitle.Value = a.FeastStallSubtitle ?? "";
