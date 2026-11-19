@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/feasts.schema.json",
   "title": "Éclats du Seuil — les 12 fêtes d'Orsédia",
-  "description": "Les 12 fêtes d'Orsédia (sous-lot F1, décisions de Damien du 17 novembre 2026), version 1 : les 108 références du dossier des fêtes (5 décorations, un costume, un plat, une monnaie et une récompense par fête), titres, activités qui rapportent la monnaie de la fête, marchand de fête, plafond du portefeuille et plats gardés au plus. Documentation. La validation qui fait foi est celle du programme (FeastValidator), avec l'histoire (fêtes datées du mois de la fête, invités, concours, marchand de passage) et les textes : récompense de rareté Rare, costume Commun, monnaie sans prix ni rareté, icônes pour le plat, la monnaie et la récompense seulement.",
+  "description": "Les 12 fêtes d'Orsédia (sous-lot F1, décisions de Damien du 17 novembre 2026), version 2 (sous-lot F3 : stall obligatoire, décor de l'étal du forain ; la version 1, sans stall, reste lue par le programme) : les 108 références du dossier des fêtes (5 décorations, un costume, un plat, une monnaie et une récompense par fête), titres, activités qui rapportent la monnaie de la fête, marchand de fête, plafond du portefeuille et plats gardés au plus. Documentation. La validation qui fait foi est celle du programme (FeastValidator), avec l'histoire (fêtes datées du mois de la fête, invités, concours, marchand de passage) et les textes : récompense de rareté Rare, costume Commun, monnaie sans prix ni rareté, icônes pour le plat, la monnaie et la récompense seulement.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "feasts"
@@ -70,7 +70,8 @@
               "motto",
               "title",
               "activities",
-              "refs"
+              "refs",
+              "stall"
             ],
             "properties": {
               "number": {
@@ -248,6 +249,17 @@
                       "maximum": 99999
                     }
                   }
+                }
+              },
+              "stall": {
+                "description": "Sous-lot F3 (décision de Damien du 18 novembre 2026) : décorations de cette fête qui habillent l'étal du forain ce mois-là.",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^F(0[1-9]|1[0-2])_D0[1-5]$"
                 }
               }
             }

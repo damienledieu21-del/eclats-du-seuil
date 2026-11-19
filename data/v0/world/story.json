@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.34.0-provisoire",
+  "contentVersion": "0.36.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -2100,6 +2100,30 @@
               0
             ]
           }
+        ]
+      },
+      {
+        "id": "npc.forain",
+        "name": "text.fetes.forain.name",
+        "position": [
+          -1088.0,
+          -37.0
+        ],
+        "dialogue": "dialogue.forain",
+        "faction": "villagers",
+        "festivals": [
+          "festival.lanternes",
+          "festival.liens",
+          "festival.carnaval",
+          "festival.foire",
+          "festival.artisans",
+          "festival.feux_du_seuil",
+          "festival.grand_tournoi",
+          "festival.etoiles_filantes",
+          "festival.moissons",
+          "festival.nuit_des_echos",
+          "festival.veillee",
+          "festival.givre"
         ]
       }
     ],
@@ -23870,6 +23894,40 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.forain",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.fetes.forain.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.forain"
+                  }
+                ],
+                "text": "text.fetes.forain.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -27645,56 +27703,317 @@
       {
         "id": "festival.lanternes",
         "name": "text.fete.lanternes",
+        "season": "winter",
+        "day": 4,
+        "from": "17:00",
+        "to": "23:59",
         "date": {"month": 1, "day": 1, "days": 7},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1102.5,
+              -36.5
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.liens",
         "name": "text.fete.liens",
+        "season": "winter",
+        "day": 13,
+        "from": "10:00",
+        "to": "20:00",
         "date": {"month": 2, "day": 10, "days": 7},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          }
+        ]
       },
       {
         "id": "festival.carnaval",
         "name": "text.fete.carnaval",
+        "season": "spring",
+        "day": 13,
+        "from": "10:00",
+        "to": "22:00",
         "date": {"month": 3, "day": 1, "days": 10},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          }
+        ]
       },
       {
         "id": "festival.artisans",
         "name": "text.fete.artisans",
+        "season": "spring",
+        "day": 24,
+        "from": "09:00",
+        "to": "19:00",
         "date": {"month": 5, "day": 1, "days": 10},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1087,
+              -32.5
+            ],
+            "activity": "fete_concours"
+          },
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1089.5,
+              -40
+            ],
+            "activity": "fete"
+          }
+        ]
       },
       {
         "id": "festival.feux_du_seuil",
         "name": "text.fete.feux_du_seuil",
+        "season": "summer",
+        "day": 4,
+        "from": "18:00",
+        "to": "23:59",
         "date": {"month": 6, "day": 20, "days": 11},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1089.5,
+              -40
+            ],
+            "activity": "fete"
+          }
+        ]
       },
       {
         "id": "festival.grand_tournoi",
         "name": "text.fete.grand_tournoi",
+        "season": "summer",
+        "day": 14,
+        "from": "09:00",
+        "to": "19:00",
         "date": {"month": 7, "day": 10, "days": 14},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1090,
+              -43
+            ],
+            "activity": "cible"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1089,
+              -33.5
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1086.5,
+              -34
+            ],
+            "activity": "foire"
+          }
+        ]
       },
       {
         "id": "festival.etoiles_filantes",
         "name": "text.fete.etoiles_filantes",
+        "season": "summer",
+        "day": 24,
+        "from": "20:00",
+        "to": "23:59",
         "date": {"month": 8, "day": 8, "days": 10},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.albe",
+            "position": [
+              -1101,
+              -38
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.nuit_des_echos",
         "name": "text.fete.nuit_des_echos",
+        "season": "autumn",
+        "day": 20,
+        "from": "17:00",
+        "to": "23:59",
         "date": {"month": 10, "day": 25, "days": 10},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1102.5,
+              -36.5
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.givre",
         "name": "text.fete.givre",
+        "season": "winter",
+        "day": 27,
+        "from": "10:00",
+        "to": "22:00",
         "date": {"month": 12, "day": 18, "days": 14},
-        "calendarOnly": true
+        "guests": [
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1086.5,
+              -34
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1089,
+              -33.5
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1090,
+              -43
+            ],
+            "activity": "cible"
+          }
+        ]
       }
     ]
   }

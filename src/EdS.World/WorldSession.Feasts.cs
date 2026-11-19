@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Feasts;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -76,5 +77,130 @@ namespace EdS.World
 
         /// <summary>Remplace l'état des fêtes du personnage (opération des règles déjà acceptée).</summary>
         private void SetFeasts(SavedFeasts next) => _character = _character.WithFeasts(next);
+
+        // --- Sous-lot F3 : moteur de fête (activités, marchand de fête, concours de l'histoire) ---------------------------------------
+
+        /// <summary>
+        /// Relecture indépendante de la PR #216 : les annonces d'un gain de fête, les mêmes pour une activité et pour un concours : pièces
+        /// gagnées, plafond atteint (le reste est perdu), fête gagnée (titre la première fois).
+        /// </summary>
+        private void FeastNews(Feast feast, FeastActivity a, FeastGain gain, long edition, List<StoryEvent> events)
+        {
+            if (gain.Gained > 0) events.Add(new StoryEvent(StoryEventKind.FeastCoins, feast.Festival, a.Id, gain.Gained));
+            if (gain.Capped) events.Add(new StoryEvent(StoryEventKind.FeastWalletFull, feast.Festival, a.Id, a.Coins - gain.Gained));
+            if (gain.Won) events.Add(new StoryEvent(StoryEventKind.FeastWon, feast.Festival, gain.Title ? "title" : null, edition));
+        }
+
+        /// <summary>La fête d'Orsédia qui bat son plein maintenant (fête de l'histoire en cours avec du contenu de fête), ou null.</summary>
+        public Feast? FeastNow => _feasts != null && Festival is Festival f ? _feasts.Of(f.Id) : null;
+
+        /// <summary>
+        /// Le personnage prend part à l'activité <paramref name="activity"/> de la fête en cours, auprès de son invité (à portée de parole) :
+        /// une fois par jour de fête, elle rapporte la monnaie de la fête (plafonnée) et compte pour la récompense de l'édition. Les concours de
+        /// l'histoire passent par leur dialogue (effet <c>contest</c>), pas par ici. Refus : rien ne change.
+        /// </summary>
+        public FeastRefusal JoinFeast(string activity, out FeastGain gain) => JoinFeast(activity, out gain, out _);
+
+        /// <summary>Comme <see cref="JoinFeast(string, out FeastGain)"/>, avec ses annonces (<see cref="StoryEventKind.FeastCoins"/>…).</summary>
+        public FeastRefusal JoinFeast(string activity, out FeastGain gain, out IReadOnlyList<StoryEvent> events)
+        {
+            gain = default;
+            var news = new List<StoryEvent>();
+            events = news;
+            if (_feasts is null) return FeastRefusal.NoFeast;
+            if (!(FeastNow is Feast feast)) return FeastRefusal.NotNow;
+            if (!(feast.Activity(activity) is FeastActivity a) || a.Host is null) return FeastRefusal.UnknownActivity;
+            if (InCombat) return FeastRefusal.NotNow;
+            if (!(Narrative is Narrative n) || !n.CanReach(a.Host)) return FeastRefusal.TooFar;
+            if (!(FeastDay(feast.Festival) is (long edition, long day))) return FeastRefusal.NotNow;
+            FeastRefusal refusal = FeastRules.Earn(_character.Feasts, _feasts, feast.Festival, a.Id, edition, day, out SavedFeasts next, out gain);
+            if (refusal != FeastRefusal.None) return refusal;
+            SetFeasts(next);
+            FeastNews(feast, a, gain, edition, news);
+            return FeastRefusal.None;
+        }
+
+        /// <summary>Une offre du marchand de fête : la référence, son prix et ce que donnerait l'achat maintenant (<see cref="FeastRefusal.None"/> : achetable).</summary>
+        public sealed class FeastOffer
+        {
+            public FeastRef Ref { get; }
+            public int Price { get; }
+            public FeastRefusal Status { get; }
+
+            internal FeastOffer(FeastRef r, FeastRefusal status)
+            {
+                Ref = r;
+                Price = r.Price!.Value;
+                Status = status;
+            }
+        }
+
+        /// <summary>
+        /// Le marchand de fête (<see cref="FeastBook.Merchant"/>) est là et à portée : la fête en cours, sinon le motif. Il vend ce qui est à
+        /// la fête en cours seulement.
+        /// </summary>
+        public FeastRefusal FeastShopOpen(out Feast? feast)
+        {
+            feast = null;
+            if (_feasts is null) return FeastRefusal.NoFeast;
+            if (!(FeastNow is Feast f)) return FeastRefusal.NotNow;
+            if (!(Narrative is Narrative n) || NpcAway(n.Book.Npc(_feasts.Merchant))) return FeastRefusal.MerchantAway;
+            if (!n.CanReach(_feasts.Merchant)) return FeastRefusal.TooFar;
+            feast = f;
+            return FeastRefusal.None;
+        }
+
+        /// <summary>
+        /// L'étal de fête sur la place (décision de Damien du 18 novembre 2026 : un marchand dédié, le forain, dont le décor change chaque
+        /// mois), pour l'affichage : la fête en cours, la place du forain et les décorations de la fête qui habillent l'étal ; null hors fête
+        /// ou si le forain n'est pas là.
+        /// </summary>
+        public (Feast Feast, string Merchant, EdS.Domain.Space.GroundVector Position, IReadOnlyList<FeastRef> Decor)? FeastStall =>
+            _feasts != null && FeastNow is Feast f && Narrative is Narrative n && !NpcAway(n.Book.Npc(_feasts.Merchant))
+                ? (f, _feasts.Merchant, NpcPosition(n.Book.Npc(_feasts.Merchant)), f.Stall)
+                : ((Feast, string, EdS.Domain.Space.GroundVector, IReadOnlyList<FeastRef>)?)null;
+
+        /// <summary>
+        /// L'étal du marchand de fête : décorations, costume, plat et récompense de l'édition d'avant (rattrapage) de la fête en cours, avec
+        /// leur prix et ce que donnerait l'achat ; vide si l'étal n'est pas ouvert. Rien ne change.
+        /// </summary>
+        public IReadOnlyList<FeastOffer> FeastShop()
+        {
+            if (FeastShopOpen(out Feast? feast) != FeastRefusal.None || !(FeastDay(feast!.Festival) is (long edition, long _))) return Array.Empty<FeastOffer>();
+            var offers = new List<FeastOffer>();
+            foreach (FeastRef r in feast.Refs)
+                if (r.Price != null) offers.Add(new FeastOffer(r, FeastRules.Buy(_character.Feasts, _feasts!, r.Code, edition, out _)));
+            return offers;
+        }
+
+        /// <summary>Achète la référence <paramref name="code"/> de la fête en cours chez le marchand de fête. Refus : rien ne change.</summary>
+        public FeastRefusal BuyFeast(string code)
+        {
+            FeastRefusal open = FeastShopOpen(out Feast? feast);
+            if (open != FeastRefusal.None) return open;
+            if (!(_feasts!.Ref(code) is FeastRef r) || r.Feast != feast!.Number) return FeastRefusal.UnknownRef;
+            if (InCombat || !(FeastDay(feast.Festival) is (long edition, long _))) return FeastRefusal.NotNow;
+            FeastRefusal refusal = FeastRules.Buy(_character.Feasts, _feasts, r.Code, edition, out SavedFeasts next);
+            if (refusal == FeastRefusal.None) SetFeasts(next);
+            return refusal;
+        }
+
+        /// <summary>
+        /// Concours de l'histoire (effet <c>contest</c>) : le concours de clé <paramref name="key"/> de la fête <paramref name="festival"/> vient
+        /// d'avoir lieu ; s'il est lié à une activité de fête, il rapporte sa monnaie (une fois par édition). Ne lève pas, ne refuse rien du
+        /// concours lui-même : la monnaie s'ajoute, ou rien (pas de catalogue, édition inconnue, déjà fait dans l'édition).
+        /// </summary>
+        private void FeastContest(string festival, string key, List<StoryEvent> events)
+        {
+            // Relecture indépendante de la PR #216 : aux heures de la fête seulement (comme l'activité et le marchand).
+            if (_feasts is null || !(FeastNow is Feast feast) || feast.Festival != festival) return;
+            if (!(feast.Activities.FirstOrDefault(a => a.Contest == key) is FeastActivity a)) return;
+            if (!(FeastDay(festival) is (long edition, long day))) return;
+            FeastRefusal refusal = FeastRules.Earn(_character.Feasts, _feasts, festival, a.Id, edition, day, out SavedFeasts next, out FeastGain gain);
+            if (refusal == FeastRefusal.CountersFull) events.Add(new StoryEvent(StoryEventKind.FeastCountersFull, festival, a.Id));
+            if (refusal != FeastRefusal.None) return;
+            SetFeasts(next);
+            FeastNews(feast, a, gain, edition, events);
+        }
     }
 }

@@ -19,7 +19,28 @@ namespace EdS.Data.Tests;
 [Trait("Category", "World")]
 public class FetesVraiesDatesTests
 {
-    private static readonly Lazy<StoryBook> Story = new(() => Book(Zone()));
+    // Les 12 fêtes d'Orsédia (sous-lot F3) : les neuf fêtes du calendrier seulement mettent maintenant le monde en fête ; le mécanisme de la
+    // fête du calendrier seulement reste vérifié ici sur l'histoire telle qu'avant F3 (ces fêtes ramenées à leur nom et leur date).
+    private static readonly Lazy<StoryBook> Story = new(() => Mutated(_ => { }).Story!);
+
+    private static readonly string[] Nine = { "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil",
+        "festival.grand_tournoi", "festival.etoiles_filantes", "festival.nuit_des_echos", "festival.givre" };
+
+    /// <summary>L'histoire telle qu'avant le sous-lot F3 : les neuf fêtes nouvelles redeviennent du calendrier seulement.</summary>
+    private static void BeforeF3(JsonObject root)
+    {
+        foreach (JsonObject f in root["data"]!["festivals"]!.AsArray().Select(x => x!.AsObject()).Where(x => Nine.Contains((string)x["id"]!)))
+        {
+            foreach (string k in new[] { "season", "day", "from", "to", "guests" }) f.Remove(k);
+            f["calendarOnly"] = true;
+        }
+        foreach (JsonObject n in root["data"]!["npcs"]!.AsArray().Select(x => x!.AsObject()).Where(x => x["festivals"] != null))
+        {
+            JsonArray list = n["festivals"]!.AsArray();
+            for (int i = list.Count - 1; i >= 0; i--)
+                if (Nine.Contains((string)list[i]!)) list.RemoveAt(i);
+        }
+    }
 
     private static long Utc(int y, int mo, int d, int h = 12) => new DateTimeOffset(y, mo, d, h, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds();
 
@@ -32,12 +53,12 @@ public class FetesVraiesDatesTests
         return tick;
     }
 
-    private static WorldSession Open(long day, int minute)
+    private static WorldSession Open(long day, int minute, StoryBook? story = null)
     {
         ZoneDefinition zone = Zone();
         var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, minute) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
-            Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+            Progression, ItemsCatalog, story ?? Book(zone), market: new Market(ShippedMerchants));
         session.Step();
         return session;
     }
@@ -45,6 +66,7 @@ public class FetesVraiesDatesTests
     private static StoryLoadResult Mutated(Action<JsonObject> mutate)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+        BeforeF3(root);
         mutate(root);
         return StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors);
     }
@@ -193,8 +215,8 @@ public class FetesVraiesDatesTests
     [Fact]
     public void Fete_du_calendrier_seulement_affichee_sans_mettre_le_monde_en_fete()
     {
-        WorldSession w = Open(3, 12 * 60);
-        w.SetCivilTime(Utc(2027, 1, 3, 11));   // Nuit des Lanternes (contenu à écrire)
+        WorldSession w = Open(3, 12 * 60, Story.Value);
+        w.SetCivilTime(Utc(2027, 1, 3, 11));   // Nuit des Lanternes (contenu à écrire avant F3)
         Assert.Equal("festival.lanternes", w.CalendarFestival?.Id);
         Assert.Null(w.Festival);   // ni invités, ni conditions, ni habits de fête
         Assert.Null(w.FestivalToday);

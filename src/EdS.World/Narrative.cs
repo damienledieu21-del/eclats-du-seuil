@@ -120,6 +120,21 @@ namespace EdS.World
         /// <summary>Concours de pâtisserie : le personnage a présenté une pâtisserie de sa main (identifiant : l'objet ; étape : sa qualité,
         /// « normal », « superior » ou « masterwork » ; valeur : 1).</summary>
         ItemPresented = 32,
+
+        /// <summary>Les 12 fêtes d'Orsédia (sous-lot F3) : monnaie de fête gagnée (identifiant : la fête ; étape : l'activité ; valeur : pièces réellement gagnées).</summary>
+        FeastCoins = 33,
+
+        /// <summary>
+        /// Les 12 fêtes d'Orsédia : plafond du portefeuille atteint, une partie du gain est perdue (identifiant : la fête ; étape : l'activité ;
+        /// valeur : pièces perdues). Décision de Damien du 18 novembre 2026 : le gain au-delà est perdu mais annoncé.
+        /// </summary>
+        FeastWalletFull = 34,
+
+        /// <summary>Les 12 fêtes d'Orsédia : fête gagnée, récompense de l'édition (identifiant : la fête ; étape : « title » la première fois ; valeur : l'édition).</summary>
+        FeastWon = 35,
+
+        /// <summary>Les 12 fêtes d'Orsédia : activité refusée, compteur au plafond technique de la sauvegarde (identifiant : la fête ; étape : l'activité).</summary>
+        FeastCountersFull = 36,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -321,7 +336,7 @@ namespace EdS.World
         /// date réelle est connue, son occurrence réelle est gardée (registre des événements), pour qu'une reprise un an plus tard ne la
         /// confonde pas avec la nouvelle. Ne lève pas.
         /// </summary>
-        void ContestHeld(string festival, string key);
+        void ContestHeld(string festival, string key, List<StoryEvent> events);
 
         /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
         bool NpcAway(Npc npc);
@@ -1547,8 +1562,8 @@ namespace EdS.World
                     case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
                         // Schéma 16 : chaque piste a sa clé ; seules les clés de l'histoire sont gardées (au plus MaxFestivals, vérifié par le validateur).
                         _contests[e.ContestKey] = Math.Min(SavedEvent.MaxDay, _world.Day);
-                        _world.ContestHeld(e.Id, e.ContestKey);
                         events.Add(new StoryEvent(StoryEventKind.ContestEntered, e.Id, null, _world.Day));
+                        _world.ContestHeld(e.Id, e.ContestKey, events);   // fêtes d'Orsédia (F3) : la monnaie du concours, annoncée
                         break;
                     default:
                         if (_discoveries.Add(e.Id))

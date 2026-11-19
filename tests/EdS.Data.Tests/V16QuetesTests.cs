@@ -89,7 +89,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(31, book.NpcsIn(null).Count());   // 17 novembre 2026 : Achille vit chez lui (zone.chaumiere) ; V2.30.5 : six marchands de la route d'Ambre et la famille Vaudry ; V2.14 : la fromagère et le marchand d'épices (jours de marché) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(32, book.NpcsIn(null).Count());   // fêtes d'Orsédia (F3) : le forain des fêtes ; 17 novembre 2026 : Achille vit chez lui (zone.chaumiere) ; V2.30.5 : six marchands de la route d'Ambre et la famille Vaudry ; V2.14 : la fromagère et le marchand d'épices (jours de marché) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
