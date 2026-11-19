@@ -138,6 +138,80 @@ namespace EdS.Runtime
             return disks;
         }
 
+        /// <summary>Sous-lot F5 : lieux où la fête du mois pose ses décorations : la place du village (le forain) et la place du marché du Bourg.</summary>
+        public static IReadOnlyList<string> DecorPlaces { get; } = new[] { "bourg", "place_du_marche_de_la_ville" };
+
+        /// <summary>Distance (m) gardée entre une décoration et une porte (on entre et on sort sans la frôler).</summary>
+        public const double DoorClearance = 2.5;
+
+        /// <summary>Distance (m) gardée entre une décoration et un PNJ, un invité de fête ou un point sûr.</summary>
+        public const double PeopleClearance = 1.0;
+
+        /// <summary>
+        /// Sous-lot F5 (décor du mois) : les décorations de la fête (<paramref name="decor"/> : code et enveloppe X, Y, Z en m), une de chaque
+        /// dans chacun des <paramref name="places"/> (id et rectangle), à la première place qui convient sur des cercles autour du centre du lieu
+        /// (4 à 22 m, 16 directions, dans le lieu), tournées vers le centre : emprise (<see cref="FeastPiece.Footprint"/>) hors des obstacles,
+        /// **hors des routes** (bord de la chaussée), à <see cref="DoorClearance"/> m des portes, à <see cref="PeopleClearance"/> m des PNJ, des
+        /// invités, des points sûrs et des pièces déjà posées (<paramref name="avoid"/>), sans toucher une autre décoration ni l'étal
+        /// (<paramref name="taken"/>). Une décoration sans place n'est pas posée. Déterministe ; affichage seulement, sans collision.
+        /// </summary>
+        public static IReadOnlyList<FeastPiece> Village(IReadOnlyList<(string Code, double SizeX, double SizeY, double SizeZ)> decor,
+            IReadOnlyList<(string Id, double MinX, double MinZ, double MaxX, double MaxZ)> places, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
+            IReadOnlyList<StyleRoad> roads, IReadOnlyList<(double X, double Z)> doors, IReadOnlyList<(double X, double Z)> avoid,
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>>? taken = null)
+        {
+            var used = new List<IReadOnlyList<(double X, double Z)>>(obstacles ?? Array.Empty<IReadOnlyList<(double, double)>>());
+            var mine = new List<IReadOnlyList<(double X, double Z)>>(taken ?? Array.Empty<IReadOnlyList<(double, double)>>());
+            var pieces = new List<FeastPiece>();
+            foreach ((string id, double x0, double z0, double x1, double z1) in places ?? Array.Empty<(string, double, double, double, double)>())
+            {
+                double cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+                int rank = 0;
+                foreach ((string code, double w0, double d0, double _) in decor ?? Array.Empty<(string, double, double, double)>())
+                {
+                    double w = Math.Max(w0, 0.1), d = Math.Max(d0, 0.1);
+                    foreach ((double px, double pz) in Rings(cx, cz, rank++))
+                    {
+                        if (px < x0 + 1 || px > x1 - 1 || pz < z0 + 1 || pz > z1 - 1) continue;
+                        double yaw = Math.Round(StyleRules.FaceYaw(px, pz, cx, cz) / 15) * 15;
+                        if (!Fits(px, pz, yaw, w, d, used, mine, roads, doors, avoid)) continue;
+                        pieces.Add(new FeastPiece(code, px, pz, yaw, w, d));
+                        mine.Add(Box(px, pz, yaw, w, d));
+                        break;
+                    }
+                }
+            }
+            return pieces;
+        }
+
+        /// <summary>La décoration (centre, quart de tour, largeur, profondeur) respecte toutes les règles de <see cref="Village"/>.</summary>
+        public static bool Fits(double x, double z, double yaw, double w, double d, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>> taken, IReadOnlyList<StyleRoad> roads, IReadOnlyList<(double X, double Z)> doors,
+            IReadOnlyList<(double X, double Z)> avoid)
+        {
+            foreach ((double px, double pz, double r) in Footprint(x, z, yaw, w, d))
+            {
+                if (Wave5.FreeSpot(new[] { (px, pz) }, obstacles, r) is null || Wave5.FreeSpot(new[] { (px, pz) }, taken, r) is null) return false;
+                if (roads != null && roads.Count > 0 && TownRules.RoadAt(px, pz, roads).Edge < r) return false;
+                foreach ((double qx, double qz) in doors ?? Array.Empty<(double, double)>())
+                    if ((px - qx) * (px - qx) + (pz - qz) * (pz - qz) < (r + DoorClearance) * (r + DoorClearance)) return false;
+                foreach ((double qx, double qz) in avoid ?? Array.Empty<(double, double)>())
+                    if ((px - qx) * (px - qx) + (pz - qz) * (pz - qz) < (r + PeopleClearance) * (r + PeopleClearance)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>Places essayées autour du centre d'un lieu : cercles de 4 à 22 m, 16 directions, chaque rang commençant ailleurs.</summary>
+        private static IEnumerable<(double X, double Z)> Rings(double cx, double cz, int rank)
+        {
+            foreach (double r in new[] { 4.0, 6.5, 9.0, 11.5, 14.0, 17.0, 20.0, 22.0 })
+                for (int i = 0; i < 16; i++)
+                {
+                    double a = ((i + rank * 5) % 16) * Math.PI / 8 + r * 0.1;
+                    yield return (cx + r * Math.Sin(a), cz + r * Math.Cos(a));
+                }
+        }
+
         /// <summary>Rectangle <paramref name="w"/> × <paramref name="d"/> m centré en (<paramref name="x"/>, <paramref name="z"/>), tourné de <paramref name="yaw"/>.</summary>
         public static IReadOnlyList<(double X, double Z)> Box(double x, double z, double yaw, double w, double d)
         {

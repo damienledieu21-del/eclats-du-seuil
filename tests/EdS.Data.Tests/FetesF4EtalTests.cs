@@ -251,12 +251,13 @@ public sealed class FetesF4EtalTests
     }
 
     [Fact]
-    public void Modeles_des_decorations_de_l_etal_seulement_textures_au_budget()
+    public void Modeles_des_decorations_seulement_textures_au_budget()
     {
         string folder = Unity("Modeles/Fetes");
-        string[] stall = Feasts.Value.Feasts.SelectMany(f => f.Stall).Select(r => r.Code).ToArray();
-        Assert.Equal(40, stall.Length);
-        // N'ajoute que ce qui sert : un dossier par décoration d'étal, rien d'autre.
+        // Sous-lot F5 : les 60 décorations (40 de l'étal en F4, les 20 autres pour le décor du mois) ; ni plats, ni monnaies, ni récompenses.
+        string[] stall = Feasts.Value.Refs.Where(r => r.Category == FeastCategory.Decoration).Select(r => r.Code).ToArray();
+        Assert.Equal(60, stall.Length);
+        // N'ajoute que ce qui sert : un dossier par décoration, rien d'autre.
         Assert.Equal(stall.OrderBy(c => c, StringComparer.Ordinal), Directory.GetDirectories(folder).Select(Path.GetFileName).OrderBy(c => c, StringComparer.Ordinal));
         long bytes = 0;
         foreach (string code in stall)
@@ -272,7 +273,7 @@ public sealed class FetesF4EtalTests
             bytes += Directory.GetFiles(Path.Combine(folder, code)).Sum(f => new FileInfo(f).Length);
             Assert.Equal(3, Directory.GetFiles(Path.Combine(folder, code)).Length);
         }
-        Assert.True(bytes < 40L * 1024 * 1024, $"{bytes} octets");
+        Assert.True(bytes < 60L * 1024 * 1024, $"{bytes} octets");
         Assert.Null(FeastLooks.CodeOf("Assets/EdS/Modeles/LotC/02_Objets_Village/C_OV_A01/C_OV_A01.fbx"));
         Assert.Null(FeastLooks.CodeOf(FeastLooks.Folder + "/F01_D01/F01_D02.fbx"));
     }

@@ -1135,6 +1135,16 @@ Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSessi
 - Tests : `FetesF4EtalTests` (aventure sur les vraies données au Carnaval : étal, achats, refus, rattrapage l'année d'après, activité de Lison, plafond et fête gagnée ; pose de l'étal pour les 12 fêtes ; modèles, budget, icônes, textes ; contrôles de source Unity).
 - Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; l'avant des modèles des fêtes est supposé comme celui du lot C ; sans les packs de l'Asset Store, l'étal n'a pas de tente ni de table, seulement ses décorations ; s'il marche (emploi du temps), l'étal reste à sa place de fête ; aucune collision (un joueur peut traverser l'étal).
 
+## Le décor du mois des fêtes (sous-lot F5, 19 novembre 2026)
+
+- Pendant chaque fête, ses **cinq décorations** (arches, lanternes, bannières, mâts…) sont posées sur la **place du village** (là où se tient le forain, lieu `bourg`) et sur la **place du marché du Bourg** (`place_du_marche_de_la_ville`) : une de chaque par place, à la première place qui convient sur des cercles de 4 à 22 m autour du centre du lieu (16 directions), tournées vers le centre (`FeastLooks.Village`, sans Unity ; `AdventureSession.FeastDecorPieces`, calculé une fois par fête sur la carte entière).
+- **Places validées** : emprise (disques le long de la largeur, marge de 0,25 m) hors des obstacles, **hors des routes** (bord de la chaussée), à **2,5 m des portes**, à 1 m des PNJ (places de la journée et de pluie comprises), des invités de toutes les fêtes, des points sûrs et des accessoires du Bourg fortifié, sans toucher l'étal du forain ni ses décorations, ni une autre décoration. Testé sur les vraies données pour les 12 fêtes : les 10 décorations posées à chaque fois.
+- **Retirées après la fête** : le décor est posé avec l'étal (`WorldMarkers.Feasts.cs`) et détruit avec lui quand la fête change ou finit.
+- **Modèles** : les **60 décorations** (les 20 de plus que l'étal), 42 Mo en tout ; ni plats, ni monnaies, ni récompenses en 3D.
+- **Décorations achetées par le joueur** : **pas de maison du joueur** dans le jeu : elles restent dans la sauvegarde (`owned`) sans être posées (limite).
+- Tests : `FetesF5DecorTests` ; `FetesF4EtalTests` (60 modèles, budget).
+- Limites : pas vu dans Unity ; les arches ne sont pas posées au-dessus des routes (elles bloqueraient le passage sans collision réglée) : elles se tiennent sur la place, à côté.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

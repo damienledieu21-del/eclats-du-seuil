@@ -303,6 +303,82 @@ namespace EdS.Runtime
             ? new FeastStallLook(s.Feast.Festival, s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, s.Decor.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList())
             : null;
 
+        /// <summary>Regard au repos du forain (degrés, 0 = +z) : vers le point sûr le plus proche, comme tout PNJ (WorldMarkers).</summary>
+        public double FeastMerchantFace(double x, double z)
+        {
+            double best = double.MaxValue, face = 0;
+            foreach (EdS.Data.Zones.SafePoint p in _zone.SafePoints)
+            {
+                double px = p.Position.X.Raw / 10000.0, pz = p.Position.Z.Raw / 10000.0, d = (px - x) * (px - x) + (pz - z) * (pz - z);
+                if (d > 0.01 && d < best)
+                {
+                    best = d;
+                    face = StyleRules.FaceYaw(x, z, px, pz);
+                }
+            }
+            return face;
+        }
+
+        private string? _feastDecorKey;
+        private IReadOnlyList<FeastPiece> _feastDecor = Array.Empty<FeastPiece>();
+
+        /// <summary>
+        /// Sous-lot F5 (décor du mois) : les décorations de la fête en cours posées sur la place du village et la place du marché du Bourg
+        /// (<see cref="FeastLooks.Village"/>, sur la carte entière : obstacles, routes, portes, PNJ et leurs places de la journée, invités des
+        /// fêtes, points sûrs, pièces du Bourg fortifié, étal du forain et ses décorations) ; vide hors fête. Calculé une fois par fête.
+        /// </summary>
+        public IReadOnlyList<FeastPiece> FeastDecorPieces
+        {
+            get
+            {
+                if (!(World.FeastNow is Feast feast) || World.FeastStall is null) return Array.Empty<FeastPiece>();
+                if (_feastDecorKey == feast.Festival) return _feastDecor;
+                _feastDecor = FeastDecorOf(feast);
+                _feastDecorKey = feast.Festival;
+                return _feastDecor;
+            }
+        }
+
+        /// <summary>Les décorations de la fête <paramref name="feast"/> posées au village et au Bourg (<see cref="FeastDecorPieces"/>), quel que soit le jour.</summary>
+        public IReadOnlyList<FeastPiece> FeastDecorOf(Feast feast)
+        {
+            AdventureMap map = RegionMap.Whole;
+            var obstacles = map.Obstacles.Select(o => (IReadOnlyList<(double X, double Z)>)o.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()).ToList();
+            var places = FeastLooks.DecorPlaces.Select(id => map.Places.FirstOrDefault(p => p.Id == id)).Where(p => p != null)
+                .Select(p => (p!.Id, p.MinX, p.MinZ, p.MaxX, p.MaxZ)).ToList();
+            var doors = map.Doors.Select(d => (d.X, d.Z)).ToList();
+            var avoid = new List<(double X, double Z)>();
+            foreach (EdS.Data.Story.Npc n in _story.Npcs)
+            {
+                avoid.Add((n.Position.X.Raw / 10000.0, n.Position.Z.Raw / 10000.0));
+                foreach (EdS.Data.Story.ScheduleSlot slot in n.Schedule)
+                {
+                    if (slot.Zone != null) continue;
+                    avoid.Add((slot.Position.X.Raw / 10000.0, slot.Position.Z.Raw / 10000.0));
+                    if (slot.Rain is EdS.Data.Story.SchedulePlace rain) avoid.Add((rain.Position.X.Raw / 10000.0, rain.Position.Z.Raw / 10000.0));
+                }
+            }
+            foreach (EdS.Data.Story.Festival f in _story.Festivals)
+                foreach (EdS.Data.Story.FestivalGuest g in f.Guests) avoid.Add((g.Position.X.Raw / 10000.0, g.Position.Z.Raw / 10000.0));
+            foreach (EdS.Data.Zones.SafePoint p in _zone.SafePoints) avoid.Add((p.Position.X.Raw / 10000.0, p.Position.Z.Raw / 10000.0));
+            foreach (BourgPiece b in map.Bourg.Pieces)   // accessoires du Bourg fortifié (pas les sols : pavés, rues, bordures)
+                if (!BourgModels.IsGround(b.Piece) && b.Covers is null) avoid.Add((b.X, b.Z));
+            // L'étal du forain et ses décorations (FeastStallLook) : jamais recouverts.
+            var taken = new List<IReadOnlyList<(double X, double Z)>>();
+            if (World.FeastBook is FeastBook book && _story.Npcs.FirstOrDefault(n => n.Id == book.Merchant) is EdS.Data.Story.Npc merchant)
+            {
+                double mx = merchant.Position.X.Raw / 10000.0, mz = merchant.Position.Z.Raw / 10000.0, face = FeastMerchantFace(mx, mz);
+                var stallDecor = feast.Stall.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList();
+                var layout = FeastLooks.Stall(mx, mz, face, stallDecor, obstacles);
+                taken.Add(FeastLooks.Box(layout.X, layout.Z, face, FeastLooks.StallWidth + 1, FeastLooks.StallDepth + 1));
+                taken.Add(FeastLooks.Box(mx, mz, face, 1.5, 1.5));
+                foreach (FeastPiece p in layout.Pieces) taken.Add(FeastLooks.Box(p.X, p.Z, p.Yaw, p.Width, p.Depth));
+            }
+            var decor = feast.Decorations.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList();
+            return FeastLooks.Village(decor, places, obstacles, map.Roads, doors, avoid, taken);
+        }
+
+
         /// <summary>Annonces des gains de fête (activités et concours de l'histoire).</summary>
         private void FeastMessage(StoryEvent e)
         {
