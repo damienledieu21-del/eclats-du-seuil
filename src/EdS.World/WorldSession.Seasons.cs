@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Crafting;
 using EdS.Data.Seasons;
+using EdS.Data.Zones;
+using EdS.Domain.Space;
 using EdS.Data.Story;
 using EdS.Domain.Numerics;
 using EdS.Domain.Time;
@@ -40,12 +43,61 @@ namespace EdS.World
         public void SetCivilTime(long unixSeconds)
         {
             SeasonState state = SeasonCalendar.AtUtc(unixSeconds);   // lève avant toute mutation
+            var before = Definition is ZoneDefinition zone ? SeasonalPassageKeys(zone).ToList() : null;
             _civilSeason = state;
             CivilUtcSeconds = unixSeconds;
             _civilTick = Zone.WorldTick;
+            // Revue Codex de la PR #206 : gel ou fonte en direct : les sessions ouvertes que touche un passage saisonnier qui change sont
+            // renouvelées au prochain tick avec l'aire de la saison nouvelle ; à la fonte, un joueur sur la glace va sur la rive la plus proche.
+            if (_host != null && before != null && Definition is ZoneDefinition z)
+            {
+                var after = SeasonalPassageKeys(z).ToList();
+                var changed = z.Passages.Where(p => before.Contains(z.PassageKey(p.Id)) != after.Contains(z.PassageKey(p.Id))).Select(p => p.Obstacle).ToList();
+                if (changed.Count > 0) _seasonChanged = (_seasonChanged ?? new List<string>()).Concat(changed).Distinct(StringComparer.Ordinal).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : position libre la plus proche quand un passage saisonnier (une bande, comme la glace du lac) redevient
+        /// un obstacle sous un joueur : le long du grand axe de la bande, à son bout le plus proche, 1 m au-delà de son rayon ; ailleurs, la
+        /// position ne change pas. Déterministe (virgule fixe, ordre de la zone).
+        /// </summary>
+        internal static GroundVector OffSeasonalStrip(ZoneDefinition zone, SeasonBook? seasons, GroundVector at, Fixed radius)
+        {
+            if (seasons is null) return at;
+            foreach (Passage p in zone.Passages)
+            {
+                if (!seasons.Passages.Any(s => s.Id == p.Id)) continue;   // seulement les passages saisonniers
+                if (!(zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle) is SpaceObstacle strip)) continue;
+                Fixed minX = strip.Points.Min(q => q.X), maxX = strip.Points.Max(q => q.X), minZ = strip.Points.Min(q => q.Z), maxZ = strip.Points.Max(q => q.Z);
+                Fixed m = radius + Fixed.FromInt(1);
+                if (at.X < minX - m || at.X > maxX + m || at.Z < minZ - m || at.Z > maxZ + m) continue;
+                bool alongZ = maxZ - minZ >= maxX - minX;
+                if (alongZ)
+                {
+                    Fixed z = at.Z - minZ <= maxZ - at.Z ? minZ - m : maxZ + m;
+                    Fixed x = at.X < minX + radius ? minX + radius : at.X > maxX - radius ? maxX - radius : at.X;
+                    return new GroundVector(x, z);
+                }
+                Fixed nx = at.X - minX <= maxX - at.X ? minX - m : maxX + m;
+                Fixed nz = at.Z < minZ + radius ? minZ + radius : at.Z > maxZ - radius ? maxZ - radius : at.Z;
+                return new GroundVector(nx, nz);
+            }
+            return at;
         }
 
         private long _civilTick;
+
+        /// <summary>Revue Codex de la PR #206 : obstacles des passages saisonniers changés par la date, à renouveler au prochain tick joué
+        /// (après le premier tick de la session : la session de départ a d'abord reçu le personnage).</summary>
+        private List<string>? _seasonChanged;
+
+        private void RenewSeasonalSessions()
+        {
+            if (_seasonChanged is null || _host is null || Zone.Engine.CurrentTick == 0) return;
+            _host.RenewForSeason(_seasonChanged);
+            _seasonChanged = null;
+        }
 
         /// <summary>
         /// Fêtes aux vraies dates : jour réel (heure de Paris) du jour du monde <paramref name="day"/>, pris à midi du monde, projeté depuis le

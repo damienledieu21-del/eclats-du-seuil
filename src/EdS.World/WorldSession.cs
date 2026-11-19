@@ -507,7 +507,11 @@ namespace EdS.World
             _host = hosted is null ? null : HostFor(hosted, save, storyZone, log, caughtUp);
             // Revue Codex de la PR #206 : les passages saisonniers de la zone (même identifiant qu'un passage des saisons : la glace du lac)
             // sont ouverts dans chaque session de secteur qui s'ouvre pendant que la saison les ouvre (WorldSession.PassageOpen).
-            if (_host != null && hosted != null) _host.SeasonalPassages = () => SeasonalPassageKeys(hosted);
+            if (_host != null && hosted != null)
+            {
+                _host.SeasonalPassages = () => SeasonalPassageKeys(hosted);
+                _host.SeasonRelocate = (at, radius) => OffSeasonalStrip(hosted, _seasons, at, radius);
+            }
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
@@ -1420,6 +1424,7 @@ namespace EdS.World
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
                 _tickDone = false;
+                RenewSeasonalSessions();   // revue Codex de la PR #206 : gel ou fonte en direct
                 _host.Step(null, _tickPopulations, _afterZone ??= AfterSector, _reserved ??= ReservedIn);
                 if (!_tickDone) AfterZone(Array.Empty<ZoneEvent>());   // le personnage n'est dans aucun secteur simulé (reprise d'un passage)
                 Follow();

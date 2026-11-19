@@ -148,4 +148,45 @@ public class V233A239LieuxDeLaRegionTests
         }
         else Assert.Throws<Xunit.Sdk.XunitException>(() => V228b2PassageTests.WalkTo(w, 160, -1225));
     }
+
+    [Fact]
+    public void Fonte_et_gel_en_direct_le_joueur_sur_la_glace_va_sur_la_rive()
+    {
+        // Revue Codex de la PR #206 (P1) : au passage de février à mars, un joueur sur la glace : la session ouverte est renouvelée avec la
+        // bande d'eau remise, et le joueur est porté au bout le plus proche de la bande (la rive nord) ; il n'atteint plus l'île. Au gel, une
+        // session ouverte l'été s'ouvre de même en direct.
+        ZoneDefinition zone = Vallons.Value;
+        var seasons = SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone).Book;
+        EdS.World.WorldSession Open(long utc)
+        {
+            var w = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+                zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, safePoint: "pontons_du_lac");
+            w.UseSeasons(seasons);
+            w.SetCivilTime(utc);
+            w.Step();
+            return w;
+        }
+        (double X, double Z) At(EdS.World.WorldSession w) => P(w.Zone.Engine.View(w.CombatantId).Position!.Value);
+        // Fonte : sur la glace le 15 janvier, puis le 15 mars.
+        var melt = Open(1800014400L);
+        V228b2PassageTests.WalkTo(melt, 160, -840);
+        V228b2PassageTests.WalkTo(melt, 160, -1030);
+        melt.SetCivilTime(1805112000L);   // 15 mars 2027
+        Assert.False(melt.PassageOpen("glace_du_lac"));
+        melt.Step();
+        melt.Step();
+        (double x, double z) = At(melt);
+        Assert.InRange(z, -849.9, -846);   // rive nord, au bout le plus proche de la bande
+        Assert.InRange(x, 150, 170);
+        Assert.Contains(melt.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
+        Assert.Throws<Xunit.Sdk.XunitException>(() => V228b2PassageTests.WalkTo(melt, 160, -1225));
+        // Gel : au bord de l'eau le 15 juillet, puis le 15 janvier : la glace porte, en direct.
+        var freeze = Open(1815652800L);
+        V228b2PassageTests.WalkTo(freeze, 160, -840);
+        Assert.Contains(freeze.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
+        freeze.SetCivilTime(1800014400L);
+        freeze.Step();
+        Assert.DoesNotContain(freeze.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
+        V228b2PassageTests.WalkTo(freeze, 160, -1225);
+    }
 }
