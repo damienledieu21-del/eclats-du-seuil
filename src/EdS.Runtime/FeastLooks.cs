@@ -278,4 +278,56 @@ namespace EdS.Runtime
                 .Select(p => (x + p.Item1 * c + p.Item2 * s, z - p.Item1 * s + p.Item2 * c)).ToList();
         }
     }
+
+    /// <summary>
+    /// Sous-lot F6 : l'ambiance d'une fête, en facteurs par-dessus l'heure et le temps (comme <see cref="WeatherLook"/>, ambiance du dehors
+    /// seulement) : teinte de la lumière ambiante, teinte de la brume, brume rapprochée (fin de brume multipliée : 1, aucun changement),
+    /// lanternes allumées (0 à 1, au moins celles de l'heure). La neige reste celle de la saison (hiver).
+    /// </summary>
+    public readonly struct FeastMood
+    {
+        public StyleTint AmbientTint { get; }
+        public StyleTint FogTint { get; }
+        public double FogEnd { get; }
+        public double Lamps { get; }
+
+        public FeastMood(StyleTint ambientTint, StyleTint fogTint, double fogEnd, double lamps)
+        {
+            AmbientTint = ambientTint;
+            FogTint = fogTint;
+            FogEnd = fogEnd;
+            Lamps = lamps;
+        }
+
+        /// <summary>Aucune fête : aucun changement.</summary>
+        public static FeastMood None { get; } = new FeastMood(new StyleTint(1, 1, 1), new StyleTint(1, 1, 1), 1, 0);
+
+        /// <summary>
+        /// L'ambiance de la fête n° <paramref name="feast"/> (1 à 12, janvier à décembre) : lanternes et nuit dorée (janvier), lumière rosée
+        /// (février), couleurs vives et lanternes (carnaval), fraîcheur du printemps et brume du matin (semailles), lumière chaude d'atelier
+        /// (artisans), feux orangés (Feux du Seuil), plein jour clair (tournoi), nuit bleue (étoiles filantes), or des blés et légère brume
+        /// (moissons), brume violette et lanternes (Échos), ambre des veillées (contes), froid blanc et brume de givre (Givre) ; sinon aucune.
+        /// </summary>
+        public static FeastMood Of(int feast)
+        {
+            StyleTint T(double r, double g, double b) => new StyleTint(r, g, b);
+            StyleTint one = T(1, 1, 1);
+            switch (feast)
+            {
+                case 1: return new FeastMood(T(1.05, 0.97, 0.88), T(1.0, 0.92, 0.82), 1.0, 1.0);
+                case 2: return new FeastMood(T(1.04, 0.98, 1.0), one, 1.0, 0.0);
+                case 3: return new FeastMood(T(1.03, 1.0, 1.04), one, 1.0, 0.5);
+                case 4: return new FeastMood(T(0.99, 1.04, 0.97), T(0.97, 1.0, 0.97), 0.85, 0.0);
+                case 5: return new FeastMood(T(1.03, 1.0, 0.95), one, 1.0, 0.0);
+                case 6: return new FeastMood(T(1.08, 0.95, 0.85), T(1.0, 0.85, 0.7), 1.0, 1.0);
+                case 7: return new FeastMood(T(1.04, 1.03, 1.0), one, 1.0, 0.0);
+                case 8: return new FeastMood(T(0.92, 0.96, 1.08), T(0.9, 0.94, 1.05), 1.0, 0.6);
+                case 9: return new FeastMood(T(1.06, 1.0, 0.86), T(1.0, 0.93, 0.8), 0.9, 0.0);
+                case 10: return new FeastMood(T(0.97, 0.93, 1.05), T(0.9, 0.88, 1.0), 0.6, 1.0);
+                case 11: return new FeastMood(T(1.05, 0.96, 0.86), T(1.0, 0.94, 0.86), 1.0, 1.0);
+                case 12: return new FeastMood(T(0.96, 1.0, 1.08), T(0.95, 0.98, 1.05), 0.7, 0.5);
+                default: return None;
+            }
+        }
+    }
 }

@@ -1159,6 +1159,16 @@ Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSessi
 - Tests : `FetesF5DecorTests` ; `FetesF4EtalTests` (60 modèles, budget).
 - Limites : pas vu dans Unity ; les arches ne sont pas posées au-dessus des routes (elles bloqueraient le passage sans collision réglée) : elles se tiennent sur la place, à côté.
 
+## Costumes, plats et ambiances des fêtes (sous-lot F6, 19 novembre 2026)
+
+- **Tenues** : un jour de fête d'Orsédia, les habitants génériques sortent leurs beaux habits (comme avant) aux **deux teintes de la fête** (`HumanWardrobe.FeastTints` : lanternes or et rouge, liens rose et vert tendre… Givre blanc de glace et bleu de givre ; 24 teintes de plus dans `HumanWardrobe.Tints`), par `HumanBodies.Feast` (posé par `EdsGame`). Gardes, bandits et héros gardent leurs couleurs. Les costumes C01 ne sont pas modélisés : la teinte en tient lieu, sans accessoire propre à chaque fête.
+- **Plats** : aucun système de nourriture n'existait. Les plats achetés chez le forain (compteur `dishes`, sauvegarde v27 **inchangée**) se mangent : opération du cœur `FeastRules.Eat` / `WorldSession.EatFeastDish` (un plat de moins ; refus `NoDish`, hors combat ; refus atomiques), dans l'écran du personnage (« Plats de fête » sous l'aide du sac : une case par plat, un clic en mange un). **Réconfort** annoncé et affiché dans le bandeau du lieu pendant 60 minutes du monde (« Réconforté (Tourte des vœux) ») : **aucune statistique de combat**, ni soin ni bonus.
+- **Ambiance** (`FeastMood.Of`, `StyleWorld.SetFeast`) : par-dessus l'heure et le temps, dehors seulement : teinte de la lumière et de la brume, brume rapprochée (semailles, moissons, Échos, Givre), lanternes allumées la nuit (Lanternes, Feux du Seuil, Échos, Veillée…). La neige reste celle de la saison (hiver) : pas de chute de neige propre au Givre.
+- **Écrans de chargement** : pendant une fête (dehors, zone de l'histoire), l'écran peint est l'**image d'ambiance de la fête** avec son accroche (`LoadingScreens.ForFeast`, `Chargements/1920` et `/1280`, `ch_fete_01.jpg`…, 8 Mo en tout), par le même `LoadingView`.
+- **Relecture indépendante de la PR #220** : l'ambiance et la tenue de fête (état statique de `StyleWorld` et `HumanBodies`) sont remises à zéro en quittant l'aventure ; un clic sur un plat mange le plat de la fête de sa case (jamais le suivant) ; refus en combat et sans plat testés côté cœur, état inchangé.
+- **Décisions de Damien du 19 novembre 2026** : réconfort à rendre réel hors combat (60 minutes de jeu, +10 % proposé, sans statistique de combat ; demande un changement du moteur) ; accessoire par fête plus tard, avec les costumes en 3D.
+- Textes **0.39.0**. Tests : `FetesF6CostumesPlatsTests`. Pas vu dans Unity.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

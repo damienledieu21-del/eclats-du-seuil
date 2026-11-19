@@ -371,8 +371,9 @@ namespace EdS.Game
             string who = slot == StyleSlot.Hero ? "heros" : lookId ?? id;
             string role = slot == StyleSlot.Hero ? "heros" : id;
             bool festive = catalog.HumanFestival || Festival;
+            // Sous-lot F6 : pendant une fête d'Orsédia, les beaux habits prennent ses teintes (Feast).
             WardrobePlan plan = HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), festive,
-                HumanWardrobe.MaxOptional(Application.isMobilePlatform));
+                HumanWardrobe.MaxOptional(Application.isMobilePlatform), Festival ? Feast : 0);
             // Sous-lot V2.16 : la couleur de tenue choisie dans le créateur teinte les vrais vêtements du héros (sauf un jour de fête).
             if (slot == StyleSlot.Hero && HeroLook != null && !festive)
                 return new WardrobePlan(plan.Outfit, plan.Requests, plan.Fabric, HeroLooks.ClothesTint(HeroLook.Palette), plan.Wear, plan.Season, plan.Festive, plan.Rain,
@@ -382,6 +383,9 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.9.4 : jour de fête au bourg (posé par les fêtes à venir) : les villageois qui apparaissent sortent leurs beaux habits.</summary>
         public static bool Festival { get; set; }
+
+        /// <summary>Sous-lot F6 : numéro de la fête d'Orsédia en cours (1 à 12), 0 sinon : teintes de sa tenue (<see cref="HumanWardrobe.FeastTints"/>).</summary>
+        public static int Feast { get; set; }
 
         /// <summary>
         /// Sous-lot V2.9.4 (décision de Damien du 8 novembre 2026 : la saison des tenues suit la saison du jeu) : point d'entrée du
