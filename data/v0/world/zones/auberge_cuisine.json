@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.auberge_cuisine",
+    "name": "Cuisine de l'auberge",
+    "scenario": "zones/auberge_cuisine",
+    "indoor": true,
+    "entry": "table",
+    "safePoints": [
+      {
+        "id": "table",
+        "name": "Cuisine",
+        "position": [
+          0.4,
+          -1.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "cuisine_auberge",
+        "name": "Cuisine de l'auberge",
+        "min": [
+          -1.7,
+          -1.55
+        ],
+        "max": [
+          1.7,
+          1.55
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Auberge de l'Aube",
+        "position": [
+          -0.8,
+          -0.95
+        ],
+        "to": "zone.auberge",
+        "toDoor": "cuisine"
+      }
+    ]
+  }
+}

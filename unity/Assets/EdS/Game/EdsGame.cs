@@ -820,6 +820,8 @@ namespace EdS.Game
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
+            // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
+            if (a.DoorFirst && a.DoorInReach is EdS.Data.Zones.Door near) return string.Format(a.Text("text.ui.door_hint"), near.Name);
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
                 return string.Format(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);

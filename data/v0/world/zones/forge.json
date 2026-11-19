@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.forge",
+    "name": "Forge couverte de Maëlle",
+    "scenario": "zones/forge",
+    "indoor": true,
+    "entry": "enclume",
+    "safePoints": [
+      {
+        "id": "enclume",
+        "name": "Enclume",
+        "position": [
+          1.0,
+          -1.2
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "forge_couverte",
+        "name": "Forge couverte de Maëlle",
+        "min": [
+          -2.5,
+          -2
+        ],
+        "max": [
+          2.5,
+          2
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Forge de Maëlle",
+        "position": [
+          0,
+          -1.4
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_forge"
+      }
+    ]
+  }
+}

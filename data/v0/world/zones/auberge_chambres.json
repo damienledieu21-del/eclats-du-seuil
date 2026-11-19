@@ -1,0 +1,61 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.auberge_chambres",
+    "name": "Chambres de l'auberge",
+    "scenario": "zones/auberge_chambres",
+    "indoor": true,
+    "entry": "palier",
+    "safePoints": [
+      {
+        "id": "palier",
+        "name": "Palier",
+        "position": [
+          -0.3,
+          -1.5
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "chambres_auberge",
+        "name": "Chambres de l'auberge",
+        "min": [
+          -4.3,
+          -3.925
+        ],
+        "max": [
+          4.3,
+          3.925
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Auberge de l'Aube",
+        "position": [
+          -0.9,
+          -0.1
+        ],
+        "to": "zone.auberge",
+        "toDoor": "chambres"
+      },
+      {
+        "id": "etage",
+        "name": "Logement et dortoir",
+        "position": [
+          0.3,
+          -0.1
+        ],
+        "to": "zone.auberge_logement",
+        "toDoor": "sortie"
+      }
+    ]
+  }
+}

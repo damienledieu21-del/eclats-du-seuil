@@ -457,10 +457,11 @@ namespace EdS.World
         public Func<IEnumerable<string>>? SeasonalPassages { get; set; }
 
         /// <summary>
-        /// Revue Codex de la PR #206 : déplacement d'un joueur au renouvellement d'une session pour la saison (position, rayon → position
-        /// libre) ; null : il reste où il est.
+        /// Revue Codex de la PR #206 : déplacement d'un joueur au renouvellement d'une session pour la saison (position, rayon → positions
+        /// libres candidates, de la plus proche à la plus loin) ; la première qui reste dans le secteur de la session est prise (revue Codex,
+        /// 2e tour : le joueur est replacé dans ce secteur-là) ; aucune : il reste où il est. Null : il reste où il est.
         /// </summary>
-        public Func<GroundVector, Fixed, GroundVector>? SeasonRelocate { get; set; }
+        public Func<GroundVector, Fixed, IReadOnlyList<GroundVector>>? SeasonRelocate { get; set; }
 
         /// <summary>
         /// Revue Codex de la PR #206 : la saison vient d'ouvrir ou de fermer les passages saisonniers dont les obstacles sont
@@ -1065,7 +1066,10 @@ namespace EdS.World
             {
                 p.PendingBackward = v.MoveBackward;
                 // Revue Codex de la PR #206 : à la fonte, un joueur sur la glace est mis sur la rive la plus proche (SeasonRelocate).
-                GroundVector at = old.SeasonRenew && SeasonRelocate != null ? SeasonRelocate(v.Position!.Value, v.Radius!.Value) : v.Position!.Value;
+                GroundVector at = v.Position!.Value;
+                if (old.SeasonRenew && SeasonRelocate != null)
+                    foreach (GroundVector c in SeasonRelocate(at, v.Radius!.Value))
+                        if (_map.OwnerOf(c) == old.Name) { at = c; break; }
                 if (!Place(p, old.Name, at, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
                     && p.Refusal is null)
                 {

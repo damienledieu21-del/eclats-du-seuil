@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.grange",
+    "name": "Grange",
+    "scenario": "zones/grange",
+    "indoor": true,
+    "entry": "aire",
+    "safePoints": [
+      {
+        "id": "aire",
+        "name": "Aire de la grange",
+        "position": [
+          0,
+          -2.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "grange",
+        "name": "Grange",
+        "min": [
+          -5.3,
+          -3.3
+        ],
+        "max": [
+          5.3,
+          3.3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Champs",
+        "position": [
+          0,
+          -2.7
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_grange"
+      }
+    ]
+  }
+}

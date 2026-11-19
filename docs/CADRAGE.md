@@ -270,6 +270,22 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+## 7 undecies. Lot C : intérieurs de métier et forge de Maëlle (Retenu)
+
+Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la session principale (modèles Tripo du lot C, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Intérieurs de métier | Créer les intérieurs de la **forge**, de la **grange**, du **moulin**, de la **tour de guet**, d'une **maison paysanne**, et la **cuisine** et les **chambres** de l'auberge, meublés avec les modèles du lot C. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; réalisé dans la PR empilée sur #201 ([MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026)) |
+| Forge de Maëlle | **Toutes les pièces de forge** du lot C (soufflet, bac de trempe, meule, râtelier d'armes, présentoir de fers, tas de charbon, établi, outils) autour de la forge **en plein air**, sans bloquer le passage. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; même PR |
+| Plantes et filons | Plantes à récolter **grossies 2 fois** et **trois tailles de filons** : gardées. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; PR #196 |
+| Meubles des nouveaux lieux (I01 à I21) | La PR #202 **reste en brouillon** ; chaque meuble sera placé quand son lieu entrera dans les données. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) |
+| Porte de la forge couverte | Sur la **maison de Maëlle** (`maison3`) : le hameau a désormais cette porte (seule exception à « le hameau reste sans porte »). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Maison paysanne | La **maison d'Achille** (`maison9`, champs du sud). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Habitants des intérieurs de métier | Des habitants **vivent dans ces pièces** : emplois du temps adaptés en gardant leurs horaires (Maëlle à sa forge couverte et dans la cour, la meunière au moulin, Achille chez lui ; l'aubergiste et le personnel en cuisine, les voyageurs de passage dans les chambres la nuit). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; réalisé pour Maëlle (forge couverte 16 h à 19 h 30), Odile (salle du moulin l'après-midi) et Achille (repas de midi chez lui) ; le matin et la nuit restent ceux d'avant (règles de l'histoire : place du début du jeu le matin, devant sa porte la nuit). Cuisine et chambres : impossible tant qu'un PNJ ne passe qu'une porte depuis les Vallons (`StoryValidator.SlotZone`), et aucun voyageur de passage n'a d'emploi du temps : question posée dans la PR #209 |
+| Auvent de la forge | L'auvent (C_OV_A01) **au-dessus de la forge en plein air** de Maëlle, sans gêner ni les pièces ni le passage. | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; PR #209 (`LotCModels.ForgeAwning`, testé) |
+| Plans des intérieurs de métier | Recalés sur les **fiches de ChatGPT** (`AssetLab/Interieurs`) : dimensions des pièces et meubles aux cotes ; l'auberge suit ses trois niveaux (chambres, logement de Mathurin et dortoir, combles). | Réalisé (Claude, 17 novembre 2026) d'après les fiches ; écarts notés dans [MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026) |
+
 ## 7 quinquies. L'âme du jeu (Retenu)
 
 Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session principale. Elle précise le sujet 13 « L'âme du jeu » de la [feuille de route](FEUILLE_DE_ROUTE.md).
@@ -332,6 +348,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fêtes sans contenu (suite) | Le choix du 15 novembre (les neuf fêtes n'affichent que leur nom) est **remplacé par le chantier des fêtes** : les douze fêtes ont leurs activités, leur monnaie, leur marchand et leurs récompenses ([§ 7 undecies](#7-undecies-les-12-fêtes-dorsédia-retenu)). | Retenu (Damien, 18 novembre 2026) |
 | Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
 ## 7 octies. Pêche : appâts (Retenu)
@@ -372,6 +389,23 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la sessi
 | Donne à chaque assise | Un **compteur d'assises persistant** dans la sauvegarde (v25) : la donne change à chaque fois qu'on s'assoit. | Retenu (Damien, 16 novembre 2026, vers 2 h 20) ; fait |
 | Où et quand on joue | Les joueurs de cartes sont **à l'auberge de 18 h à minuit** (d'après leur emploi du temps) ; mises proposées dans leur dialogue, écran de partie Unity. | Retenu (Damien, 16 novembre 2026, vers 14 h ; la PR #193 proposait 19 h à 22 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
 | Titre actif | Le joueur choisit **un titre affiché sous son nom** parmi ceux obtenus (titres de la guilde et « As des Trois Feux »), depuis la carte d'aventurier ; sauvegarde **v26** (`cards.shown`). | Retenu (Damien, 16 novembre 2026, vers 14 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
+
+## 7 undecies. Les 12 fêtes d'Orsédia (Retenu)
+
+Décisions de Damien du 17 novembre 2026, rapportées par la session principale, sur le dossier « Les 12 fêtes d'Orsédia » (AssetLab, `Fetes/`, 108 références). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#les-12-fêtes-dorsédia).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Monnaie de fête | **Chaque fête a sa monnaie propre** (12 monnaies). Elle est **liée au personnage**, **gardée d'une année sur l'autre**, **ni échangeable entre joueurs ni convertible en cuivre**. Elle se gagne **aux activités de la fête** et se dépense **chez le marchand de fête**. | Retenu (Damien, 17 novembre 2026) |
+| Récompense annuelle | **Une récompense annuelle par fête et par personnage**, jamais perdue pour toujours : une récompense ratée **se rattrape à la fête suivante** (l'année d'après), **achetable à prix plein** en monnaie de fête. | Retenu (Damien, 17 novembre 2026) |
+| Nature des récompenses | **Cosmétiques seulement, sans aucune statistique.** Chaque fête gagnée donne **en plus un titre** (mécanisme des titres existant). | Retenu (Damien, 17 novembre 2026) |
+| Raretés | Les **récompenses** sont de rareté **Rare**, les **costumes Communs**. | Retenu (Damien, 17 novembre 2026) |
+| Fenêtres | Déjà retenu le 15 novembre (§ 7 septies) : **vraies dates (7 à 14 jours)** ; sans date fournie, **repli sur le calendrier du jeu**. | Retenu (Damien, 15 et 17 novembre 2026) |
+| Économie des fêtes | Validée telle que proposée : **plafond 999** pièces par fête, le gain au-delà **perdu mais annoncé** (l'activité compte quand même) ; prix : **décoration 40 / 60 / 90** (jusqu'à 1 m, jusqu'à 2,5 m, au-delà), **costume 120**, **plat 5**, **récompense rattrapée 150** ; gains : **concours 30** (une fois par édition), **activité 10** (une fois par jour de fête). | Retenu (Damien, 18 novembre 2026) |
+| Gagner une fête | **3 activités différentes** dans l'édition pour Semailles et Moissons, **2** pour les autres fêtes. | Retenu (Damien, 18 novembre 2026) |
+| Rattrapage | On ne rattrape que **l'édition précédente**, et **sans le titre** (seule une fête gagnée le donne). | Retenu (Damien, 18 novembre 2026) |
+| Marchand de fête | **Un marchand dédié**, pas le colporteur : un **étal de fête sur la place**, avec **son propre PNJ forain**, dont le **décor change chaque mois** (sous-lot F3). | Retenu (Damien, 18 novembre 2026) |
+| Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 
 ## 8. Points ouverts
 

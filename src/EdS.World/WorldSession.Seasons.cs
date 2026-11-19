@@ -58,13 +58,12 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Revue Codex de la PR #206 : position libre la plus proche quand un passage saisonnier (une bande, comme la glace du lac) redevient
-        /// un obstacle sous un joueur : le long du grand axe de la bande, à son bout le plus proche, 1 m au-delà de son rayon ; ailleurs, la
-        /// position ne change pas. Déterministe (virgule fixe, ordre de la zone).
+        /// Revue Codex de la PR #206 : positions libres quand un passage saisonnier (une bande, comme la glace du lac) redevient un obstacle
+        /// sous un joueur : les deux bouts du grand axe de la bande, 1 m au-delà de son rayon, le plus proche d'abord ; ailleurs, aucune. Déterministe (virgule fixe, ordre de la zone).
         /// </summary>
-        internal static GroundVector OffSeasonalStrip(ZoneDefinition zone, SeasonBook? seasons, GroundVector at, Fixed radius)
+        internal static IReadOnlyList<GroundVector> OffSeasonalStrip(ZoneDefinition zone, SeasonBook? seasons, GroundVector at, Fixed radius)
         {
-            if (seasons is null) return at;
+            if (seasons is null) return Array.Empty<GroundVector>();
             foreach (Passage p in zone.Passages)
             {
                 if (!seasons.Passages.Any(s => s.Id == p.Id)) continue;   // seulement les passages saisonniers
@@ -72,18 +71,20 @@ namespace EdS.World
                 Fixed minX = strip.Points.Min(q => q.X), maxX = strip.Points.Max(q => q.X), minZ = strip.Points.Min(q => q.Z), maxZ = strip.Points.Max(q => q.Z);
                 Fixed m = radius + Fixed.FromInt(1);
                 if (at.X < minX - m || at.X > maxX + m || at.Z < minZ - m || at.Z > maxZ + m) continue;
-                bool alongZ = maxZ - minZ >= maxX - minX;
-                if (alongZ)
+                // Les deux bouts du grand axe, le plus proche d'abord (à égalité : le bout bas d'abord, ordre fixe).
+                if (maxZ - minZ >= maxX - minX)
                 {
-                    Fixed z = at.Z - minZ <= maxZ - at.Z ? minZ - m : maxZ + m;
                     Fixed x = at.X < minX + radius ? minX + radius : at.X > maxX - radius ? maxX - radius : at.X;
-                    return new GroundVector(x, z);
+                    var low = new GroundVector(x, minZ - m);
+                    var high = new GroundVector(x, maxZ + m);
+                    return at.Z - minZ <= maxZ - at.Z ? new[] { low, high } : new[] { high, low };
                 }
-                Fixed nx = at.X - minX <= maxX - at.X ? minX - m : maxX + m;
-                Fixed nz = at.Z < minZ + radius ? minZ + radius : at.Z > maxZ - radius ? maxZ - radius : at.Z;
-                return new GroundVector(nx, nz);
+                Fixed z = at.Z < minZ + radius ? minZ + radius : at.Z > maxZ - radius ? maxZ - radius : at.Z;
+                var west = new GroundVector(minX - m, z);
+                var east = new GroundVector(maxX + m, z);
+                return at.X - minX <= maxX - at.X ? new[] { west, east } : new[] { east, west };
             }
-            return at;
+            return Array.Empty<GroundVector>();
         }
 
         private long _civilTick;
