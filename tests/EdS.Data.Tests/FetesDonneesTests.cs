@@ -221,11 +221,61 @@ public class FetesDonneesTests
         Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray("F01_D01", "F01_D01")), f0 + ".stall[1]", ValidationCode.DuplicateId);
         Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray()), f0 + ".stall", ValidationCode.OutOfRange);
         Refused(Mutated(r => Feast(r, 0).Remove("stall")), f0 + ".stall", ValidationCode.MissingField);
+        Assert.Contains(Mutated(r => Feast(r, 0)["stall"] = new JsonArray(5)).Report.Errors, e => e.Path == f0 + ".stall[0]");   // illisible, sans exception
         Refused(Mutated(r => r["data"]!["merchant"] = "npc.personne"), "$.data.merchant", ValidationCode.UnknownReference);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = 0), "$.data.wallet.cap", ValidationCode.OutOfRange);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = FeastValidator.MaxWalletCap + 1), "$.data.wallet.cap", ValidationCode.OutOfRange);
         Refused(Mutated(r => r["data"]!["maxDishes"] = 100), "$.data.maxDishes", ValidationCode.OutOfRange);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = 89), "$.data.feasts[0].refs[1].price", ValidationCode.OutOfRange);   // l'arche (90) au-delà du plafond
+    }
+
+    [Theory]
+    // Revue Codex de la PR #213 : un champ au mauvais type est refusé avec son chemin, sans exception (la lecture le laisse à null).
+    [InlineData("refs.0.size.x", "\"invalide\"")]
+    [InlineData("refs.0.size.y", "true")]
+    [InlineData("refs.0.size.z", "[]")]
+    [InlineData("refs.0.price", "\"cher\"")]
+    [InlineData("refs.0.rarity", "3")]
+    [InlineData("refs.0.code", "5")]
+    [InlineData("refs.0.category", "1")]
+    [InlineData("refs.0.name", "2")]
+    [InlineData("refs.0.image", "3")]
+    [InlineData("refs.6.icon", "4")]
+    [InlineData("refs.6.price", "1.5")]
+    [InlineData("activities.2.coins", "\"x\"")]
+    [InlineData("activities.2.host", "1")]
+    [InlineData("activities.0.contest", "2")]
+    [InlineData("activities.2.id", "3")]
+    [InlineData("activities.2.name", "null")]
+    [InlineData("number", "\"un\"")]
+    [InlineData("festival", "4")]
+    [InlineData("motto", "5")]
+    [InlineData("title.id", "6")]
+    [InlineData("rewardAfter", "\"deux\"")]
+    public void Champ_illisible_refuse_avec_son_chemin_sans_exception(string field, string value)
+    {
+        JsonObject root = Json();
+        JsonNode node = Feast(root, 3);   // Semailles : références, concours et invités
+        string[] parts = field.Split('.');
+        for (int i = 0; i < parts.Length - 1; i++) node = int.TryParse(parts[i], out int k) ? node[k]! : node[parts[i]]!;
+        node[parts[^1]] = JsonNode.Parse(value);
+        FeastLoadResult r = Read(root);
+        Assert.False(r.IsValid);
+        string path = "$.data.feasts[3]." + string.Join(".", parts).Replace("refs.0", "refs[0]").Replace("refs.6", "refs[6]")
+            .Replace("activities.0", "activities[0]").Replace("activities.2", "activities[2]");
+        Assert.True(r.Report.Errors.Any(e => e.Path == path), $"{path} attendu ; {r.Report}");
+    }
+
+    [Theory]
+    [InlineData("wallet", "{\"cap\": \"x\"}", "$.data.wallet.cap")]
+    [InlineData("maxDishes", "\"x\"", "$.data.maxDishes")]
+    [InlineData("merchant", "7", "$.data.merchant")]
+    [InlineData("feasts", "{}", "$.data.feasts")]
+    public void Champ_general_illisible_refuse_sans_exception(string field, string value, string path)
+    {
+        FeastLoadResult r = Mutated(root => root["data"]![field] = JsonNode.Parse(value));
+        Assert.False(r.IsValid);
+        Assert.True(r.Report.Errors.Any(e => e.Path == path), $"{path} attendu ; {r.Report}");
     }
 
     [Fact]

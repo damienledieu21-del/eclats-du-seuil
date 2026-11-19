@@ -37,6 +37,34 @@ namespace EdS.Runtime
         public bool Linked => Targets.Count > 0;
     }
 
+    /// <summary>Lot C : une copie d'un meuble posée dans l'emprise de son obstacle (centre, lacet en degrés, échelle, écrasement de la profondeur).</summary>
+    public readonly struct LotCCopy
+    {
+        public LotCCopy(double x, double z, double yaw, double scale, double thinX, double thinZ)
+        {
+            X = x;
+            Z = z;
+            Yaw = yaw;
+            Scale = scale;
+            ThinX = thinX;
+            ThinZ = thinZ;
+        }
+
+        public double X { get; }
+        public double Z { get; }
+
+        /// <summary>Degrés, comme <c>Quaternion.Euler(0, yaw, 0)</c> d'Unity (l'avant +z du modèle va vers (sin, cos)).</summary>
+        public double Yaw { get; }
+
+        /// <summary>Échelle uniforme (hauteur et largeur).</summary>
+        public double Scale { get; }
+
+        /// <summary>Facteurs de plus sur les côtés x et z du modèle (1 : aucun ; moins de 1 : son petit côté est aminci pour tenir dans l'obstacle).</summary>
+        public double ThinX { get; }
+
+        public double ThinZ { get; }
+    }
+
     /// <summary>
     /// Lot C : table des modèles intégrés et de ce qu'ils représentent ; fichiers dans
     /// « Assets/EdS/Modeles/LotC/&lt;catégorie&gt;/&lt;code&gt;/&lt;code&gt;.fbx » (un seul maillage, échelle réelle en mètres, pivot au sol), avec
@@ -57,6 +85,7 @@ namespace EdS.Runtime
             all.AddRange(Loot());
             all.AddRange(Harvest());
             all.AddRange(Village());
+            all.AddRange(InteriorsBag());
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
@@ -166,6 +195,106 @@ namespace EdS.Runtime
                         return m.Code;
                 }
             return null;
+        }
+
+        /// <summary>Modèle du meuble <paramref name="obstacleId"/> de l'intérieur dont le lieu est <paramref name="room"/> (« auberge », « comptoir »), ou null.</summary>
+        public static string? ForRoom(string? room, string? obstacleId) =>
+            room == null || obstacleId == null ? null : Target("room:" + room + "/" + obstacleId);
+
+        /// <summary>Modèle des objets de sorte <paramref name="prop"/> posés par l'aménagement de l'intérieur <paramref name="room"/>, ou null.</summary>
+        public static string? ForPiece(string? room, InteriorProp prop) =>
+            room == null || prop == InteriorProp.None ? null : Target("piece:" + room + "/" + prop);
+
+        /// <summary>Sortes d'objets d'aménagement qui font le corps d'un meuble (remplacées par le modèle du meuble, les autres restent).</summary>
+        private static readonly InteriorProp[] Body =
+        {
+            InteriorProp.Table, InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Cabinet, InteriorProp.Commode, InteriorProp.Drawers,
+            InteriorProp.Shelves, InteriorProp.Crate, InteriorProp.Barrel, InteriorProp.Bucket, InteriorProp.SpinningWheel, InteriorProp.Statue,
+        };
+
+        /// <summary>
+        /// L'objet d'aménagement <paramref name="piece"/> fait-il partie du corps du meuble <paramref name="obstacleId"/> (son identifiant ou
+        /// « obstacle/… », posé au sol, d'une sorte de <see cref="Body"/>) ? Alors le modèle du lot C du meuble le remplace ; les sièges, la
+        /// vaisselle et ce qui est posé dessus restent (posés sur le modèle).
+        /// </summary>
+        public static bool Replaces(string obstacleId, InteriorPiece piece) => Replaces(obstacleId, piece, null);
+
+        /// <summary>
+        /// Comme <see cref="Replaces(string, InteriorPiece)"/> ; revue Codex de la PR #200 : avec l'aménagement <paramref name="pieces"/>, une
+        /// pièce du corps posée sur une autre de même sorte (la caisse empilée sur une caisse) est remplacée elle aussi quand celle du dessous
+        /// l'est : le modèle Tripo porte déjà tout le meuble.
+        /// </summary>
+        public static bool Replaces(string obstacleId, InteriorPiece piece, IReadOnlyList<InteriorPiece>? pieces)
+        {
+            if (piece == null || !(piece.Id == obstacleId || piece.Id.StartsWith(obstacleId + "/", StringComparison.Ordinal)) || Array.IndexOf(Body, piece.Prop) < 0)
+                return false;
+            if (piece.Parent < 0) return true;
+            if (pieces == null || piece.Parent >= pieces.Count) return false;
+            InteriorPiece under = pieces[piece.Parent];
+            return under.Prop == piece.Prop && Replaces(obstacleId, under, pieces);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #200 : objets d'aménagement allongés le long d'une table (bancs) : leur modèle du lot C est tourné pour que
+        /// son grand côté suive l'axe de la pièce (<see cref="AlongX"/>), quel que soit l'axe de l'export.
+        /// </summary>
+        public static bool AlongTable(InteriorProp prop) => prop == InteriorProp.Bench;
+
+        /// <summary>Un objet tourné de <paramref name="yaw"/> degrés a-t-il son grand côté selon x (0 ou 180 ; sinon selon z) ?</summary>
+        public static bool AlongX(double yaw)
+        {
+            double a = ((yaw % 180) + 180) % 180;
+            return a < 45 || a >= 135;
+        }
+
+        /// <summary>Échelle la plus grande donnée à un meuble du lot C (les modèles sont à l'échelle réelle des fiches).</summary>
+        public const double MaxScale = 1.15;
+
+        /// <summary>
+        /// Pose d'un meuble du lot C (empreinte <paramref name="modelW"/> × <paramref name="modelD"/> m, avant vers +z) dans l'emprise de son
+        /// obstacle (<paramref name="minX"/>…<paramref name="maxZ"/>) d'une pièce (<paramref name="roomMinX"/>…<paramref name="roomMaxZ"/>) :
+        /// l'avant tourné vers la pièce (dos au mur le plus proche), le grand côté le long du grand côté de l'emprise (sinon tourné d'un quart) ;
+        /// échelle jusqu'à <see cref="MaxScale"/>, réduite pour tenir dans la longueur ; profondeur amincie si elle dépasse ; copies côte à côte
+        /// le long d'une emprise longue (comptoirs, étagères). Toute copie tient dans l'emprise : le meuble ne déborde jamais de son obstacle,
+        /// donc ne bloque ni porte ni passage. Déterministe.
+        /// </summary>
+        public static IReadOnlyList<LotCCopy> Fit(double minX, double minZ, double maxX, double maxZ, double roomMinX, double roomMinZ,
+            double roomMaxX, double roomMaxZ, double modelW, double modelD)
+        {
+            if (!(modelW > 0 && modelD > 0 && maxX > minX && maxZ > minZ)) return Array.Empty<LotCCopy>();
+            double w = maxX - minX, d = maxZ - minZ, cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+            // Dos au mur le plus proche : l'avant regarde l'intérieur de la pièce.
+            double west = minX - roomMinX, east = roomMaxX - maxX, south = minZ - roomMinZ, north = roomMaxZ - maxZ;
+            double near = Math.Min(Math.Min(west, east), Math.Min(south, north));
+            double yaw = near == south ? 0 : near == north ? 180 : near == west ? 90 : 270;
+            // Côtés du modèle une fois tourné : à 90 ou 270°, sa largeur va selon z.
+            bool turned = yaw == 90 || yaw == 270;
+            double alongX = turned ? modelD : modelW, alongZ = turned ? modelW : modelD;
+            bool boxAlongX = w >= d, modelAlongX = alongX >= alongZ;
+            if (boxAlongX != modelAlongX && Math.Abs(alongX - alongZ) > 0.05)
+            {
+                yaw = (yaw + 90) % 360;
+                turned = !turned;
+                (alongX, alongZ) = (alongZ, alongX);
+            }
+            double boxLong = boxAlongX ? w : d, boxShort = boxAlongX ? d : w;
+            double modelLong = boxAlongX ? alongX : alongZ, modelShort = boxAlongX ? alongZ : alongX;
+            double scale = Math.Min(MaxScale, Math.Max(boxShort / modelShort, 0.85));
+            int count = Math.Max(1, (int)Math.Floor((boxLong + 0.05) / (modelLong * scale)));
+            if (count * modelLong * scale > boxLong) scale = boxLong / (count * modelLong);
+            double thin = modelShort * scale > boxShort ? boxShort / (modelShort * scale) : 1;
+            // L'amincissement porte sur l'axe du modèle posé le long du petit côté de l'emprise (relecture de la PR #200 : même pour un
+            // modèle presque carré, resté sans quart de tour) : tourné d'un quart, son x va selon z du monde.
+            bool thinOnX = boxAlongX == turned;
+            double thinX = thinOnX ? thin : 1, thinZ = thinOnX ? 1 : thin;
+            var copies = new List<LotCCopy>();
+            double step = boxLong / count;
+            for (int i = 0; i < count; i++)
+            {
+                double t = -boxLong / 2 + step * (i + 0.5);
+                copies.Add(new LotCCopy(boxAlongX ? cx + t : cx, boxAlongX ? cz : cz + t, yaw, scale, thinX, thinZ));
+            }
+            return copies;
         }
 
         /// <summary>Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer.</summary>
@@ -335,6 +464,92 @@ namespace EdS.Runtime
             yield return Waiting("C_OV_E06_02", c, "Banc de banquet", feast);
             yield return Waiting("C_OV_E07", c, "Lanternes suspendues", feast);
             yield return Waiting("C_OV_E08", c, "Décorations d'hiver", feast);
+        }
+
+        // --- 03 : intérieurs de l'auberge, de la boulangerie et de la guilde -------------------------------------------------------
+
+        private static IEnumerable<LotCModel> InteriorsBag()
+        {
+            const string c = "03_Interieurs_BAG";
+            const string inn = "chambres, dortoir, réserve et cuisine de l'auberge : pas dans les données (l'auberge est une seule salle, une pièce n'a qu'un niveau)";
+            const string bakery = "pas de place pour ce meuble dans la boulangerie des données (comptoir, four, pétrin, étagère à pains, farine, tonneau)";
+            const string lodging = "logement de Firmin : pas dans les données";
+            const string guild = "pas de place pour ce meuble dans la maison de la Guilde des données (comptoir, étagère, cheminée, deux tables, caisses)";
+            const string archives = "pas de place pour cet objet dans les archives des données (deux étagères, table, caisse, cheminée)";
+            const string wall = "objet de mur : l'aménagement ne pose aux murs que boucliers, armes, tableaux, lanternes et bougies";
+            const string small = "petit objet que l'aménagement de ces pièces ne pose pas";
+            const string rooms = "auberge guilde archives boulangerie";
+            string[] Pieces(string prop, string where = rooms) => where.Split(' ').Select(r => "piece:" + r + "/" + prop).ToArray();
+            yield return Linked("C_IN1_A0_01", c, "Âtre monumental", "room:auberge/cheminee");
+            yield return Linked("C_IN1_A0_02", c, "Table commune", "room:auberge/table1", "room:auberge/table2", "room:auberge/table3", "room:auberge/table4");
+            yield return Linked("C_IN1_A0_03", c, "Banc", "piece:auberge/Bench");
+            yield return Linked("C_IN1_A0_08", c, "Comptoir", "room:auberge/comptoir", "room:guilde/comptoir", "room:boulangerie/comptoir");
+            yield return Linked("C_IN1_A0_09", c, "Tonneaux", "room:auberge/tonneau1", "room:auberge/tonneau2");
+            yield return Waiting("C_IN1_A0_11", c, "Foyer de la cuisine", inn);
+            yield return Waiting("C_IN1_A0_12", c, "Table de la cuisine", inn);
+            yield return Linked("C_IN1_A0_13", c, "Étagère de la cuisine", "room:auberge/etagere");
+            yield return Waiting("C_IN1_A0_14", c, "Peau de loup au mur", wall);
+            yield return Waiting("C_IN1_A1_01", c, "Lit de chambre", inn);
+            yield return Waiting("C_IN1_A1_02", c, "Coffre de chambre 1", inn);
+            yield return Waiting("C_IN1_A1_04", c, "Coffre de chambre 2", inn);
+            yield return Waiting("C_IN1_A1_06", c, "Coffre de chambre 3", inn);
+            yield return Waiting("C_IN1_A1_07", c, "Lit de la chambre 4", inn);
+            yield return Waiting("C_IN1_A2_01", c, "Lit de Mathurin", inn);
+            yield return Waiting("C_IN1_A2_02", c, "Coffre de Mathurin", inn);
+            yield return Waiting("C_IN1_A2_03", c, "Bureau de Mathurin", inn);
+            yield return Waiting("C_IN1_A2_04", c, "Chaise", inn);
+            yield return Waiting("C_IN1_A2_05", c, "Lit de dortoir", inn);
+            yield return Waiting("C_IN1_A2_10", c, "Échelle des combles", inn);
+            yield return Waiting("C_IN1_A3_01", c, "Rayonnage à linge", inn);
+            yield return Waiting("C_IN1_A3_02", c, "Coffre à draps", inn);
+            yield return Waiting("C_IN1_A3_03", c, "Étagère de la réserve", inn);
+            yield return Linked("C_IN1_A3_04", c, "Caisses", "room:auberge/caisses", "room:guilde/caisses");
+            yield return Waiting("C_IN1_B0_01", c, "Comptoir de la boulangerie", "plus profond (1,07 m) que le comptoir des données (0,6 m) : le comptoir de l'auberge (0,55 m) y est posé à sa place");
+            yield return Linked("C_IN1_B0_02", c, "Étagère à pains", "room:boulangerie/etagere_pains");
+            yield return Waiting("C_IN1_B0_03", c, "Présentoir", bakery);
+            yield return Waiting("C_IN1_B0_05", c, "Table à façonner", bakery);
+            yield return Linked("C_IN1_B0_06", c, "Pétrin", "room:boulangerie/petrin");
+            yield return Waiting("C_IN1_B0_07", c, "Banneton sur support", bakery);
+            yield return Linked("C_IN1_B0_08", c, "Sacs de farine", "room:boulangerie/caisse_farine");
+            yield return Waiting("C_IN1_B0_09", c, "Râtelier de pelles", bakery);
+            yield return Waiting("C_IN1_B0_10", c, "Gueule et avant-four", "la gueule seule : le four voûté fait par le code reste (sa bouche rougeoyante et sa lumière sont réglées sur lui)");
+            yield return Waiting("C_IN1_B1_01", c, "Table du logement", lodging);
+            yield return Waiting("C_IN1_B1_02", c, "Banc du logement", lodging);
+            yield return Waiting("C_IN1_B1_03", c, "Lit", lodging);
+            yield return Waiting("C_IN1_B1_04", c, "Coffre", lodging);
+            yield return Waiting("C_IN1_B1_05", c, "Armoire", lodging);
+            yield return Waiting("C_IN1_B1_07", c, "Étagère à linge", lodging);
+            yield return Linked("C_IN1_G0_01", c, "Table des contrats", "room:guilde/table1", "room:guilde/table2", "room:archives/table");
+            yield return Waiting("C_IN1_G0_02", c, "Banc des contrats", guild);
+            yield return Waiting("C_IN1_G0_03", c, "Tableau des contrats", wall);
+            yield return Linked("C_IN1_G0_04", c, "Cheminée", "room:guilde/cheminee", "room:archives/cheminee");
+            yield return Waiting("C_IN1_G0_07", c, "Bureau de Brunehilde", guild);
+            yield return Waiting("C_IN1_G0_08", c, "Fauteuil", guild);
+            yield return Waiting("C_IN1_G0_09", c, "Armoire de la réserve", guild);
+            yield return Waiting("C_IN1_G0_10", c, "Coffres d'Aubin", guild);
+            yield return Waiting("C_IN1_G0_11", c, "Trophées sur console", guild);
+            yield return Linked("C_IN1_G_1_01", c, "Rayonnage", "room:archives/etagere1", "room:archives/etagere2", "room:guilde/etagere");
+            yield return Waiting("C_IN1_G_1_06", c, "Lutrin", archives);
+            yield return Waiting("C_IN1_G_1_07", c, "Carte des rangs", wall);
+            yield return Linked("C_IN1_G_1_09", c, "Coffre des archives", "room:archives/caisse");
+            yield return Waiting("C_IN1_G_1_10", c, "Registres en pile", archives);
+            yield return Waiting("C_IN1_P01", c, "Banneton", small);
+            yield return Linked("C_IN1_P02", c, "Pelle à pain", "piece:boulangerie/Broom");
+            yield return Linked("C_IN1_P03", c, "Miche", "piece:boulangerie/Bread");
+            yield return Waiting("C_IN1_P04", c, "Sac de farine", small);
+            yield return Waiting("C_IN1_P05", c, "Torchon", small);
+            yield return Linked("C_IN1_P06", c, "Écuelle", Pieces("Bowl", "auberge guilde"));
+            yield return Linked("C_IN1_P07", c, "Gobelet", Pieces("Goblets", "auberge guilde"));
+            yield return Linked("C_IN1_P08", c, "Marmite", Pieces("Pot", "auberge guilde archives"));
+            yield return Linked("C_IN1_P09", c, "Cruche", Pieces("Bottles", "auberge guilde archives"));
+            yield return Waiting("C_IN1_P10", c, "Couverture", small);
+            yield return Waiting("C_IN1_P11", c, "Oreiller", small);
+            yield return Waiting("C_IN1_P12", c, "Registre de la Guilde", small);
+            yield return Waiting("C_IN1_P13", c, "Encrier", small);
+            yield return Waiting("C_IN1_P14", c, "Registre des archives", small);
+            yield return Waiting("C_IN1_P15", c, "Carte des rangs (roulée)", small);
+            yield return Linked("C_IN1_P16", c, "Lanterne", Pieces("Lantern", "auberge guilde boulangerie").Concat(Pieces("HangingLantern", "auberge guilde boulangerie")).ToArray());
+            yield return Linked("C_IN1_P17", c, "Bougeoir", Pieces("Candlestick", "auberge guilde archives"));
         }
     }
 }
