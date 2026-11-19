@@ -81,7 +81,7 @@ public class V2305BourgDecisionsTests : IDisposable
     public void The_moat_rings_the_town_and_is_crossed_only_by_the_bridges()
     {
         var ditches = Obstacles.Where(o => BourgModels.IsDitch(o.Id)).ToList();
-        Assert.Equal(7, ditches.Count);
+        Assert.Equal(8, ditches.Count);   // V2.40 : le fossé nord coupé devant la porte nord
         Assert.All(ditches, d => Assert.True(d.Low));
         // Tour au milieu du fossé (7,7 m hors de la ligne), tous les 0,5 m : bloqué partout sauf devant les trois portes.
         var open = new List<(double X, double Z)>();
@@ -100,14 +100,15 @@ public class V2305BourgDecisionsTests : IDisposable
         Walk(-710 + M, -320 - M, -1310 - M, -320 - M);
         Walk(-1310 - M, -320 - M, -1310 - M, 180 + M);
         Assert.All(open, p => Assert.True(
-            (p.X == -710 + M && Math.Abs(p.Z - -50) < 2.6) || (p.X == -1310 - M && Math.Abs(p.Z - -90) < 3.6) || (p.Z == -320 - M && Math.Abs(p.X - -1160) < 2.0),
+            (p.X == -710 + M && Math.Abs(p.Z - -50) < 2.6) || (p.X == -1310 - M && Math.Abs(p.Z - -90) < 3.6) || (p.Z == -320 - M && Math.Abs(p.X - -1160) < 2.0)
+                || (p.Z == 180 + M && Math.Abs(p.X - -940) < 2.0),   // V2.40 : porte nord
             $"fossé ouvert en ({p.X}, {p.Z})"));
-        Assert.Equal(3, open.Select(p => Math.Round(p.X / 50) * 1000 + Math.Round(p.Z / 50)).Distinct().Count());
+        Assert.Equal(4, open.Select(p => Math.Round(p.X / 50) * 1000 + Math.Round(p.Z / 50)).Distinct().Count());
         // Un pont devant chaque porte, au milieu du fossé, dans l'axe du passage, aussi large que le trou du fossé.
         var dress = BourgModels.Dress(Obstacles);
         var bridges = dress.Pieces.Where(p => p.Piece is BourgModels.EastBridge or BourgModels.WestBridge or BourgModels.NorthBridge)
             .Select(p => (p.Piece, p.X, p.Z, p.Yaw)).OrderBy(p => p.Piece, StringComparer.Ordinal).ToList();
-        Assert.Equal(new[] { (BourgModels.EastBridge, -710 + M, -50.0, 90.0), (BourgModels.WestBridge, -1310 - M, -90.0, -90.0), (BourgModels.NorthBridge, -1160.0, -320 - M, 180.0) },
+        Assert.Equal(new[] { (BourgModels.EastBridge, -710 + M, -50.0, 90.0), (BourgModels.WestBridge, -1310 - M, -90.0, -90.0), (BourgModels.NorthBridge, -940.0, 180 + M, 0.0), (BourgModels.NorthBridge, -1160.0, -320 - M, 180.0) },   // V2.40 : pont de la porte nord
             bridges);
         // Modules du fossé serrés sur chaque tronçon (aucun jour), talus au pied de chaque module droit de palissade.
         foreach (SpaceObstacle d in ditches)

@@ -67,7 +67,7 @@ public class V2302BourgEnceinteTests
         var expected = Obstacles.Where(o => o.Id.StartsWith("palissade_ville_", StringComparison.Ordinal)
             || o.Id.StartsWith("tour_ville_", StringComparison.Ordinal) && o.Id != "tour_ville_clocher").Select(o => o.Id).OrderBy(i => i, StringComparer.Ordinal);
         Assert.Equal(expected, Dress.Value.Needs.Keys.OrderBy(i => i, StringComparer.Ordinal));
-        Assert.Equal(16, Dress.Value.Needs.Count);   // 7 pans, 9 tours (le clocher est celui de l'église)
+        Assert.Equal(19, Dress.Value.Needs.Count);   // 8 pans, 11 tours (le clocher est celui de l'église) ; V2.40 : porte nord (un pan, deux tours)
         // Les deux tours de la porte de l'Ouest sont sous la porte à tours F09 ; les autres sont des tours de flanquement.
         Assert.Equal(new[] { BourgModels.WestGate }, Dress.Value.Needs["tour_ville_porte_ouest_sud"]);
         Assert.Equal(new[] { BourgModels.WestGate }, Dress.Value.Needs["tour_ville_porte_ouest_nord"]);
@@ -122,7 +122,7 @@ public class V2302BourgEnceinteTests
     {
         var roads = Roads();
         var gates = Dress.Value.Pieces.Where(p => p.Piece is BourgModels.EastGate or BourgModels.WestGate or BourgModels.NorthGate).ToList();
-        Assert.Equal(3, gates.Count);
+        Assert.Equal(4, gates.Count);   // V2.40 : la porte nord
         var expected = new (string Piece, double X, double Z, double Yaw, double From, double To, string Road, double Walk)[]
         {
             // V2.30.5 (décision de Damien du 16 novembre 2026) : ouvertures des données resserrées sur les passages des modèles (est 4,2 m,
@@ -130,10 +130,12 @@ public class V2302BourgEnceinteTests
             (BourgModels.EastGate, -710, -50, 90, -52.1, -47.9, "route_d_ambre_ouest", 0),
             (BourgModels.WestGate, -1310, -90, -90, -93, -87, "route_d_ambre_ouest", 0),
             (BourgModels.NorthGate, -1160, -320, 180, -1161.5, -1158.5, "chemin_des_vignes", 0),
+            // V2.40 (décision de Damien du 16 novembre 2026) : porte nord, comme la poterne : ouverture de 3 m (x −941,5 à −938,5), F10 au milieu.
+            (BourgModels.NorthGate, -940, 180, 0, -941.5, -938.5, "rue_de_la_porte_nord", 0),
         };
         foreach (var e in expected)
         {
-            BourgPiece g = gates.Single(p => p.Piece == e.Piece);
+            BourgPiece g = gates.Single(p => p.Piece == e.Piece && Math.Abs(p.X - e.X) < 1 && Math.Abs(p.Z - e.Z) < 1);
             Assert.Equal((e.X, e.Z, e.Yaw), (g.X, g.Z, g.Yaw));
             Assert.Null(g.Covers);
             double along = e.Piece == BourgModels.NorthGate ? g.X : g.Z, half = BourgModels.Passage(e.Piece) / 2;
@@ -175,10 +177,10 @@ public class V2302BourgEnceinteTests
             (double cx, double cz) = (-1010, -70);
             Assert.True(Math.Sin(t.Yaw * Math.PI / 180) * (t.X - cx) + Math.Cos(t.Yaw * Math.PI / 180) * (t.Z - cz) > 0, t.Covers + " tournée vers la ville");
         }
-        Assert.Equal(7, Dress.Value.Pieces.Count(p => p.Piece == BourgModels.FlankTower));
+        Assert.Equal(9, Dress.Value.Pieces.Count(p => p.Piece == BourgModels.FlankTower));   // V2.40 : les deux tours de la porte nord
         // Quatre tours de guet sur la ronde (plan illustré), au milieu des plus longs pans, 1,5 m en retrait vers la ville.
         var watch = Dress.Value.Pieces.Where(p => p.Piece == BourgModels.WatchTower).OrderBy(p => p.X).ThenBy(p => p.Z).Select(p => (p.X, p.Z, p.Yaw)).ToList();
-        Assert.Equal(new[] { (-1308.5, 46.5, -90.0), (-1010.0, 178.5, 0.0), (-934.25, -318.5, 180.0), (-711.5, -186.05, 90.0) }, watch);   // V2.30.5 : pans allongés
+        Assert.Equal(new[] { (-1308.5, 46.5, -90.0), (-1125.75, 178.5, 0.0), (-934.25, -318.5, 180.0), (-711.5, -186.05, 90.0) }, watch);   // V2.30.5 : pans allongés ; V2.40 : le pan nord le plus long s'arrête à la porte nord
     }
 
     [Fact]
@@ -237,7 +239,7 @@ public class V2302BourgEnceinteTests
             AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(folder, "partie.json"));
             a.Advance(0.05);
             AdventureMap whole = a.RegionMap;
-            foreach ((double cx, double cz, double yaw) in new[] { (-1310.0, 60.0, -90.0), (-1010.0, 180.0, 0.0) })
+            foreach ((double cx, double cz, double yaw) in new[] { (-1310.0, 60.0, -90.0), (-1100.0, 180.0, 0.0) })   // V2.40 : loin de la porte nord (x = −940)
             {
                 long r(double v) => (long)Math.Round(v * 10000);
                 CombatSpace space = AdventureMap.WindowOf(whole.Space, (r(cx - 64), r(cz - 64), r(cx + 64), r(cz + 64)));

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.36.0-provisoire",
+  "contentVersion": "0.37.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -24071,6 +24071,10 @@
               {
                 "do": "startQuest",
                 "id": "quest.bourg_d_aube"
+              },
+              {
+                "do": "openPassage",
+                "id": "passerelle_des_ronces"
               }
             ]
           }

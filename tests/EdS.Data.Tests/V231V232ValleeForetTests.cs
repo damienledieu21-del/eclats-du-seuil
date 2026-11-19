@@ -43,7 +43,7 @@ public class V231V232ValleeForetTests
         JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         WithoutLieux(root);
         var ids = root["data"]!["space"]!["obstacles"]!.AsArray().Select(o => (string)o!["id"]!).ToList();
-        Assert.Equal(233 + 14, ids.Count);   // V2.30.5 : sept tronçons du fossé, six boutiques et la maison notable
+        Assert.Equal(233 + 14 + 5, ids.Count);   // V2.30.5 : sept tronçons du fossé, six boutiques et la maison notable ; V2.40 : porte nord (pan est de la palissade, deux tours, fossé coupé) et ravin des Ronces coupé
         Assert.Contains("falaise_cascade", ids);
         Assert.Contains("riviere_vallee7", ids);
         Assert.Equal(66, root["data"]!["combatants"]!.AsArray().Count);

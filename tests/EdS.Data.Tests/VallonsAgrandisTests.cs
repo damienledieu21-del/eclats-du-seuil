@@ -114,7 +114,7 @@ public class VallonsAgrandisTests
     {
         ZoneDefinition zone = Zone();
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
-        Assert.Equal(29, roads.Count);   // V2.33, V2.37, V2.38 : allée du château, chemins de la bouche et du fort ; V2.31, V2.32 : sentiers de la cascade, du pont suspendu et de l'arbre ; V2.30.1 : rues des boutiques et du marché, sentier de l'herboristerie, dans la ville
+        Assert.Equal(32, roads.Count);   // V2.40 : rue de la porte nord, chemin du pont des Murmures, route de l'Est ;   // V2.33, V2.37, V2.38 : allée du château, chemins de la bouche et du fort ; V2.31, V2.32 : sentiers de la cascade, du pont suspendu et de l'arbre ; V2.30.1 : rues des boutiques et du marché, sentier de l'herboristerie, dans la ville
         // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
         // V2.7 : sauf la planque des contrebandiers, point sûr secret, loin des routes par nature.
         foreach (SafePoint s in zone.SafePoints.Where(x => x.Id != "planque_des_contrebandiers"))

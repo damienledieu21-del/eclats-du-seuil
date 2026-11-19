@@ -19,7 +19,7 @@ internal static class ScenarioTestData
     /// </summary>
     public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
         || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
-            or "falaise_crete"
+            or "falaise_crete" or "ravin_ronces_sud_est"   // V2.40 : le ravin des Ronces coupé par la passerelle
         || id.Contains("_ville", StringComparison.Ordinal)   // sous-lot V2.30 : le Bourg fortifié (palissade, tours, maisons de la ville)
         || id.StartsWith("panneau_", StringComparison.Ordinal)   // sous-lot V2.30.1 : panneaux des croisements du village au Bourg
         || LieuTags.Any(t => id.Contains(t, StringComparison.Ordinal));   // sous-lots V2.31 et suivants : les lieux de la grande carte
@@ -29,7 +29,7 @@ internal static class ScenarioTestData
     /// identifiant (« bloc_rocher_chute_1 », « maison_cabane_du_bucheron_foret », « loup_taniere_foret1 ») ; une étiquette n'apparaît dans
     /// aucun identifiant d'avant le V2.31 (« _cascade » aurait pris falaise_cascade).
     /// </summary>
-    public static readonly string[] LieuTags = { "_chute", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu" };
+    public static readonly string[] LieuTags = { "_chute", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu", "_passage" };
 
     /// <summary>
     /// Sous-lots V2.31 et suivants : l'aire des Vallons dépasse 256 obstacles avec les lieux de la grande carte ; elle ne se simule plus d'un
@@ -108,7 +108,8 @@ internal static class ScenarioTestData
         "lisiere_de_la_foret", "domaine_du_chateau", "pressoir_du_chateau", "chai_du_chateau", "vignes_du_chateau", "bergerie_des_collines",
         "cairns_de_la_crete", "tour_de_signal", "nef_de_l_abbaye", "cloitre_de_l_abbaye", "dortoir_de_l_abbaye", "jardin_de_l_abbaye",
         "cabanes_sur_pilotis", "ile_des_saules_dormants", "village_des_mineurs", "carreau_de_la_mine", "gradins_de_la_carriere",
-        "enceinte_du_fort", "tour_des_bandits", "cercle_des_pierres_levees",
+        "enceinte_du_fort", "tour_des_bandits", "cercle_des_pierres_levees", "abords_de_la_porte_nord", "passerelle_des_ronces",
+        "pont_des_murmures", "col_des_cretes_de_fer", "poste_de_peage", "route_de_l_est", "pont_effondre",
     };
 
     /// <summary>Sous-lots V2.31 et suivants : le scénario de la zone des Vallons, d'un bloc (<see cref="WithoutLieux"/>).</summary>
@@ -280,6 +281,11 @@ internal static class ScenarioTestData
         var quests = data["quests"]!.AsArray();
         // Sous-lot V2.28d (3) : ni la quête du cheval (les rives du lac sont hors du cœur), ni ses répliques (v2283_).
         foreach (var q in quests.Where(q => (string?)q!["id"] is "quest.passages_de_la_vallee" or "quest.le_cheval_de_la_ferme").ToList()) quests.Remove(q);
+        // Sous-lot V2.40 (décision de Damien du 18 novembre 2026) : la fin du chapitre 1 ouvre la passerelle des Ronces, hors du cœur.
+        foreach (var q in quests)
+            foreach (var owner in new[] { q }.Concat(q!["steps"]?.AsArray() ?? new JsonArray()))
+                if (owner!["effects"] is JsonArray effects)
+                    foreach (var e in effects.Where(e => (string?)e!["do"] == "openPassage" && (string?)e["id"] == "passerelle_des_ronces").ToList()) effects.Remove(e);
         foreach (var d in data["dialogues"]!.AsArray())
         {
             var entries = d!["entries"]!.AsArray();
