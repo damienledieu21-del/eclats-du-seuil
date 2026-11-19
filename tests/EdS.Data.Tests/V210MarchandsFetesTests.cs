@@ -149,7 +149,7 @@ public class V210MarchandsFetesTests
         JsonArray npcs = visit["data"]!["npcs"]!.AsArray();
         int c = npcs.ToList().FindIndex(x => (string?)x!["id"] == "npc.colporteur");
         npcs[c]!["festivals"]!.AsArray().Add("festival.marche");
-        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[5]" && e.Code == ValidationCode.DuplicateId);   // V2.14 : et le marché du mercredi
+        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[{npcs[c]!["festivals"]!.AsArray().Count - 1}]" && e.Code == ValidationCode.DuplicateId);   // V2.14 : et le marché du mercredi ; fêtes d'Orsédia (F3) : toutes les fêtes
     }
 
     [Theory]
