@@ -191,4 +191,52 @@ public class ReconfortReferenceTests
         // Rien de cela n'entre dans la sauvegarde.
         Assert.DoesNotContain("comfort", SaveJsonReader.Write(w.Save()), StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Lot_de_plusieurs_ticks_entree_en_combat_au_milieu_le_reconfort_s_arrete_au_tick_pres()
+    {
+        // Revue Codex de la PR #223 : le réconfort voulu est relu avant chaque tick du lot. Ici la source passe à faux au 11e tick (comme
+        // une entrée en combat, WorldSession.ComfortWanted) au milieu d'un seul lot de 30 ticks.
+        JsonObject root = Json();
+        root["data"]!["commands"] = new JsonArray();
+        var combat = new RealtimeCombat(Load(root), "bastion") { MaxTicksPerAdvance = 30 };
+        int reads = 0;
+        combat.ComfortSource = () => reads++ < 10;
+        Assert.Equal(30, combat.Advance(30 * 0.05 + 0.01));
+        var sent = combat.SubmittedCommands.Where(c => c.Action == CombatAction.Comfort || c.Action == CombatAction.ComfortEnd).Select(c => (c.Action, c.AtMs / 50)).ToList();
+        Assert.Equal(new[] { (CombatAction.Comfort, 0L), (CombatAction.ComfortEnd, 10L) }, sent);
+        Assert.False(combat.Comforted);
+    }
+
+    [Fact]
+    public void Lot_de_plusieurs_ticks_expiration_au_milieu_le_reconfort_s_arrete_a_l_heure()
+    {
+        // Revue Codex de la PR #223 : la fin du réconfort (60 minutes de jeu) tombe au milieu d'un seul lot de ticks : comfortEnd part au
+        // tick où le monde atteint la minute de fin, pas au lot suivant.
+        string save = Path.Combine(Path.GetTempPath(), "eds-f7-" + Guid.NewGuid().ToString("N") + ".json");
+        SaveStore.Write(save, new WorldSave("zone.vallons", WorldEventSchedule.TickAt(new WorldClock(50), 15 * 1440 + 12 * 60), 0,
+            new[] { PlayerCharacters.PlacesKey }, Hero()));
+        AdventureSession a;
+        try
+        {
+            a = Adventure(save);
+        }
+        finally
+        {
+            File.Delete(save);
+        }
+        long now = a.World.Zone.Time.Day * 1440 + a.World.Zone.Time.Minute;
+        a.World.CarryComfort(now + 1);   // réconfort qui finit à la minute suivante
+        Assert.True(a.World.ComfortWanted);
+        long minuteTicks = a.World.Zone.Clock.DayLengthMs / 1440 / 50;
+        int batch = checked((int)(minuteTicks * 2 + 10));
+        a.Combat.MaxTicksPerAdvance = batch;
+        Assert.Equal(batch, a.Advance(batch * 0.05 + 0.01));
+        var sent = a.Combat.SubmittedCommands.Where(c => c.Action == CombatAction.Comfort || c.Action == CombatAction.ComfortEnd).ToList();
+        Assert.Equal(new[] { CombatAction.Comfort, CombatAction.ComfortEnd }, sent.Select(c => c.Action));
+        long lasted = (sent[1].AtMs - sent[0].AtMs) / 50;
+        Assert.InRange(lasted, 1, minuteTicks + 1);   // au plus une minute de jeu (et un tick), jamais tout le lot
+        Assert.False(a.World.ComfortWanted);
+        Assert.False(a.Combat.Comforted);
+    }
 }

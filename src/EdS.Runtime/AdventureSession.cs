@@ -468,7 +468,8 @@ namespace EdS.Runtime
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
-            Combat.SetComfort(World.ComfortWanted);   // sous-lot F7 : réconfort d'un plat de fête, hors combat (monde)
+            // Sous-lot F7 : réconfort d'un plat de fête, hors combat (monde) ; revue Codex de la PR #223 : relu avant chaque tick du lot.
+            Combat.ComfortSource = () => World.ComfortWanted;
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             // Pêche et carnet : la touche s'annonce une fois.

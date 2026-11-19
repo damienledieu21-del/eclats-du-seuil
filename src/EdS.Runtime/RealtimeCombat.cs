@@ -225,6 +225,9 @@ namespace EdS.Runtime
         /// <summary>Sous-lot V2.28d (2b) : le personnage est en selle.</summary>
         public bool Mounted => _engine.View(PlayerId).Mounted;
 
+        /// <summary>Sous-lot F7 : le joueur est réconforté dans le moteur (marche à pied +10 %).</summary>
+        public bool Comforted => _engine.View(PlayerId).Comforted;
+
         /// <summary>Sous-lot V2.28d (2b) : montée en cours (la seconde n'est pas écoulée).</summary>
         public bool Mounting => _mountAtTick != null;
 
@@ -471,9 +474,17 @@ namespace EdS.Runtime
         /// </summary>
         public void SetComfort(bool wanted) => _comfortWanted = wanted && _setup.Space != null;
 
+        /// <summary>
+        /// Revue Codex de la PR #223 : la source du réconfort voulu, lue <b>avant chaque tick simulé</b> (null : la valeur posée par
+        /// <see cref="SetComfort"/>). Un lot de plusieurs ticks (<see cref="Advance"/>) suit ainsi l'entrée en combat ou la fin du réconfort au
+        /// tick près, de façon déterministe (le monde avance d'un tick entre deux lectures).
+        /// </summary>
+        public Func<bool>? ComfortSource { get; set; }
+
         /// <summary>Sous-lot F7 : envoie comfort ou comfortEnd quand le moteur diffère de ce que veut le monde. Rend le nombre de commandes soumises.</summary>
         private int ComfortIntentions(CombatantView me)
         {
+            if (ComfortSource != null) _comfortWanted = ComfortSource() && _setup.Space != null;
             if (me.IsDead || me.Comforted == _comfortWanted || _setup.Space is null) return 0;
             long atMs = checked(_engine.CurrentTick * _tickMs);
             return TrySubmit(new[] { new CombatCommand(atMs, PlayerId, _comfortWanted ? CombatAction.Comfort : CombatAction.ComfortEnd) }) ? 1 : 0;
