@@ -59,7 +59,7 @@ public class MontureReferenceTests
     [Fact]
     public void Versions()
     {
-        Assert.Equal(("0.34.0", 28, 22, 9), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((Fixed.FromInt(13), Fixed.FromInt(12)), (MountSetup.HorseSpeed, ShippedData.Rules.Combat.MountSafeDistance));
     }
 
@@ -68,8 +68,8 @@ public class MontureReferenceTests
     {
         string path = Fixture(Monture);
         string[] frozen = File.ReadAllLines(path);
-        Assert.Equal(frozen, Simulate(Load()));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
+        Assert.Equal(frozen.Skip(1), Simulate(Load()).Skip(1));   // réconfort (moteur 0.35.0) : corps seulement
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(frozen, ShippedData).Status);   // réconfort : autre version du moteur
         Assert.Equal(MontureFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         Assert.Contains("\"mount\":{\"speed\":13}", frozen[0]);
         JsonElement[] events = Events(frozen);
@@ -144,7 +144,7 @@ public class MontureReferenceTests
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 30) engine.Step();
         CombatSnapshot snapshot = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":9,", snapshot.Text);
+        Assert.StartsWith("{\"snapshot\":10,", snapshot.Text);
         Assert.Contains("\"mounted\":true", snapshot.Text);
         var resumedLog = new MemoryCombatLog();
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, resumedLog);

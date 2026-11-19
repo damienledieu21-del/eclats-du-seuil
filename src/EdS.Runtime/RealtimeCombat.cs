@@ -46,6 +46,9 @@ namespace EdS.Runtime
         private long? _mountAtTick;   // sous-lot V2.28d (2b) : tick où la mise en selle part au moteur (montée en cours), null sinon
         private bool _dismountRequested;
 
+        /// <summary>Sous-lot F7 : le monde veut le joueur réconforté (plat de fête, hors combat) : comfort ou comfortEnd part quand le moteur diffère.</summary>
+        private bool _comfortWanted;
+
         // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
         // partagées avec la salle du serveur).
         private IReadOnlyList<ConvexPolygon>? _obstacles;
@@ -424,6 +427,7 @@ namespace EdS.Runtime
             // est présent, au lieu d'être perdues sans retour. Une demande plus récente remplace l'ancienne, comme avant.
             if (!me.IsPresent && !me.IsDead) return;
             int used = MountIntentions(me);
+            used += ComfortIntentions(me);   // sous-lot F7
             IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
                 _slotRequested, TargetFor, _dodgeRequested && _setup.Space != null, _movement.Wished is int wished ? MoveInput.Direction(wished) : (GroundVector?)null);
             _slotRequested = null;
@@ -459,6 +463,20 @@ namespace EdS.Runtime
             // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
             // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
             _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, Math.Max(0, _setup.Combat.MaxCommandsPerActorPerTick - Math.Max(used, _engine.CommandsThisTick(PlayerId))), TrySubmit);
+        }
+
+        /// <summary>
+        /// Sous-lot F7 : réconfort d'un plat de fête voulu par le monde (<see cref="WorldSession.ComfortWanted"/>, hors combat, 60 minutes de
+        /// jeu). Rien à faire dans un combat sans espace.
+        /// </summary>
+        public void SetComfort(bool wanted) => _comfortWanted = wanted && _setup.Space != null;
+
+        /// <summary>Sous-lot F7 : envoie comfort ou comfortEnd quand le moteur diffère de ce que veut le monde. Rend le nombre de commandes soumises.</summary>
+        private int ComfortIntentions(CombatantView me)
+        {
+            if (me.IsDead || me.Comforted == _comfortWanted || _setup.Space is null) return 0;
+            long atMs = checked(_engine.CurrentTick * _tickMs);
+            return TrySubmit(new[] { new CombatCommand(atMs, PlayerId, _comfortWanted ? CombatAction.Comfort : CombatAction.ComfortEnd) }) ? 1 : 0;
         }
 
         /// <summary>
