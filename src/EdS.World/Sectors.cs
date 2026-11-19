@@ -442,6 +442,15 @@ namespace EdS.World
         /// </summary>
         private Func<long, (DayPhase? Phase, WeatherKind? Weather)>? _start;
 
+        /// <summary>
+        /// Revue Codex de la PR #206 (chemin d'hiver de l'île des saules dormants) : clés des passages ouverts par la saison au moment où une
+        /// session s'ouvre (la glace du lac l'hiver) ; leurs obstacles sont retirés de l'aire de la session, sans entrer au registre (la saison
+        /// passée, la session suivante les remet). Null : aucun.
+        /// </summary>
+        public Func<IEnumerable<string>>? SeasonalPassages { get; set; }
+
+        private IEnumerable<string> SessionKeys => SeasonalPassages is null ? Consumed : Consumed.Concat(SeasonalPassages()).ToList();
+
         /// <summary>Sous-lot V2.28b : événements d'une ouverture faite hors d'un tick (<see cref="EnterAtStart"/>), rendus au tick suivant.</summary>
         private readonly List<SectorEvent> _early = new List<SectorEvent>();
 
@@ -910,7 +919,7 @@ namespace EdS.World
             }
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
             return _map.SetupFor(name, session, reopened, sessionArea);
         }
 
@@ -919,7 +928,7 @@ namespace EdS.World
         {
             CombatSetup setup = PlanSetup(name, out long session, out bool reopened, out DayPhase? phase, out WeatherKind? weather);
             bool home = name == _map.HomeSector;
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
             // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
             // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
             // au début : rare de la nuit, hors de ses heures ou de son temps ; elle garde sa vie et revient quand elle est voulue).

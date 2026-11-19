@@ -505,6 +505,9 @@ namespace EdS.World
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.
             _host = hosted is null ? null : HostFor(hosted, save, storyZone, log, caughtUp);
+            // Revue Codex de la PR #206 : les passages saisonniers de la zone (même identifiant qu'un passage des saisons : la glace du lac)
+            // sont ouverts dans chaque session de secteur qui s'ouvre pendant que la saison les ouvre (WorldSession.PassageOpen).
+            if (_host != null && hosted != null) _host.SeasonalPassages = () => SeasonalPassageKeys(hosted);
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
@@ -1335,6 +1338,14 @@ namespace EdS.World
         }
 
         public bool IsPassageOpen(string passage) => Definition is { } zone && Registered(zone.PassageKey(passage));
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : clés des passages de <paramref name="zone"/> qui sont aussi des passages des saisons et que la saison
+        /// ouvre maintenant (glace du lac praticable) ; vide sans saisons ou sans date civile.
+        /// </summary>
+        internal IEnumerable<string> SeasonalPassageKeys(ZoneDefinition zone) =>
+            _seasons is null ? Array.Empty<string>()
+                : zone.Passages.Where(p => _seasons.Passages.Any(s => s.Id == p.Id) && PassageOpen(p.Id)).Select(p => zone.PassageKey(p.Id)).ToList();
 
         /// <summary>Vie en cours d'une population (<c>loup1</c>, puis <c>loup1_v2</c>…).</summary>
         public string CurrentCreature(string population) =>

@@ -2167,6 +2167,11 @@
         "id": "pont_suspendu",
         "name": "Pont suspendu",
         "obstacle": "riviere_vallee_pont_suspendu_chute"
+      },
+      {
+        "id": "glace_du_lac",
+        "name": "Glace du lac (l'hiver seulement)",
+        "obstacle": "riviere_glace_du_lac_marais"
       }
     ],
     "roads": [
