@@ -109,6 +109,8 @@ namespace EdS.Data.Json
                 ["stock"] = (v, p) => x.Stock = input.Int32(v, p),   // sous-lot V2.10 (schéma 5)
                 ["fresh"] = (v, p) => x.Fresh = input.Boolean(v, p),   // sous-lot V2.14 (schéma 6)
                 ["door"] = (v, p) => x.Door = input.Boolean(v, p),
+                ["weekdays"] = (v, p) => x.Weekdays = Days(input, v, p),   // pâtisseries de Firmin (schéma 7)
+                ["seasons"] = (v, p) => x.Seasons = input.ReadLimitedList(v, p, 4, n => $"{n} saisons, au plus 4.", (e, ip) => input.Text(e, ip)),
             }) ? x : null;
         }
 

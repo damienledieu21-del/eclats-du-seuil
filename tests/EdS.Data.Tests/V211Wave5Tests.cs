@@ -393,7 +393,8 @@ public sealed class V211Wave5Tests
         string items = Doc("data", "v0", "world", "items.json");
         var ids = System.Text.RegularExpressions.Regex.Matches(items, "\"id\": *\"(item\\.[a-z_]+)\"").Select(m => m.Groups[1].Value).Distinct().ToList();
         Assert.True(ids.Count > 100);
-        var without = ids.Where(id => ItemIcons.Keywords(id).Count == 0).ToList();
+        // Pâtisseries de Firmin : leur icône peinte du dossier passe devant le pack (aucun mot cherché, voulu).
+        var without = ids.Where(id => ItemIcons.Keywords(id).Count == 0 && !FirminPastries.HasOwnIcon(id)).ToList();
         Assert.True(without.Count == 0, "sans mot : " + string.Join(", ", without));
     }
 

@@ -673,6 +673,9 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.ItemPresented:   // concours de pâtisserie : la pâtisserie de sa main, présentée au juge
                     Say("text.ui.item_presented", ItemName(e.Id));
+                    // Pâtisseries de Firmin : la pièce présentée, au modèle de son niveau de réussite, reste sur l'étal du juge ce jour-là.
+                    if (FirminPastries.QualityOf(e.Step) is ItemQuality presented && FirminPastries.Model(e.Id, presented, true) is string code)
+                        _presented = (code, World.Zone.Time.Day);
                     break;
                 case StoryEventKind.XpGiven:
                     Say("text.ui.xp", e.Value);
