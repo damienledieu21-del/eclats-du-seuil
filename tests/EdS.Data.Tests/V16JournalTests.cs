@@ -74,7 +74,7 @@ public class V16JournalTests : IDisposable
         AdventureSession inside = With("zone.auberge", new Dictionary<string, QuestProgress> { [Peaux] = new QuestProgress("peaux") }, Peaux);
         Assert.True(inside.Indoors);
         Assert.Equal((3.75, 3.55), (inside.Objective!.X, inside.Objective.Z));
-        Assert.Equal("npc.aubergiste", Assert.Single(inside.Npcs()).Id);
+        Assert.Equal(new[] { "npc.aubergiste", "npc.serveuse" }, inside.Npcs().Select(n => n.Id));   // 17 novembre 2026 : et Perrine, la serveuse
         Assert.Contains(("npc.aubergiste", 3.75, 3.55), inside.Map.Speakers);
         StyleVillager body = Assert.Single(InteriorRules.Layout(inside.Map).Villagers, v => v.Id == "npc.aubergiste");
         Assert.Equal((3.75, 3.55), (body.X, body.Z));
