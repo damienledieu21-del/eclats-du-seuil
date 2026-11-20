@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/rebuilds.schema.json",
   "title": "Éclats du Seuil — lieux reconstruits",
-  "description": "Lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026), version 1 : chantiers des lieux nommés de la zone, paliers dans l'ordre, besoins variés (or en cuivre, matériaux de métier, créatures vaincues dans le lieu ou autour, découverte, endroit à atteindre), et ce que le lieu apporte une fois reconstruit (PNJ, points sûrs). Documentation. La validation qui fait foi est celle du programme (RebuildValidator), avec la zone, le catalogue d'objets et l'histoire.",
+  "description": "Lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026), version 1 : chantiers des lieux nommés de la zone, paliers dans l'ordre, besoins variés (or en cuivre, matériaux de métier, créatures vaincues dans le lieu ou autour, découverte, endroit à atteindre), et ce que le lieu apporte une fois reconstruit (PNJ, points sûrs). Documentation. La validation qui fait foi est celle du programme (RebuildValidator), avec la zone, le catalogue d'objets et l'histoire. Version 2 (V2.43.4, 20 novembre 2026) : rebuilt.doors ; la version 1 est encore lue.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,10 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "enum": [
+        1,
+        2
+      ]
     },
     "kind": {
       "const": "rebuilds"
@@ -150,6 +153,14 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "doors": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Version 2 (V2.43.4) : portes de la zone vers l'intérieur du lieu, fermées tant que le lieu n'est pas reconstruit."
                   }
                 }
               }

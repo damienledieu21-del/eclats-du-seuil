@@ -447,6 +447,7 @@ Réponses de Damien du 19 novembre 2026, rapportées par la session principale (
 | Ateliers faciles | La taille de la pierre se fait **aussi à la petite carrière** (niveau 6) ; les planches se scient **aussi** dans un lieu facile près du village (Claude a proposé le **moulin du village**, niveau 1) ; la cabane du bûcheron et les gradins gardent un second atelier. | Retenu (Damien, 19 novembre 2026, relecture de la PR #222) |
 | Montants et services des 5 lieux | Les paliers proposés par Claude (V2.43.2b, tableau de [MONDE](MONDE.md#lieux-reconstruits-sous-lot-v243)) et tous les services (réparation chez le charron et la foulonnière, points sûrs au pont et à la tour, boutiques du charron, de la foulonnière et du frère hospitalier) sont **validés tels quels**. | Retenu (Damien, 19 novembre 2026, réponses à la PR #224) |
 | Modèles des lieux reconstruits | **Jusqu'à 330 crédits Tripo** pour les ~11 modèles des lieux (échafaudages, pont, palan, tour de signal, dortoir, roue et maillets du foulon) ; génération lancée par la session principale (`AssetLab/Lieux_Reconstruits/tripo_lieux.py`), jamais par un agent. | Retenu (Damien, 20 novembre 2026, PR #225) |
+| Intérieurs des lieux reconstruits | Hameau : **atelier du charron** (fiche I11) ; pont : **relais** façon maison du péager (I17) ; moulin à foulon : sur le modèle du **moulin du village** ; tour de signal : **salle de garde** ; abbaye : **dortoir** avec les lits du lot C. Chaque **porte s'ouvre une fois le lieu reconstruit**. | Retenu (Damien, 20 novembre 2026) ; V2.43.4 |
 
 ## 8. Points ouverts
 

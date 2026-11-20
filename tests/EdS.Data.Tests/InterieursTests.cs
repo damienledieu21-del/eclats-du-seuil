@@ -100,7 +100,7 @@ public class InterieursTests : IDisposable
         // Sous-lot V1.9.6 : la scène du souvenir de la Rupture, reliée au pré par une porte qui ne se montre pas (voir V196OuvertureTests).
         // Sous-lot V2.14 : les boutiques dans de vraies maisons (boulangerie, épicerie, herboristerie, mercerie).
         Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.souvenir_rupture", "zone.boulangerie", "zone.epicerie",
-                "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere",
+                "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere", "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.garde_du_signal", "zone.dortoir_abbaye",
                 "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules", "zone.auberge_logement", "zone.auberge_combles" },   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
@@ -113,9 +113,13 @@ public class InterieursTests : IDisposable
                 // Lot C (décisions de Damien du 16 novembre 2026) : forge couverte (maison de Maëlle), grange, moulin, tour de guet, maison paysanne
                 // (celle d'Achille, aux champs du sud).
                 ("porte_forge", "maison3", "zone.forge"), ("porte_grange", "grange", "zone.grange"), ("porte_moulin_interieur", "moulin", "zone.moulin"),
-                ("porte_tour", "tour", "zone.tour"), ("porte_chaumiere", "maison9", "zone.chaumiere") },
+                ("porte_tour", "tour", "zone.tour"), ("porte_chaumiere", "maison9", "zone.chaumiere"),
+                // V2.43.4 : l'atelier du charron (maison10 du hameau) et la salle de garde de la tour de signal.
+                ("porte_atelier_charron", "maison10", "zone.atelier_charron"), ("porte_tour_de_signal", "tour_de_signal_bergers", "zone.garde_du_signal") },
             vallons.Doors.Where(d => d.Building != null).Select(d => (d.Id, d.Building!, d.To)));
-        Assert.Equal(("souvenir", "zone.souvenir_rupture"), vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)).Single());
+        // V2.43.4 : sans bâtiment aussi, le relais du pont, le moulin à foulon (hors de la rivière) et le dortoir (au milieu de ses ruines).
+        Assert.Equal(new[] { ("souvenir", "zone.souvenir_rupture"), ("porte_relais_du_pont", "zone.relais_pont"), ("porte_moulin_a_foulon", "zone.foulon"),
+            ("porte_dortoir_abbaye", "zone.dortoir_abbaye") }, vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)));
         foreach (ZoneDefinition inside in linked.Zones.Skip(1).Where(z => z.Id != "zone.souvenir_rupture"))
         {
             Assert.True(inside.Indoor);
@@ -143,7 +147,7 @@ public class InterieursTests : IDisposable
         }
         Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg", "Maison de la Guilde", "Souvenir de la Rupture", "Boulangerie de Firmin",
                 "Épicerie de Bertille", "Herboristerie de Sauge", "Mercerie de Margot", "Forge couverte de Maëlle", "Grange", "Moulin", "Tour de guet",
-                "Maison paysanne", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules",
+                "Maison paysanne", "Atelier du charron", "Relais du pont", "Moulin à foulon", "Salle de garde de la tour de signal", "Dortoir de l'abbaye", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules",
                 "Logement et dortoir de l'auberge", "Combles de l'auberge" },   // V2.14 : les boutiques ; lot C
             linked.Zones.Skip(1).Select(z => z.Name));
         MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
@@ -239,12 +243,14 @@ public class InterieursTests : IDisposable
         ZoneDefinition souvenir = Read(ZoneJson("zone.souvenir_rupture")).Zone!;   // sous-lot V1.9.6 : la scène du souvenir
         // Zones manquantes.
         ValidationReport alone = ZoneValidator.CheckDoors(new[] { vallons });
-        Assert.Equal(14, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(19, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         ZoneDefinition[] shops = { Read(ZoneJson("zone.boulangerie")).Zone!, Read(ZoneJson("zone.epicerie")).Zone!, Read(ZoneJson("zone.herboristerie")).Zone!,
             Read(ZoneJson("zone.mercerie")).Zone! };
         // Lot C (16 novembre 2026) : les intérieurs de métier, la cuisine et les chambres de l'auberge, l'étage des meules.
         ZoneDefinition[] trades = new[] { "zone.forge", "zone.grange", "zone.moulin", "zone.moulin_meules", "zone.tour", "zone.chaumiere", "zone.auberge_cuisine",
-            "zone.auberge_chambres", "zone.auberge_logement", "zone.auberge_combles" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();
+            "zone.auberge_chambres", "zone.auberge_logement", "zone.auberge_combles",
+            // V2.43.4 : les intérieurs des lieux reconstruits.
+            "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.garde_du_signal", "zone.dortoir_abbaye" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();
         ValidationReport all = ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison, guilde, archives, souvenir }.Concat(shops).Concat(trades).ToArray());
         Assert.True(all.IsValid, all.ToString());
 
@@ -324,6 +330,33 @@ public class InterieursTests : IDisposable
     // --- Aventure ----------------------------------------------------------------------------------------------------------
 
     [Fact]
+    public void Porte_d_un_lieu_pas_encore_reconstruit_fermee_puis_ouverte()
+    {
+        // Relecture indépendante de la PR #226 (de bout en bout) : devant la porte de la salle de garde de la tour de signal.
+        static void AtTower(JsonObject root) => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(203, 1375.5);
+        (string data, string scenarios) = Copy(AtTower);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        a.Advance(0.05);
+        a.DrainMessages();
+        Assert.Equal("porte_tour_de_signal", a.DoorInReach!.Id);
+        Assert.StartsWith("Porte fermée (", a.DoorHint, StringComparison.Ordinal);   // l'indication dit « fermée »
+        Assert.False(a.UseDoor());
+        Assert.Equal("zone.vallons", a.World.Definition!.Id);   // la zone ne change pas
+        Assert.Contains("Le lieu n'est pas encore reconstruit : la porte reste fermée.", a.DrainMessages());
+
+        // Une fois la tour reconstruite, la porte s'ouvre.
+        var done = new SavedRebuilds(new[] { new SavedRebuild("tour_de_signal", 2, done: true) });
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, V11TestData.Progression).WithRebuilds(done)));
+        AdventureSession b = AdventureSession.Load(data, scenarios, SavePath);
+        b.Advance(0.05);
+        b.DrainMessages();
+        Assert.StartsWith("F : passer la porte (", b.DoorHint, StringComparison.Ordinal);
+        Assert.True(b.UseDoor());
+        Assert.Equal("zone.garde_du_signal", b.World.Definition!.Id);
+    }
+
+    [Fact]
     public void Entrer_dans_l_auberge_puis_en_sortir()
     {
         (string data, string scenarios) = Copy(EntryAtInn);
@@ -333,7 +366,7 @@ public class InterieursTests : IDisposable
         Assert.False(a.Indoors);
         Assert.Equal("porte_auberge", a.DoorInReach!.Id);
         Assert.True(a.CanUseDoor);
-        Assert.Equal(13, a.Doors().Count);   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(18, a.Doors().Count);   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         long tick = a.World.Save().WorldTick;
 
         Assert.True(a.Interact());   // F : la porte (ni PNJ ni nœud à portée)
@@ -373,7 +406,7 @@ public class InterieursTests : IDisposable
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
         Assert.False(a.Map.Indoor);
-        Assert.Equal(13, a.Map.Doors.Count);   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(18, a.Map.Doors.Count);   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
     }
@@ -568,6 +601,12 @@ public class InterieursTests : IDisposable
             ["zone.auberge_chambres"] = (InteriorStyle.Tavern, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Door }, 0),
             ["zone.auberge_logement"] = (InteriorStyle.Tavern, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Door }, 0),
             ["zone.auberge_combles"] = (InteriorStyle.Tavern, new[] { InteriorProp.Shelves, InteriorProp.Chest, InteriorProp.Crate, InteriorProp.Door }, 0),
+            // V2.43.4 (décision de Damien du 20 novembre 2026) : les intérieurs des lieux reconstruits, meublés par le lot C ; personne n'y vit.
+            ["zone.atelier_charron"] = (InteriorStyle.House, new[] { InteriorProp.Chest, InteriorProp.Door }, 0),
+            ["zone.relais_pont"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Table, InteriorProp.Door }, 0),
+            ["zone.foulon"] = (InteriorStyle.House, new[] { InteriorProp.SpinningWheel, InteriorProp.Table, InteriorProp.Shelves, InteriorProp.Door }, 0),
+            ["zone.garde_du_signal"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Table, InteriorProp.Chest, InteriorProp.Door }, 0),
+            ["zone.dortoir_abbaye"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Shelves, InteriorProp.Door }, 0),
         };
         List<ZoneDefinition> insides = Linked().Zones.Where(z => z.Indoor).ToList();
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), insides.Select(z => z.Id).OrderBy(k => k, StringComparer.Ordinal));

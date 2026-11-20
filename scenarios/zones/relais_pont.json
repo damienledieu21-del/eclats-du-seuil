@@ -1,0 +1,111 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 243,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -3.0,
+          -2.5
+        ],
+        "max": [
+          3.0,
+          2.5
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "comptoir",
+          "points": [
+            [
+              -1.0,
+              1.4
+            ],
+            [
+              1.0,
+              1.4
+            ],
+            [
+              1.0,
+              2.1
+            ],
+            [
+              -1.0,
+              2.1
+            ]
+          ]
+        },
+        {
+          "id": "cheminee",
+          "points": [
+            [
+              -2.8,
+              -0.6
+            ],
+            [
+              -2.0,
+              -0.6
+            ],
+            [
+              -2.0,
+              0.8
+            ],
+            [
+              -2.8,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "table",
+          "points": [
+            [
+              1.0,
+              -0.6
+            ],
+            [
+              2.2,
+              -0.6
+            ],
+            [
+              2.2,
+              0.4
+            ],
+            [
+              1.0,
+              0.4
+            ]
+          ]
+        },
+        {
+          "id": "lit",
+          "points": [
+            [
+              1.8,
+              1.0
+            ],
+            [
+              2.8,
+              1.0
+            ],
+            [
+              2.8,
+              2.3
+            ],
+            [
+              1.8,
+              2.3
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

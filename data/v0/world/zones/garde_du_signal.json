@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.garde_du_signal",
+    "name": "Salle de garde de la tour de signal",
+    "scenario": "zones/garde_du_signal",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Salle de garde de la tour de signal",
+        "position": [
+          0,
+          -2.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "garde_du_signal",
+        "name": "Salle de garde de la tour de signal",
+        "min": [
+          -3.5,
+          -3.5
+        ],
+        "max": [
+          3.5,
+          3.5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Salle de garde de la tour de signal",
+        "position": [
+          0,
+          -2.9
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_tour_de_signal"
+      }
+    ]
+  }
+}

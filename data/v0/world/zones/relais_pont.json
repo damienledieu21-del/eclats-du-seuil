@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.relais_pont",
+    "name": "Relais du pont",
+    "scenario": "zones/relais_pont",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Relais du pont",
+        "position": [
+          0,
+          -1.5
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "relais_du_pont_interieur",
+        "name": "Relais du pont",
+        "min": [
+          -3.0,
+          -2.5
+        ],
+        "max": [
+          3.0,
+          2.5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Relais du pont",
+        "position": [
+          0,
+          -1.9
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_relais_du_pont"
+      }
+    ]
+  }
+}

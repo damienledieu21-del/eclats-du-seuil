@@ -42,6 +42,7 @@ public class V228cObstaclesTests
             {
                 z["schemaVersion"] = 12;
                 z["data"]!.AsObject().Remove("region");
+                ScenarioTestData.WithoutRebuildDoors(z);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             }
         }, scenario: s =>
         {

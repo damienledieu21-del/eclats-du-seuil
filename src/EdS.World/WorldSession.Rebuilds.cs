@@ -230,6 +230,22 @@ namespace EdS.World
             return false;
         }
 
+        /// <summary>
+        /// V2.43.4 : la porte <paramref name="door"/> de la zone en jeu mène à l'intérieur d'un lieu pas encore reconstruit : elle reste fermée
+        /// (décision de Damien du 20 novembre 2026).
+        /// </summary>
+        public bool DoorAwaitsRebuild(string door)
+        {
+            if (_rebuilds is null || Definition is null || _rebuilds.ZoneId != Definition.Id) return false;
+            for (int i = 0; i < _rebuilds.Sites.Count; i++)
+            {
+                RebuildSite s = _rebuilds.Sites[i];
+                for (int k = 0; k < s.RebuiltDoors.Count; k++)
+                    if (s.RebuiltDoors[k] == door) return RebuildRules.PhaseOf(_character.Rebuilds.Of(s.Id), s) != RebuildPhase.Rebuilt;
+            }
+            return false;
+        }
+
         /// <summary>Faits de l'histoire d'un apport : chantier ouvert (premier apport), paliers finis, lieu reconstruit.</summary>
         private void RebuildFacts(RebuildSite site, bool opened, IReadOnlyList<RebuildStage> finished, Func<string, bool> learn)
         {

@@ -125,9 +125,9 @@ public class V261SuitesDuSeuilTests
     {
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((14, "0.25.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
+        Assert.Equal((14, "0.26.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((16, "0.38.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.41.0-provisoire", Texts.ContentVersion);   // plats de fête (F6) : 0.39.0 ; étal des fêtes (F4) : 0.38.0 ; fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
+        Assert.Equal("0.42.0-provisoire", Texts.ContentVersion);   // plats de fête (F6) : 0.39.0 ; étal des fêtes (F4) : 0.38.0 ; fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.23.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(28, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
@@ -162,6 +162,7 @@ public class V261SuitesDuSeuilTests
         {
             root["schemaVersion"] = 11;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             JsonObject scar = RiftJson(root)["scar"]!.AsObject();
             scar.Remove("spreadStage");
             scar.Remove("spreadDays");

@@ -45,6 +45,9 @@ namespace EdS.Data.Rebuilds
     {
         public List<string?>? Npcs { get; set; }
         public List<string?>? SafePoints { get; set; }
+
+        /// <summary>V2.43.4 (version 2) : portes de la zone (vers l'intérieur du lieu) qui ne s'ouvrent qu'une fois le lieu reconstruit.</summary>
+        public List<string?>? Doors { get; set; }
     }
 
     public sealed class RebuildStageData
@@ -150,9 +153,13 @@ namespace EdS.Data.Rebuilds
         /// <summary>V2.43.2b : points sûrs de la zone qui ne s'ouvrent (repos, retour, découverte, voyage) qu'une fois le lieu reconstruit.</summary>
         public IReadOnlyList<string> RebuiltSafePoints { get; }
 
+        /// <summary>V2.43.4 : portes de la zone (vers l'intérieur du lieu) fermées tant que le lieu n'est pas reconstruit.</summary>
+        public IReadOnlyList<string> RebuiltDoors { get; }
+
         internal RebuildSite(string id, Place place, Fixed margin, IEnumerable<RebuildStage> stages, IEnumerable<string>? rebuiltNpcs = null,
-            IEnumerable<string>? rebuiltSafePoints = null)
+            IEnumerable<string>? rebuiltSafePoints = null, IEnumerable<string>? rebuiltDoors = null)
         {
+            RebuiltDoors = Frozen.List(rebuiltDoors ?? Array.Empty<string>(), nameof(rebuiltDoors));
             RebuiltSafePoints = Frozen.List(rebuiltSafePoints ?? Array.Empty<string>(), nameof(rebuiltSafePoints));
             RebuiltNpcs = Frozen.List(rebuiltNpcs ?? Array.Empty<string>(), nameof(rebuiltNpcs));
             Id = id;
@@ -224,7 +231,13 @@ namespace EdS.Data.Rebuilds
         public const string Kind = "rebuilds";
 
         /// <summary>Version 1 (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : <c>sites</c>, <c>stages</c>, <c>needs</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int Schema1 = 1;
+
+        /// <summary>
+        /// Version 2 (sous-lot V2.43.4, décision de Damien du 20 novembre 2026) : <c>rebuilt.doors</c>, portes des intérieurs des lieux,
+        /// fermées tant que le lieu n'est pas reconstruit. La version 1 est encore lue (sans <c>doors</c>).
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
 
         public const int MaxSites = SavedRebuilds.MaxEntries, MaxStages = SavedRebuild.MaxStages, MaxNeeds = SavedRebuild.MaxNeeds;
 
@@ -247,7 +260,8 @@ namespace EdS.Data.Rebuilds
             if (items is null) throw new ArgumentNullException(nameof(items));
             if (story is null) throw new ArgumentNullException(nameof(story));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            int expected = document.SchemaVersion == Schema1 ? Schema1 : CurrentSchemaVersion;   // la version 1 est encore lue
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, expected, r))
                 return new RebuildLoadResult(r, null);
             if (document.Data?.Sites is not List<RebuildSiteData?> data) { Missing(r, "$.data.sites", "chantiers"); return new RebuildLoadResult(r, null); }
             if (data.Count > MaxSites) { r.Add("$.data.sites", ValidationCode.LimitExceeded, $"au plus {MaxSites} chantiers."); return new RebuildLoadResult(r, null); }
@@ -258,6 +272,7 @@ namespace EdS.Data.Rebuilds
             var places = new HashSet<string>(StringComparer.Ordinal);
             var rebuiltNpcs = new HashSet<string>(StringComparer.Ordinal);
             var rebuiltSafePoints = new HashSet<string>(StringComparer.Ordinal);
+            var rebuiltDoors = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < data.Count; i++)
             {
                 string p = $"$.data.sites[{i}]";
@@ -332,7 +347,22 @@ namespace EdS.Data.Rebuilds
                             else safePoints.Add(id);
                         }
                 }
-                if (ok) sites.Add(new RebuildSite(x.Id!, place!, margin, stages, npcs, safePoints));
+                var doors = new List<string>();
+                if (x.Rebuilt?.Doors is List<string?> ds)
+                {
+                    string dp = p + ".rebuilt.doors";
+                    if (document.SchemaVersion == Schema1) { r.Add(dp, ValidationCode.UnknownField, $"champ inconnu en version {Schema1} (portes des lieux : version {CurrentSchemaVersion})."); ok = false; }
+                    else if (ds.Count > MaxRebuiltNpcs) { r.Add(dp, ValidationCode.LimitExceeded, $"au plus {MaxRebuiltNpcs} portes."); ok = false; }
+                    else
+                        for (int k = 0; k < ds.Count; k++)
+                        {
+                            string? id = ds[k];
+                            if (id is null || zone.Doors.All(d => d.Id != id)) { r.Add($"{dp}[{k}]", ValidationCode.UnknownReference, $"porte « {id} » inconnue dans la zone."); ok = false; }
+                            else if (!rebuiltDoors.Add(id)) { r.Add($"{dp}[{k}]", ValidationCode.DuplicateId, $"porte « {id} » déjà ouverte par un lieu reconstruit."); ok = false; }
+                            else doors.Add(id);
+                        }
+                }
+                if (ok) sites.Add(new RebuildSite(x.Id!, place!, margin, stages, npcs, safePoints, doors));
             }
 
             if (!r.IsValid || document.ContentVersion is null) return new RebuildLoadResult(r, null);
