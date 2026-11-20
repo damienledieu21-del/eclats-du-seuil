@@ -15,7 +15,7 @@
         "name": "Salle de garde de la tour de signal",
         "position": [
           0,
-          -2.1
+          -2.0
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "garde_du_signal",
         "name": "Salle de garde de la tour de signal",
         "min": [
-          -3.1,
-          -3.1
+          -3.5,
+          -3.5
         ],
         "max": [
-          3.1,
-          3.1
+          3.5,
+          3.5
         ]
       }
     ],
@@ -41,7 +41,7 @@
         "name": "Salle de garde de la tour de signal",
         "position": [
           0,
-          -2.5
+          -2.9
         ],
         "to": "zone.vallons",
         "toDoor": "porte_tour_de_signal"

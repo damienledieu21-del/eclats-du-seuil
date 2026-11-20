@@ -330,6 +330,33 @@ public class InterieursTests : IDisposable
     // --- Aventure ----------------------------------------------------------------------------------------------------------
 
     [Fact]
+    public void Porte_d_un_lieu_pas_encore_reconstruit_fermee_puis_ouverte()
+    {
+        // Relecture indépendante de la PR #226 (de bout en bout) : devant la porte de la salle de garde de la tour de signal.
+        static void AtTower(JsonObject root) => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(203, 1375.5);
+        (string data, string scenarios) = Copy(AtTower);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        a.Advance(0.05);
+        a.DrainMessages();
+        Assert.Equal("porte_tour_de_signal", a.DoorInReach!.Id);
+        Assert.StartsWith("Porte fermée (", a.DoorHint, StringComparison.Ordinal);   // l'indication dit « fermée »
+        Assert.False(a.UseDoor());
+        Assert.Equal("zone.vallons", a.World.Definition!.Id);   // la zone ne change pas
+        Assert.Contains("Le lieu n'est pas encore reconstruit : la porte reste fermée.", a.DrainMessages());
+
+        // Une fois la tour reconstruite, la porte s'ouvre.
+        var done = new SavedRebuilds(new[] { new SavedRebuild("tour_de_signal", 2, done: true) });
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+            PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, V11TestData.Progression).WithRebuilds(done)));
+        AdventureSession b = AdventureSession.Load(data, scenarios, SavePath);
+        b.Advance(0.05);
+        b.DrainMessages();
+        Assert.StartsWith("F : passer la porte (", b.DoorHint, StringComparison.Ordinal);
+        Assert.True(b.UseDoor());
+        Assert.Equal("zone.garde_du_signal", b.World.Definition!.Id);
+    }
+
+    [Fact]
     public void Entrer_dans_l_auberge_puis_en_sortir()
     {
         (string data, string scenarios) = Copy(EntryAtInn);

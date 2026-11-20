@@ -831,11 +831,11 @@ namespace EdS.Game
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
             // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
-            if (a.DoorFirst && a.DoorInReach is EdS.Data.Zones.Door near) return string.Format(a.Text("text.ui.door_hint"), near.Name);
+            if (a.DoorFirst && a.DoorInReach != null) return a.DoorHint;   // V2.43.4 : « fermée » devant la porte d'un lieu pas encore reconstruit
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
                 return string.Format(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
-            if (a.DoorInReach is EdS.Data.Zones.Door door) return string.Format(a.Text("text.ui.door_hint"), door.Name);   // intérieurs
+            if (a.DoorInReach != null) return a.DoorHint;   // intérieurs ; V2.43.4 : « fermée » si le lieu n'est pas reconstruit
             if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
             if (a.WorkshopHere is string workshop) return string.Format(a.Text("text.ui.craft_hint"), workshop);
             return null;
