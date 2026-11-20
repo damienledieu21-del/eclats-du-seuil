@@ -90,6 +90,8 @@ namespace EdS.Data.Json
                             n => $"{n} PNJ, au plus {RebuildValidator.MaxRebuiltNpcs}.", (q, qp) => input.Text(q, qp)),
                         ["safePoints"] = (e, ep) => rb.SafePoints = input.ReadLimitedList(e, ep, RebuildValidator.MaxRebuiltNpcs,
                             n => $"{n} points sûrs, au plus {RebuildValidator.MaxRebuiltNpcs}.", (q, qp) => input.Text(q, qp)),
+                        ["doors"] = (e, ep) => rb.Doors = input.ReadLimitedList(e, ep, RebuildValidator.MaxRebuiltNpcs,   // V2.43.4 (version 2)
+                            n => $"{n} portes, au plus {RebuildValidator.MaxRebuiltNpcs}.", (q, qp) => input.Text(q, qp)),
                     })) x.Rebuilt = rb;
                 },
             }) ? x : null;

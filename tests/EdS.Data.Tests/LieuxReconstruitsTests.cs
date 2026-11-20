@@ -104,7 +104,7 @@ public class LieuxReconstruitsTests
     public void Catalogue_valide_et_son_schema()
     {
         RebuildBook b = Sample.Value;
-        Assert.Equal((1, "zone.vallons"), (RebuildValidator.CurrentSchemaVersion, b.ZoneId));
+        Assert.Equal((2, 1, "zone.vallons"), (RebuildValidator.CurrentSchemaVersion, b.SchemaVersion, b.ZoneId));   // version 1 encore lue
         Assert.Equal(new[] { "hameau", "moulin" }, b.Sites.Select(s => s.Id));
         Assert.Equal("Hameau de la carrière", Hameau.Place.Name);
         Assert.Equal(new[] { RebuildNeedKind.Coins, RebuildNeedKind.Item, RebuildNeedKind.Defeat }, Hameau.Stages[0].Needs.Select(n => n.Kind));
@@ -156,7 +156,7 @@ public class LieuxReconstruitsTests
         Refused(Read(Catalog(r => Need(r, 1, 0)["discover"] = "discovery.inconnue")), "$.data.sites[0].stages[1].needs[0].discover", ValidationCode.UnknownReference);
         Refused(Read(Catalog(r => Need(r, 0, 0)["prix"] = 1)), "$.data.sites[0].stages[0].needs[0].prix", ValidationCode.UnknownField);
         Assert.False(Read(Catalog(r => r["kind"] = "seasons")).IsValid);
-        Assert.False(Read(Catalog(r => r["schemaVersion"] = 2)).IsValid);
+        Assert.False(Read(Catalog(r => r["schemaVersion"] = 3)).IsValid);
     }
 
     // --- Règles pures ----------------------------------------------------------------------------------
@@ -534,6 +534,51 @@ public class LieuxReconstruitsContenuTests
         WorldSession open = At(x, z, noon, new SavedRebuilds(new[] { new SavedRebuild(site, stages, done: true) }), calm, 10_000);
         Assert.Equal(TradeRefusal.None, open.CanTrade(merchant));
         Assert.Equal(repairs ? RepairRefusal.None : RepairRefusal.Closed, open.CanRepairHere(merchant));
+    }
+
+    // --- V2.43.4 : intérieurs des lieux, portes fermées tant que le lieu n'est pas reconstruit (décision de Damien du 20 novembre 2026) ---
+
+    [Fact]
+    public void Portes_des_interieurs_seulement_une_fois_le_lieu_reconstruit()
+    {
+        RebuildBook b = Shipped(Vallons.Value);
+        Assert.Equal((2, "0.2.0-provisoire"), (b.SchemaVersion, b.ContentVersion));
+        Assert.Equal(new[] { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye" },
+            b.Sites.SelectMany(s => s.RebuiltDoors));
+        // Chaque porte mène à son intérieur (zone liée par les portes), qui ramène à elle.
+        Assert.All(b.Sites.SelectMany(s => s.RebuiltDoors), d =>
+        {
+            Door door = Vallons.Value.DoorOf(d)!;
+            ZoneDefinition inside = V16TestData.Interiors.Single(z => z.Id == door.To);
+            Assert.True(inside.Indoor);
+            Assert.Equal(d, inside.DoorOf(door.ToDoor)!.ToDoor);
+        });
+        WorldSession ruin = At(66, -34);
+        Assert.True(ruin.DoorAwaitsRebuild("porte_atelier_charron"));
+        Assert.False(ruin.DoorAwaitsRebuild("porte_tour"));   // les autres portes ne changent pas
+        WorldSession started = At(66, -34, new SavedRebuilds(new[] { new SavedRebuild("hameau", 1) }));
+        Assert.True(started.DoorAwaitsRebuild("porte_atelier_charron"));   // en chantier : pas encore
+        WorldSession open = At(66, -34, new SavedRebuilds(new[] { new SavedRebuild("hameau", 3, done: true) }));
+        Assert.False(open.DoorAwaitsRebuild("porte_atelier_charron"));
+        Assert.True(open.DoorAwaitsRebuild("porte_relais_du_pont"));
+    }
+
+    [Fact]
+    public void Version_1_encore_lue_sans_portes()
+    {
+        string json = File.ReadAllText(RebuildJsonReader.PathIn(DataDirectory));
+        JsonObject v1 = JsonNode.Parse(json)!.AsObject();
+        v1["schemaVersion"] = 1;
+        RebuildLoadResult refused = RebuildJsonReader.Read(v1.ToJsonString(), Vallons.Value, ItemsCatalog, Story.Value);
+        Assert.Contains(refused.Report.Errors, e => e.Path == "$.data.sites[0].rebuilt.doors" && e.Code == ValidationCode.UnknownField);
+        foreach (JsonNode? site in v1["data"]!["sites"]!.AsArray()) site!["rebuilt"]!.AsObject().Remove("doors");
+        RebuildLoadResult old = RebuildJsonReader.Read(v1.ToJsonString(), Vallons.Value, ItemsCatalog, Story.Value);
+        Assert.True(old.IsValid, old.Report.ToString());
+        Assert.All(old.Book!.Sites, s => Assert.Empty(s.RebuiltDoors));
+        JsonObject bad = JsonNode.Parse(json)!.AsObject();
+        bad["data"]!["sites"]![0]!["rebuilt"]!["doors"] = new JsonArray("porte_inconnue");
+        Assert.Contains(RebuildJsonReader.Read(bad.ToJsonString(), Vallons.Value, ItemsCatalog, Story.Value).Report.Errors,
+            e => e.Path == "$.data.sites[0].rebuilt.doors[0]" && e.Code == ValidationCode.UnknownReference);
     }
 }
 

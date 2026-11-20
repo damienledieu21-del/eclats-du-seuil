@@ -187,8 +187,19 @@ internal static class ScenarioTestData
     /// Relecture indépendante de la PR #167 : la zone des Vallons d'avant la surface étendue (racine du fichier de zone), avec
     /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
     /// </summary>
+    /// <summary>V2.43.4 : les portes des intérieurs des lieux reconstruits (hors de l'aire d'avant, et au-delà de 16 portes sans région).</summary>
+    public static readonly string[] RebuildDoors = { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye" };
+
+    /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits.</summary>
+    public static void WithoutRebuildDoors(JsonObject zone)
+    {
+        if (zone["data"]?["doors"] is not JsonArray doors) return;
+        foreach (var d in doors.Where(d => RebuildDoors.Contains((string)d!["id"]!)).ToList()) doors.Remove(d);
+    }
+
     public static void ZoneBefore(JsonObject zone)
     {
+        WithoutRebuildDoors(zone);   // V2.43.4
         var passages = zone["data"]!["passages"]!.AsArray();
         foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
         ZoneWithoutLieux(zone);   // sous-lots V2.31 et suivants : populations des lieux

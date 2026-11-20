@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/rebuilds.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "rebuilds",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "sites": [
       {
@@ -77,6 +77,9 @@
         "rebuilt": {
           "npcs": [
             "npc.charron_hameau"
+          ],
+          "doors": [
+            "porte_atelier_charron"
           ]
         }
       },
@@ -146,6 +149,9 @@
           ],
           "safePoints": [
             "relais_du_pont"
+          ],
+          "doors": [
+            "porte_relais_du_pont"
           ]
         }
       },
@@ -199,6 +205,9 @@
         "rebuilt": {
           "npcs": [
             "npc.foulonniere"
+          ],
+          "doors": [
+            "porte_moulin_a_foulon"
           ]
         }
       },
@@ -254,6 +263,9 @@
           ],
           "safePoints": [
             "pied_de_la_tour_de_signal"
+          ],
+          "doors": [
+            "porte_tour_de_signal"
           ]
         }
       },
@@ -320,6 +332,9 @@
         "rebuilt": {
           "npcs": [
             "npc.frere_hospitalier"
+          ],
+          "doors": [
+            "porte_dortoir_abbaye"
           ]
         }
       }

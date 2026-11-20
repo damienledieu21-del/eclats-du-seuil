@@ -132,6 +132,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
             root["data"]!.AsObject().Remove("nightSpots");
             root["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
@@ -150,6 +151,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             root["data"]!.AsObject().Remove("nightSpots");
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");   // V2.4
         }));
@@ -159,6 +161,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));

@@ -153,7 +153,7 @@ public class V25EvenementsTests
         // V2.6.1 : zones en schéma 12 ; V2.6 : zones en schéma 11 (10 encore lu), sauvegarde v14, Vallons au contenu 0.14.0.
         Assert.Equal((14, 10, 9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
         Assert.Equal((28, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
-        Assert.Equal((14, "0.25.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
+        Assert.Equal((14, "0.26.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
         // Ni le moteur, ni les règles, ni le journal ne changent.
         Assert.Equal(("0.35.0", 29, 23), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -210,6 +210,7 @@ public class V25EvenementsTests
             root["schemaVersion"] = 9;
             root["data"]!.AsObject().Remove("events");
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
         });
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Empty(r.Zone!.Events);

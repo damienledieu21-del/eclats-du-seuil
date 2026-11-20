@@ -324,7 +324,7 @@ public class V24AnimauxMondeTests
     [Fact]
     public void Populations_livrees_et_leurs_temps()
     {
-        Assert.Equal((14, "0.25.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : schéma 13 ; V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
+        Assert.Equal((14, "0.26.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : schéma 13 ; V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
         Assert.All(Mist, id => Assert.Equal(new[] { "mist" }, Vallons.PopulationOf(id)!.Weather!.Kinds));
         Assert.All(Mist.Take(3), id => Assert.Equal(("loup", "loot.loup"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
         Assert.All(Mist.Skip(3), id => Assert.Equal(("echo", "loot.echo"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
@@ -553,6 +553,7 @@ public class V24AnimauxMondeTests
         {
             r["schemaVersion"] = 8;
             r["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(r);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             foreach (JsonNode? p in r["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");
             r["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
         });

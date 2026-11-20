@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.41.0-provisoire",
+  "contentVersion": "0.42.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -2392,7 +2392,8 @@
       "text.v243.passeuse.retrouvailles": "Le pont n'a pas bougé d'un pouce depuis votre dernier passage.",
       "text.v243.foulonniere.retrouvailles": "Revoilà mon bâtisseur de roue ! Les maillets vous saluent.",
       "text.v243.guetteuse.retrouvailles": "Je vous ai vu venir de loin, comme toujours.",
-      "text.v243.hospitalier.retrouvailles": "Que la paix de l'Aube vous garde. Un lit vous attend si besoin."
+      "text.v243.hospitalier.retrouvailles": "Que la paix de l'Aube vous garde. Un lit vous attend si besoin.",
+      "text.ui.rebuild.door_closed": "Le lieu n'est pas encore reconstruit : la porte reste fermée."
     }
   }
 }

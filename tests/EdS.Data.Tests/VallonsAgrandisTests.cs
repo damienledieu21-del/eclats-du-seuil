@@ -455,6 +455,7 @@ public class VallonsAgrandisTests
         {
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             JsonArray roads = Roads(root);
             for (int i = roads.Count; i <= ZoneValidator.MaxRoads; i++)
             {
@@ -471,6 +472,7 @@ public class VallonsAgrandisTests
         {
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             Roads(root)[0]!["points"] = new JsonArray(Enumerable.Range(0, ZoneValidator.MaxRoadPoints + 1).Select(i => (JsonNode?)new JsonArray(-90 + i, 0)).ToArray());
         });
         Assert.Contains(longOld.Report.Errors, e => e.Path == "$.data.roads[0].points" && e.Code == ValidationCode.OutOfRange);

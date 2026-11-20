@@ -76,6 +76,7 @@ public class V2253CasesTests
         JsonObject root = ZoneJson();
         root["schemaVersion"] = 12;
         root["data"]!.AsObject().Remove("region");
+        ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
         return root;
     }
 

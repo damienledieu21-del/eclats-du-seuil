@@ -998,6 +998,12 @@ namespace EdS.Runtime
                 Say("text.ui.guild.door_rank", RankName(rank));
                 return false;
             }
+            // V2.43.4 : la porte de l'intérieur d'un lieu pas encore reconstruit reste fermée.
+            if (World.DoorAwaitsRebuild(door.Id))
+            {
+                Say("text.ui.rebuild.door_closed");
+                return false;
+            }
             // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
             if (InScene) return LeaveScene();
             return Pass(door);

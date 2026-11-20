@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.25.0-provisoire",
+  "contentVersion": "0.26.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -3398,6 +3398,58 @@
         "to": "zone.chaumiere",
         "toDoor": "sortie",
         "building": "maison9"
+      },
+      {
+        "id": "porte_atelier_charron",
+        "name": "Atelier du charron",
+        "position": [
+          79.5,
+          -33
+        ],
+        "to": "zone.atelier_charron",
+        "toDoor": "sortie",
+        "building": "maison10"
+      },
+      {
+        "id": "porte_relais_du_pont",
+        "name": "Relais du pont",
+        "position": [
+          1972,
+          172
+        ],
+        "to": "zone.relais_pont",
+        "toDoor": "sortie"
+      },
+      {
+        "id": "porte_moulin_a_foulon",
+        "name": "Moulin à foulon",
+        "position": [
+          506,
+          860
+        ],
+        "to": "zone.foulon",
+        "toDoor": "sortie"
+      },
+      {
+        "id": "porte_tour_de_signal",
+        "name": "Salle de garde de la tour de signal",
+        "position": [
+          203,
+          1377
+        ],
+        "to": "zone.garde_du_signal",
+        "toDoor": "sortie",
+        "building": "tour_de_signal_bergers"
+      },
+      {
+        "id": "porte_dortoir_abbaye",
+        "name": "Dortoir de l'abbaye",
+        "position": [
+          1660,
+          104
+        ],
+        "to": "zone.dortoir_abbaye",
+        "toDoor": "sortie"
       }
     ],
     "chiefs": [
