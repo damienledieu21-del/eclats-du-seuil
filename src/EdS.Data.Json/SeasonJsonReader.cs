@@ -43,6 +43,18 @@ namespace EdS.Data.Json
                         n => $"{n} passages, au plus {SeasonValidator.MaxPassages}.", (e, ip) => ReadPassage(input, e, ip)),
                     ["locks"] = (v, p) => d.Locks = input.ReadLimitedList(v, p, SeasonValidator.MaxLocks,
                         n => $"{n} verrous, au plus {SeasonValidator.MaxLocks}.", (e, ip) => ReadLock(input, e, ip)),
+                    ["vine"] = (v, p) => d.Vine = ReadVine(input, v, p),   // schéma 2 (V2.44.2)
+                    ["snow"] = (v, p) => d.Snow = ReadSnow(input, v, p),
+                    ["creatures"] = (v, p) => d.Creatures = input.ReadLimitedList(v, p, SeasonValidator.MaxCreatures,
+                        n => $"{n} créatures de saison, au plus {SeasonValidator.MaxCreatures}.", (e, ip) =>
+                        {
+                            var c = new SeasonCreatureData();
+                            return input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                            {
+                                ["creature"] = (w, q) => c.Creature = input.Text(w, q),
+                                ["seasons"] = (w, q) => c.Seasons = ReadTexts(input, w, q, 4),
+                            }) ? c : null;
+                        }),
                 });
                 document.Data = ok ? d : null;
             });
@@ -82,6 +94,60 @@ namespace EdS.Data.Json
             {
                 ["id"] = (v, p) => x.Id = input.Text(v, p),
                 ["requires"] = (v, p) => x.Requires = input.Text(v, p),
+            }) ? x : null;
+        }
+
+        private static AnnualDateData? ReadDate(JsonInput input, JsonElement element, string path)
+        {
+            var x = new AnnualDateData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["month"] = (v, p) => x.Month = input.Int32(v, p),
+                ["day"] = (v, p) => x.Day = input.Int32(v, p),
+            }) ? x : null;
+        }
+
+        private static List<string?>? ReadTexts(JsonInput input, JsonElement element, string path, int max) =>
+            input.ReadLimitedList(element, path, max, n => $"{n} éléments, au plus {max}.", (e, ip) => input.Text(e, ip));
+
+        private static VineData? ReadVine(JsonInput input, JsonElement element, string path)
+        {
+            var x = new VineData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["green"] = (v, p) => x.Green = ReadDate(input, v, p),
+                ["ripe"] = (v, p) => x.Ripe = ReadDate(input, v, p),
+                ["harvested"] = (v, p) => x.Harvested = ReadDate(input, v, p),
+                ["rows"] = (v, p) => x.Rows = input.Text(v, p),
+                ["nodes"] = (v, p) => x.Nodes = ReadTexts(input, v, p, SeasonValidator.MaxVineNodes),
+            }) ? x : null;
+        }
+
+        private static SnowData? ReadSnow(JsonInput input, JsonElement element, string path)
+        {
+            var x = new SnowData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["lowland"] = (v, p) =>
+                {
+                    var span = new SnowSpanData();
+                    x.Lowland = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["from"] = (w, q) => span.From = ReadDate(input, w, q),
+                        ["to"] = (w, q) => span.To = ReadDate(input, w, q),
+                    }) ? span : null;
+                },
+                ["pass"] = (v, p) =>
+                {
+                    var pass = new SnowPassData();
+                    x.Pass = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["from"] = (w, q) => pass.From = ReadDate(input, w, q),
+                        ["to"] = (w, q) => pass.To = ReadDate(input, w, q),
+                        ["altitude"] = (w, q) => pass.Altitude = input.Decimal(w, q),
+                        ["places"] = (w, q) => pass.Places = ReadTexts(input, w, q, SeasonValidator.MaxPassPlaces),
+                    }) ? pass : null;
+                },
             }) ? x : null;
         }
 

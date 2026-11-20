@@ -680,6 +680,16 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot F7 : fin du réconfort (combat, ou temps écoulé).</summary>
         ComfortEnd = 16,
+
+        /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026) : le personnage avance dans la neige, hors des chemins : son pas est
+        /// multiplié par <see cref="CombatRules.SnowSpeedFactor"/>. Aucune statistique de combat. Le monde l'envoie hors combat seulement et
+        /// l'arrête (<see cref="SnowEnd"/>) sur un chemin, hors de la neige ou en combat.
+        /// </summary>
+        Snow = 17,
+
+        /// <summary>Sous-lot V2.44.2 : fin de la marche dans la neige.</summary>
+        SnowEnd = 18,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -702,6 +712,8 @@ namespace EdS.Domain.Combat
         public const string Dismount = "dismount";
         public const string Comfort = "comfort";         // sous-lot F7 : réconfort d'un plat de fête
         public const string ComfortEnd = "comfortEnd";
+        public const string Snow = "snow";               // sous-lot V2.44.2 : marche dans la neige, hors des chemins
+        public const string SnowEnd = "snowEnd";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -710,7 +722,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge, Mount, Dismount, Comfort, ComfortEnd }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge, Mount, Dismount, Comfort, ComfortEnd, Snow, SnowEnd }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -731,6 +743,8 @@ namespace EdS.Domain.Combat
             CombatAction.Dismount => Dismount,
             CombatAction.Comfort => Comfort,
             CombatAction.ComfortEnd => ComfortEnd,
+            CombatAction.Snow => Snow,
+            CombatAction.SnowEnd => SnowEnd,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -748,6 +762,8 @@ namespace EdS.Domain.Combat
                 case Dismount: action = CombatAction.Dismount; return true;
                 case Comfort: action = CombatAction.Comfort; return true;   // sous-lot F7
                 case ComfortEnd: action = CombatAction.ComfortEnd; return true;
+                case Snow: action = CombatAction.Snow; return true;   // sous-lot V2.44.2
+                case SnowEnd: action = CombatAction.SnowEnd; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -1316,6 +1332,16 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation("réconfort dans un combat sans espace (bloc space absent).", path + ".action"));
                     if (ids.TryGetValue(command.Actor, out int comforted) && !(Combatants[comforted] is CharacterSetup))
                         errors.Add(new RuleViolation("seul un personnage est réconforté.", path + ".actor"));
+                }
+                else if (command.Action == CombatAction.Snow || command.Action == CombatAction.SnowEnd)
+                {
+                    // Sous-lot V2.44.2 : marche dans la neige d'un personnage d'un combat positionné.
+                    if (command.Direction != null)
+                        errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
+                    if (Space is null)
+                        errors.Add(new RuleViolation("neige dans un combat sans espace (bloc space absent).", path + ".action"));
+                    if (ids.TryGetValue(command.Actor, out int snowbound) && !(Combatants[snowbound] is CharacterSetup))
+                        errors.Add(new RuleViolation("seul un personnage marche dans la neige.", path + ".actor"));
                 }
                 else if (command.Direction != null)
                     errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));

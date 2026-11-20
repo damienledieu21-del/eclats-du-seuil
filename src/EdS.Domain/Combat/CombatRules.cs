@@ -325,6 +325,13 @@ namespace EdS.Domain.Combat
         public Fixed ComfortSpeedFactor => Fixed.FromRatio(11, 10);
 
         /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026 : la neige ralentit hors des chemins, hors combat) : facteur du pas d'un
+        /// personnage dans la neige (<see cref="CombatAction.Snow"/>) : −10 % (valeur proposée par Claude, posée en question à Damien), à
+        /// pied comme en selle. Constante du moteur, hors du fichier de règles (aucun changement de leur schéma).
+        /// </summary>
+        public Fixed SnowSpeedFactor => Fixed.FromRatio(9, 10);
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>

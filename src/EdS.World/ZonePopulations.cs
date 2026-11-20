@@ -1,4 +1,5 @@
 using System;
+using EdS.Domain.Time;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Zones;
@@ -110,16 +111,17 @@ namespace EdS.World
 
         /// <param name="phase">Sous-lot V2.1 : moment de la journée au début de la session (null : toutes les créatures à heures sont là).</param>
         /// <param name="weather">Sous-lot V2.4 : temps au début de la session (null : toutes les créatures à temps sont là).</param>
-        public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null, WeatherKind? weather = null)
-            : this((zone ?? throw new ArgumentNullException(nameof(zone))).Populations, phase, weather) { }
+        /// <param name="season">Sous-lot V2.44.2 : saison au début de la session (null : toutes les créatures de saison sont là).</param>
+        public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null, WeatherKind? weather = null, Season? season = null)
+            : this((zone ?? throw new ArgumentNullException(nameof(zone))).Populations, phase, weather, season) { }
 
         /// <summary>Sous-lot V2.26 : vies des seules populations données (celles d'un secteur), dans leur ordre.</summary>
-        public ZonePopulations(IEnumerable<Population> populations, DayPhase? phase = null, WeatherKind? weather = null)
+        public ZonePopulations(IEnumerable<Population> populations, DayPhase? phase = null, WeatherKind? weather = null, Season? season = null)
         {
             // Réponses du 31 octobre 2026 : une créature rare de la nuit n'est pas là au début de la session (ZoneSetups la retire).
             // Sous-lot V2.1 : une créature à heures non plus, hors de ses heures.
             Population[] list = (populations ?? throw new ArgumentNullException(nameof(populations))).ToArray();
-            _lives = list.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase, weather) }).ToList();
+            _lives = list.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase, weather, season) }).ToList();
             foreach (Population p in list) _byCreature[p.Creature] = p;
         }
 
@@ -144,10 +146,11 @@ namespace EdS.World
         /// </summary>
         /// <remarks>Sous-lot V2.4 : une créature qui dépend du temps (<see cref="Population.Weather"/>) n'est là d'emblée que par son temps
         /// (<paramref name="weather"/>, le temps au début de la session ; null : toujours, comme un moment non donné).</remarks>
-        internal static bool PresentAtStart(Population population, DayPhase? phase, WeatherKind? weather = null) =>
+        internal static bool PresentAtStart(Population population, DayPhase? phase, WeatherKind? weather = null, Season? season = null) =>
             population.Night is null
             && (population.Hours is not PopulationHours hours || phase is not DayPhase p || hours.IsActive((int)p))
-            && (population.Weather is not PopulationWeather w || weather is not WeatherKind k || Fits(w, k));
+            && (population.Weather is not PopulationWeather w || weather is not WeatherKind k || Fits(w, k))
+            && (population.Seasons is not PopulationSeasons s || season is not Season now || s.IsActive(now));   // sous-lot V2.44.2
 
         /// <summary>Sous-lot V2.4 : le temps <paramref name="kind"/> est-il l'un de ceux de <paramref name="weather"/> (« rain » : toute pluie) ?</summary>
         internal static bool Fits(PopulationWeather weather, WeatherKind kind)

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/seasons.schema.json",
   "title": "Éclats du Seuil — contenu saisonnier",
-  "description": "Saisons (décisions de Damien du 14 et du 15 novembre 2026), version 1 : taux de présence des Échos dans la brume par saison, passages et verrous saisonniers (lac gelé, île secrète). Documentation. La validation qui fait foi est celle du programme (SeasonValidator), avec la zone (automne plus fort que les autres saisons, point d'accroche dans l'aire). Les nœuds de récolte de saison sont dans les métiers (crafting, version 4, champ seasons).",
+  "description": "Saisons (décisions de Damien du 14 et du 15 novembre 2026), version 2 (V2.44.2, décisions de Damien du 20 novembre 2026 ; la version 1 reste lue, sans vine ni snow) : taux de présence des Échos dans la brume par saison, passages et verrous saisonniers (lac gelé, île secrète). Documentation. La validation qui fait foi est celle du programme (SeasonValidator), avec la zone (automne plus fort que les autres saisons, point d'accroche dans l'aire). Les nœuds de récolte de saison sont dans les métiers (crafting, version 4, champ seasons). Version 2 : vigne (vine : green, ripe, harvested, rows, nodes) et neige (snow : lowland, pass avec from, to, altitude, places) ; créatures de saison (creatures : creature, population de la zone, et seasons, de 1 à 3).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,10 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "enum": [
+        1,
+        2
+      ]
     },
     "kind": {
       "const": "seasons"
@@ -131,6 +134,250 @@
                 "maxItems": 2,
                 "items": {
                   "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "vine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "green",
+            "ripe",
+            "harvested",
+            "rows",
+            "nodes"
+          ],
+          "description": "Vigne : verte dès green, mûre (vendanges, nœuds récoltables) dès ripe, vendangée dès harvested jusqu'au vert suivant.",
+          "properties": {
+            "green": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "month",
+                "day"
+              ],
+              "properties": {
+                "month": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 31
+                }
+              }
+            },
+            "ripe": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "month",
+                "day"
+              ],
+              "properties": {
+                "month": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 31
+                }
+              }
+            },
+            "harvested": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "month",
+                "day"
+              ],
+              "properties": {
+                "month": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 31
+                }
+              }
+            },
+            "rows": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            "nodes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            }
+          }
+        },
+        "snow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lowland",
+            "pass"
+          ],
+          "description": "Neige au sol : en plaine de lowland.from à lowland.to, au col (places) de pass.from à pass.to ; altitude : limite de la neige du col (affichage). Hors des chemins, elle ralentit la marche hors combat.",
+          "properties": {
+            "lowland": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "from",
+                "to"
+              ],
+              "properties": {
+                "from": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "month",
+                    "day"
+                  ],
+                  "properties": {
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    }
+                  }
+                },
+                "to": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "month",
+                    "day"
+                  ],
+                  "properties": {
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    }
+                  }
+                }
+              }
+            },
+            "pass": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "from",
+                "to",
+                "altitude",
+                "places"
+              ],
+              "properties": {
+                "from": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "month",
+                    "day"
+                  ],
+                  "properties": {
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    }
+                  }
+                },
+                "to": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "month",
+                    "day"
+                  ],
+                  "properties": {
+                    "month": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "day": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31
+                    }
+                  }
+                },
+                "altitude": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 500
+                },
+                "places": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 8,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "creatures": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Créatures de saison (V2.44.2) : une population de la zone n'est là qu'en ses saisons (les ours hibernent, loups de l'hiver).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "creature",
+              "seasons"
+            ],
+            "properties": {
+              "creature": {
+                "type": "string"
+              },
+              "seasons": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "enum": [
+                    "spring",
+                    "summer",
+                    "autumn",
+                    "winter"
+                  ]
                 }
               }
             }

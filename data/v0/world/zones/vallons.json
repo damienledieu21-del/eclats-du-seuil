@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.26.0-provisoire",
+  "contentVersion": "0.27.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -2316,6 +2316,20 @@
             "night"
           ]
         }
+      },
+      {
+        "creature": "loup_hiver_foret1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup"
+      },
+      {
+        "creature": "loup_hiver_col_passage1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup"
       },
       {
         "creature": "echo_nuit_route_est_passage1",

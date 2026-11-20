@@ -123,7 +123,31 @@ namespace EdS.World
         /// version 4) seulement pendant ses saisons, et jamais sans date fournie (option prudente). Nœud inconnu : vrai (la récolte le refuse).
         /// </summary>
         public bool NodeInSeason(string node) =>
-            !(Workshop?.Book.Nodes.FirstOrDefault(n => n.Id == node) is GatheringNode g) || g.InSeason(_civilSeason?.Season);
+            !(Workshop?.Book.Nodes.FirstOrDefault(n => n.Id == node) is GatheringNode g) || g.InSeason(_civilSeason?.Season)
+                && (_seasons is null || !_seasons.IsVineNode(node) || VineNow == VineState.Ripe);   // V2.44.2 : vendanges, vigne mûre
+
+        /// <summary>Jour réel (heure de Paris) du dernier instant fourni par l'hôte ou le serveur, ou null.</summary>
+        public CivilDate? CivilDay => CivilUtcSeconds is long utc ? ParisTime.ToLocal(utc).Date : (CivilDate?)null;
+
+        /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026) : état de la vigne ce jour (verte, mûre en septembre, vendangée) ; null
+        /// sans contenu saisonnier de version 2 ou sans date fournie.
+        /// </summary>
+        public VineState? VineNow => _seasons?.VineOn(CivilDay);
+
+        /// <summary>
+        /// Sous-lot V2.44.2 : le sol est enneigé sous le joueur (neige de plaine ou du col, contenu saisonnier de version 2, date fournie) ;
+        /// faux dans un intérieur, sans date, sans joueur présent.
+        /// </summary>
+        public bool SnowUnderPlayer => _seasons?.Snow != null && ((INarrativeWorld)this).PlayerPosition is GroundVector at && _seasons.SnowAt(CivilDay, at);
+
+        /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026 : la neige ralentit hors des chemins, hors combat) : le joueur doit
+        /// marcher dans la neige maintenant : sol enneigé, hors des chemins de la zone (à plus d'une demi-largeur de leur axe) et hors combat.
+        /// Le pont l'envoie au moteur (commandes <c>snow</c> et <c>snowEnd</c>) : pas −10 %. Déterministe (date fournie, position, combat).
+        /// </summary>
+        public bool SnowWanted =>
+            !InCombat && SnowUnderPlayer && ((INarrativeWorld)this).PlayerPosition is GroundVector at && !SeasonSnow.OnRoad(Definition?.Roads ?? Array.Empty<Road>(), at);
 
         /// <summary>
         /// Le passage saisonnier <paramref name="passage"/> est ouvert (le lac gelé : glace praticable). Sans contenu saisonnier ou sans date

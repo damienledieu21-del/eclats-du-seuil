@@ -31,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.35.0";   // sous-lot F7 : réconfort d'un plat de fête (commandes comfort et comfortEnd)
+        public const string Version = "0.36.0";   // sous-lot V2.44.2 : marche dans la neige (commandes snow et snowEnd) ; 0.35.0 : réconfort
 
         public const string LogFormat = "eds-combat-log";
 
@@ -141,10 +141,14 @@ namespace EdS.Simulation.Engine
         /// réconfort d'un plat de fête, décision de Damien du 19 novembre 2026) : commandes <c>comfort</c> et <c>comfortEnd</c> ; nouvelles
         /// lignes <c>comforted</c> (<c>actor</c>, <c>command</c>, <c>factor</c>) et <c>comfortEnded</c> (<c>actor</c>, <c>command</c>) ;
         /// nouveaux refus <c>actorCannotComfort</c>, <c>alreadyComforted</c>, <c>notComforted</c> ; réconforté et à pied, le pas est multiplié
-        /// par <see cref="CombatRules.ComfortSpeedFactor"/> (1,1). Sans réconfort : mêmes lignes d'événements qu'au format 28. Un journal d'un
-        /// autre format est refusé au rejeu.
+        /// par <see cref="CombatRules.ComfortSpeedFactor"/> (1,1). Sans réconfort : mêmes lignes d'événements qu'au format 28. 30 (sous-lot
+        /// V2.44.2, neige, décision de Damien du 20 novembre 2026) : commandes <c>snow</c> et <c>snowEnd</c> ; nouvelles lignes <c>snowbound</c>
+        /// (<c>actor</c>, <c>command</c>, <c>factor</c>) et <c>snowEnded</c> (<c>actor</c>, <c>command</c>) ; nouveaux refus
+        /// <c>actorCannotSnow</c>, <c>alreadySnowbound</c>, <c>notSnowbound</c> ; dans la neige, le pas (à pied ou en selle) est multiplié par
+        /// <see cref="CombatRules.SnowSpeedFactor"/> (0,9). Sans neige : mêmes lignes d'événements qu'au format 29. Un journal d'un autre format
+        /// est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 29;
+        public const int LogFormatVersion = 30;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -233,6 +237,12 @@ namespace EdS.Simulation.Engine
             /// <see cref="CombatRules.ComfortSpeedFactor"/> fois plus vite ; personnage seulement. Le monde ne l'envoie que hors combat.
             /// </summary>
             public bool Comforted;
+
+            /// <summary>
+            /// Sous-lot V2.44.2 : dans la neige hors des chemins (commande <c>snow</c>, jusqu'à <c>snowEnd</c>) : son pas est multiplié par
+            /// <see cref="CombatRules.SnowSpeedFactor"/> ; personnage seulement. Le monde ne l'envoie que hors combat.
+            /// </summary>
+            public bool Snowbound;
 
             /// <summary>
             /// Altérations actives (lot 7.2), une instance par clé : (altération, source) pour un cumul par source, (altération) sinon ;
@@ -921,6 +931,8 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Dismount:   // dismounted ou refus
                 case CombatAction.Comfort:    // sous-lot F7 : comforted ou refus
                 case CombatAction.ComfortEnd: // comfortEnded ou refus
+                case CombatAction.Snow:       // sous-lot V2.44.2 : snowbound ou refus
+                case CombatAction.SnowEnd:    // snowEnded ou refus
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -1068,6 +1080,20 @@ namespace EdS.Simulation.Engine
                     if (Reject(tick, item, actor, actor.Comforted ? null : "notComforted")) return null;
                     actor.Comforted = false;
                     Emit(tick, CombatPhase.Commands, "comfortEnded", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
+                    return null;
+
+                // Sous-lot V2.44.2 : marche dans la neige hors des chemins (le monde l'envoie hors combat) ; le pas change dès la phase « movement ».
+                case CombatAction.Snow:
+                    if (Reject(tick, item, actor, actor.Out ? OutReason(actor, "actor") : actor.Character is null || !_spatial ? "actorCannotSnow"
+                        : actor.Snowbound ? "alreadySnowbound" : null)) return null;
+                    actor.Snowbound = true;
+                    Emit(tick, CombatPhase.Commands, "snowbound", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("factor", _rules.SnowSpeedFactor));
+                    return null;
+
+                case CombatAction.SnowEnd:
+                    if (Reject(tick, item, actor, actor.Snowbound ? null : "notSnowbound")) return null;
+                    actor.Snowbound = false;
+                    Emit(tick, CombatPhase.Commands, "snowEnded", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
                     return null;
 
                 // Sous-lot 12.6 : soin d'un objet emporté, immédiat ; la recharge partagée démarre.

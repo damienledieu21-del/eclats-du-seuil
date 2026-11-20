@@ -243,7 +243,7 @@ namespace EdS.World
                 : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint));
             // La session telle qu'elle s'ouvrira : même zone réglée au niveau du personnage, même décor, mêmes créatures de départ.
             ZoneDefinition played = ForPlayer(zone, save, progression, storyZone);
-            CombatSetup setup = ZoneSetups.For(played, save.Consumed, StartPhase(played, save), StartWeather(played, save, storyZone));
+            CombatSetup setup = ZoneSetups.For(played, save.Consumed, StartPhase(played, save), StartWeather(played, save, storyZone), StartSeason(played, save));
             List<CombatantSetup> forms = played.Bosses.Select(b => (CombatantSetup)b.Forms[0]).ToList();
             GroundVector? Near(GroundVector at) => FreeArrival(setup, forms, at, CharacterRadius, rings) is GroundVector free && free != at ? free : (GroundVector?)null;
             if (FreeArrival(setup, forms, point.Position, CharacterRadius, rings) != null) return (safePoint, Near(point.Position));

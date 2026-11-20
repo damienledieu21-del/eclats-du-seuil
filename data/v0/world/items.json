@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.23.0-provisoire",
+  "contentVersion": "0.24.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1408,6 +1408,14 @@
       {
         "id": "item.cepe",
         "name": "Cèpe",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.raisin",
+        "name": "Grappe de raisin",
         "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "common",

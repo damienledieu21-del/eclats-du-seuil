@@ -28,6 +28,57 @@ namespace EdS.Data.Seasons
         public MistEchoesData? MistEchoes { get; set; }
         public List<SeasonPassageData?>? Passages { get; set; }
         public List<SeasonLockData?>? Locks { get; set; }
+
+        /// <summary>Schéma 2 (V2.44.2) : états de la vigne et vendanges ; obligatoire en version 2, refusé en version 1.</summary>
+        public VineData? Vine { get; set; }
+
+        /// <summary>Schéma 2 (V2.44.2) : neige au sol (plaine et col) ; obligatoire en version 2, refusé en version 1.</summary>
+        public SnowData? Snow { get; set; }
+
+        /// <summary>Schéma 2 (V2.44.2) : créatures de saison (populations de la zone) ; obligatoire en version 2, refusé en version 1.</summary>
+        public List<SeasonCreatureData?>? Creatures { get; set; }
+    }
+
+    public sealed class SeasonCreatureData
+    {
+        public string? Creature { get; set; }
+        public List<string?>? Seasons { get; set; }
+    }
+
+    /// <summary>Jour de l'année (mois, jour), sans année.</summary>
+    public sealed class AnnualDateData
+    {
+        public int? Month { get; set; }
+        public int? Day { get; set; }
+    }
+
+    public sealed class VineData
+    {
+        public AnnualDateData? Green { get; set; }
+        public AnnualDateData? Ripe { get; set; }
+        public AnnualDateData? Harvested { get; set; }
+        public string? Rows { get; set; }
+        public List<string?>? Nodes { get; set; }
+    }
+
+    public sealed class SnowSpanData
+    {
+        public AnnualDateData? From { get; set; }
+        public AnnualDateData? To { get; set; }
+    }
+
+    public sealed class SnowPassData
+    {
+        public AnnualDateData? From { get; set; }
+        public AnnualDateData? To { get; set; }
+        public Fixed? Altitude { get; set; }
+        public List<string?>? Places { get; set; }
+    }
+
+    public sealed class SnowData
+    {
+        public SnowSpanData? Lowland { get; set; }
+        public SnowPassData? Pass { get; set; }
     }
 
     public sealed class MistEchoesData
@@ -96,6 +147,160 @@ namespace EdS.Data.Seasons
         }
     }
 
+    /// <summary>Schéma 2 (V2.44.2) : jour de l'année (mois, jour), valable chaque année (pas de 29 février).</summary>
+    public readonly struct AnnualDate : IEquatable<AnnualDate>, IComparable<AnnualDate>
+    {
+        public int Month { get; }
+        public int Day { get; }
+
+        internal AnnualDate(int month, int day)
+        {
+            Month = month;
+            Day = day;
+        }
+
+        /// <summary>Le jour existe chaque année (mois 1 à 12, jour dans le mois d'une année ordinaire).</summary>
+        public static bool IsValid(int month, int day) => month >= 1 && month <= 12 && day >= 1 && day <= CivilDate.DaysInMonth(2001, month);
+
+        /// <summary>Rang du jour (mois, jour) dans l'année, pour comparer.</summary>
+        public static int Ordinal(int month, int day) => month * 32 + day;
+
+        /// <summary>Rang du jour de <paramref name="date"/> dans l'année ; le 29 février compte comme le 28 (même neige, même vigne).</summary>
+        public static int OrdinalOf(CivilDate date) => Ordinal(date.Month, date.Month == 2 && date.Day == 29 ? 28 : date.Day);
+
+        internal int Ordinal() => Ordinal(Month, Day);
+
+        public int CompareTo(AnnualDate other) => Ordinal().CompareTo(other.Ordinal());
+        public bool Equals(AnnualDate other) => Month == other.Month && Day == other.Day;
+        public override bool Equals(object? obj) => obj is AnnualDate d && Equals(d);
+        public override int GetHashCode() => Ordinal();
+        public override string ToString() => $"{Day:00}/{Month:00}";
+    }
+
+    /// <summary>Schéma 2 (V2.44.2) : période de l'année, bornes comprises ; elle peut passer le 1er janvier (du 15 décembre au 28 février).</summary>
+    public readonly struct AnnualSpan
+    {
+        public AnnualDate From { get; }
+        public AnnualDate To { get; }
+
+        internal AnnualSpan(AnnualDate from, AnnualDate to)
+        {
+            From = from;
+            To = to;
+        }
+
+        public bool Contains(CivilDate date)
+        {
+            int d = AnnualDate.OrdinalOf(date), f = From.Ordinal(), t = To.Ordinal();
+            return f <= t ? d >= f && d <= t : d >= f || d <= t;
+        }
+    }
+
+    /// <summary>Schéma 2 (V2.44.2, décision de Damien du 20 novembre 2026) : état de la vigne (rangs du château).</summary>
+    public enum VineState
+    {
+        /// <summary>Feuilles vertes, grappes vertes : rien à cueillir.</summary>
+        Green = 0,
+
+        /// <summary>Raisin mûr : c'est la saison des vendanges (septembre), les nœuds de la vigne se récoltent.</summary>
+        Ripe = 1,
+
+        /// <summary>Vendangé : grappes cueillies, puis vigne nue en hiver, jusqu'au retour du vert.</summary>
+        Harvested = 2,
+    }
+
+    /// <summary>
+    /// Schéma 2 (V2.44.2) : la vigne : verte de <see cref="Green"/> à la veille de <see cref="Ripe"/>, mûre jusqu'à la veille de
+    /// <see cref="Harvested"/>, vendangée ensuite jusqu'à la veille de <see cref="Green"/> de l'année suivante. Ses nœuds de récolte
+    /// (<see cref="Nodes"/>, dans les métiers) ne se récoltent que vigne mûre. <see cref="Rows"/> : début de l'identifiant des obstacles
+    /// des rangs de vigne dans le scénario de la zone (affichage des trois états).
+    /// </summary>
+    public sealed class SeasonVine
+    {
+        public AnnualDate Green { get; }
+        public AnnualDate Ripe { get; }
+        public AnnualDate Harvested { get; }
+        public string Rows { get; }
+        public IReadOnlyList<string> Nodes { get; }
+
+        internal SeasonVine(AnnualDate green, AnnualDate ripe, AnnualDate harvested, string rows, IEnumerable<string> nodes)
+        {
+            Green = green;
+            Ripe = ripe;
+            Harvested = harvested;
+            Rows = rows;
+            Nodes = Frozen.List(nodes, nameof(nodes));
+        }
+
+        public VineState StateOn(CivilDate date)
+        {
+            int d = AnnualDate.OrdinalOf(date);
+            if (d < Green.Ordinal() || d >= Harvested.Ordinal()) return VineState.Harvested;
+            return d >= Ripe.Ordinal() ? VineState.Ripe : VineState.Green;
+        }
+    }
+
+    /// <summary>
+    /// Schéma 2 (V2.44.2, décision de Damien du 20 novembre 2026) : neige au sol. En plaine pendant <see cref="Lowland"/> ; au col (lieux
+    /// <see cref="PassPlaces"/> de la zone) pendant <see cref="Pass"/>, plus longue. <see cref="PassAltitude"/> (mètres) : la limite de la neige
+    /// du col pour l'affichage (relief), le cœur ne connaît que les lieux. Hors des chemins, la neige ralentit la marche (hors combat).
+    /// </summary>
+    public sealed class SeasonSnow
+    {
+        public AnnualSpan Lowland { get; }
+        public AnnualSpan Pass { get; }
+        public Fixed PassAltitude { get; }
+        public IReadOnlyList<Place> PassPlaces { get; }
+
+        internal SeasonSnow(AnnualSpan lowland, AnnualSpan pass, Fixed altitude, IEnumerable<Place> places)
+        {
+            Lowland = lowland;
+            Pass = pass;
+            PassAltitude = altitude;
+            PassPlaces = Frozen.List(places, nameof(places));
+        }
+
+        /// <summary>Le sol est enneigé en <paramref name="at"/> le jour <paramref name="date"/> (plaine, ou col dans ses lieux).</summary>
+        public bool At(CivilDate date, GroundVector at)
+        {
+            if (Lowland.Contains(date)) return true;
+            if (!Pass.Contains(date)) return false;
+            foreach (Place p in PassPlaces)
+                if (at.X >= p.Min.X && at.X <= p.Max.X && at.Z >= p.Min.Z && at.Z <= p.Max.Z) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// <paramref name="at"/> est sur un chemin de la zone : à au plus une demi-largeur de l'axe d'une route (<see cref="Road"/>), bord
+        /// compris. Calcul exact en entiers (unités brutes de <see cref="Fixed"/>).
+        /// </summary>
+        public static bool OnRoad(IReadOnlyList<Road> roads, GroundVector at)
+        {
+            if (roads is null) throw new ArgumentNullException(nameof(roads));
+            long px = at.X.Raw, pz = at.Z.Raw;
+            foreach (Road road in roads)
+            {
+                long half = road.Width.Raw / 2;
+                decimal limit = (decimal)half * half;
+                for (int i = 0; i + 1 < road.Points.Count; i++)
+                    if (SegmentDistanceSquared(px, pz, road.Points[i], road.Points[i + 1]) <= limit) return true;
+                if (road.Points.Count == 1 && SegmentDistanceSquared(px, pz, road.Points[0], road.Points[0]) <= limit) return true;
+            }
+            return false;
+        }
+
+        private static decimal SegmentDistanceSquared(long px, long pz, GroundVector a, GroundVector b)
+        {
+            decimal ax = a.X.Raw, az = a.Z.Raw, dx = b.X.Raw - ax, dz = b.Z.Raw - az, wx = px - ax, wz = pz - az;
+            decimal len = dx * dx + dz * dz, dot = wx * dx + wz * dz;
+            if (len == 0 || dot <= 0) return wx * wx + wz * wz;
+            if (dot >= len) { decimal ex = px - b.X.Raw, ez = pz - b.Z.Raw; return ex * ex + ez * ez; }
+            // Distance au carré à la droite : |w × d|² / |d|² (exact en décimal à 28 chiffres pour des coordonnées de ±4 096 m).
+            decimal cross = wx * dz - wz * dx;
+            return cross * cross / len;
+        }
+    }
+
     /// <summary>
     /// Saisons : contenu saisonnier validé, immuable : taux de présence des Échos dans la brume par saison, passages et verrous saisonniers
     /// (les nœuds de récolte de saison sont dans les métiers, version 4). Les questions prennent la glace du moment, null si l'hôte n'a pas
@@ -114,9 +319,35 @@ namespace EdS.Data.Seasons
         public IReadOnlyList<SeasonalPassage> Passages { get; }
         public IReadOnlyList<SeasonalLock> Locks { get; }
 
-        internal SeasonBook(int schemaVersion, string contentVersion, Fixed[] presence, int maxPerVolume, IEnumerable<SeasonalPassage> passages,
-            IEnumerable<SeasonalLock> locks)
+        /// <summary>Schéma 2 : la vigne ; null en version 1.</summary>
+        public SeasonVine? Vine { get; }
+
+        /// <summary>Schéma 2 : la neige au sol ; null en version 1 (jamais de neige).</summary>
+        public SeasonSnow? Snow { get; }
+
+        /// <summary>Schéma 2 : saisons des créatures de saison, par population de la zone (vide en version 1).</summary>
+        public IReadOnlyDictionary<string, PopulationSeasons> CreatureSeasons { get; }
+
+        /// <summary>
+        /// Schéma 2 (V2.44.2, décision de Damien du 20 novembre 2026 : les ours hibernent, plus de loups l'hiver) : la zone
+        /// <paramref name="zone"/> (celle contre laquelle ce contenu a été validé) dont les créatures de saison ne sont là qu'en leurs saisons.
+        /// </summary>
+        /// <exception cref="ArgumentException">Une créature de saison n'est pas une population de cette zone.</exception>
+        public ZoneDefinition ApplyTo(ZoneDefinition zone)
         {
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (CreatureSeasons.Count == 0) return zone;
+            foreach (string creature in CreatureSeasons.Keys)
+                if (!zone.Populations.Any(p => p.Creature == creature))
+                    throw new ArgumentException($"Créature de saison « {creature} » absente des populations de la zone {zone.Id}.", nameof(zone));
+            return zone.WithSeasons(CreatureSeasons);
+        }
+        internal SeasonBook(int schemaVersion, string contentVersion, Fixed[] presence, int maxPerVolume, IEnumerable<SeasonalPassage> passages,
+            IEnumerable<SeasonalLock> locks, SeasonVine? vine = null, SeasonSnow? snow = null, IReadOnlyDictionary<string, PopulationSeasons>? creatures = null)
+        {
+            CreatureSeasons = Frozen.Dictionary(creatures ?? new Dictionary<string, PopulationSeasons>(), nameof(creatures));
+            Vine = vine;
+            Snow = snow;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             _presence = (Fixed[])presence.Clone();
@@ -133,6 +364,15 @@ namespace EdS.Data.Seasons
 
         public SeasonalLock Lock(string id) =>
             Locks.FirstOrDefault(l => l.Id == id) ?? throw new ArgumentException($"Verrou saisonnier « {id} » inconnu.", nameof(id));
+
+        /// <summary>Schéma 2 : état de la vigne le jour <paramref name="date"/>, ou null (version 1, ou date non fournie).</summary>
+        public VineState? VineOn(CivilDate? date) => Vine != null && date is CivilDate d ? Vine.StateOn(d) : (VineState?)null;
+
+        /// <summary>Schéma 2 : <paramref name="node"/> est un nœud de la vigne (récolte seulement vigne mûre).</summary>
+        public bool IsVineNode(string node) => Vine != null && Vine.Nodes.Contains(node);
+
+        /// <summary>Schéma 2 : le sol est enneigé en <paramref name="at"/> le jour <paramref name="date"/> (faux sans date ou en version 1).</summary>
+        public bool SnowAt(CivilDate? date, GroundVector at) => Snow != null && date is CivilDate d && Snow.At(d, at);
 
         /// <summary>Le verrou s'ouvre quand son passage est ouvert.</summary>
         public bool LockOpen(string id, IcePhase? ice) => Passage(Lock(id).Passage).IsOpen(ice);
@@ -162,10 +402,17 @@ namespace EdS.Data.Seasons
     {
         public const string Kind = "seasons";
 
-        /// <summary>Version 1 (saisons, 15 novembre 2026) : <c>mistEchoes</c>, <c>passages</c>, <c>locks</c> (les nœuds de saison sont dans les métiers, version 4).</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 1 (saisons, 15 novembre 2026) : <c>mistEchoes</c>, <c>passages</c>, <c>locks</c> (les nœuds de saison sont dans les métiers,
+        /// version 4). Version 2 (V2.44.2, décisions de Damien du 20 novembre 2026) : <c>vine</c> (états de la vigne, rangs, nœuds des
+        /// vendanges) et <c>snow</c> (neige en plaine et au col : dates, lieux, altitude) obligatoires. La version 1 est encore lue.
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
+        public const int Schema1 = 1;
+        public const int MaxPassages = 16, MaxLocks = 16, MinPerVolume = 1, MaxPerVolume = 8, MaxVineNodes = 16, MaxPassPlaces = 8, MaxCreatures = 64;
 
-        public const int MaxPassages = 16, MaxLocks = 16, MinPerVolume = 1, MaxPerVolume = 8;
+        /// <summary>Altitude de la limite de la neige au col, au plus (mètres).</summary>
+        public static readonly Fixed MaxPassAltitude = Fixed.FromInt(500);
 
         /// <summary>Taux de présence d'un Écho dans la brume, au plus (borne de sûreté : une chance sur deux à chaque essai).</summary>
         public static readonly Fixed MaxEchoPresence = Fixed.FromRatio(1, 2);
@@ -179,7 +426,8 @@ namespace EdS.Data.Seasons
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            int expected = document.SchemaVersion == Schema1 ? Schema1 : CurrentSchemaVersion;   // la version 1 est encore lue
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, expected, r))
                 return new SeasonLoadResult(r, null);
             SeasonData? d = document.Data;
             if (d is null) { Missing(r, "$.data", "mistEchoes, passages, locks"); return new SeasonLoadResult(r, null); }
@@ -268,8 +516,150 @@ namespace EdS.Data.Seasons
                     if (ok) locks.Add(new SeasonalLock(x.Id!, x.Passage!, anchor));
                 }
 
+            SeasonVine? vine = null;
+            SeasonSnow? snow = null;
+            if (expected == Schema1)
+            {
+                if (d.Vine != null) r.Add("$.data.vine", ValidationCode.InvalidValue, "la vigne vient avec la version 2.");
+                if (d.Snow != null) r.Add("$.data.snow", ValidationCode.InvalidValue, "la neige vient avec la version 2.");
+                if (d.Creatures != null) r.Add("$.data.creatures", ValidationCode.InvalidValue, "les créatures de saison viennent avec la version 2.");
+            }
+            Dictionary<string, PopulationSeasons>? creatures = null;
+            if (expected != Schema1)
+            {
+                vine = ValidateVine(d.Vine, zone, r);
+                snow = ValidateSnow(d.Snow, zone, r);
+                creatures = ValidateCreatures(d.Creatures, zone, r);
+            }
             if (!r.IsValid || document.ContentVersion is null) return new SeasonLoadResult(r, null);
-            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, presence, perVolume, passages, locks));
+            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, presence, perVolume, passages, locks, vine, snow, creatures));
+        }
+
+        private static AnnualDate? Date(AnnualDateData? x, string path, string what, ValidationReport r)
+        {
+            if (x is null) { Missing(r, path, what); return null; }
+            if (x.Month is null || x.Day is null) { Missing(r, path + (x.Month is null ? ".month" : ".day"), what); return null; }
+            if (!AnnualDate.IsValid(x.Month.Value, x.Day.Value))
+            {
+                r.Add(path, ValidationCode.OutOfRange, $"jour {x.Day}/{x.Month} inexistant (mois 1 à 12, jour qui existe chaque année, pas de 29 février).");
+                return null;
+            }
+            return new AnnualDate(x.Month.Value, x.Day.Value);
+        }
+
+        private static Dictionary<string, PopulationSeasons>? ValidateCreatures(List<SeasonCreatureData?>? list, ZoneDefinition zone, ValidationReport r)
+        {
+            const string p = "$.data.creatures";
+            if (list is null) { Missing(r, p, "créatures de saison (liste, éventuellement vide)"); return null; }
+            if (list.Count > MaxCreatures) { r.Add(p, ValidationCode.LimitExceeded, $"au plus {MaxCreatures} créatures de saison."); return null; }
+            var result = new Dictionary<string, PopulationSeasons>(StringComparer.Ordinal);
+            bool ok = true;
+            for (int i = 0; i < list.Count; i++)
+            {
+                string cp = $"{p}[{i}]";
+                if (list[i] is not SeasonCreatureData c) { Missing(r, cp, "créature de saison"); ok = false; continue; }
+                Population? population = c.Creature is null ? null : zone.Populations.FirstOrDefault(x => x.Creature == c.Creature);
+                if (c.Creature is null) { Missing(r, cp + ".creature", "population de la zone"); ok = false; }
+                else if (population is null) { r.Add(cp + ".creature", ValidationCode.UnknownReference, $"population « {c.Creature} » absente de la zone."); ok = false; }
+                else if (population.Night != null) { r.Add(cp + ".creature", ValidationCode.InvalidValue, $"« {c.Creature} » est une créature rare de la nuit : pas de saison."); ok = false; }
+                else if (result.ContainsKey(c.Creature)) { r.Add(cp + ".creature", ValidationCode.DuplicateId, $"créature « {c.Creature} » déjà donnée."); ok = false; }
+                if (c.Seasons is null) { Missing(r, cp + ".seasons", "saisons (de 1 à 3)"); ok = false; continue; }
+                if (c.Seasons.Count < 1 || c.Seasons.Count > 3)
+                { r.Add(cp + ".seasons", ValidationCode.OutOfRange, $"{c.Seasons.Count} saisons, de 1 à 3 attendues (toute l'année : la retirer de la liste)."); ok = false; continue; }
+                int mask = 0;
+                for (int j = 0; j < c.Seasons.Count; j++)
+                {
+                    Season? s = SeasonCalendar.Parse(c.Seasons[j]);
+                    if (s is null) { r.Add($"{cp}.seasons[{j}]", ValidationCode.UnknownReference, $"saison inconnue « {c.Seasons[j]} » ; possibles : spring, summer, autumn, winter."); ok = false; }
+                    else if ((mask & (1 << (int)s.Value)) != 0) { r.Add($"{cp}.seasons[{j}]", ValidationCode.DuplicateId, $"saison « {c.Seasons[j]} » déjà donnée."); ok = false; }
+                    else mask |= 1 << (int)s.Value;
+                }
+                if (ok && population != null) result[c.Creature!] = new PopulationSeasons(mask);
+            }
+            return ok ? result : null;
+        }
+
+        private static SeasonVine? ValidateVine(VineData? v, ZoneDefinition zone, ValidationReport r)
+        {
+            const string p = "$.data.vine";
+            if (v is null) { Missing(r, p, "vigne : green, ripe, harvested, rows, nodes"); return null; }
+            AnnualDate? green = Date(v.Green, p + ".green", "début du vert", r), ripe = Date(v.Ripe, p + ".ripe", "début des vendanges", r),
+                harvested = Date(v.Harvested, p + ".harvested", "fin des vendanges", r);
+            bool ok = green != null && ripe != null && harvested != null;
+            if (ok && !(green!.Value.CompareTo(ripe!.Value) < 0 && ripe.Value.CompareTo(harvested!.Value) < 0))
+            {
+                r.Add(p, ValidationCode.InvalidValue, "dans l'année : green avant ripe, ripe avant harvested.");
+                ok = false;
+            }
+            if (v.Rows is null) { Missing(r, p + ".rows", "début de l'identifiant des rangs de vigne"); ok = false; }
+            else if (!IsLocalId(v.Rows) || !zone.Setup.Space!.Obstacles.Any(o => o.Id.StartsWith(v.Rows, StringComparison.Ordinal)))
+            { r.Add(p + ".rows", ValidationCode.UnknownReference, $"aucun obstacle de la zone ne commence par « {v.Rows} »."); ok = false; }
+            var nodes = new List<string>();
+            if (v.Nodes is null) { Missing(r, p + ".nodes", "nœuds de récolte de la vigne"); ok = false; }
+            else if (v.Nodes.Count < 1 || v.Nodes.Count > MaxVineNodes) { r.Add(p + ".nodes", ValidationCode.OutOfRange, $"de 1 à {MaxVineNodes} nœuds."); ok = false; }
+            else
+                for (int i = 0; i < v.Nodes.Count; i++)
+                {
+                    string? n = v.Nodes[i];
+                    if (!IsLocalId(n)) { r.Add($"{p}.nodes[{i}]", ValidationCode.InvalidValue, $"identifiant « {n} » mal formé."); ok = false; }
+                    else if (nodes.Contains(n!)) { r.Add($"{p}.nodes[{i}]", ValidationCode.DuplicateId, $"nœud « {n} » en double."); ok = false; }
+                    else nodes.Add(n!);
+                }
+            return ok ? new SeasonVine(green!.Value, ripe!.Value, harvested!.Value, v.Rows!, nodes) : null;
+        }
+
+        private static SeasonSnow? ValidateSnow(SnowData? s, ZoneDefinition zone, ValidationReport r)
+        {
+            const string p = "$.data.snow";
+            if (s is null) { Missing(r, p, "neige : lowland, pass"); return null; }
+            bool ok = true;
+            AnnualDate? lf = null, lt = null, pf = null, pt = null;
+            if (s.Lowland is null) { Missing(r, p + ".lowland", "neige en plaine : from, to"); ok = false; }
+            else
+            {
+                lf = Date(s.Lowland.From, p + ".lowland.from", "début", r);
+                lt = Date(s.Lowland.To, p + ".lowland.to", "fin", r);
+                ok &= lf != null && lt != null;
+            }
+            Fixed altitude = Fixed.Zero;
+            var places = new List<Place>();
+            if (s.Pass is null) { Missing(r, p + ".pass", "neige au col : from, to, altitude, places"); ok = false; }
+            else
+            {
+                SnowPassData x = s.Pass;
+                pf = Date(x.From, p + ".pass.from", "début", r);
+                pt = Date(x.To, p + ".pass.to", "fin", r);
+                ok &= pf != null && pt != null;
+                if (x.Altitude is null) { Missing(r, p + ".pass.altitude", "altitude de la limite de la neige (m)"); ok = false; }
+                else if (x.Altitude.Value < Fixed.Zero || x.Altitude.Value > MaxPassAltitude)
+                { r.Add(p + ".pass.altitude", ValidationCode.OutOfRange, $"altitude hors de [0, {MaxPassAltitude}] m."); ok = false; }
+                else altitude = x.Altitude.Value;
+                if (x.Places is null) { Missing(r, p + ".pass.places", "lieux du col"); ok = false; }
+                else if (x.Places.Count < 1 || x.Places.Count > MaxPassPlaces) { r.Add(p + ".pass.places", ValidationCode.OutOfRange, $"de 1 à {MaxPassPlaces} lieux."); ok = false; }
+                else
+                    for (int i = 0; i < x.Places.Count; i++)
+                    {
+                        Place? place = zone.Places.FirstOrDefault(q => q.Id == x.Places[i]);
+                        if (place is null) { r.Add($"{p}.pass.places[{i}]", ValidationCode.UnknownReference, $"lieu « {x.Places[i]} » inconnu de la zone."); ok = false; }
+                        else if (places.Contains(place)) { r.Add($"{p}.pass.places[{i}]", ValidationCode.DuplicateId, $"lieu « {x.Places[i]} » en double."); ok = false; }
+                        else places.Add(place);
+                    }
+            }
+            if (!ok) return null;
+            var lowland = new AnnualSpan(lf!.Value, lt!.Value);
+            var pass = new AnnualSpan(pf!.Value, pt!.Value);
+            // Le col garde sa neige plus longtemps : chaque jour de neige en plaine en est un au col (année bissextile parcourue).
+            for (int m = 1; m <= 12; m++)
+                for (int day = 1; day <= CivilDate.DaysInMonth(2000, m); day++)
+                {
+                    var date = new CivilDate(2000, m, day);
+                    if (lowland.Contains(date) && !pass.Contains(date))
+                    {
+                        r.Add(p + ".pass", ValidationCode.InvalidValue, $"le col doit être enneigé chaque jour où la plaine l'est (le {date.Day}/{date.Month} ne l'est pas).");
+                        return null;
+                    }
+                }
+            return new SeasonSnow(lowland, pass, altitude, places);
         }
 
         private static void Missing(ValidationReport report, string path, string what)

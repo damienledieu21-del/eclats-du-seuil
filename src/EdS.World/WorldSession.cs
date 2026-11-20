@@ -1,4 +1,5 @@
 using System;
+using EdS.Domain.Time;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data;
@@ -787,7 +788,8 @@ namespace EdS.World
             return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), consumed, single ? null : save.Sectors,
                 log is null ? (Func<string, long, ICombatLog>?)null : (sector, session) => log,
                 (population, worldTick) => Wanted(population, checked(worldTick - Zone.StartWorldTick)),
-                tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind));
+                tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind),
+                tick => _civilSeason?.Season ?? (Season)WorldCalendar.SeasonIndexOf(clock.At(tick).Day));   // sous-lot V2.44.2 : créatures de saison
         }
 
         /// <summary>Sous-lot 12.4 : zone du monde de la partie (null pour une partie sur une simulation donnée).</summary>
@@ -832,13 +834,13 @@ namespace EdS.World
         private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled,
             GroundVector? place = null)
-            : this(save, ZoneSetups.For(zone, save.Consumed.Concat(CaughtUpPassages(save, zone, story, storyZone).Select(zone.PassageKey)), StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
+            : this(save, ZoneSetups.For(zone, save.Consumed.Concat(CaughtUpPassages(save, zone, story, storyZone).Select(zone.PassageKey)), StartPhase(zone, save), StartWeather(zone, save, storyZone), StartSeason(zone, save)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
                 null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone, CaughtUpPassages(save, zone, story, storyZone))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
-            _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
+            _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone), StartSeason(zone, save));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
             // Sous-lot V2.31 : une sauvegarde d'avant qu'une quête terminée n'ouvre un passage de plus (le pont suspendu, ouvert avec les gués
             // de la vallée) l'ouvre en reprenant ; son obstacle est déjà retiré de la session (ZoneSetups ci-dessus).
@@ -892,7 +894,7 @@ namespace EdS.World
         private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression, string? storyZone)
         {
             if (save.Character is not SavedCharacter c || progression is null) return zone;
-            int combatants = ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)).Combatants.Count;
+            int combatants = ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone), StartSeason(zone, save)).Combatants.Count;
             long xp = RetainedXp(save, c, progression, combatants, out _);
             return zone.ForLevel(progression.LevelFor(xp));
         }
@@ -907,6 +909,13 @@ namespace EdS.World
         /// </summary>
         private static WeatherKind StartWeather(ZoneDefinition zone, WorldSave save, string? storyZone) =>
             WorldWeather.At(storyZone ?? zone.Id, new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick)).Kind;
+
+        /// <summary>
+        /// Sous-lot V2.44.2 : saison au début de la session, celle du calendrier du jeu (la date réelle arrive après, par
+        /// <see cref="SetCivilTime"/> : une créature de saison qui n'est plus voulue s'en va alors au calme, celle qui l'est arrive).
+        /// </summary>
+        private static Season StartSeason(ZoneDefinition zone, WorldSave save) =>
+            (Season)WorldCalendar.SeasonIndexOf(new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick).Day);
 
         private static DayPhase StartPhase(ZoneDefinition zone, WorldSave save) =>
             new WorldClock((zone ?? throw new ArgumentNullException(nameof(zone))).Setup.Combat.TickMilliseconds).At((save ?? throw new ArgumentNullException(nameof(save))).WorldTick).Phase;
@@ -1526,6 +1535,8 @@ namespace EdS.World
                 if (Narrative?.Hunts(population.Creature, string.Empty) == true) return true;
                 WorldTime time = Zone.Clock.At(checked(Zone.StartWorldTick + tick));
                 if (population.Hours is PopulationHours hours && !hours.IsActive((int)time.Phase)) return false;
+                // Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026) : une créature de saison n'est là qu'en sa saison (les ours hibernent).
+                if (population.Seasons is PopulationSeasons seasons && !seasons.IsActive((Season)SeasonIndex)) return false;
                 return population.Weather is not PopulationWeather weather || WeatherFits(weather, time);
             }
             return NightWanted(population, tick);

@@ -59,7 +59,7 @@ public class MontureReferenceTests
     [Fact]
     public void Versions()
     {
-        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((Fixed.FromInt(13), Fixed.FromInt(12)), (MountSetup.HorseSpeed, ShippedData.Rules.Combat.MountSafeDistance));
     }
 
@@ -144,7 +144,7 @@ public class MontureReferenceTests
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 30) engine.Step();
         CombatSnapshot snapshot = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":10,", snapshot.Text);
+        Assert.StartsWith("{\"snapshot\":11,", snapshot.Text);
         Assert.Contains("\"mounted\":true", snapshot.Text);
         var resumedLog = new MemoryCombatLog();
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, resumedLog);
