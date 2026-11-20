@@ -829,6 +829,9 @@ namespace EdS.Game
         /// <summary>V2.43.3 : le décor des chantiers suit l'état des lieux reconstruits.</summary>
         public void Rebuilds(EdS.Runtime.AdventureSession adventure, float deltaTime) => _space?.Rebuilds(adventure, deltaTime);
 
+        /// <summary>V2.53.3 : les meubles posés de la maison du joueur, et l'aperçu du meuble que l'on pose.</summary>
+        public void Home(EdS.Runtime.AdventureSession adventure, HomeGhost? ghost, float deltaTime) => _space?.Home(adventure, ghost, deltaTime);
+
         /// <summary>Sous-lot V2.9 (2e vague) : les bêtes de la ferme et des champs, et leurs cris (<see cref="SpaceView.Life"/>).</summary>
         public void Life(Vector3 player, int minute, float deltaTime) => _space?.Life(player, minute, deltaTime);
 

@@ -174,6 +174,7 @@ namespace EdS.Game
             BuildMerchant(Page(AdventureScreens.Panel.Merchant));   // sous-lot V1.1 : la boutique (AdventureBook.Merchant.cs)
             BuildGuild(Page(AdventureScreens.Panel.Guild));   // sous-lot V1.7 : le tableau de la guilde (AdventureBook.Guild.cs)
             BuildFeast(Page(AdventureScreens.Panel.Feast));   // sous-lot F4 : l'étal de fête du forain (AdventureBook.Feast.cs)
+            BuildHome(Page(AdventureScreens.Panel.Home));   // V2.53.3 : le panneau de la maison (AdventureBook.Home.cs)
 
             BuildCharacter(Page(AdventureScreens.Panel.Inventory));
             BuildJournal(Page(AdventureScreens.Panel.Journal));
@@ -1000,6 +1001,7 @@ namespace EdS.Game
                 if (screens.Open == AdventureScreens.Panel.Merchant) RefreshMerchant(a);   // sous-lot V1.1
                 if (screens.Open == AdventureScreens.Panel.Guild) RefreshGuild(a);   // sous-lot V1.7
                 if (screens.Open == AdventureScreens.Panel.Feast) RefreshFeast(a);   // sous-lot F4
+                if (screens.Open == AdventureScreens.Panel.Home) RefreshHome(a);   // V2.53.3
                 switch (screens.Open)
                 {
                     case AdventureScreens.Panel.Inventory: RefreshCharacter(a); break;

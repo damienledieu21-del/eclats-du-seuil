@@ -30,6 +30,48 @@ namespace EdS.Runtime
         /// <summary>Identifiant d'obstacle d'eau où la glace est praticable (la bande du passage <c>glace_du_lac</c>).</summary>
         public const string WalkableIceTag = "glace_du_lac";
 
+        /// <summary>Revue Codex de la PR #232 : verdict sur un modèle ; un refus passager (modèle coupé, en fondu) est réexaminé plus tard.</summary>
+        public enum Verdict
+        {
+            Accepted = 0,
+
+            /// <summary>Refus passager : modèle coupé ou matériau découpé ou transparent (peut-être en fondu) ; réexaminé à la recherche suivante.</summary>
+            Later = 1,
+
+            /// <summary>Refus définitif : double de neige, ancêtre animé, aucun matériau, matériau absent ou shader qui a sa propre neige.</summary>
+            Never = 2,
+        }
+
+        /// <summary>
+        /// Comme <see cref="Accepts"/>, en distinguant le refus passager (<see cref="Verdict.Later"/> : coupé, file découpée ou transparente) du
+        /// refus définitif (<see cref="Verdict.Never"/>).
+        /// </summary>
+        public static Verdict Judge(string name, bool enabled, bool animated, IReadOnlyList<(string Shader, int Queue)> materials)
+        {
+            if (materials is null) throw new ArgumentNullException(nameof(materials));
+            if (animated || name == OverlayName || materials.Count == 0) return Verdict.Never;
+            bool later = !enabled;
+            for (int i = 0; i < materials.Count; i++)
+            {
+                (string shader, int queue) = materials[i];
+                if (shader is null) return Verdict.Never;
+                for (int k = 0; k < SkippedShaders.Count; k++)
+                    if (shader == SkippedShaders[k]) return Verdict.Never;
+                if (queue >= CutoutQueue) later = true;
+            }
+            return later ? Verdict.Later : Verdict.Accepted;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #232 : grille de la couche de neige posée sur le terrain du catalogue (un <c>Terrain</c> d'Unity, sans
+        /// MeshRenderer) : pas en mètres pour un côté <paramref name="side"/>, au moins 2 m et au plus <see cref="TerrainSnowCells"/> cases
+        /// par côté (moins de 65 536 sommets, maillage de 16 bits, compatible mobile).
+        /// </summary>
+        public static float TerrainSnowStep(float side) => Math.Max(2f, side / TerrainSnowCells);
+
+        /// <summary>Cases au plus par côté de la couche de neige du terrain.</summary>
+        public const int TerrainSnowCells = 200;
+
         /// <summary>
         /// Un modèle reçoit la neige posée : affiché, pas un double de neige, aucun ancêtre animé (bêtes, objets tenus, parties rigides d'un
         /// modèle animé), et chacun de ses matériaux opaque (file sous <see cref="CutoutQueue"/>) d'un shader qui n'a pas sa propre neige.

@@ -478,7 +478,7 @@ namespace EdS.Runtime
             yield return Linked("C_OV_A02", c, "Enclume sur billot", "village:forge/enclume");
             yield return Linked("C_OV_A03", c, "Foyer de forge en pierre", "village:prop/FirePit");
             yield return Linked("C_OV_A04", c, "Soufflet manuel", "village:forge/soufflet");
-            yield return Linked("C_OV_A05", c, "Établi avec outils", "village:forge/etabli");
+            yield return Linked("C_OV_A05", c, "Établi avec outils", "village:forge/etabli", "item:item.meuble_etabli");
             yield return Linked("C_OV_A06_01", c, "Petit marteau", "village:forge/outils");
             yield return Linked("C_OV_A06_02", c, "Marteau moyen", "village:prop/Hammer");
             yield return Linked("C_OV_A06_03", c, "Grand marteau", "village:forge/outils");
@@ -501,7 +501,7 @@ namespace EdS.Runtime
             yield return Waiting("C_OV_B06_02", c, "Bougie moyenne sur bougeoir", "bougies des intérieurs : reliées avec les intérieurs (lot C, PR suivantes) si une pièce en a la place");
             yield return Waiting("C_OV_B06_03", c, "Grande bougie sur bougeoir", "bougies des intérieurs : reliées avec les intérieurs (lot C, PR suivantes) si une pièce en a la place");
             yield return Waiting("C_OV_B07", c, "Lanterne de fête en papier", feast);
-            yield return Waiting("C_OV_C01", c, "Banc de pierre", street);
+            yield return Linked("C_OV_C01", c, "Banc de pierre", "item:item.meuble_banc_de_pierre");   // V2.53.2 : meuble de la maison du joueur
             yield return Waiting("C_OV_C02", c, "Banc de bois", street);
             yield return Waiting("C_OV_C03_01", c, "Table de taverne", "la terrasse de la taverne est faite par le code ; aucune table dans les données");
             yield return Waiting("C_OV_C03_02", c, "Banc de table de taverne", "la terrasse de la taverne est faite par le code ; aucun banc dans les données");
@@ -557,7 +557,6 @@ namespace EdS.Runtime
         {
             const string c = "03_Interieurs_BAG";
             const string bakery = "pas de place pour ce meuble dans la boulangerie des données (comptoir, four, pétrin, étagère à pains, farine, tonneau)";
-            const string lodging = "logement de Firmin : pas dans les données";
             const string guild = "pas de place pour ce meuble dans la maison de la Guilde des données (comptoir, étagère, cheminée, deux tables, caisses)";
             const string archives = "pas de place pour cet objet dans les archives des données (deux étagères, table, caisse, cheminée)";
             const string wall = "objet de mur : l'aménagement ne pose aux murs que boucliers, armes, tableaux, lanternes et bougies";
@@ -569,7 +568,7 @@ namespace EdS.Runtime
             yield return Linked("C_IN1_A0_03", c, "Banc", "piece:auberge/Bench");
             yield return Linked("C_IN1_A0_08", c, "Comptoir", "room:auberge/comptoir", "room:guilde/comptoir", "room:boulangerie/comptoir");
             yield return Linked("C_IN1_A0_09", c, "Tonneaux", "room:auberge/tonneau1", "room:auberge/tonneau2");
-            yield return Linked("C_IN1_A0_11", c, "Foyer de la cuisine", "room:cuisine_auberge/cheminee_cuisine");
+            yield return Linked("C_IN1_A0_11", c, "Foyer de la cuisine", "room:cuisine_auberge/cheminee_cuisine", "item:item.meuble_foyer");
             yield return Linked("C_IN1_A0_12", c, "Table de la cuisine", "room:cuisine_auberge/table_cuisine");
             yield return Linked("C_IN1_A0_13", c, "Étagère de la cuisine", "room:auberge/etagere", "room:cuisine_auberge/etagere_cuisine");
             yield return Waiting("C_IN1_A0_14", c, "Peau de loup au mur", wall);
@@ -581,7 +580,7 @@ namespace EdS.Runtime
             yield return Linked("C_IN1_A2_01", c, "Lit de Mathurin", "room:logement_auberge/lit_mathurin");
             yield return Linked("C_IN1_A2_02", c, "Coffre de Mathurin", "room:logement_auberge/coffre_mathurin");
             yield return Linked("C_IN1_A2_03", c, "Bureau de Mathurin", "room:logement_auberge/bureau_mathurin");
-            yield return Linked("C_IN1_A2_04", c, "Chaise", "room:logement_auberge/chaise_mathurin");
+            yield return Linked("C_IN1_A2_04", c, "Chaise", "room:logement_auberge/chaise_mathurin", "item:item.meuble_chaise");
             yield return Linked("C_IN1_A2_05", c, "Lit de dortoir", "room:logement_auberge/lit_dortoir_1", "room:logement_auberge/lit_dortoir_2", "room:logement_auberge/lit_dortoir_3", "room:logement_auberge/lit_dortoir_4", "room:dortoir_abbaye/lit_dortoir_1", "room:dortoir_abbaye/lit_dortoir_2", "room:dortoir_abbaye/lit_dortoir_3", "room:dortoir_abbaye/lit_dortoir_4");
             yield return Linked("C_IN1_A2_10", c, "Échelle des combles", "room:logement_auberge/echelle_combles");
             yield return Linked("C_IN1_A3_01", c, "Rayonnage à linge", "room:combles_auberge/rayonnage_linge");
@@ -597,12 +596,12 @@ namespace EdS.Runtime
             yield return Linked("C_IN1_B0_08", c, "Sacs de farine", "room:boulangerie/caisse_farine");
             yield return Waiting("C_IN1_B0_09", c, "Râtelier de pelles", bakery);
             yield return Waiting("C_IN1_B0_10", c, "Gueule et avant-four", "la gueule seule : le four voûté fait par le code reste (sa bouche rougeoyante et sa lumière sont réglées sur lui)");
-            yield return Waiting("C_IN1_B1_01", c, "Table du logement", lodging);
-            yield return Waiting("C_IN1_B1_02", c, "Banc du logement", lodging);
-            yield return Waiting("C_IN1_B1_03", c, "Lit", lodging);
-            yield return Waiting("C_IN1_B1_04", c, "Coffre", lodging);
-            yield return Waiting("C_IN1_B1_05", c, "Armoire", lodging);
-            yield return Waiting("C_IN1_B1_07", c, "Étagère à linge", lodging);
+            yield return Linked("C_IN1_B1_01", c, "Table du logement", "item:item.meuble_table");   // V2.53.2 : meuble de la maison du joueur
+            yield return Linked("C_IN1_B1_02", c, "Banc du logement", "item:item.meuble_banc");   // V2.53.2 : meuble de la maison du joueur
+            yield return Linked("C_IN1_B1_03", c, "Lit", "item:item.meuble_lit");   // V2.53.2 : meuble de la maison du joueur
+            yield return Linked("C_IN1_B1_04", c, "Coffre", "item:item.meuble_coffre");   // V2.53.2 : meuble de la maison du joueur
+            yield return Linked("C_IN1_B1_05", c, "Armoire", "item:item.meuble_armoire");   // V2.53.2 : meuble de la maison du joueur
+            yield return Linked("C_IN1_B1_07", c, "Étagère à linge", "item:item.meuble_etagere");   // V2.53.2 : meuble de la maison du joueur
             yield return Linked("C_IN1_G0_01", c, "Table des contrats", "room:guilde/table1", "room:guilde/table2", "room:archives/table");
             yield return Waiting("C_IN1_G0_02", c, "Banc des contrats", guild);
             yield return Waiting("C_IN1_G0_03", c, "Tableau des contrats", wall);

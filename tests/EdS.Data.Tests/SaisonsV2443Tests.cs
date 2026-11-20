@@ -90,6 +90,12 @@ public class SaisonsV2443Tests
         Assert.Contains("_snowCover?.Clear();", game);
         Assert.Contains("_EdsSnowPass", view);
         Assert.Contains("r.gameObject.name != WinterLook.OverlayName", space);   // le fondu des obstacles ignore la neige posée
+        // Revue Codex de la PR #232 (2e tour) : neige du sol au relief réel du Terrain, lit de la bande ouverte creusé, maillages détruits.
+        string cover = Game("SnowCover.cs");
+        Assert.Contains("terrain.SampleHeight(", cover);
+        Assert.DoesNotContain("StyleWorld.StandHeight", cover);
+        Assert.Contains("if (_terrainMeshes.TryGetValue(t, out Mesh mesh) && mesh != null) Object.Destroy(mesh);", cover);
+        Assert.Contains("foreach (SpaceObstacle o in OpenIceStrips(space, map))\n                rivers.Add(", space.Replace("\r\n", "\n"));
         Assert.Contains("_EdsIce > 0.001h && _IceAllowed > 0.5h", eau);   // seule la bande du lac gèle
     }
 
@@ -115,6 +121,36 @@ public class SaisonsV2443Tests
         Assert.Contains("EdS/Neige", WinterLook.SkippedShaders);
         Assert.Throws<ArgumentNullException>(() => WinterLook.Accepts("x", true, false, null!));
         Assert.Equal((6000, 2f), (WinterLook.MaxOverlays, WinterLook.RescanSeconds));
+    }
+
+    [Fact]
+    public void Refus_passager_reexamine_refus_definitif_retenu()
+    {
+        // Revue Codex de la PR #232 : un modèle coupé ou en fondu au moment de la recherche est réexaminé plus tard.
+        Assert.Equal(WinterLook.Verdict.Accepted, WinterLook.Judge("toit", true, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Later, WinterLook.Judge("toit", false, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Later, WinterLook.Judge("toit en fondu", true, false, new[] { ("Universal Render Pipeline/Lit", 3000) }));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("loup", true, true, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("loup coupé", false, true, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge(WinterLook.OverlayName, true, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("buisson", false, false, new[] { ("EdS/Feuillage", 2450) }));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("vide", true, false, Array.Empty<(string, int)>()));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("cassé", true, false, new[] { ((string)null!, 2000) }));
+        // Accepts reste vrai seulement pour Accepted.
+        Assert.Equal(WinterLook.Accepts("toit", false, false, Opaque), WinterLook.Judge("toit", false, false, Opaque) == WinterLook.Verdict.Accepted);
+    }
+
+    [Theory]
+    [InlineData(100f, 2f)]
+    [InlineData(400f, 2f)]
+    [InlineData(800f, 4f)]
+    [InlineData(1200f, 6f)]
+    public void Couche_de_neige_du_terrain_bornee(float side, float step)
+    {
+        // Revue Codex de la PR #232 : le terrain du catalogue reçoit une couche de neige ; au plus 201 × 201 sommets (maillage 16 bits).
+        Assert.Equal(step, WinterLook.TerrainSnowStep(side), 3);
+        int cells = (int)Math.Ceiling(side / WinterLook.TerrainSnowStep(side));
+        Assert.True((cells + 1) * (cells + 1) < 65536);
     }
 
     [Theory]
