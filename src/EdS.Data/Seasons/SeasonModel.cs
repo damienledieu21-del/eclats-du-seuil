@@ -443,7 +443,13 @@ namespace EdS.Data.Seasons
 
         public static bool IsLocalId(string? id) => id != null && id.Length <= 64 && LocalId.IsMatch(id);
 
-        public static SeasonLoadResult Validate(SeasonDocument document, ZoneDefinition zone, ValidationReport? report = null)
+        /// <param name="crafting">
+        /// Revue Codex de la PR #229 : catalogue des métiers ; avec lui, chaque nœud de la vigne doit en être un nœud de récolte de saison
+        /// (sinon refusé au chemin <c>$.data.vine.nodes[i]</c> : une faute de frappe laisserait le vrai nœud ouvert toute la saison). Null :
+        /// contrôle croisé non fait (tests du seul contenu saisonnier).
+        /// </param>
+        public static SeasonLoadResult Validate(SeasonDocument document, ZoneDefinition zone, ValidationReport? report = null,
+            EdS.Data.Crafting.CraftingBook? crafting = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
@@ -549,7 +555,7 @@ namespace EdS.Data.Seasons
             Dictionary<string, PopulationSeasons>? creatures = null;
             if (expected != Schema1)
             {
-                vine = ValidateVine(d.Vine, zone, r);
+                vine = ValidateVine(d.Vine, zone, r, crafting);
                 snow = ValidateSnow(d.Snow, zone, r);
                 creatures = ValidateCreatures(d.Creatures, zone, r);
             }
@@ -601,7 +607,7 @@ namespace EdS.Data.Seasons
             return ok ? result : null;
         }
 
-        private static SeasonVine? ValidateVine(VineData? v, ZoneDefinition zone, ValidationReport r)
+        private static SeasonVine? ValidateVine(VineData? v, ZoneDefinition zone, ValidationReport r, EdS.Data.Crafting.CraftingBook? crafting)
         {
             const string p = "$.data.vine";
             if (v is null) { Missing(r, p, "vigne : green, ripe, harvested, rows, nodes"); return null; }
@@ -625,6 +631,10 @@ namespace EdS.Data.Seasons
                     string? n = v.Nodes[i];
                     if (!IsLocalId(n)) { r.Add($"{p}.nodes[{i}]", ValidationCode.InvalidValue, $"identifiant « {n} » mal formé."); ok = false; }
                     else if (nodes.Contains(n!)) { r.Add($"{p}.nodes[{i}]", ValidationCode.DuplicateId, $"nœud « {n} » en double."); ok = false; }
+                    else if (crafting != null && !crafting.Nodes.Any(g => g.Id == n))
+                    { r.Add($"{p}.nodes[{i}]", ValidationCode.UnknownReference, $"nœud « {n} » absent des nœuds de récolte des métiers."); ok = false; }
+                    else if (crafting != null && !crafting.Nodes.First(g => g.Id == n).IsSeasonal)
+                    { r.Add($"{p}.nodes[{i}]", ValidationCode.InvalidValue, $"nœud « {n} » de toute l'année : un nœud de la vigne est un nœud de saison (seasons)."); ok = false; }
                     else nodes.Add(n!);
                 }
             return ok ? new SeasonVine(green!.Value, ripe!.Value, harvested!.Value, v.Rows!, nodes) : null;

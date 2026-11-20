@@ -188,7 +188,8 @@ internal static class ScenarioTestData
     /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
     /// </summary>
     /// <summary>V2.43.4 : les portes des intérieurs des lieux reconstruits (hors de l'aire d'avant, et au-delà de 16 portes sans région).</summary>
-    public static readonly string[] RebuildDoors = { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye" };
+    public static readonly string[] RebuildDoors = { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye",
+        "porte_maison_joueur" };   // V2.53.2 : et la porte de la maison du joueur (hors de l'aire d'avant)
 
     /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits.</summary>
     public static void WithoutRebuildDoors(JsonObject zone)
@@ -282,7 +283,8 @@ internal static class ScenarioTestData
             // V2.30.5 : les marchands des boutiques de la route d'Ambre (et le notable), hors du cœur, attendent sur l'ancienne place du bourg.
             // V2.43.2b : les PNJ des lieux reconstruits hors du cœur (pont, moulin à foulon, tour de signal, abbaye) attendent là aussi.
             if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal)
-                || (string?)npc["id"] is "npc.passeuse_du_pont" or "npc.foulonniere" or "npc.guetteuse" or "npc.frere_hospitalier")
+                || (string?)npc["id"] is "npc.passeuse_du_pont" or "npc.foulonniere" or "npc.guetteuse" or "npc.frere_hospitalier"
+                || (string?)npc["id"] is "npc.maitre_oeuvre")   // V2.53.2 : le maître d'œuvre de la maison du joueur
             {
                 var at = new JsonArray(-62.0 + town++, -6.0);
                 npc["position"] = at.DeepClone();

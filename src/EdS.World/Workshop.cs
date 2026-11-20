@@ -39,6 +39,9 @@ namespace EdS.World
 
         /// <summary>Saisons : nœud saisonnier hors de sa saison (ou date non fournie par l'hôte).</summary>
         OutOfSeason = 8,
+
+        /// <summary>Maison du joueur (V2.53.2) : l'atelier de la maison est plus lent qu'en ville ; la fabrication précédente n'est pas finie.</summary>
+        HomeTooSoon = 9,
     }
 
     public enum CraftEventKind

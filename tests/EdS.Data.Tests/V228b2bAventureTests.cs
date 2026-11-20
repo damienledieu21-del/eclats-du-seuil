@@ -500,6 +500,7 @@ public class V228b2bAventureTests : IDisposable
         File.WriteAllText(craftingPath, crafting.ToJsonString());
         // Sous-lot V2.43.2b : sans les chantiers (la plupart de leurs lieux sont hors de l'aire d'avant).
         File.Delete(Path.Combine(data, "world", "rebuilds.json"));
+        File.Delete(Path.Combine(data, "world", "home.json"));   // V2.53.2 : sans la maison du joueur (sa porte est hors de l'aire d'avant)
         // Chefs et événements du monde restent liés à leur session jusqu'au V2.28b (2c) : ils sont retirés de la zone, et de l'histoire et de la
         // Guilde, des marchands et des métiers ce qui en parle (l'élément de liste le plus proche qui les mentionne, la propriété qui porte leur nom).
         // Ce qui en découle (faits que plus rien n'apprend, références devenues inconnues) est retiré de proche en proche, d'après le

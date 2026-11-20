@@ -1,0 +1,728 @@
+{
+  "$schema": "../../schemas/home.schema.json",
+  "schemaVersion": 1,
+  "kind": "home",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "interior": "zone.maison_joueur",
+    "door": "porte_maison_joueur",
+    "price": 8000,
+    "base": {
+      "floor": {
+        "width": 4.5,
+        "depth": 4
+      },
+      "chest": 8,
+      "pieces": 10
+    },
+    "stages": [
+      {
+        "id": "grande_salle",
+        "needs": [
+          {
+            "id": "or",
+            "coins": 3000
+          },
+          {
+            "id": "planches",
+            "item": "item.planche",
+            "count": 20
+          },
+          {
+            "id": "pierres",
+            "item": "item.pierre_taillee",
+            "count": 6
+          }
+        ],
+        "floor": {
+          "width": 6,
+          "depth": 5
+        },
+        "chest": 16,
+        "pieces": 16
+      },
+      {
+        "id": "seconde_piece",
+        "needs": [
+          {
+            "id": "or",
+            "coins": 4000
+          },
+          {
+            "id": "planches",
+            "item": "item.planche",
+            "count": 30
+          },
+          {
+            "id": "pierres",
+            "item": "item.pierre_taillee",
+            "count": 12
+          }
+        ],
+        "floor": {
+          "width": 8,
+          "depth": 6.5
+        },
+        "chest": 24,
+        "pieces": 24
+      },
+      {
+        "id": "grande_maison",
+        "needs": [
+          {
+            "id": "or",
+            "coins": 6000
+          },
+          {
+            "id": "planches",
+            "item": "item.planche",
+            "count": 40
+          },
+          {
+            "id": "pierres",
+            "item": "item.pierre_taillee",
+            "count": 20
+          }
+        ],
+        "floor": {
+          "width": 10,
+          "depth": 8
+        },
+        "chest": 32,
+        "pieces": 32
+      }
+    ],
+    "furniture": [
+      {
+        "id": "meuble_lit",
+        "item": "item.meuble_lit",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "bed"
+      },
+      {
+        "id": "meuble_coffre",
+        "item": "item.meuble_coffre",
+        "size": {
+          "width": 1.0,
+          "depth": 0.5
+        },
+        "use": "chest"
+      },
+      {
+        "id": "meuble_table",
+        "item": "item.meuble_table",
+        "size": {
+          "width": 1.5,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "meuble_banc",
+        "item": "item.meuble_banc",
+        "size": {
+          "width": 1.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "meuble_chaise",
+        "item": "item.meuble_chaise",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "meuble_armoire",
+        "item": "item.meuble_armoire",
+        "size": {
+          "width": 1.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "meuble_etagere",
+        "item": "item.meuble_etagere",
+        "size": {
+          "width": 1.0,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "meuble_etabli",
+        "item": "item.meuble_etabli",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "workbench"
+      },
+      {
+        "id": "meuble_foyer",
+        "item": "item.meuble_foyer",
+        "size": {
+          "width": 1.5,
+          "depth": 1.0
+        },
+        "use": "kitchen"
+      },
+      {
+        "id": "meuble_banc_de_pierre",
+        "item": "item.meuble_banc_de_pierre",
+        "size": {
+          "width": 1.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f01_d01",
+        "feast": "F01_D01",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f01_d02",
+        "feast": "F01_D02",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f01_d03",
+        "feast": "F01_D03",
+        "size": {
+          "width": 1.5,
+          "depth": 1.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f01_d04",
+        "feast": "F01_D04",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f01_d05",
+        "feast": "F01_D05",
+        "size": {
+          "width": 2.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f02_d01",
+        "feast": "F02_D01",
+        "size": {
+          "width": 0.75,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f02_d02",
+        "feast": "F02_D02",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f02_d03",
+        "feast": "F02_D03",
+        "size": {
+          "width": 2.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f02_d04",
+        "feast": "F02_D04",
+        "size": {
+          "width": 0.75,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f02_d05",
+        "feast": "F02_D05",
+        "size": {
+          "width": 1.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f03_d01",
+        "feast": "F03_D01",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f03_d02",
+        "feast": "F03_D02",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f03_d03",
+        "feast": "F03_D03",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f03_d04",
+        "feast": "F03_D04",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f03_d05",
+        "feast": "F03_D05",
+        "size": {
+          "width": 2.75,
+          "depth": 1.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f04_d01",
+        "feast": "F04_D01",
+        "size": {
+          "width": 1.25,
+          "depth": 1.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f04_d02",
+        "feast": "F04_D02",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f04_d03",
+        "feast": "F04_D03",
+        "size": {
+          "width": 0.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f04_d04",
+        "feast": "F04_D04",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f04_d05",
+        "feast": "F04_D05",
+        "size": {
+          "width": 3.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f05_d01",
+        "feast": "F05_D01",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f05_d02",
+        "feast": "F05_D02",
+        "size": {
+          "width": 1.5,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f05_d03",
+        "feast": "F05_D03",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f05_d04",
+        "feast": "F05_D04",
+        "size": {
+          "width": 1.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f05_d05",
+        "feast": "F05_D05",
+        "size": {
+          "width": 0.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f06_d01",
+        "feast": "F06_D01",
+        "size": {
+          "width": 2.5,
+          "depth": 2.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f06_d02",
+        "feast": "F06_D02",
+        "size": {
+          "width": 3.75,
+          "depth": 2.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f06_d03",
+        "feast": "F06_D03",
+        "size": {
+          "width": 1.5,
+          "depth": 1.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f06_d04",
+        "feast": "F06_D04",
+        "size": {
+          "width": 3.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f06_d05",
+        "feast": "F06_D05",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f07_d01",
+        "feast": "F07_D01",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f07_d02",
+        "feast": "F07_D02",
+        "size": {
+          "width": 3.0,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f07_d03",
+        "feast": "F07_D03",
+        "size": {
+          "width": 1.25,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f07_d04",
+        "feast": "F07_D04",
+        "size": {
+          "width": 3.75,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f07_d05",
+        "feast": "F07_D05",
+        "size": {
+          "width": 2.0,
+          "depth": 1.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f08_d01",
+        "feast": "F08_D01",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f08_d02",
+        "feast": "F08_D02",
+        "size": {
+          "width": 1.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f08_d03",
+        "feast": "F08_D03",
+        "size": {
+          "width": 1.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f08_d04",
+        "feast": "F08_D04",
+        "size": {
+          "width": 1.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f08_d05",
+        "feast": "F08_D05",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f09_d01",
+        "feast": "F09_D01",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f09_d02",
+        "feast": "F09_D02",
+        "size": {
+          "width": 1.75,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f09_d03",
+        "feast": "F09_D03",
+        "size": {
+          "width": 2.0,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f09_d04",
+        "feast": "F09_D04",
+        "size": {
+          "width": 2.25,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f09_d05",
+        "feast": "F09_D05",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f10_d01",
+        "feast": "F10_D01",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f10_d02",
+        "feast": "F10_D02",
+        "size": {
+          "width": 2.5,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f10_d03",
+        "feast": "F10_D03",
+        "size": {
+          "width": 1.0,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f10_d04",
+        "feast": "F10_D04",
+        "size": {
+          "width": 3.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f10_d05",
+        "feast": "F10_D05",
+        "size": {
+          "width": 1.0,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f11_d01",
+        "feast": "F11_D01",
+        "size": {
+          "width": 2.75,
+          "depth": 1.25
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f11_d02",
+        "feast": "F11_D02",
+        "size": {
+          "width": 1.0,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f11_d03",
+        "feast": "F11_D03",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f11_d04",
+        "feast": "F11_D04",
+        "size": {
+          "width": 2.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f11_d05",
+        "feast": "F11_D05",
+        "size": {
+          "width": 1.75,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f12_d01",
+        "feast": "F12_D01",
+        "size": {
+          "width": 1.75,
+          "depth": 1.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f12_d02",
+        "feast": "F12_D02",
+        "size": {
+          "width": 3.25,
+          "depth": 0.75
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f12_d03",
+        "feast": "F12_D03",
+        "size": {
+          "width": 0.5,
+          "depth": 0.5
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f12_d04",
+        "feast": "F12_D04",
+        "size": {
+          "width": 2.25,
+          "depth": 1.0
+        },
+        "use": "decor"
+      },
+      {
+        "id": "f12_d05",
+        "feast": "F12_D05",
+        "size": {
+          "width": 1.0,
+          "depth": 0.25
+        },
+        "use": "decor"
+      }
+    ]
+  }
+}
