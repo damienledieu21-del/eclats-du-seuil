@@ -46,6 +46,9 @@ namespace EdS.Game
         private readonly List<Terrain> _foundTerrains = new List<Terrain>();
         private readonly List<Terrain> _deadTerrains = new List<Terrain>();
 
+        /// <summary>Revue Codex de la PR #232 : maillages de neige du sol, détruits même quand leur décor l'a déjà été.</summary>
+        private readonly Dictionary<Terrain, Mesh> _terrainMeshes = new Dictionary<Terrain, Mesh>();
+
         /// <summary>
         /// Revue Codex de la PR #232 : le sol du catalogue est un Terrain d'Unity (pas de MeshRenderer) : il reçoit une couche de neige, un
         /// maillage de son relief affiché (au plus 201 × 201 sommets) dessiné avec « EdS/Neige », juste au-dessus de lui, une fois par terrain.
@@ -65,7 +68,8 @@ namespace EdS.Game
                     for (int c = 0; c <= cols; c++)
                     {
                         float x = origin.x + Mathf.Min(size.x, c * step), z = origin.z + Mathf.Min(size.z, r * step);
-                        vertices[r * (cols + 1) + c] = new Vector3(x, StyleWorld.StandHeight(x, z) + 0.03f, z);
+                        // Revue Codex de la PR #232 : hauteur réelle du Terrain (lits des rivières creusés compris), pas celle où l'on se tient.
+                        vertices[r * (cols + 1) + c] = new Vector3(x, origin.y + terrain.SampleHeight(new Vector3(x, 0f, z)) + 0.03f, z);
                     }
                 var triangles = new int[cols * rows * 6];
                 int t = 0;
@@ -89,6 +93,7 @@ namespace EdS.Game
                 drawn.shadowCastingMode = ShadowCastingMode.Off;
                 drawn.receiveShadows = true;
                 _terrains[terrain] = drawn;
+                _terrainMeshes[terrain] = mesh;
             }
         }
 
@@ -100,13 +105,11 @@ namespace EdS.Game
             _overlays.Clear();
             _refused.Clear();
             foreach (MeshRenderer o in _terrains.Values)
-                if (o != null)
-                {
-                    MeshFilter f = o.GetComponent<MeshFilter>();
-                    if (f != null && f.sharedMesh != null) Object.Destroy(f.sharedMesh);
-                    Object.Destroy(o.gameObject);
-                }
+                if (o != null) Object.Destroy(o.gameObject);
             _terrains.Clear();
+            foreach (Mesh m in _terrainMeshes.Values)
+                if (m != null) Object.Destroy(m);
+            _terrainMeshes.Clear();
             if (_material != null) Object.Destroy(_material);
             _material = null;
             _tried = false;
@@ -155,6 +158,8 @@ namespace EdS.Game
             {
                 if (_terrains.TryGetValue(t, out MeshRenderer layer) && layer != null) Object.Destroy(layer.gameObject);
                 _terrains.Remove(t);
+                if (_terrainMeshes.TryGetValue(t, out Mesh mesh) && mesh != null) Object.Destroy(mesh);
+                _terrainMeshes.Remove(t);
             }
         }
 

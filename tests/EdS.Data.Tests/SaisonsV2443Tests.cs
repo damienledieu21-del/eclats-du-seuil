@@ -90,6 +90,12 @@ public class SaisonsV2443Tests
         Assert.Contains("_snowCover?.Clear();", game);
         Assert.Contains("_EdsSnowPass", view);
         Assert.Contains("r.gameObject.name != WinterLook.OverlayName", space);   // le fondu des obstacles ignore la neige posée
+        // Revue Codex de la PR #232 (2e tour) : neige du sol au relief réel du Terrain, lit de la bande ouverte creusé, maillages détruits.
+        string cover = Game("SnowCover.cs");
+        Assert.Contains("terrain.SampleHeight(", cover);
+        Assert.DoesNotContain("StyleWorld.StandHeight", cover);
+        Assert.Contains("if (_terrainMeshes.TryGetValue(t, out Mesh mesh) && mesh != null) Object.Destroy(mesh);", cover);
+        Assert.Contains("foreach (SpaceObstacle o in OpenIceStrips(space, map))\n                rivers.Add(", space.Replace("\r\n", "\n"));
         Assert.Contains("_EdsIce > 0.001h && _IceAllowed > 0.5h", eau);   // seule la bande du lac gèle
     }
 

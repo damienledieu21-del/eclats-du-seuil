@@ -169,7 +169,7 @@ namespace EdS.Game
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             // Essai réaliste : un terrain peint (terre, roche, herbe) à la place du sol simple, s'il y a des textures de sol. Essai du 27 octobre
             // 2026 : avec la vraie eau, le lit de la rivière y est creusé (sous ses bras et sous le pont), l'eau coule sous le sol.
-            _rivers = StyleWorld.RealWater ? Rivers(space) : new List<List<Vector3>>();
+            _rivers = StyleWorld.RealWater ? Rivers(space, map) : new List<List<Vector3>>();
             _terrain = StyleWorld.Ground(_root.transform, minX, minZ, maxX, maxZ, Spots(space),
                 _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList(), _roads, _fields,
                 _shapes.Where((o, i) => TownRules.BuildingFor(space.Obstacles[i].Id) == StyleBuilding.Woods).Select(o => (IReadOnlyList<(double X, double Z)>)o.Points).ToList());
@@ -307,13 +307,21 @@ namespace EdS.Game
         /// </summary>
         private void OpenIce(CombatSpace space, AdventureMap map)
         {
-            if (map == null || _rivers.Count == 0) return;
+            if (_rivers.Count == 0) return;
+            foreach (SpaceObstacle o in OpenIceStrips(space, map))
+                WaterSurface(o.Id + " (glace)", o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList(), _ice);
+        }
+
+        /// <summary>V2.44.3 : bandes de glace praticable de l'aire entière, ouvertes (absentes de la session) et dans cette vue.</summary>
+        private static IEnumerable<SpaceObstacle> OpenIceStrips(CombatSpace space, AdventureMap map)
+        {
+            if (map == null) yield break;
             foreach (SpaceObstacle o in map.Whole.Obstacles)
             {
                 if (!WinterLook.IceWater(o.Id) || space.Obstacles.Any(s => s.Id == o.Id)) continue;
                 if (o.Points.Max(p => p.X.Raw) < space.Min.X.Raw || o.Points.Min(p => p.X.Raw) > space.Max.X.Raw
                     || o.Points.Max(p => p.Z.Raw) < space.Min.Z.Raw || o.Points.Min(p => p.Z.Raw) > space.Max.Z.Raw) continue;
-                WaterSurface(o.Id + " (glace)", o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList(), _ice);
+                yield return o;
             }
         }
 
@@ -1508,10 +1516,13 @@ namespace EdS.Game
         /// Essai réaliste : l'eau à creuser dans le terrain : chaque bras de rivière (« riviere… »), et la coupure entre « riviere_sud » et
         /// « riviere_nord » sous le pont (la rivière y coule aussi ; on la passe sur le pont, le moteur n'y met pas d'obstacle).
         /// </summary>
-        private static List<List<Vector3>> Rivers(CombatSpace space)
+        private static List<List<Vector3>> Rivers(CombatSpace space, AdventureMap map = null)
         {
             var rivers = space.Obstacles.Where(o => o.Id.StartsWith("riviere"))
                 .Select(o => o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList()).ToList();
+            // V2.44.3 (revue Codex de la PR #232) : la bande du lac gelé, ouverte (obstacle retiré), garde son lit creusé sous la glace.
+            foreach (SpaceObstacle o in OpenIceStrips(space, map))
+                rivers.Add(o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList());
             if (BridgeGap(space) is (float x0, float z0, float x1, float z1))
                 rivers.Add(new List<Vector3> { new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0), new Vector3(x1, 0f, z1), new Vector3(x0, 0f, z1) });
             return rivers;
