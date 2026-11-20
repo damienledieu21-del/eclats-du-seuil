@@ -176,4 +176,47 @@ public class SaisonServeurTests
         }
         Assert.Equal(Play(), Play());
     }
+
+    [Fact]
+    public void Client_en_protocole_5_refuse_au_hello_et_au_retour()
+    {
+        // Relecture indépendante de la PR #227 : un client d'avant la saison du serveur (protocole 5) est refusé, à la présentation comme au retour.
+        Assert.Equal(6, Protocol.Version);
+        var game = new Game();
+        NetworkClient dam = game.Join("Dam");
+        string token = dam.Token!;
+
+        static ErrorMessage Refused(Game g, NetMessage first)
+        {
+            SimulatedConnection old = g.Net.Connect("salle", LinkProfile.Perfect);
+            Assert.True(old.Send(first));
+            g.Run(0.1);
+            var received = new List<NetMessage>();
+            while (old.TryReceive(MessageDirection.ServerToClient, out NetMessage? m, out _)) received.Add(m!);
+            Assert.DoesNotContain(received, m => m is WelcomeMessage || m is SeasonMessage);
+            Assert.False(old.IsOpen);
+            return Assert.IsType<ErrorMessage>(received.Last());
+        }
+
+        Assert.Contains("protocole 5 non pris en charge : version 6 attendue", Refused(game, new HelloMessage(5, "Léa", new BuildChoice(Rempart))).Reason);
+        game.Room.SetCivilTime(Utc(2026, 12, 8));
+        Assert.Contains("protocole 5 non pris en charge : version 6 attendue", Refused(game, new ReconnectMessage(5, token)).Reason);
+        game.Run(0.1);
+        Assert.Equal(ClientStatus.Lobby, dam.Status);   // la place de Dam n'a pas été prise
+        Assert.Equal(Utc(2026, 12, 8), dam.ServerCivilUtcSeconds);
+    }
+
+    [Fact]
+    public void Quitter_le_reseau_efface_la_saison_du_serveur()
+    {
+        // Relecture indépendante de la PR #227 : retour au solo ou au menu, la neige et la glace du serveur ne restent pas affichées.
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        int start = game.IndexOf("private void StopNetwork()", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        int end = game.IndexOf("\n        }\n", start, StringComparison.Ordinal);
+        string body = game.Substring(start, end - start);
+        Assert.Contains("_seasonView = null;", body);
+        Assert.Contains("SeasonView.Clear();", body);
+        Assert.Contains("_seasonView.SyncServer(client.ServerCivilNow.Value)", game);
+    }
 }

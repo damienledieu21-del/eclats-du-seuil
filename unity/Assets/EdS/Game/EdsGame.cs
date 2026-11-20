@@ -1406,6 +1406,9 @@ namespace EdS.Game
             _net = null;
             _shownCombat = null;
             if (!(_combat is RealtimeCombat)) _combat = null;
+            // V2.44.1 (relecture indépendante de la PR #227) : la saison du serveur ne survit pas à la partie en réseau (solo ou menu).
+            _seasonView = null;
+            SeasonView.Clear();
         }
 
         /// <summary>
