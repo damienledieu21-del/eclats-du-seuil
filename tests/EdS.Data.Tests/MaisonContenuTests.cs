@@ -183,4 +183,32 @@ public class MaisonContenuTests : IDisposable
         Assert.Equal("zone.maison_joueur", b.World.Definition!.Id);
         Assert.Equal("zone.maison_joueur", SaveStore.Read(SavePath).Save!.Zone);
     }
+
+    [Fact]
+    public void Attente_de_l_atelier_gardee_en_sortant_puis_en_rentrant()
+    {
+        // Relecture indépendante de la PR #230 : sortir puis rentrer (ou rentrer chez soi) ne remet pas l'attente de l'atelier à zéro.
+        string data = Data();
+        var placed = new[] { new SavedPiece("meuble_etabli", 10, 4, 0) };
+        SavedCharacter hero = Player(0).WithItems(new[] { new ItemStack("item.bois", 12) }, new Dictionary<string, string>())
+            .WithHome(new SavedHome(0, placed: placed));
+        AdventureSession a = Load(data, hero);
+        a.Advance(0.05);
+        Assert.True(a.UseDoor());
+        Assert.Equal(CraftRefusal.None, a.World.Craft("recipe.planche", out _));
+        Assert.Equal(CraftRefusal.HomeTooSoon, a.World.CanCraft("recipe.planche"));
+        a.Advance(0.05);
+        Assert.True(a.UseDoor());   // sortie
+        Assert.Equal("zone.vallons", a.World.Definition!.Id);
+        a.Advance(0.05);
+        Assert.True(a.UseDoor());   // rentrée
+        Assert.Equal("zone.maison_joueur", a.World.Definition!.Id);
+        Assert.Equal(CraftRefusal.HomeTooSoon, a.World.Craft("recipe.planche", out _));
+        Assert.Equal(9, a.World.Inventory.Count("item.bois"));   // refus : rien ne change
+        a.Advance(0.05);
+        Assert.True(a.UseDoor());
+        a.Advance(0.05);
+        Assert.True(a.GoHome());   // le retour à la maison non plus
+        Assert.Equal(CraftRefusal.HomeTooSoon, a.World.CanCraft("recipe.planche"));
+    }
 }

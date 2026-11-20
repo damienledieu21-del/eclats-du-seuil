@@ -47,6 +47,15 @@ namespace EdS.World
         private long _homeCraftReadyTick;
 
         /// <summary>
+        /// Tick du monde où l'atelier de la maison est de nouveau libre (0 : libre). Hors sauvegarde (décision de Damien du 20 novembre
+        /// 2026) ; l'aventure le reporte d'une session à l'autre (<see cref="CarryHomeCraft"/>).
+        /// </summary>
+        public long HomeCraftReadyTick => _homeCraftReadyTick;
+
+        /// <summary>Reprend l'attente de l'atelier de la maison d'une session précédente (porte, retour à la maison, halte).</summary>
+        public void CarryHomeCraft(long readyTick) => _homeCraftReadyTick = Math.Max(_homeCraftReadyTick, readyTick);
+
+        /// <summary>
         /// V2.53.2 : la recette <paramref name="r"/> se fabrique à l'atelier de la maison : dans la maison achetée, un meuble posé qui la sert
         /// (foyer : cuisine ; établi : bois et pierre), et pas une recette de la forge à qualité.
         /// </summary>

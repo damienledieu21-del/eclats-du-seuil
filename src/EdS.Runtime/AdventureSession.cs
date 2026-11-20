@@ -446,6 +446,9 @@ namespace EdS.Runtime
             long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
             if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
             if (World != null) world.CarryComfort(World.ComfortUntilMinute);   // sous-lot F7 : le réconfort d'un plat suit le personnage (hors sauvegarde)
+            // V2.53.2 (relecture indépendante de la PR #230) : l'attente de l'atelier de la maison suit le personnage d'une session à l'autre
+            // (porte, retour à la maison, halte) ; hors sauvegarde (décision de Damien du 20 novembre 2026) : seul un rechargement l'efface.
+            if (World != null) world.CarryHomeCraft(World.HomeCraftReadyTick);
             World = world;
             _explored = -1;   // sous-lot V2.29 (2) : nouvelle session, relevé repris
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
