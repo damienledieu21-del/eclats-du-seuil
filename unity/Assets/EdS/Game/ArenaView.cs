@@ -820,6 +820,9 @@ namespace EdS.Game
         /// <summary>V2.25.2 : la barrière du moulin suit le passage ouvert par la quête.</summary>
         public void Gates(EdS.Runtime.AdventureSession adventure, float deltaTime) => _space?.Gates(adventure, deltaTime);
 
+        /// <summary>V2.43.3 : le décor des chantiers suit l'état des lieux reconstruits.</summary>
+        public void Rebuilds(EdS.Runtime.AdventureSession adventure, float deltaTime) => _space?.Rebuilds(adventure, deltaTime);
+
         /// <summary>Sous-lot V2.9 (2e vague) : les bêtes de la ferme et des champs, et leurs cris (<see cref="SpaceView.Life"/>).</summary>
         public void Life(Vector3 player, int minute, float deltaTime) => _space?.Life(player, minute, deltaTime);
 

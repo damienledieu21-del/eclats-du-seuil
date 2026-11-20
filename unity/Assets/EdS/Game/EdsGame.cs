@@ -776,6 +776,7 @@ namespace EdS.Game
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
+            _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)

@@ -1711,6 +1711,69 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.43.3 : clé de l'état des chantiers de la zone en jeu (« lieu:état:paliers » de chaque lieu) : la vue refait le décor des
+        /// chantiers quand elle change. Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public string RebuildDecorKey
+        {
+            get
+            {
+                if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return string.Empty;
+                var parts = new List<string>(book.Sites.Count);
+                foreach (RebuildSite site in book.Sites)
+                    parts.Add(site.Id + ":" + (int)World.RebuildPhaseOf(site.Id) + ":" + (World.RebuildState.Of(site.Id)?.Stage ?? 0));
+                return string.Join(";", parts);
+            }
+        }
+
+        /// <summary>V2.43.3 : obstacles que le grand décor des lieux remplace (la vue ne les dessine plus), selon l'état des lieux.</summary>
+        public IReadOnlyList<string> RebuildCovered() => RebuildCovers().Select(c => c.Obstacle).ToList();
+
+        /// <summary>
+        /// Revue Codex de la PR #225 : chaque obstacle remplacé et la pièce qui le remplace ; la vue ne cache l'obstacle que si cette pièce a
+        /// bien été posée (modèle au catalogue).
+        /// </summary>
+        public IReadOnlyList<(string Obstacle, string Piece)> RebuildCovers()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<(string, string)>();
+            var covers = new List<(string, string)>();
+            foreach (RebuildSite site in book.Sites)
+            {
+                var landmark = RebuildDecor.Landmark(site, World.RebuildPhaseOf(site.Id), RegionMap.Whole.Obstacles);
+                if (landmark.Covered is string id && landmark.Spots.Count > 0) covers.Add((id, landmark.Spots[0].Piece));
+            }
+            return covers;
+        }
+
+        /// <summary>
+        /// V2.43.3 : décor des chantiers de la zone en jeu, selon l'état de chaque lieu (<see cref="RebuildDecor"/>), posé sur l'aire entière
+        /// (obstacles de l'aire, pas seulement ceux de la fenêtre). Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public IReadOnlyList<DecorSpot> RebuildSpots()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<DecorSpot>();
+            // Relecture indépendante de la PR #225 : comme le décor des fêtes : obstacles de l'aire entière, rues et chemins, portes, PNJ
+            // (places de jour et de pluie), invités, points sûrs, et les accessoires du Bourg fortifié.
+            AdventureMap map = RegionMap.Whole;
+            var obstacles = FeastObstacles();
+            var doors = map.Doors.Select(d => (d.X, d.Z)).ToList();
+            var avoid = FeastAvoid().ToList();
+            foreach (BourgPiece b in map.Bourg.Pieces)
+                if (!BourgModels.IsGround(b.Piece) && b.Covers is null) avoid.Add((b.X, b.Z));
+            var spots = new List<DecorSpot>();
+            foreach (RebuildSite site in book.Sites)
+            {
+                // 20 novembre 2026 : d'abord le grand décor du lieu (pont, tour, dortoir, moulin), que les petites pièces évitent.
+                RebuildPhase phase = World.RebuildPhaseOf(site.Id);
+                IReadOnlyList<DecorSpot> landmark = RebuildDecor.Landmark(site, phase, map.Obstacles).Spots;
+                spots.AddRange(landmark);
+                spots.AddRange(RebuildDecor.Layout(site, phase, World.RebuildState.Of(site.Id)?.Stage ?? 0, obstacles, map.Roads, doors, avoid,
+                    landmark.Select(RebuildDecor.BoxOf).ToList()));
+            }
+            return spots;
+        }
+
+        /// <summary>
         /// V2.25.2 : le passage dont <paramref name="obstacle"/> est la porte est-il ouvert pour de bon (registre du monde) ? Vrai dès que
         /// la quête l'ouvre, avant même que l'obstacle disparaisse (à la session suivante) : la barrière du moulin s'ouvre alors.
         /// </summary>
