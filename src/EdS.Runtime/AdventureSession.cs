@@ -385,7 +385,7 @@ namespace EdS.Runtime
             // Saisons : le contenu saisonnier (nœuds de saison, Échos de la brume, lac gelé et île).
             // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
             string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
-            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition, craftingBook) : null;   // revue Codex de la PR #229 : nœuds de la vigne vérifiés
             // Grand Solitaire, 2e partie : les boss du monde (fichier absent, données d'essai réduites : aucun ; présent, il doit être valide).
             string bossesPath = WorldBossJsonReader.PathIn(dataDirectory);
             WorldBossLoadResult? worldBosses = File.Exists(bossesPath) ? WorldBossJsonReader.ReadFile(bossesPath, catalogTexts, definition, catalog, scenariosDirectory, data) : null;

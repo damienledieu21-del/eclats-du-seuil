@@ -16,16 +16,17 @@ namespace EdS.Data.Json
     {
         public static string PathIn(string dataDirectory) => System.IO.Path.Combine(dataDirectory, "world", "seasons.json");
 
-        public static SeasonLoadResult ReadFile(string path, ZoneDefinition zone)
+        /// <param name="crafting">Revue Codex de la PR #229 : catalogue des métiers, pour vérifier les nœuds de la vigne (null : non vérifiés).</param>
+        public static SeasonLoadResult ReadFile(string path, ZoneDefinition zone, EdS.Data.Crafting.CraftingBook? crafting = null)
         {
             var report = new ValidationReport();
-            return SeasonValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), zone, report);
+            return SeasonValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), zone, report, crafting);
         }
 
-        public static SeasonLoadResult Read(string json, ZoneDefinition zone)
+        public static SeasonLoadResult Read(string json, ZoneDefinition zone, EdS.Data.Crafting.CraftingBook? crafting = null)
         {
             var report = new ValidationReport();
-            return SeasonValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), zone, report);
+            return SeasonValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), zone, report, crafting);
         }
 
         /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>

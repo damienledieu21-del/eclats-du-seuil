@@ -311,6 +311,28 @@ public class SaisonsV2442Tests
     }
 
     [Fact]
+    public void Noeuds_de_la_vigne_verifies_contre_les_metiers()
+    {
+        // Revue Codex de la PR #229 : une faute de frappe dans vine.nodes est refusée avec son chemin (sinon le vrai nœud resterait ouvert
+        // tout l'automne) ; un nœud de toute l'année aussi.
+        ZoneDefinition zone = Zone();
+        CraftingBook crafting = Crafting(zone);
+        string json = File.ReadAllText(SeasonJsonReader.PathIn(DataDirectory));
+        Assert.True(SeasonJsonReader.Read(json, zone, crafting).IsValid);
+        SeasonLoadResult typo = SeasonJsonReader.Read(json.Replace("\"raisin_vignes_ouest\"", "\"raisin_vignes_oues\""), zone, crafting);
+        Assert.Equal("$.data.vine.nodes[0]", FirstError(typo));
+        Assert.Equal(EdS.Data.Validation.ValidationCode.UnknownReference, typo.Report.Errors[0].Code);
+        string allYear = crafting.Nodes.First(n => !n.IsSeasonal).Id;
+        SeasonLoadResult plain = SeasonJsonReader.Read(json.Replace("\"raisin_vignes_est\"", "\"" + allYear + "\""), zone, crafting);
+        Assert.Equal("$.data.vine.nodes[1]", FirstError(plain));
+        // Sans catalogue des métiers : contrôle croisé non fait (le contenu saisonnier seul reste lisible).
+        Assert.True(SeasonJsonReader.Read(json.Replace("\"raisin_vignes_ouest\"", "\"raisin_vignes_oues\""), zone).IsValid);
+        // La partie charge les saisons avec les métiers.
+        Assert.Contains("SeasonJsonReader.ReadFile(seasonsPath, definition, craftingBook)",
+            File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "src", "EdS.Runtime", "AdventureSession.cs")));
+    }
+
+    [Fact]
     public void Sur_un_chemin_au_bord_compris()
     {
         ZoneDefinition zone = Zone();
