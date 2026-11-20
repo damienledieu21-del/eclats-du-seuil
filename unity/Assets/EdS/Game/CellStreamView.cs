@@ -22,6 +22,9 @@ namespace EdS.Game
     {
         private static CellStreamView _current;
 
+        /// <summary>V2.44.3 : racine du terrain de la région affiché (neige posée, SnowCover), ou null.</summary>
+        public static Transform CurrentRoot => _current != null && _current._root != null ? _current._root.transform : null;
+
         private readonly string _key;
         private readonly GameObject _root;
         private readonly RegionTerrain _terrain;
@@ -44,6 +47,7 @@ namespace EdS.Game
         private readonly (double, double, double, double)? _hole;
         private readonly Dictionary<RegionCell, GameObject> _decor = new Dictionary<RegionCell, GameObject>();
         private readonly Material _water, _ravine, _road, _trunk, _leaves, _needles;
+        private readonly Material _ice;   // V2.44.3
 
         private CellStreamView(string key, AdventureMap whole, RegionGrid grid, StreamingProfile profile, GroundRelief relief, Rect covered)
         {
@@ -56,6 +60,7 @@ namespace EdS.Game
             _relief = relief;
             _hole = hole;
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
+            _ice = SpaceView.IceOf(_water);   // V2.44.3 : la bande du lac gelé
             _ravine = ArenaView.MakeMaterial(new Color(0.22f, 0.2f, 0.18f));
             _road = ArenaView.MakeMaterial(new Color(0.48f, 0.4f, 0.28f));
             _trunk = ArenaView.MakeMaterial(new Color(0.3f, 0.21f, 0.13f));
@@ -293,6 +298,10 @@ namespace EdS.Game
             AddMesh(root, "Eau", flat, flatTris, _water, false);
             flat = new List<Vector3>();
             flatTris = new List<int>();
+            foreach (IReadOnlyList<(double X, double Z)> poly in set.Ice) Fan(poly, 0.03f, false, flat, flatTris);   // V2.44.3 : la bande du lac gelé
+            AddMesh(root, "Glace du lac", flat, flatTris, _ice, false);
+            flat = new List<Vector3>();
+            flatTris = new List<int>();
             foreach (IReadOnlyList<(double X, double Z)> poly in set.Ravines) Fan(poly, 0.1f, true, flat, flatTris);
             AddMesh(root, "Ravins", flat, flatTris, _ravine, false);
             var road = new List<Vector3>();
@@ -496,6 +505,7 @@ namespace EdS.Game
             if (_material != null) Object.Destroy(_material);
             foreach (Material m in new[] { _ravine, _road, _trunk, _leaves, _needles }) if (m != null) Object.Destroy(m);
             if (_water != null && _water != StyleWorld.Water()) Object.Destroy(_water);
+            if (_ice != null && _ice != _water && _ice != StyleWorld.Water()) Object.Destroy(_ice);
         }
     }
 }

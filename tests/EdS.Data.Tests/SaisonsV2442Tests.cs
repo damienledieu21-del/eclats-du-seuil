@@ -260,7 +260,7 @@ public class SaisonsV2442Tests
         Assert.False(b.SnowAt(new CivilDate(2027, 4, 16), col));
         Assert.False(b.SnowAt(new CivilDate(2026, 10, 31), col));
         Assert.False(b.SnowAt(null, col));
-        Assert.Equal(Fixed.FromInt(30), b.Snow!.PassAltitude);
+        Assert.Equal(Fixed.FromInt(220), b.Snow!.PassAltitude);   // V2.44.3 : limite de la neige du col à 220 m (relief : col à 320 m)
         // Créatures : les ours hibernent, deux loups de l hiver.
         Assert.False(b.CreatureSeasons["ours"].IsActive(Season.Winter));
         Assert.True(b.CreatureSeasons["ours"].IsActive(Season.Autumn));

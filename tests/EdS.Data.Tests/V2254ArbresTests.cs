@@ -283,7 +283,7 @@ public class V2254ArbresTests : IDisposable
         foreach (string s in new[] { "printemps", "été", "automne", "hiver", "saison du monde" })
             Assert.Contains("Essai des saisons : " + s, trial, StringComparison.Ordinal);
         string trees = File.ReadAllText(Path.Combine(Game, "SpaceView.Trees.cs"));
-        Assert.Contains("if (season != _treeSeason) TreeSeason(season);", trees, StringComparison.Ordinal);
+        Assert.Contains("if (season != _treeSeason || FadingFrom(season) != _treeFrom) TreeSeason(season);", trees, StringComparison.Ordinal);   // V2.44.3 : et pendant le fondu
         Assert.Contains("_groundLeaves[i].SetActive(ground);", trees, StringComparison.Ordinal);
         // Veines du corrompu : la lueur des pierres du Seuil (discrète le jour, nette la nuit).
         Assert.Equal(AtelierDecor.SeuilGlow(0.7), AtelierTrees.CorruptGlow(0.7));

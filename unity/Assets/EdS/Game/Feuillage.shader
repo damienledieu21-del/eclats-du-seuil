@@ -23,6 +23,9 @@ Shader "EdS/Feuillage"
         _GlowMap ("Émission", 2D) = "black" {}
         [HDR] _GlowColor ("Couleur d'émission", Color) = (0, 0, 0, 1)
         [Enum(UnityEngine.Rendering.CullMode)] _FaceCull ("Faces éliminées", Float) = 0
+        // V2.44.3 : feuillage de la saison d'avant (posé par le jeu pendant la transition de 7 jours) et sa part (0 : aucun, 1 : en fondu).
+        [HideInInspector] _PrevMap ("Feuillage de la saison d'avant", 2D) = "white" {}
+        [HideInInspector] _HasPrev ("Fondu de saison", Float) = 0
         [HideInInspector] _Cull ("__cull", Float) = 0
     }
 
@@ -39,6 +42,7 @@ Shader "EdS/Feuillage"
         SAMPLER(sampler_BumpMap);
         TEXTURE2D(_GlowMap);
         SAMPLER(sampler_GlowMap);
+        TEXTURE2D(_PrevMap);
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
@@ -54,16 +58,38 @@ Shader "EdS/Feuillage"
             float _Cull;
             half _VertexTint;
             half4 _GlowColor;
+            half _HasPrev;
         CBUFFER_END
+
+        // V2.44.3 : progression de la transition (y de _EdsSeason, adoucie, 0 à 1), posée par SeasonView.
+        float4 _EdsSeason;
+
+        // V2.44.3 : feuillage de la saison montrée, fondu depuis celui de la saison d'avant pendant la transition (les feuilles roussissent
+        // puis tombent une à une : l'alpha suit le mélange, le seuil découpe). Sans saison d'avant posée : la texture seule, comme avant.
+        half4 Leaf(float2 uv)
+        {
+            half4 now = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv);
+            if (_HasPrev < 0.5h) return now;
+            half4 before = SAMPLE_TEXTURE2D(_PrevMap, sampler_BaseMap, uv);
+            return lerp(before, now, (half)saturate(_EdsSeason.y));
+        }
 
         // Saisons : teinte de saison et neige posées par SeasonView (globales ; jamais posées, elles valent 0 et rien ne change).
         half4 _EdsSeasonTint;
         half _EdsSnow;
+        float4 _EdsSnowPass;   // V2.44.3 : neige du col (quantité, limite en m, fondu en m)
 
-        half3 EdsSeason(half3 albedo, half up)
+        // V2.44.3 : neige au point de hauteur y : celle de la plaine, ou celle du col au-dessus de sa limite (fondu en dessous).
+        half EdsSnowAt(float y)
+        {
+            half pass = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
+            return max(_EdsSnow, pass);
+        }
+
+        half3 EdsSeason(half3 albedo, half up, float y)
         {
             albedo = lerp(albedo, albedo * _EdsSeasonTint.rgb * 2.0h, _EdsSeasonTint.a);
-            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(_EdsSnow * saturate(up * 1.5h - 0.3h)));
+            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(EdsSnowAt(y) * saturate(up * 1.5h - 0.3h)));
         }
 
 
@@ -147,7 +173,7 @@ Shader "EdS/Feuillage"
             half4 Frag(Varyings input, FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(input);
-                half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
+                half4 albedo = Leaf(input.uv) * _BaseColor;
                 clip(albedo.a - _Cutoff);
                 albedo.rgb *= input.tint;
 
@@ -170,7 +196,7 @@ Shader "EdS/Feuillage"
                 inputData.shadowMask = half4(1, 1, 1, 1);
 
                 SurfaceData surface = (SurfaceData)0;
-                surface.albedo = EdsSeason(albedo.rgb, normalWS.y);   // saisons : teinte et neige sur le dessus
+                surface.albedo = EdsSeason(albedo.rgb, normalWS.y, input.positionWS.y);   // saisons : teinte et neige sur le dessus
                 surface.alpha = 1.0h;
                 surface.metallic = 0.0h;
                 surface.smoothness = _Smoothness;
@@ -249,7 +275,7 @@ Shader "EdS/Feuillage"
 
             half4 Frag(Varyings input) : SV_Target
             {
-                clip(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColor.a - _Cutoff);
+                clip(Leaf(input.uv).a * _BaseColor.a - _Cutoff);
                 return 0;
             }
             ENDHLSL
@@ -292,7 +318,7 @@ Shader "EdS/Feuillage"
 
             half Frag(Varyings input) : SV_Target
             {
-                clip(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColor.a - _Cutoff);
+                clip(Leaf(input.uv).a * _BaseColor.a - _Cutoff);
                 return input.positionCS.z;
             }
             ENDHLSL
@@ -338,7 +364,7 @@ Shader "EdS/Feuillage"
 
             half4 Frag(Varyings input, FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC) : SV_Target
             {
-                clip(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColor.a - _Cutoff);
+                clip(Leaf(input.uv).a * _BaseColor.a - _Cutoff);
                 float3 normalWS = normalize(IS_FRONT_VFACE(facing, true, false) ? input.normalWS : -input.normalWS);
                 #if defined(_GBUFFER_NORMALS_OCT)
                     float2 octNormalWS = PackNormalOctQuadEncode(normalWS);

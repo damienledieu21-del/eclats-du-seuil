@@ -19,6 +19,8 @@ Shader "EdS/Eau"
         _Sparkle ("Éclat du soleil", Range(0, 10)) = 3.0
         [HideInInspector] _ReflectionCube ("Reflets des objets (sonde, posée par le jeu)", Cube) = "" {}
         [HideInInspector] _ProbeWeight ("Part de la sonde", Range(0, 1)) = 0
+        // V2.44.3 (réponse de Damien du 20 novembre 2026 : seul le lac gèle, là où la glace est praticable) : 1 sur la bande du lac gelé.
+        [HideInInspector] _IceAllowed ("Gèle en hiver", Float) = 0
     }
 
     SubShader
@@ -61,7 +63,22 @@ Shader "EdS/Eau"
                 half _SkyBoost;
                 half _Sparkle;
                 half _ProbeWeight;
+                half _IceAllowed;
             CBUFFER_END
+
+            // V2.44.3 (saisons) : glace (0 : eau libre ; de 0 à 1 : la glace se forme par plaques du 1er au 7 décembre ; 1 : glace
+            // praticable) et neige de la plaine, posées par SeasonView (globales ; jamais posées, elles valent 0 et l'eau ne change pas).
+            half _EdsIce;
+            half _EdsSnow;
+
+            // Bruit de valeur (plaques de glace), sans texture.
+            float Hash(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+            float Noise(float2 p)
+            {
+                float2 i = floor(p), f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + float2(1, 1)), f.x), f.y);
+            }
 
             struct Attributes
             {
@@ -129,8 +146,25 @@ Shader "EdS/Eau"
                 half sparkle = pow(saturate(dot(normal, halfway)), 300.0h) * _Sparkle;
 
                 half3 color = lerp(body, sky, fresnel) + sun.color * sparkle;
-                color = MixFog(color, input.fogFactor);
                 half alpha = saturate(lerp(_Opacity, 1.0h, fresnel) + sparkle);
+
+                // V2.44.3 : glace. Plaques qui gagnent l'eau pendant qu'elle se forme (bord net, bruit en deux octaves), puis une couche
+                // entière quand elle est praticable : mate, bleutée, sans vagues ni éclat, un peu de ciel ; la neige de la plaine s'y pose.
+                if (_EdsIce > 0.001h && _IceAllowed > 0.5h)
+                {
+                    float2 p = input.positionWS.xz;
+                    half n = (half)(Noise(p * 0.09) * 0.65 + Noise(p * 0.37) * 0.35);
+                    half cover = _EdsIce >= 0.999h ? 1.0h : smoothstep(n - 0.04h, n + 0.04h, _EdsIce * 1.08h);
+                    half crack = (half)smoothstep(0.47, 0.5, abs(Noise(p * 0.8) - 0.5) + 0.02) * 0.25h;
+                    half3 ice = lerp(half3(0.62h, 0.74h, 0.80h), half3(0.86h, 0.92h, 0.95h), n) - crack;
+                    ice *= ambient + sun.color * saturate(sun.direction.y) * 0.7h;
+                    ice = lerp(ice, sky, 0.12h);
+                    half snow = saturate(_EdsSnow * (0.6h + 0.6h * (half)Noise(p * 0.21)));
+                    ice = lerp(ice, half3(0.93h, 0.93h, 0.91h) * (ambient + sun.color * saturate(sun.direction.y)), snow);
+                    color = lerp(color, ice, cover);
+                    alpha = lerp(alpha, 0.96h, cover);
+                }
+                color = MixFog(color, input.fogFactor);
                 return half4(color, alpha);
             }
             ENDHLSL

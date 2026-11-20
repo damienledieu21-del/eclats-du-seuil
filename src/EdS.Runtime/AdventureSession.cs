@@ -2095,7 +2095,14 @@ namespace EdS.Runtime
         public SeasonState? CivilSeason => World.CivilSeason;
 
         /// <summary>Saisons : paramètres de rendu de la saison (teinte, neige, glace), affichage seulement.</summary>
-        public SeasonLook SeasonShown => World.CivilSeason is SeasonState s ? SeasonLook.Of(s) : SeasonLook.Steady(World.SeasonIndex);
+        public SeasonLook SeasonShown
+        {
+            get
+            {
+                SeasonLook look = World.CivilSeason is SeasonState s ? SeasonLook.Of(s).WithSnow(World.Seasons?.Snow, World.CivilDay) : SeasonLook.Steady(World.SeasonIndex);
+                return World.Definition?.Indoor == true ? look.Indoors() : look;   // V2.44.3 : ni neige ni glace dans une pièce
+            }
+        }
 
         /// <summary>Sous-lot V2.10 : une fête bat son plein (les villageois sortent leurs beaux habits).</summary>
         public bool Festive => World.Festival != null;

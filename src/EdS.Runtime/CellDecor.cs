@@ -64,8 +64,10 @@ namespace EdS.Runtime
     public sealed class CellDecorSet
     {
         internal CellDecorSet(RegionCell cell, double minX, double minZ, double maxX, double maxZ, List<IReadOnlyList<(double X, double Z)>> water,
-            List<IReadOnlyList<(double X, double Z)>> ravines, List<CellRoad> roads, List<CellRock> rocks, List<CellTree> trees)
+            List<IReadOnlyList<(double X, double Z)>> ravines, List<CellRoad> roads, List<CellRock> rocks, List<CellTree> trees,
+            List<IReadOnlyList<(double X, double Z)>>? ice = null)
         {
+            Ice = ice ?? new List<IReadOnlyList<(double X, double Z)>>();
             Cell = cell;
             MinX = minX;
             MinZ = minZ;
@@ -87,6 +89,9 @@ namespace EdS.Runtime
         /// <summary>Eau (rivières, lac) : polygones convexes coupés à la case.</summary>
         public IReadOnlyList<IReadOnlyList<(double X, double Z)>> Water { get; }
 
+        /// <summary>V2.44.3 : eau qui gèle en hiver (la bande praticable du lac, <see cref="WinterLook.IceWater"/>), à part du reste de l'eau.</summary>
+        public IReadOnlyList<IReadOnlyList<(double X, double Z)>> Ice { get; }
+
         /// <summary>Gorge et ravins (<see cref="StyleRules.Ravine"/>) : polygones convexes coupés à la case.</summary>
         public IReadOnlyList<IReadOnlyList<(double X, double Z)>> Ravines { get; }
 
@@ -94,7 +99,7 @@ namespace EdS.Runtime
         public IReadOnlyList<CellRock> Rocks { get; }
         public IReadOnlyList<CellTree> Trees { get; }
 
-        public bool IsEmpty => Water.Count == 0 && Ravines.Count == 0 && Roads.Count == 0 && Rocks.Count == 0 && Trees.Count == 0;
+        public bool IsEmpty => Water.Count == 0 && Ice.Count == 0 && Ravines.Count == 0 && Roads.Count == 0 && Rocks.Count == 0 && Trees.Count == 0;
     }
 
     /// <summary>
@@ -129,6 +134,7 @@ namespace EdS.Runtime
             double x1 = x0 + RegionGrid.CellMeters, z1 = z0 + RegionGrid.CellMeters;
             List<(double MinX, double MinZ, double MaxX, double MaxZ)> rects = Outside((x0, z0, x1, z1), hole);
             var water = new List<IReadOnlyList<(double X, double Z)>>();
+            var ice = new List<IReadOnlyList<(double X, double Z)>>();   // V2.44.3
             var ravines = new List<IReadOnlyList<(double X, double Z)>>();
             var roads = new List<CellRoad>();
             var rocks = new List<CellRock>();
@@ -148,7 +154,7 @@ namespace EdS.Runtime
             {
                 string key = StyleRules.Key(o.Id);
                 if (o.Low && key.StartsWith("riviere", StringComparison.Ordinal))
-                    foreach (var r in rects) AddClipped(water, o.Points, r);
+                    foreach (var r in rects) AddClipped(WinterLook.IceWater(o.Id) ? ice : water, o.Points, r);
                 else if (StyleRules.Ravine(o.Id))
                     foreach (var r in rects) AddClipped(ravines, o.Points, r);
                 else if (StyleRules.RockFace(o.Id))
@@ -225,7 +231,7 @@ namespace EdS.Runtime
             if (candidates.Count > maxTrees)
                 candidates = candidates.OrderBy(t => t.Key).ThenBy(t => t.Tree.X).ThenBy(t => t.Tree.Z).Take(maxTrees).ToList();
             trees.AddRange(candidates.Select(t => t.Tree));
-            return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees);
+            return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees, ice);
         }
 
         /// <summary>Le lieu tient-il tout entier dans la fenêtre <paramref name="hole"/> (faux sans fenêtre) ?</summary>

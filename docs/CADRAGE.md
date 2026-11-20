@@ -280,6 +280,8 @@ Rapportées par la session principale. Elles précisent le sujet 12 « Fêtes et
 | Dates de la neige et de la vigne | Neige en plaine du **15 décembre au 28 février**, au col du **1er novembre au 15 avril** ; vigne verte au **1er avril**, mûre au **1er septembre**, vendangée au **1er octobre** (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
 | Plafond et loups de l'hiver | On garde **128 combattants** par session, avec **2 loups de l'hiver** (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
 | Prix du raisin | **15 cuivres** chez les marchands (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
+| Neige du col à l'image | La neige du col s'affiche **à partir de 220 m** (réponse de Damien du 20 novembre 2026, PR #232). | Retenu (Damien, 20 novembre 2026) |
+| Glace à l'image | **Seul le lac gèle** : la glace ne s'affiche que là où elle est praticable (la bande du lac gelé) ; les rivières restent libres (réponse de Damien du 20 novembre 2026, PR #232). | Retenu (Damien, 20 novembre 2026) |
 | Vendanges | Une **récolte de saison** : on cueille du **raisin en septembre**, avec une **repousse comme les cèpes**. Un événement au château viendra plus tard. | Retenu (Damien, 20 novembre 2026) |
 | Créatures de saison | La saison change les créatures, **avec le bestiaire existant** : les ours hibernent, plus de loups l'hiver, etc. | Retenu (Damien, 20 novembre 2026) |
 | Toits enneigés | Par **shader**, sur **tous les bâtiments**, sans aucun crédit dépensé. | Retenu (Damien, 20 novembre 2026) |

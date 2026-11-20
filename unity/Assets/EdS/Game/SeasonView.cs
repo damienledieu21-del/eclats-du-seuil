@@ -19,7 +19,7 @@ namespace EdS.Game
         public const float ClockInterval = 30f;
 
         private static readonly int TintId = Shader.PropertyToID("_EdsSeasonTint"), SnowId = Shader.PropertyToID("_EdsSnow"),
-            IceId = Shader.PropertyToID("_EdsIce"), SeasonId = Shader.PropertyToID("_EdsSeason");
+            IceId = Shader.PropertyToID("_EdsIce"), SeasonId = Shader.PropertyToID("_EdsSeason"), PassId = Shader.PropertyToID("_EdsSnowPass");
 
         /// <summary>V2.29.2 : dernière saison montrée (pour les panoramas de l'horizon) ; <see cref="HasLook"/> faux tant que rien n'a été posé.</summary>
         public static SeasonLook Shown { get; private set; }
@@ -61,7 +61,12 @@ namespace EdS.Game
             Shader.SetGlobalFloat(SnowId, look.Snow);
             Shader.SetGlobalFloat(IceId, look.Ice);
             Shader.SetGlobalVector(SeasonId, new Vector4(look.Season, look.Blend, look.Snow, look.Ice));
+            // V2.44.3 : neige du col au-dessus de sa limite (quantité, limite, fondu), lue par l'herbe, le feuillage et la neige posée.
+            Shader.SetGlobalVector(PassId, new Vector4(look.PassSnow, look.SnowLine, SeasonLook.SnowBand, 0f));
         }
+
+        /// <summary>V2.44.3 : neige la plus forte montrée (plaine ou col) ; 0 : rien à couvrir.</summary>
+        public static float SnowShown => HasLook ? Mathf.Max(Shown.Snow, Shown.PassSnow) : 0f;
 
         /// <summary>Remet les globales à zéro (le décor sans effet de saison).</summary>
         public static void Clear()
@@ -71,6 +76,7 @@ namespace EdS.Game
             Shader.SetGlobalFloat(SnowId, 0f);
             Shader.SetGlobalFloat(IceId, 0f);
             Shader.SetGlobalVector(SeasonId, Vector4.zero);
+            Shader.SetGlobalVector(PassId, Vector4.zero);
         }
     }
 }

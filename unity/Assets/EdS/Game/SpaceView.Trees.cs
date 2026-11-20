@@ -44,6 +44,7 @@ namespace EdS.Game
         private MaterialCopies _treeCopies;
         private int _worldSeason = AtelierTrees.DefaultSeason;
         private int _treeSeason = -1;
+        private int _treeFrom = -1;   // V2.44.3 : saison d'avant en fondu (-1 : aucune)
         private float _shownTreeGlow = -1f;
 
         /// <summary>Saison du monde (0 à 3), donnée par la partie à chaque image ; l'été sans partie.</summary>
@@ -157,7 +158,7 @@ namespace EdS.Game
                     if (foliage)
                     {
                         _foliage.Add((copy, look));
-                        Leaves(copy, look, ShownSeason);
+                        Leaves(copy, look, ShownSeason, FadingFrom(ShownSeason));
                     }
                     else
                     {
@@ -171,13 +172,24 @@ namespace EdS.Game
             if (changed) r.sharedMaterials = materials;
         }
 
-        private static void Leaves(Material m, TreeLook look, int season)
+        private static void Leaves(Material m, TreeLook look, int season, int previous = -1)
         {
             Texture2D color = look.Leaves != null && season < look.Leaves.Length ? look.Leaves[season] : null;
             Texture2D normal = look.LeafNormals != null && season < look.LeafNormals.Length ? look.LeafNormals[season] : null;
             if (color != null) m.SetTexture("_BaseMap", color);
             if (normal != null) m.SetTexture("_BumpMap", normal);
+            // V2.44.3 : pendant la transition, le feuillage de la saison d'avant fond vers celui de la nouvelle (EdS/Feuillage, _PrevMap).
+            Texture2D before = previous >= 0 && look.Leaves != null && previous < look.Leaves.Length ? look.Leaves[previous] : null;
+            if (before != null && color != null) m.SetTexture("_PrevMap", before);
+            m.SetFloat("_HasPrev", before != null && color != null ? 1f : 0f);
         }
+
+        /// <summary>
+        /// V2.44.3 : saison d'avant à fondre, ou -1 : seulement pendant la transition de 7 jours de la saison montrée par SeasonView (jamais
+        /// pour une saison forcée par le menu d'essai).
+        /// </summary>
+        private static int FadingFrom(int season) =>
+            ForcedSeason < 0 && SeasonView.HasLook && SeasonView.Shown.Season == season && SeasonView.Shown.Blend < 1f ? (season + 3) % 4 : -1;
 
         /// <summary>
         /// V2.25.4 : chaque image (vue de la caméra) : saison des arbres (si elle change), lueur des veines de l'arbre corrompu, et
@@ -187,7 +199,7 @@ namespace EdS.Game
         {
             if (_boards.Count == 0 && _foliage.Count == 0 && _treeGlow.Count == 0) return;
             int season = ShownSeason;
-            if (season != _treeSeason) TreeSeason(season);
+            if (season != _treeSeason || FadingFrom(season) != _treeFrom) TreeSeason(season);
             TreeGlow(StyleWorld.Lamps);
             for (int i = 0; i < _boards.Count; i++)
             {
@@ -210,8 +222,9 @@ namespace EdS.Game
         private void TreeSeason(int season)
         {
             _treeSeason = season;
+            _treeFrom = FadingFrom(season);
             for (int i = 0; i < _foliage.Count; i++)
-                if (_foliage[i].Material != null) Leaves(_foliage[i].Material, _foliage[i].Look, season);
+                if (_foliage[i].Material != null) Leaves(_foliage[i].Material, _foliage[i].Look, season, _treeFrom);
             bool ground = AtelierTrees.GroundLeaves(season);
             for (int i = 0; i < _groundLeaves.Count; i++)
                 if (_groundLeaves[i] != null) _groundLeaves[i].SetActive(ground);

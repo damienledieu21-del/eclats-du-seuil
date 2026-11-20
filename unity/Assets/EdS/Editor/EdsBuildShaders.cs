@@ -44,6 +44,9 @@ namespace EdS.Editor
         /// <summary>Sous-lot V2.9.1 : matériau des déchirures des failles (nom partagé avec <c>WorldEventsView.TearMaterialName</c>).</summary>
         public const string FailleName = "EdsFaille";
 
+        /// <summary>V2.44.3 : neige posée sur le décor (« EdS/Neige », SnowCover).</summary>
+        public const string NeigeName = "EdsNeige";
+
         private const string Folder = "Assets/EdS/Resources";
 
         private static string TemplatePath => Folder + "/" + TemplateName + ".mat";
@@ -101,6 +104,10 @@ namespace EdS.Editor
             Shader faille = Shader.Find("EdS/Faille");
             if (faille != null) AssetDatabase.CreateAsset(new Material(faille), Folder + "/" + FailleName + ".mat");
             else Debug.LogWarning("Éclats du Seuil : shader « EdS/Faille » absent ; le jeu construit dessinera les failles en formes simples.");
+            // V2.44.3 : neige sur les toits, les rochers et le sol (sans elle, l'hiver ne blanchit que l'herbe et le feuillage).
+            Shader neige = Shader.Find("EdS/Neige");
+            if (neige != null) AssetDatabase.CreateAsset(new Material(neige), Folder + "/" + NeigeName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « EdS/Neige » absent ; le jeu construit n'aura pas de neige sur le décor.");
             AssetDatabase.SaveAssets();
             Debug.Log("Éclats du Seuil : matériau modèle « " + shader.name + " » emporté dans le jeu construit.");
         }

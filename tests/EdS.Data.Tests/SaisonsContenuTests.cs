@@ -328,7 +328,7 @@ public class SaisonsContenuTests
             // L'affichage crée les repères une fois, puis montre ceux qui sont prêts : un nœud qui entre dans sa saison apparaît.
             string markers = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "WorldMarkers.cs"));
             Assert.Contains("m.Body.SetActive(node.Ready);   // saisons", markers, StringComparison.Ordinal);
-            Assert.Equal(SeasonLook.Of(a.CivilSeason!.Value), a.SeasonShown);
+            Assert.Equal(SeasonLook.Of(a.CivilSeason!.Value).WithSnow(a.World.Seasons!.Snow, a.World.CivilDay), a.SeasonShown);   // V2.44.3 : neige du contenu
             a.SetCivilTime(Utc(2027, 1, 20));
             Assert.Equal(WardrobeSeason.Winter, a.WardrobeSeason);
             Assert.Equal(SeasonLook.WinterSnow, a.SeasonShown.Snow);
