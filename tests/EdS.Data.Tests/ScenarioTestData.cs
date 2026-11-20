@@ -254,6 +254,9 @@ internal static class ScenarioTestData
         string path = Path.Combine(dataDirectory, "world", "seasons.json");
         JsonNode seasons = JsonNode.Parse(File.ReadAllText(path))!;
         foreach (var l in seasons["data"]!["locks"]!.AsArray()) l!.AsObject().Remove("anchor");
+        // Sous-lot V2.44.2 : l'aire d'avant n'a ni vigne ni col ni créatures de saison : le contenu saisonnier y reste en version 1.
+        seasons["schemaVersion"] = 1;
+        foreach (string key in new[] { "vine", "snow", "creatures" }) seasons["data"]!.AsObject().Remove(key);
         File.WriteAllText(path, seasons.ToJsonString());
     }
 

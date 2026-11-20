@@ -276,7 +276,10 @@ Rapportées par la session principale. Elles précisent le sujet 12 « Fêtes et
 
 | Sujet | Ce qui est retenu | Statut |
 |---|---|---|
-| Neige et déplacement | La neige **ralentit le déplacement hors des chemins** ; sur les chemins, aucun effet. **Hors combat seulement**, sauf si le moteur impose autre chose (question posée dans la PR). La valeur est proposée par Claude, modeste, et posée en question à Damien. | Retenu (Damien, 20 novembre 2026) ; valeur : Ouvert |
+| Neige et déplacement | La neige **ralentit le déplacement hors des chemins** ; sur les chemins, aucun effet. **Hors combat seulement**. **−10 %, à cheval comme à pied** (réponse de Damien du 20 novembre 2026, PR #229). Jamais dans un intérieur. | Retenu (Damien, 20 novembre 2026) |
+| Dates de la neige et de la vigne | Neige en plaine du **15 décembre au 28 février**, au col du **1er novembre au 15 avril** ; vigne verte au **1er avril**, mûre au **1er septembre**, vendangée au **1er octobre** (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
+| Plafond et loups de l'hiver | On garde **128 combattants** par session, avec **2 loups de l'hiver** (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
+| Prix du raisin | **15 cuivres** chez les marchands (réponse de Damien du 20 novembre 2026, PR #229). | Retenu (Damien, 20 novembre 2026) |
 | Vendanges | Une **récolte de saison** : on cueille du **raisin en septembre**, avec une **repousse comme les cèpes**. Un événement au château viendra plus tard. | Retenu (Damien, 20 novembre 2026) |
 | Créatures de saison | La saison change les créatures, **avec le bestiaire existant** : les ours hibernent, plus de loups l'hiver, etc. | Retenu (Damien, 20 novembre 2026) |
 | Toits enneigés | Par **shader**, sur **tous les bâtiments**, sans aucun crédit dépensé. | Retenu (Damien, 20 novembre 2026) |

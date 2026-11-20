@@ -103,7 +103,7 @@ public class V233A239LieuxDeLaRegionTests
             Assert.All(found, c => Assert.Equal(level, zone.MinLevelAt(c.Placement!.Position)));
             Assert.All(found, c => Assert.Null(zone.Populations.Single(p => p.Creature == c.Id).Hours));
         }
-        Assert.Equal(43, zone.Populations.Count(p => IsLieu(p.Creature) && !p.Creature.Contains("_passage", StringComparison.Ordinal)));
+        Assert.Equal(44, zone.Populations.Count(p => IsLieu(p.Creature) && !p.Creature.Contains("_passage", StringComparison.Ordinal)));
     }
 
     [Fact]

@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "seasons",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "mistEchoes": {
       "presence": {
@@ -25,6 +25,89 @@
         "anchor": [
           180,
           -1230
+        ]
+      }
+    ],
+    "vine": {
+      "green": {
+        "month": 4,
+        "day": 1
+      },
+      "ripe": {
+        "month": 9,
+        "day": 1
+      },
+      "harvested": {
+        "month": 10,
+        "day": 1
+      },
+      "rows": "haie_vigne_vignes_",
+      "nodes": [
+        "raisin_vignes_ouest",
+        "raisin_vignes_est"
+      ]
+    },
+    "snow": {
+      "lowland": {
+        "from": {
+          "month": 12,
+          "day": 15
+        },
+        "to": {
+          "month": 2,
+          "day": 28
+        }
+      },
+      "pass": {
+        "from": {
+          "month": 11,
+          "day": 1
+        },
+        "to": {
+          "month": 4,
+          "day": 15
+        },
+        "altitude": 30,
+        "places": [
+          "col_des_cretes_de_fer"
+        ]
+      }
+    },
+    "creatures": [
+      {
+        "creature": "ours",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
+      },
+      {
+        "creature": "ourse",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
+      },
+      {
+        "creature": "ours_foret1",
+        "seasons": [
+          "spring",
+          "summer",
+          "autumn"
+        ]
+      },
+      {
+        "creature": "loup_hiver_foret1",
+        "seasons": [
+          "winter"
+        ]
+      },
+      {
+        "creature": "loup_hiver_col_passage1",
+        "seasons": [
+          "winter"
         ]
       }
     ]

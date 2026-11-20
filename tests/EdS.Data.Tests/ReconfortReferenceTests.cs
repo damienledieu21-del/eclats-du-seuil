@@ -66,7 +66,7 @@ public class ReconfortReferenceTests
     [Fact]
     public void Versions_et_facteur()
     {
-        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal(Fixed.FromRatio(11, 10), ShippedData.Rules.Combat.ComfortSpeedFactor);
         Assert.Equal(("comfort", "comfortEnd"), (CombatActionIds.Of(CombatAction.Comfort), CombatActionIds.Of(CombatAction.ComfortEnd)));
     }
@@ -76,8 +76,8 @@ public class ReconfortReferenceTests
     {
         string path = Fixture(Latest, Reconfort);
         string[] frozen = File.ReadAllLines(path);
-        Assert.Equal(frozen, Simulate(Load()));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
+        Assert.Equal(frozen.Skip(1), Simulate(Load()).Skip(1));   // neige (moteur 0.36.0, V2.44.2) : corps seulement
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(frozen, ShippedData).Status);   // neige : autre version du moteur
         Assert.Equal(ReconfortFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         JsonElement[] events = Events(frozen);
         Assert.Equal(1.1m, Assert.Single(events, e => Kind(e) == "comforted").GetProperty("factor").GetDecimal());
@@ -139,7 +139,7 @@ public class ReconfortReferenceTests
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 30) engine.Step();
         CombatSnapshot snapshot = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":10,", snapshot.Text);
+        Assert.StartsWith("{\"snapshot\":11,", snapshot.Text);
         Assert.Contains("\"comforted\":true", snapshot.Text);
         Assert.True(engine.View("bastion").Comforted);
         var resumedLog = new MemoryCombatLog();

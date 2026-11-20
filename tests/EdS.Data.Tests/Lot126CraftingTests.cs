@@ -259,7 +259,7 @@ public class Lot126CraftingTests
         Assert.Equal((1, 2, 10), (book.LevelFor(39), book.LevelFor(40), book.LevelFor(5000)));
         Assert.Equal(("forge", "forge", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
             book.Recipe("recipe.ferrure").Inputs[0].Count, book.Recipe("recipe.ferrure").Output.Item));
-        Assert.Equal(27, book.Nodes.Count);   // V2.43.2a : trois nœuds de bois, trois de pierre ; cuisine : les pommes du verger et le pommier du bourg ; pêche : vers de terre et mouches de mai (appâts) ; Saisons : quatre nœuds de saison (herbes rares, champignons) ; Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour ; V1.9.7 : deux ronds de chapeaux-de-lune au pré
+        Assert.Equal(29, book.Nodes.Count);   // V2.44.2 : deux nœuds de la vigne ;   // V2.43.2a : trois nœuds de bois, trois de pierre ; cuisine : les pommes du verger et le pommier du bourg ; pêche : vers de terre et mouches de mai (appâts) ; Saisons : quatre nœuds de saison (herbes rares, champignons) ; Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour ; V1.9.7 : deux ronds de chapeaux-de-lune au pré
         ItemDefinition potion = Items.Item("item.potion_de_soin");
         Assert.Equal((ItemType.Consumable, 300L, 20_000L, 5), (potion.Type, potion.Heal, potion.CooldownMs, potion.Stack));
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));

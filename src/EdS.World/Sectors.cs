@@ -449,6 +449,9 @@ namespace EdS.World
         /// </summary>
         private Func<long, (DayPhase? Phase, WeatherKind? Weather)>? _start;
 
+        /// <summary>Sous-lot V2.44.2 : saison du monde au tick donné (créatures de saison) ; null : toutes là au début.</summary>
+        private Func<long, EdS.Domain.Time.Season?>? _season;
+
         /// <summary>
         /// Revue Codex de la PR #206 (chemin d'hiver de l'île des saules dormants) : clés des passages ouverts par la saison au moment où une
         /// session s'ouvre (la glace du lac l'hiver) ; leurs obstacles sont retirés de l'aire de la session, sans entrer au registre (la saison
@@ -623,13 +626,13 @@ namespace EdS.World
         /// (<see cref="ZoneSetups.For"/>, <see cref="ZonePopulations"/>) ; null : toutes les créatures à heures ou à temps sont là.</param>
         public static SectorWorld For(ZoneDefinition zone, long startWorldTick, long session, IEnumerable<string>? consumed = null,
             IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null, Func<Population, long, bool>? wanted = null,
-            Func<long, (DayPhase? Phase, WeatherKind? Weather)>? start = null)
+            Func<long, (DayPhase? Phase, WeatherKind? Weather)>? start = null, Func<long, EdS.Domain.Time.Season?>? season = null)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
             (DayPhase? phase, WeatherKind? weather) = start?.Invoke(startWorldTick) ?? (null, null);
-            CombatSetup area = ZoneSetups.For(zone, keys, phase, weather);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start };
+            CombatSetup area = ZoneSetups.For(zone, keys, phase, weather, season?.Invoke(startWorldTick));
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start, _season = season };
         }
 
         /// <summary>
@@ -955,6 +958,7 @@ namespace EdS.World
             public List<Population> Mine = null!;
             public DayPhase? Phase;
             public WeatherKind? Weather;
+            public EdS.Domain.Time.Season? Season;   // sous-lot V2.44.2
             public bool Home, Reopened;
             public long Session;
             public CombatSetup Setup = null!;
@@ -980,7 +984,7 @@ namespace EdS.World
             }
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather, _season?.Invoke(WorldTick));
             return _map.SetupFor(name, session, reopened, sessionArea);
         }
 
@@ -989,7 +993,8 @@ namespace EdS.World
         {
             CombatSetup setup = PlanSetup(name, out long session, out bool reopened, out DayPhase? phase, out WeatherKind? weather);
             bool home = name == _map.HomeSector;
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
+            EdS.Domain.Time.Season? season = _season?.Invoke(WorldTick);   // sous-lot V2.44.2
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather, season);
             // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
             // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
             // au début : rare de la nuit, hors de ses heures ou de son temps ; elle garde sa vie et revient quand elle est voulue).
@@ -999,11 +1004,11 @@ namespace EdS.World
                 && (present.Contains(p.Creature) || !inArea.Contains(p.Creature))).ToList();
             // Garde : une population présente au début désigne un combattant de la session ; sinon refus avec diagnostic, avant toute modification.
             foreach (Population p in mine)
-                if (ZonePopulations.PresentAtStart(p, phase, weather) && !present.Contains(p.Creature))
+                if (ZonePopulations.PresentAtStart(p, phase, weather, season) && !present.Contains(p.Creature))
                     throw new InvalidOperationException($"Secteur {name} : la population « {p.Creature} » désigne un combattant absent de la session ; secteur non ouvert.");
             // Sous-lot V2.28b : la session est créée (et son personnage de départ admis par le moteur) avant de changer quoi que ce soit.
             var zone = new Zone(_zoneId, setup, session, WorldTick, consumed, _logs?.Invoke(name, session), sector: home ? null : name, entering: entering);
-            return new Pending { Name = name, Zone = zone, Mine = mine, Phase = phase, Weather = weather, Home = home, Reopened = reopened, Session = session, Setup = setup };
+            return new Pending { Name = name, Zone = zone, Mine = mine, Phase = phase, Weather = weather, Season = season, Home = home, Reopened = reopened, Session = session, Setup = setup };
         }
 
         /// <summary>Revue Codex de la PR #156 (1er tour) : met en jeu une session préparée (<see cref="Prepare"/>).</summary>
@@ -1014,7 +1019,7 @@ namespace EdS.World
             CombatSetup setup = pending.Setup;
             if (pending.Home) _homeOpened = true;
             if (!pending.Home || pending.Reopened) _sectorSessions[name] = pending.Session;
-            var populations = new ZonePopulations(pending.Mine, pending.Phase, pending.Weather);
+            var populations = new ZonePopulations(pending.Mine, pending.Phase, pending.Weather, pending.Season);
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             var open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;

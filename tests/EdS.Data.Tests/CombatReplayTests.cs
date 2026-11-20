@@ -166,5 +166,5 @@ public class CombatReplayTests
     // Esquive : moteur 0.32.0, format 26, règles 0.18.0, scénario en schéma 19 ; seul l'en-tête change (ancienne empreinte 272e2eac…).
     // Compagnons : moteur 0.33.0, format 27 ; seul l'en-tête change (ancienne empreinte 14b4d4c6…).
     // Monture (sous-lot V2.28d (2)) : moteur 0.34.0, format 28 ; seul l'en-tête change (ancienne empreinte dcbdbe3f…).
-    internal const string MannequinLogHash = "4ec47ec01799d6b74a3ed976cc22d6f2dcaf386e9bbad9de065cbb4bf7eb7e57";
+    internal const string MannequinLogHash = "07416c788bed11dd02042c1c751d3763edd2012f5d3fab641e73c68c114f4614";
 }

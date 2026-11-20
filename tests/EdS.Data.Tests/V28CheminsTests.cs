@@ -30,7 +30,7 @@ namespace EdS.Data.Tests;
 public class V28CheminsMoteurTests
 {
     private const string Chemins = "espace_chemins";
-    private const string Latest = "reference-0.35.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.29.0-contenu-0.6.0-regles-0.17.0";
+    private const string Latest = "reference-0.36.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.29.0-contenu-0.6.0-regles-0.17.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -58,7 +58,7 @@ public class V28CheminsMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((8, 8_192), (CombatEngine.MaxPathQueriesPerTick, CombatEngine.MaxPathExpanded));
     }
 

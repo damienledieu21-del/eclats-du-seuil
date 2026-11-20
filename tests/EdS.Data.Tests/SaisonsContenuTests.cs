@@ -90,7 +90,7 @@ public class SaisonsContenuTests
         // Nœuds de saison : dans les métiers (version 4).
         CraftingBook c = Crafting(Zone());
         Assert.Equal(CraftingValidator.CurrentSchemaVersion, c.SchemaVersion);
-        Assert.Equal(new[] { "cepes_foret", "primevere_ruisseau", "sauge_verger", "trompettes_foret" },
+        Assert.Equal(new[] { "cepes_foret", "primevere_ruisseau", "raisin_vignes_est", "raisin_vignes_ouest", "sauge_verger", "trompettes_foret" },   // V2.44.2 : vendanges
             c.Nodes.Where(n => n.IsSeasonal).Select(n => n.Id).OrderBy(id => id, StringComparer.Ordinal));
         Assert.True(c.Node("primevere_ruisseau").InSeason(Season.Spring));
         Assert.False(c.Node("primevere_ruisseau").InSeason(Season.Summer));
@@ -149,7 +149,7 @@ public class SaisonsContenuTests
         Assert.Equal("$.data.locks[0].anchor", First(Mutated(r => Data(r)["locks"]![0]!["anchor"] = new JsonArray(99999, 0))));
         Assert.Equal("$.data.locks[1].id", First(Mutated(r => Data(r)["locks"]!.AsArray().Add(JsonNode.Parse("{\"id\":\"ile_des_saules_dormants\",\"passage\":\"glace_du_lac\"}")))));
         Assert.Equal("$.data.locks", First(Mutated(r => Data(r).Remove("locks"))));
-        Assert.Equal("$.schemaVersion", First(Mutated(r => r["schemaVersion"] = 2)));
+        Assert.Equal("$.schemaVersion", First(Mutated(r => r["schemaVersion"] = 3)));   // V2.44.2 : version 2 courante, 1 encore lue
         Assert.Equal("$.kind", First(Mutated(r => r["kind"] = "crafting")));
         // Un point d'accroche dans l'aire est accepté (le jour où l'île sera sur la carte).
         SeasonLoadResult anchored = Mutated(r => Data(r)["locks"]![0]!["anchor"] = new JsonArray(-14, -62));

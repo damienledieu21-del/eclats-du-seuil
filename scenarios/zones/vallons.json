@@ -1,8 +1,8 @@
 {
   "$schema": "../../data/schemas/scenario.schema.json",
-  "schemaVersion": 23,
+  "schemaVersion": 24,
   "kind": "scenario",
-  "contentVersion": "0.16.0-provisoire",
+  "contentVersion": "0.17.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -16330,6 +16330,104 @@
         "position": [
           -1466,
           506
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_hiver_foret1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -950,
+          964
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_hiver_col_passage1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          2080,
+          1188
         ],
         "facing": [
           0,

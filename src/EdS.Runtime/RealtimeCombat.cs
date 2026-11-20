@@ -431,6 +431,7 @@ namespace EdS.Runtime
             if (!me.IsPresent && !me.IsDead) return;
             int used = MountIntentions(me);
             used += ComfortIntentions(me);   // sous-lot F7
+            used += SnowIntentions(me);   // sous-lot V2.44.2
             IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
                 _slotRequested, TargetFor, _dodgeRequested && _setup.Space != null, _movement.Wished is int wished ? MoveInput.Direction(wished) : (GroundVector?)null);
             _slotRequested = null;
@@ -480,6 +481,21 @@ namespace EdS.Runtime
         /// tick près, de façon déterministe (le monde avance d'un tick entre deux lectures).
         /// </summary>
         public Func<bool>? ComfortSource { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026) : la neige voulue par le monde (<c>WorldSession.SnowWanted</c> : hors
+        /// combat, dans la neige, hors des chemins), lue avant chaque tick simulé ; null : jamais de neige.
+        /// </summary>
+        public Func<bool>? SnowSource { get; set; }
+
+        /// <summary>Sous-lot V2.44.2 : envoie snow ou snowEnd quand le moteur diffère de ce que veut le monde. Rend le nombre de commandes soumises.</summary>
+        private int SnowIntentions(CombatantView me)
+        {
+            bool wanted = SnowSource != null && _setup.Space != null && SnowSource();
+            if (me.IsDead || me.Snowbound == wanted || _setup.Space is null) return 0;
+            long atMs = checked(_engine.CurrentTick * _tickMs);
+            return TrySubmit(new[] { new CombatCommand(atMs, PlayerId, wanted ? CombatAction.Snow : CombatAction.SnowEnd) }) ? 1 : 0;
+        }
 
         /// <summary>Sous-lot F7 : envoie comfort ou comfortEnd quand le moteur diffère de ce que veut le monde. Rend le nombre de commandes soumises.</summary>
         private int ComfortIntentions(CombatantView me)

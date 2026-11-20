@@ -42,7 +42,7 @@ public class V226MoteurSecteursTests
     [Fact]
     public void Versions_et_bornes_du_sous_lot()
     {
-        Assert.Equal(("0.35.0", 29), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // esquive : 0.32.0, format 26
+        Assert.Equal(("0.36.0", 30), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // esquive : 0.32.0, format 26
         Assert.Equal((4096, 256), (SpaceLimits.MaxCoordinateMeters, SpaceLimits.MaxObstacles));
         Assert.Equal(Fixed.FromInt(4096), SpaceLimits.MaxCoordinate);
         Assert.Equal(2L * 4096 * Fixed.Scale, Planar.MaxComponent);
