@@ -1727,13 +1727,22 @@ namespace EdS.Runtime
         }
 
         /// <summary>V2.43.3 : obstacles que le grand décor des lieux remplace (la vue ne les dessine plus), selon l'état des lieux.</summary>
-        public IReadOnlyList<string> RebuildCovered()
+        public IReadOnlyList<string> RebuildCovered() => RebuildCovers().Select(c => c.Obstacle).ToList();
+
+        /// <summary>
+        /// Revue Codex de la PR #225 : chaque obstacle remplacé et la pièce qui le remplace ; la vue ne cache l'obstacle que si cette pièce a
+        /// bien été posée (modèle au catalogue).
+        /// </summary>
+        public IReadOnlyList<(string Obstacle, string Piece)> RebuildCovers()
         {
-            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<string>();
-            var covered = new List<string>();
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<(string, string)>();
+            var covers = new List<(string, string)>();
             foreach (RebuildSite site in book.Sites)
-                if (RebuildDecor.Landmark(site, World.RebuildPhaseOf(site.Id), RegionMap.Whole.Obstacles).Covered is string id) covered.Add(id);
-            return covered;
+            {
+                var landmark = RebuildDecor.Landmark(site, World.RebuildPhaseOf(site.Id), RegionMap.Whole.Obstacles);
+                if (landmark.Covered is string id && landmark.Spots.Count > 0) covers.Add((id, landmark.Spots[0].Piece));
+            }
+            return covers;
         }
 
         /// <summary>

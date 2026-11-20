@@ -13,6 +13,7 @@ namespace EdS.Game
     public sealed partial class SpaceView
     {
         private GameObject _rebuildRoot;
+        private readonly List<Occluder> _rebuildOccluders = new List<Occluder>();   // revue Codex de la PR #225 : rendus à chaque refonte
         private readonly Dictionary<string, List<GameObject>> _obstacleParts = new Dictionary<string, List<GameObject>>();
         private Material _scaffoldWood, _scaffoldPlank;   // relecture indépendante de la PR #225 : une fois par vue, rendus avec elle
         private string _rebuildKey;
@@ -30,15 +31,26 @@ namespace EdS.Game
             string key = adventure.RebuildDecorKey;
             if (key == _rebuildKey && _rebuildRoot != null) return;
             _rebuildKey = key;
+            foreach (Occluder o in _rebuildOccluders) { ReleaseFade(o); _occluders.Remove(o); }
+            _rebuildOccluders.Clear();
             if (_rebuildRoot != null) Object.Destroy(_rebuildRoot);
             _rebuildRoot = new GameObject("Chantiers");
             _rebuildRoot.transform.SetParent(_root.transform, false);
-            // 20 novembre 2026 : l'obstacle que le grand décor d'un lieu remplace (la tour de signal) n'est plus dessiné.
-            var covered = new HashSet<string>(adventure.RebuildCovered());
+            var placed = new HashSet<string>();
+            if (key.Length > 0) PlaceRebuilds(adventure, placed);
+            // 20 novembre 2026 : l'obstacle que le grand décor d'un lieu remplace (la tour de signal) n'est plus dessiné, mais seulement si la
+            // pièce qui le remplace a bien été posée (revue Codex de la PR #225 : sans catalogue ni modèle, l'original reste).
+            var covered = new HashSet<string>();
+            foreach ((string obstacle, string piece) in adventure.RebuildCovers())
+                if (placed.Contains(piece)) covered.Add(obstacle);
             foreach (KeyValuePair<string, List<GameObject>> o in _obstacleParts)
                 foreach (GameObject g in o.Value)
                     if (g != null) g.SetActive(!covered.Contains(o.Key));
-            if (key.Length == 0) return;
+        }
+
+        /// <summary>Pose le décor des chantiers proche de la fenêtre ; <paramref name="placed"/> reçoit les pièces posées par un modèle.</summary>
+        private void PlaceRebuilds(AdventureSession adventure, HashSet<string> placed)
+        {
             StyleCatalog catalog = StyleCatalog.Loaded;
             float minX = Raw(_space.Min.X.Raw) - RebuildMargin, maxX = Raw(_space.Max.X.Raw) + RebuildMargin;
             float minZ = Raw(_space.Min.Z.Raw) - RebuildMargin, maxZ = Raw(_space.Max.Z.Raw) + RebuildMargin;
@@ -55,6 +67,14 @@ namespace EdS.Game
                 holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                placed.Add(spot.Piece);
+                // Revue Codex de la PR #225 : les grands modèles (pont, tour, dortoir) s'effacent quand ils cachent le joueur, comme les bâtiments.
+                if (RebuildDecor.Occludes(spot.Piece))
+                {
+                    int before = _occluders.Count;
+                    AddModelOccluders(model);
+                    for (int i = before; i < _occluders.Count; i++) _rebuildOccluders.Add(_occluders[i]);
+                }
             }
         }
 
