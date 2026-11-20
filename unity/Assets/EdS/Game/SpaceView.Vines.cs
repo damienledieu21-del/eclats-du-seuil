@@ -1,0 +1,135 @@
+using System.Collections.Generic;
+using EdS.Data.Seasons;
+using EdS.Runtime;
+using UnityEngine;
+
+namespace EdS.Game
+{
+    /// <summary>
+    /// Sous-lot V2.44.4 (vendanges, décisions de Damien du 20 novembre 2026) : les rangs de vigne des coteaux du château, en trois états
+    /// (<see cref="VineLook"/>) : vert, mûr avec ses grappes (modèle C_RE_S06 du lot C, sinon des grains faits par le code), vendangé
+    /// (feuillage d'automne clairsemé, puis cep nu l'hiver). Piquets et fil toujours là. Pendant les vendanges, la hotte et le panier du lot C
+    /// (C_RE_S07, C_RE_S08) attendent au bout des rangs. Formes faites par le code en attendant les modèles des rangs (Tripo). Affichage
+    /// seulement : le rang reste un obstacle bas du moteur.
+    /// </summary>
+    public sealed partial class SpaceView
+    {
+        private sealed class VineRow
+        {
+            public GameObject Leaves;
+            public Vector3 LeafScale;
+            public GameObject Grapes;
+        }
+
+        private readonly List<VineRow> _vineRows = new List<VineRow>();
+        private Material _vineLeaves, _vineWood, _vineGrape;
+        private VineRowLook? _vineShown;
+        private GameObject _vintage;   // hotte et panier, posés une fois, montrés pendant les vendanges
+
+        /// <summary>Un rang de vigne : piquets, fil, feuillage et grappes (cachées hors des vendanges).</summary>
+        private void VineRowShape(string id, List<Vector3> points)
+        {
+            if (_vineWood == null)
+            {
+                _vineWood = ArenaView.MakeMaterial(new Color(0.36f, 0.26f, 0.16f));
+                _vineLeaves = ArenaView.MakeMaterial(new Color(0.27f, 0.47f, 0.17f));
+                _vineGrape = ArenaView.MakeMaterial(new Color(0.24f, 0.08f, 0.22f));
+            }
+            float x0 = float.MaxValue, x1 = float.MinValue, z0 = float.MaxValue, z1 = float.MinValue;
+            foreach (Vector3 p in points)
+            {
+                x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x); z0 = Mathf.Min(z0, p.z); z1 = Mathf.Max(z1, p.z);
+            }
+            var row = new GameObject(id + " (rang de vigne)");
+            row.transform.SetParent(_root.transform, false);
+            bool alongX = x1 - x0 >= z1 - z0;
+            float length = alongX ? x1 - x0 : z1 - z0;
+            Vector3 center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            float ground = StyleWorld.StandHeight(center.x, center.z);
+            // Piquets tous les 5 m et fil de palissage.
+            foreach ((double x, double z) in VineLook.Along(x0, z0, x1, z1, VineLook.StakeSpacing))
+            {
+                GameObject stake = Primitive(PrimitiveType.Cylinder, row.transform, _vineWood);
+                float h = StyleWorld.StandHeight((float)x, (float)z);
+                stake.transform.position = new Vector3((float)x, h + 0.65f, (float)z);
+                stake.transform.localScale = new Vector3(0.07f, 0.65f, 0.07f);
+            }
+            GameObject wire = Primitive(PrimitiveType.Cube, row.transform, _vineWood);
+            wire.transform.position = new Vector3(center.x, ground + 1.05f, center.z);
+            wire.transform.localScale = alongX ? new Vector3(length, 0.02f, 0.02f) : new Vector3(0.02f, 0.02f, length);
+            // Feuillage : une haie basse le long du fil.
+            GameObject leaves = Primitive(PrimitiveType.Capsule, row.transform, _vineLeaves);
+            leaves.transform.position = new Vector3(center.x, ground + 0.95f, center.z);
+            leaves.transform.rotation = Quaternion.Euler(0f, 0f, alongX ? 90f : 0f) * (alongX ? Quaternion.identity : Quaternion.Euler(90f, 0f, 0f));
+            Vector3 scale = new Vector3(0.75f, length / 2f, 0.6f);
+            leaves.transform.localScale = scale;
+            // Grappes tous les 2,5 m, de chaque côté en quinconce.
+            var grapes = new GameObject("Grappes");
+            grapes.transform.SetParent(row.transform, false);
+            int i = 0;
+            foreach ((double x, double z) in VineLook.Along(x0, z0, x1, z1, VineLook.GrapeSpacing))
+            {
+                float side = (i++ % 2 == 0 ? 0.32f : -0.32f);
+                Vector3 at = new Vector3((float)x + (alongX ? 0f : side), 0f, (float)z + (alongX ? side : 0f));
+                at.y = StyleWorld.StandHeight(at.x, at.z) + 0.7f;
+                string code = LotCModels.ForNode("raisin_vignes_ouest");
+                if (code == null || LotCLook.Place(grapes.transform, code, id + "/grappe" + i, at, 0f, 1.2f) == null)
+                {
+                    GameObject berry = Primitive(PrimitiveType.Sphere, grapes.transform, _vineGrape);
+                    berry.transform.position = at;
+                    berry.transform.localScale = new Vector3(0.14f, 0.2f, 0.14f);
+                }
+            }
+            grapes.SetActive(false);
+            _vineRows.Add(new VineRow { Leaves = leaves, LeafScale = scale, Grapes = grapes });
+        }
+
+        private static GameObject Primitive(PrimitiveType type, Transform parent, Material material)
+        {
+            GameObject go = GameObject.CreatePrimitive(type);
+            Object.Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.GetComponent<Renderer>().sharedMaterial = material;
+            return go;
+        }
+
+        /// <summary>Chaque image : l'état de la vigne (changement seulement) et les objets de vendange.</summary>
+        public void Vines(VineState? state, int season)
+        {
+            if (_vineRows.Count == 0) return;
+            VineRowLook look = VineLook.Look(state, season);
+            if (_vineShown is VineRowLook shown && shown.Equals(look)) return;
+            _vineShown = look;
+            var color = new Color(look.R, look.G, look.B);
+            _vineLeaves.SetColor("_BaseColor", color);
+            _vineLeaves.SetColor("_Color", color);
+            foreach (VineRow row in _vineRows)
+            {
+                if (row.Leaves != null)
+                {
+                    row.Leaves.SetActive(look.Leaves > 0f);
+                    row.Leaves.transform.localScale = new Vector3(row.LeafScale.x * Mathf.Max(0.3f, look.Leaves), row.LeafScale.y, row.LeafScale.z * Mathf.Max(0.3f, look.Leaves));
+                }
+                if (row.Grapes != null) row.Grapes.SetActive(look.Grapes);
+            }
+            Vintage(VineLook.PropsShown(state));
+        }
+
+        private void Vintage(bool shown)
+        {
+            if (shown && _vintage == null)
+            {
+                _vintage = new GameObject("Vendanges");
+                _vintage.transform.SetParent(_root.transform, false);
+                foreach (VintageProp prop in VineLook.Props)
+                {
+                    string code = LotCModels.ForVillage(prop.Key, prop.Key);
+                    if (code == null) continue;
+                    Vector3 at = StyleWorld.OnGround(new Vector3((float)prop.X, 0f, (float)prop.Z));
+                    LotCLook.Place(_vintage.transform, code, prop.Key, at, (float)prop.Yaw);
+                }
+            }
+            if (_vintage != null) _vintage.SetActive(shown);
+        }
+    }
+}

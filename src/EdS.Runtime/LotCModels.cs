@@ -370,7 +370,8 @@ namespace EdS.Runtime
         /// Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer (déclaré après
         /// <see cref="ForgeYard"/>, dont il reprend les clés).
         /// </summary>
-        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume", ForgeTools, ForgeAwning.Key }.Concat(ForgeYard.Select(p => p.Key)).ToArray();
+        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume", ForgeTools, ForgeAwning.Key }.Concat(ForgeYard.Select(p => p.Key))
+            .Concat(VineLook.Props.Select(p => p.Key)).ToArray();   // V2.44.4 : hotte et panier de vendange
 
         /// <summary>Emprise au sol (x, z en mètres, sans quart de tour) des modèles de la forge de Maëlle, d'après leurs exports.</summary>
         public static (double W, double D) ForgeYardSize(string code) => code switch
@@ -433,7 +434,6 @@ namespace EdS.Runtime
             const string c = "08_Recoltes";
             const string dishes = "plats des quatre saisons absents du catalogue des objets et des recettes";
             const string mine = "la mine et ses dessous (nœuds, objets) ne sont pas encore dans les données";
-            const string vintage = "vendanges des coteaux (château viticole) pas encore dans les données";
             yield return Waiting("C_RE_C01", c, "Bouillon des sources", dishes);
             yield return Waiting("C_RE_C02", c, "Galette des moissons", dishes);
             yield return Waiting("C_RE_C03", c, "Poêlée du sous-bois", dishes);
@@ -459,9 +459,10 @@ namespace EdS.Runtime
             yield return Linked("C_RE_S03", c, "Sauge de pluie", "item:item.sauge_de_pluie", "node:sauge_verger");
             yield return Linked("C_RE_S04", c, "Cèpes", "item:item.cepe", "node:cepes_foret");
             yield return Linked("C_RE_S05", c, "Trompettes du sous-bois", "item:item.trompette_du_sous_bois", "node:trompettes_foret");
-            yield return Waiting("C_RE_S06", c, "Grappe de raisin", vintage);
-            yield return Waiting("C_RE_S07", c, "Hotte de vendange", vintage);
-            yield return Waiting("C_RE_S08", c, "Panier de vendange", vintage);
+            // V2.44.4 (vendanges) : la grappe sur les nœuds de cueillette (et sur les rangs mûrs), la hotte et le panier au bout des rangs.
+            yield return Linked("C_RE_S06", c, "Grappe de raisin", "item:item.raisin", "node:raisin_vignes_ouest", "node:raisin_vignes_est");
+            yield return Linked("C_RE_S07", c, "Hotte de vendange", "village:vendanges/hotte");
+            yield return Linked("C_RE_S08", c, "Panier de vendange", "village:vendanges/panier");
         }
 
         // --- 02 : objets du village (forge, éclairage, mobilier de rue, marché, fêtes) ----------------------------------------------

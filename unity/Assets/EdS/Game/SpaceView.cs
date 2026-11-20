@@ -438,6 +438,12 @@ namespace EdS.Game
                 Palisade(id, points);
                 return;
             }
+            // V2.44.4 (vendanges) : les rangs de vigne du château ne sont plus des murets, mais des rangs de vigne en trois états.
+            if (VineLook.IsRow(id))
+            {
+                VineRowShape(id, points);
+                return;
+            }
             // Essai réaliste 5 (choix de Damien du 27 octobre 2026 : « le mur de feuilles, je ne suis pas fan » → muret de pierres sèches).
             if (fence == StyleFence.Hedge)
             {
