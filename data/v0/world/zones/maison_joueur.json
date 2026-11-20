@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.maison_joueur",
+    "name": "Chez soi",
+    "scenario": "zones/maison_joueur",
+    "indoor": true,
+    "entry": "chez_soi",
+    "safePoints": [
+      {
+        "id": "chez_soi",
+        "name": "Chez soi",
+        "position": [
+          -2.75,
+          -2.6
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "sol_de_la_maison",
+        "name": "Chez soi",
+        "min": [
+          -5.0,
+          -4.0
+        ],
+        "max": [
+          5.0,
+          4.0
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          -2.75,
+          -3.4
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_maison_joueur"
+      }
+    ]
+  }
+}

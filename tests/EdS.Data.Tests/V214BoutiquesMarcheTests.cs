@@ -382,7 +382,7 @@ public class V214BoutiquesMarcheTests
     public void Boutiques_et_marche_livres()
     {
         MerchantBook book = ShippedMerchants;
-        Assert.Equal((7, "0.19.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((7, "0.20.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les vraies boutiques : genre, maison du bourg, intérieur, horaires et jour de repos (0 : lundi … 6 : dimanche).

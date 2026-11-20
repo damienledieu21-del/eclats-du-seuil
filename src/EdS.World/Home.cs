@@ -84,6 +84,22 @@ namespace EdS.World
     /// </summary>
     public static class HomeRules
     {
+        /// <summary>
+        /// V2.53.2 (proposition de Claude, question à Damien) : l'atelier de la maison est plus lent qu'en ville : 30 secondes de jeu entre
+        /// deux fabrications (en ville, aucune attente).
+        /// </summary>
+        public const long WorkshopDelayTicks = 30 * 20;
+
+        /// <summary>V2.53.2 (proposition de Claude, question à Damien) : dormir dans son lit réconforte 120 minutes de jeu.</summary>
+        public const int BedComfortMinutes = 120;
+
+        /// <summary>V2.53.2 : métiers de l'atelier de la maison, selon le meuble posé (cuisine : foyer ; établi : bois et pierre).</summary>
+        public static bool WorkshopServes(HomeUse use, string profession) =>
+            (use == HomeUse.Kitchen && profession == "cuisine") || (use == HomeUse.Workbench && (profession == "bucheronnage" || profession == "taille_de_pierre"));
+
+        /// <summary>Un meuble posé a l'usage <paramref name="use"/>.</summary>
+        public static bool Has(SavedHome home, HomeBook book, HomeUse use) => home.Placed.Any(p => book.Piece(p.Piece)?.Use == use);
+
         /// <summary>Nom de la suite de paliers de la maison pour <see cref="RebuildRules"/>.</summary>
         public const string StagesId = "home";
 

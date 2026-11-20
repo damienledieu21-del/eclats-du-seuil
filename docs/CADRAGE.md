@@ -471,7 +471,7 @@ Réponses de Damien du 20 novembre 2026, rapportées par la session principale (
 | Combien, où | **Une seule maison**, dans le **Bourg fortifié**. | Retenu (Damien, 20 novembre 2026) |
 | Pose des meubles | **Pose libre au sol**, grille de **0,25 m**, rotation par **quarts de tour** ; la pose au mur viendra plus tard. | Retenu (Damien, 20 novembre 2026) |
 | À quoi elle sert | **À tout** : décor, **coffre**, **atelier** (cuisine ou établi) plus lent qu'en ville, **point sûr à soi**, **lit** (bonus de repos, aucune statistique de combat sauf règle de repos existante). | Retenu (Damien, 20 novembre 2026) |
-| Montants (prix, paliers, bonus du lit, vitesse de l'atelier) | Propositions de Claude posées en question dans les PR V2.53. | Ouvert |
+| Montants (prix, paliers, bonus du lit, vitesse de l'atelier) | Propositions de Claude (PR #230) **validées** : maison à **8 000 cuivre** ; paliers grande salle (3 000 cuivre, 20 planches, 6 pierres taillées), seconde pièce (4 000, 30, 12), grande maison (6 000, 40, 20) ; **lit : 120 minutes** de réconfort ; meubles (2 à 6 matériaux, revendus 110 à 400 cuivre). L'**attente de l'atelier** (30 s de jeu) **n'est pas sauvegardée** : la sauvegarde ne change pas. | Retenu (Damien, 20 novembre 2026) |
 
 ## 8. Points ouverts
 

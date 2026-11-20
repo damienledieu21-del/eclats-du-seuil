@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 7,
   "kind": "merchants",
-  "contentVersion": "0.19.0-provisoire",
+  "contentVersion": "0.20.0-provisoire",
   "data": {
     "values": [
       {
@@ -592,6 +592,46 @@
       {
         "item": "item.matelote_de_carpe_doree",
         "value": 260
+      },
+      {
+        "item": "item.meuble_lit",
+        "value": 330
+      },
+      {
+        "item": "item.meuble_coffre",
+        "value": 220
+      },
+      {
+        "item": "item.meuble_table",
+        "value": 220
+      },
+      {
+        "item": "item.meuble_banc",
+        "value": 110
+      },
+      {
+        "item": "item.meuble_chaise",
+        "value": 110
+      },
+      {
+        "item": "item.meuble_armoire",
+        "value": 330
+      },
+      {
+        "item": "item.meuble_etagere",
+        "value": 165
+      },
+      {
+        "item": "item.meuble_etabli",
+        "value": 275
+      },
+      {
+        "item": "item.meuble_foyer",
+        "value": 400
+      },
+      {
+        "item": "item.meuble_banc_de_pierre",
+        "value": 200
       }
     ],
     "merchants": [
