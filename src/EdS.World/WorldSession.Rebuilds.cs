@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using EdS.Data.Rebuilds;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
@@ -95,7 +96,7 @@ namespace EdS.World
             SavedRebuild? saved = _character.Rebuilds.Of(site);
             if (!(RebuildRules.CurrentStage(saved, s) is RebuildStage stage)) return RebuildRefusal.Rebuilt;
             if (!(stage.Need(need) is RebuildNeed n)) return RebuildRefusal.UnknownNeed;
-            if (n.Kind == RebuildNeedKind.Defeat || n.Kind == RebuildNeedKind.Discover) return RebuildRefusal.NotByHand;
+            if (n.Kind != RebuildNeedKind.Coins && n.Kind != RebuildNeedKind.Item) return RebuildRefusal.NotByHand;
             long left = RebuildRules.Remaining(saved, n);
             if (left <= 0) return RebuildRefusal.NeedMet;
             CombatantView me = Zone.Engine.View(CombatantId);
@@ -153,6 +154,7 @@ namespace EdS.World
         /// </summary>
         private void StepRebuilds(List<StoryEvent> story)
         {
+            ReachRebuilds(story);
             if (!(RebuildsHere is RebuildBook book) || Narrative is null || Narrative.Revision == _rebuildRevision) return;
             _rebuildRevision = Narrative.Revision;
             for (int i = 0; i < book.Sites.Count; i++)
@@ -166,6 +168,66 @@ namespace EdS.World
                 RebuildFacts(s, saved is null, finished, f => Narrative.Learn(f, story));
             }
             _rebuildRevision = Narrative.Revision;
+        }
+
+        /// <summary>
+        /// V2.43.2b : les endroits à atteindre des paliers en cours où se tient le personnage (présent et vivant, à
+        /// <see cref="RebuildValidator.ReachRadius"/> près) comptent d'eux-mêmes, une fois chacun.
+        /// </summary>
+        private void ReachRebuilds(List<StoryEvent> story)
+        {
+            if (!(RebuildsHere is RebuildBook book)) return;
+            CombatantView me = Zone.Engine.View(CombatantId);
+            if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return;
+            for (int i = 0; i < book.Sites.Count; i++)
+            {
+                RebuildSite s = book.Sites[i];
+                if (!s.Around(p)) continue;
+                SavedRebuild? saved = _character.Rebuilds.Of(s.Id);
+                if (!(RebuildRules.CurrentStage(saved, s) is RebuildStage stage)) continue;
+                for (int k = 0; k < stage.Needs.Count; k++)
+                {
+                    RebuildNeed n = stage.Needs[k];
+                    if (n.Kind != RebuildNeedKind.Reach || RebuildRules.Remaining(saved, n) <= 0) continue;
+                    if (ZonePopulations.Beyond(p, Fixed.Zero, n.Point!.Value, Fixed.Zero, RebuildValidator.ReachRadius)) continue;
+                    SavedRebuild next = RebuildRules.Give(saved, s, n.Id, 1, Discovered, out IReadOnlyList<RebuildStage> finished);
+                    _character = _character.WithRebuilds(_character.Rebuilds.With(next));
+                    if (Narrative != null) RebuildFacts(s, saved is null, finished, f => Narrative.Learn(f, story));
+                    break;   // un endroit par tick et par lieu (le palier a pu changer)
+                }
+            }
+        }
+
+        /// <summary>
+        /// V2.43.2b : le PNJ <paramref name="npc"/> n'est apporté que par un lieu reconstruit, qui ne l'est pas encore : il n'est pas dans le
+        /// monde (comme un PNJ de passage hors de sa fête : on ne lui parle pas, sa boutique est fermée, l'affichage le cache).
+        /// </summary>
+        public bool AwaitsRebuild(string npc)
+        {
+            if (_rebuilds is null) return false;
+            for (int i = 0; i < _rebuilds.Sites.Count; i++)
+            {
+                RebuildSite s = _rebuilds.Sites[i];
+                for (int k = 0; k < s.RebuiltNpcs.Count; k++)
+                    if (s.RebuiltNpcs[k] == npc) return RebuildRules.PhaseOf(_character.Rebuilds.Of(s.Id), s) != RebuildPhase.Rebuilt;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// V2.43.2b : le point sûr <paramref name="safePoint"/> n'est ouvert que par un lieu reconstruit, qui ne l'est pas encore : il reste
+        /// fermé comme un point secret (ni carte, ni repos, ni retour, ni découverte, donc ni voyage).
+        /// </summary>
+        public bool AwaitsRebuildSafePoint(string safePoint)
+        {
+            if (_rebuilds is null || Definition is null || _rebuilds.ZoneId != Definition.Id) return false;
+            for (int i = 0; i < _rebuilds.Sites.Count; i++)
+            {
+                RebuildSite s = _rebuilds.Sites[i];
+                for (int k = 0; k < s.RebuiltSafePoints.Count; k++)
+                    if (s.RebuiltSafePoints[k] == safePoint) return RebuildRules.PhaseOf(_character.Rebuilds.Of(s.Id), s) != RebuildPhase.Rebuilt;
+            }
+            return false;
         }
 
         /// <summary>Faits de l'histoire d'un apport : chantier ouvert (premier apport), paliers finis, lieu reconstruit.</summary>

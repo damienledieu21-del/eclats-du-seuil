@@ -106,6 +106,7 @@ namespace EdS.World
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
             // Sous-lot V2.14 : les marchands de passage du grand jour de marché sont sur la place de l'installation au démontage.
+            if (AwaitsRebuild(npc.Id)) return true;   // V2.43.2b : PNJ d'un lieu pas encore reconstruit
             return npc.Festivals.Count > 0 && !(Festival is Festival f && npc.Festivals.Contains(f.Id)) && !AtMarket(npc.Festivals, false);
         }
 

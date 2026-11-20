@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.37.0-provisoire",
+  "contentVersion": "0.38.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -2125,6 +2125,56 @@
           "festival.veillee",
           "festival.givre"
         ]
+      },
+      {
+        "id": "npc.charron_hameau",
+        "name": "text.v243.charron.name",
+        "position": [
+          68,
+          -34
+        ],
+        "dialogue": "dialogue.charron",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.passeuse_du_pont",
+        "name": "text.v243.passeuse.name",
+        "position": [
+          1980,
+          150
+        ],
+        "dialogue": "dialogue.passeuse",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.foulonniere",
+        "name": "text.v243.foulonniere.name",
+        "position": [
+          508,
+          852
+        ],
+        "dialogue": "dialogue.foulonniere",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.guetteuse",
+        "name": "text.v243.guetteuse.name",
+        "position": [
+          210,
+          1390
+        ],
+        "dialogue": "dialogue.guetteuse",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.frere_hospitalier",
+        "name": "text.v243.hospitalier.name",
+        "position": [
+          1645,
+          105
+        ],
+        "dialogue": "dialogue.hospitalier",
+        "faction": "villagers"
       }
     ],
     "dialogues": [
@@ -23928,6 +23978,176 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.charron",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.charron.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v243.charron.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.passeuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.passeuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v243.passeuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.foulonniere",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.foulonniere.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v243.foulonniere.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.guetteuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.guetteuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v243.guetteuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.hospitalier",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.hospitalier.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v243.hospitalier.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -27507,7 +27727,11 @@
         "day": 7,
         "from": "10:00",
         "to": "22:00",
-        "date": {"month": 9, "day": 15, "days": 14},
+        "date": {
+          "month": 9,
+          "day": 15,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.boulanger",
@@ -27558,7 +27782,11 @@
         "day": 21,
         "from": "18:00",
         "to": "23:59",
-        "date": {"month": 11, "day": 15, "days": 14},
+        "date": {
+          "month": 11,
+          "day": 15,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.pretre",
@@ -27601,7 +27829,11 @@
         "day": 14,
         "from": "08:00",
         "to": "20:00",
-        "date": {"month": 4, "day": 10, "days": 14},
+        "date": {
+          "month": 4,
+          "day": 10,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.archer_garde",
@@ -27711,7 +27943,11 @@
         "day": 4,
         "from": "17:00",
         "to": "23:59",
-        "date": {"month": 1, "day": 1, "days": 7},
+        "date": {
+          "month": 1,
+          "day": 1,
+          "days": 7
+        },
         "guests": [
           {
             "npc": "npc.pretre",
@@ -27746,7 +27982,11 @@
         "day": 13,
         "from": "10:00",
         "to": "20:00",
-        "date": {"month": 2, "day": 10, "days": 7},
+        "date": {
+          "month": 2,
+          "day": 10,
+          "days": 7
+        },
         "guests": [
           {
             "npc": "npc.odile",
@@ -27781,7 +28021,11 @@
         "day": 13,
         "from": "10:00",
         "to": "22:00",
-        "date": {"month": 3, "day": 1, "days": 10},
+        "date": {
+          "month": 3,
+          "day": 1,
+          "days": 10
+        },
         "guests": [
           {
             "npc": "npc.lison",
@@ -27816,7 +28060,11 @@
         "day": 24,
         "from": "09:00",
         "to": "19:00",
-        "date": {"month": 5, "day": 1, "days": 10},
+        "date": {
+          "month": 5,
+          "day": 1,
+          "days": 10
+        },
         "guests": [
           {
             "npc": "npc.boulanger",
@@ -27851,7 +28099,11 @@
         "day": 4,
         "from": "18:00",
         "to": "23:59",
-        "date": {"month": 6, "day": 20, "days": 11},
+        "date": {
+          "month": 6,
+          "day": 20,
+          "days": 11
+        },
         "guests": [
           {
             "npc": "npc.lison",
@@ -27886,7 +28138,11 @@
         "day": 14,
         "from": "09:00",
         "to": "19:00",
-        "date": {"month": 7, "day": 10, "days": 14},
+        "date": {
+          "month": 7,
+          "day": 10,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.archer_garde",
@@ -27921,7 +28177,11 @@
         "day": 24,
         "from": "20:00",
         "to": "23:59",
-        "date": {"month": 8, "day": 8, "days": 10},
+        "date": {
+          "month": 8,
+          "day": 8,
+          "days": 10
+        },
         "guests": [
           {
             "npc": "npc.pretre",
@@ -27956,7 +28216,11 @@
         "day": 20,
         "from": "17:00",
         "to": "23:59",
-        "date": {"month": 10, "day": 25, "days": 10},
+        "date": {
+          "month": 10,
+          "day": 25,
+          "days": 10
+        },
         "guests": [
           {
             "npc": "npc.pretre",
@@ -27991,7 +28255,11 @@
         "day": 27,
         "from": "10:00",
         "to": "22:00",
-        "date": {"month": 12, "day": 18, "days": 14},
+        "date": {
+          "month": 12,
+          "day": 18,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.boulanger",

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -1208,7 +1208,9 @@
         "forge"
       ],
       "merchants": [
-        "merchant.armurier"
+        "merchant.armurier",
+        "merchant.charron_hameau",
+        "merchant.foulonniere"
       ]
     }
   }

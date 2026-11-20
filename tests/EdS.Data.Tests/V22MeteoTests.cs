@@ -279,7 +279,7 @@ public sealed class V22MeteoTests : IDisposable
     {
         StoryBook book = Book(Shipped.Value);
         // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
-        Assert.Equal((16, StoryValidator.CurrentSchemaVersion, "0.37.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((16, StoryValidator.CurrentSchemaVersion, "0.38.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();

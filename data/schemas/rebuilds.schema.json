@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/rebuilds.schema.json",
   "title": "Éclats du Seuil — lieux reconstruits",
-  "description": "Lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026), version 1 : chantiers des lieux nommés de la zone, paliers dans l'ordre, besoins variés (or en cuivre, matériaux de métier, créatures vaincues dans le lieu ou autour, découverte). Documentation. La validation qui fait foi est celle du programme (RebuildValidator), avec la zone, le catalogue d'objets et l'histoire.",
+  "description": "Lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026), version 1 : chantiers des lieux nommés de la zone, paliers dans l'ordre, besoins variés (or en cuivre, matériaux de métier, créatures vaincues dans le lieu ou autour, découverte, endroit à atteindre), et ce que le lieu apporte une fois reconstruit (PNJ, points sûrs). Documentation. La validation qui fait foi est celle du programme (RebuildValidator), avec la zone, le catalogue d'objets et l'histoire.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -116,9 +116,39 @@
                           "discover": {
                             "type": "string",
                             "description": "Découverte de l'histoire."
+                          },
+                          "reach": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "number"
+                            },
+                            "description": "V2.43.2b : endroit où aller [x, z], dans le lieu ou sa marge, atteint à 4 m près."
                           }
                         }
                       }
+                    }
+                  }
+                }
+              },
+              "rebuilt": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "V2.43.2b : ce que le lieu apporte une fois reconstruit : PNJ de l'histoire et points sûrs de la zone qui n'existent qu'alors (un seul lieu par PNJ et par point sûr ; jamais l'entrée de la zone).",
+                "properties": {
+                  "npcs": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "safePoints": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
                     }
                   }
                 }

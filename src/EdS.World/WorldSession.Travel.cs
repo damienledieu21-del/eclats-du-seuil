@@ -73,7 +73,7 @@ namespace EdS.World
         }
 
         /// <summary>Sous-lot V2.7 : le point sûr <paramref name="safePoint"/> est secret et pas encore révélé (ni carte, ni repos, ni retour).</summary>
-        public bool IsSecret(string safePoint) => SecretFact(safePoint) is string fact && !Narrative!.Knows(fact);
+        public bool IsSecret(string safePoint) => (SecretFact(safePoint) is string fact && !Narrative!.Knows(fact)) || AwaitsRebuildSafePoint(safePoint);
 
         /// <summary>
         /// Sous-lot V2.7 (remarque de Codex sur la PR #116, tour 3) : le premier point sûr de la zone de la partie, dans l'ordre de la zone, à
@@ -295,6 +295,7 @@ namespace EdS.World
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return;
             foreach (SafePoint s in Definition.SafePoints)
             {
+                if (AwaitsRebuildSafePoint(s.Id)) continue;   // V2.43.2b : point sûr d'un lieu pas encore reconstruit
                 // Sous-lot V2.7 : un point sûr secret (le passage des bandits) ne se découvre qu'avec le fait qui le révèle, où que l'on soit.
                 if (SecretFact(s.Id) is string fact)
                 {

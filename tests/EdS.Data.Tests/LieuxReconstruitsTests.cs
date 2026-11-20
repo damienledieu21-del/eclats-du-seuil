@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using EdS.Data.Items;
 using EdS.Data.Merchants;
+using EdS.Data.Crafting;
 using EdS.Data.Json;
 using EdS.Data.Rebuilds;
 using EdS.Data.Saves;
@@ -126,6 +127,19 @@ public class LieuxReconstruitsTests
         Refused(Read(Catalog(r => Site(r, 1)["place"] = "hameau")), "$.data.sites[1].place", ValidationCode.DuplicateId);
         Refused(Read(Catalog(r => Site(r, 1)["id"] = "hameau")), "$.data.sites[1].id", ValidationCode.DuplicateId);
         Refused(Read(Catalog(r => Site(r)["margin"] = 257)), "$.data.sites[0].margin", ValidationCode.OutOfRange);
+        // Revue Codex de la PR #224 : une marge énorme avec un endroit à atteindre : le rapport, jamais un débordement.
+        RebuildLoadResult huge = Read(Catalog(r =>
+        {
+            Site(r)["margin"] = 922337203685477.5807m;
+            Need(r, 0, 2).Remove("defeat");
+            Need(r, 0, 2)["reach"] = new JsonArray(80, -30);
+        }));
+        Refused(huge, "$.data.sites[0].margin", ValidationCode.OutOfRange);
+        Refused(Read(Catalog(r =>
+        {
+            Need(r, 0, 2).Remove("defeat");
+            Need(r, 0, 2)["reach"] = new JsonArray(500, 500);   // marge valide : l'endroit hors du lieu est signalé
+        })), "$.data.sites[0].stages[0].needs[2].reach", ValidationCode.OutOfRange);
         Refused(Read(Catalog(r => Site(r)["stages"] = new JsonArray())), "$.data.sites[0].stages", ValidationCode.MissingField);
         Refused(Read(Catalog(r => Site(r)["stages"]![1]!["id"] = "done")), "$.data.sites[0].stages[1].id", ValidationCode.InvalidValue);
         Refused(Read(Catalog(r => Site(r)["stages"]![1]!["id"] = "deblaiement")), "$.data.sites[0].stages[1].id", ValidationCode.DuplicateId);
@@ -418,3 +432,108 @@ public class LieuxReconstruitsTests
         Assert.True(shop.IsValid, shop.Report.ToString());
     }
 }
+
+/// <summary>
+/// Lieux reconstruits, sous-lot V2.43.2b (contenu des 5 lieux ; décisions de Damien du 19 novembre 2026) : catalogue livré
+/// (<c>world/rebuilds.json</c>), besoin « aller à un endroit », PNJ et points sûrs qui n'existent qu'une fois le lieu reconstruit.
+/// </summary>
+[Trait("Category", "World")]
+public class LieuxReconstruitsContenuTests
+{
+    private static readonly Lazy<ZoneDefinition> Vallons = new(() => Zone());
+    private static readonly Lazy<StoryBook> Story = new(() => Book(Vallons.Value));
+
+    private static RebuildBook Shipped(ZoneDefinition zone)
+    {
+        RebuildLoadResult r = RebuildJsonReader.ReadFile(RebuildJsonReader.PathIn(DataDirectory), zone, ItemsCatalog, Book(zone));
+        return r.Book ?? throw new InvalidOperationException(r.Report.ToString());
+    }
+
+    private static WorldSession At(double x, double z, SavedRebuilds? rebuilds = null, long money = 0, params ItemStack[] items) =>
+        At(x, z, 0, rebuilds, money, items);
+
+    private static WorldSession At(double x, double z, long tick, SavedRebuilds? rebuilds, long money = 0, params ItemStack[] items) =>
+        At(x, z, tick, rebuilds, null, money, items);
+
+    private static WorldSession At(double x, double z, long tick, SavedRebuilds? rebuilds, Action<JsonObject>? scenario, long money = 0, params ItemStack[] items)
+    {
+        ZoneDefinition zone = Zone(x, z, scenario);
+        var w = new WorldSession(new WorldSave("zone.vallons", tick, 0, new[] { PlayerCharacters.PlacesKey }, Hero(money, items).WithRebuilds(rebuilds ?? SavedRebuilds.Empty)),
+            zone, ShippedData, Progression, ItemsCatalog, Book(zone),
+            CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, ItemsCatalog).Book, market: new Market(ShippedMerchants));
+        w.UseRebuilds(Shipped(zone));
+        w.Step();
+        return w;
+    }
+
+    [Fact]
+    public void Les_cinq_lieux_livres()
+    {
+        RebuildBook b = Shipped(Vallons.Value);
+        Assert.Equal(new[] { "hameau", "pont_effondre", "moulin_a_foulon", "tour_de_signal", "dortoir_de_l_abbaye" }, b.Sites.Select(s => s.Id));
+        Assert.All(b.Sites, s => Assert.Single(s.RebuiltNpcs));
+        Assert.Equal(new[] { "relais_du_pont", "pied_de_la_tour_de_signal" }, b.Sites.SelectMany(s => s.RebuiltSafePoints));
+        // Les nouveaux matériaux servent (décision de Damien du 19 novembre 2026).
+        var items = b.Sites.SelectMany(s => s.Stages).SelectMany(st => st.Needs).Where(n => n.Kind == RebuildNeedKind.Item).Select(n => n.Target).ToHashSet();
+        Assert.Superset(new HashSet<string?> { "item.bois", "item.pierre", "item.planche", "item.pierre_taillee", "item.ferrure" }, items);
+        Assert.Contains(b.Sites.SelectMany(s => s.Stages).SelectMany(st => st.Needs), n => n.Kind == RebuildNeedKind.Reach);
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rebuilds.schema.json"))
+            .IsValid(JsonDocument.Parse(File.ReadAllText(RebuildJsonReader.PathIn(DataDirectory))).RootElement));
+    }
+
+    [Fact]
+    public void Pnj_et_point_sur_seulement_une_fois_le_lieu_reconstruit()
+    {
+        // Au relais du pont : fermé tant que le pont n'est pas reconstruit ; la passeuse n'est pas là.
+        WorldSession ruin = At(1975, 178);
+        Npc passeuse = ruin.Narrative!.Book.Npc("npc.passeuse_du_pont");
+        Assert.True(ruin.NpcAway(passeuse));
+        Assert.True(ruin.IsSecret("relais_du_pont"));
+        for (int i = 0; i < 5; i++) ruin.Step();
+        Assert.False(ruin.IsDiscovered(ruin.Definition!, "relais_du_pont"));
+        Assert.Equal(TravelRefusal.NotDiscovered, ruin.CanTravel(ruin.Definition!, "relais_du_pont"));
+
+        var rebuilt = new SavedRebuilds(new[] { new SavedRebuild("pont_effondre", 3, done: true) });
+        WorldSession open = At(1975, 178, rebuilt);
+        Assert.False(open.NpcAway(open.Narrative!.Book.Npc("npc.passeuse_du_pont")));
+        Assert.False(open.IsSecret("relais_du_pont"));
+        for (int i = 0; i < 5; i++) open.Step();
+        Assert.True(open.IsDiscovered(open.Definition!, "relais_du_pont"));   // découvert sur place, donc voyage possible
+    }
+
+    [Fact]
+    public void Aller_a_un_endroit_compte_de_lui_meme()
+    {
+        // Le moulin à foulon : le bief (480, 866) est le dernier besoin du premier palier.
+        var start = new SavedRebuilds(new[] { new SavedRebuild("moulin_a_foulon", 0, new[] { new KeyValuePair<string, long>("planches", 15), new KeyValuePair<string, long>("ferrures", 4) }) });
+        WorldSession far = At(466, 856, start);
+        Assert.Equal(0, far.RebuildState.Of("moulin_a_foulon")!.Of("bief"));   // à plus de 4 m : rien
+        WorldSession there = At(478, 864, start);
+        Assert.Equal(1, there.RebuildState.Of("moulin_a_foulon")!.Stage);   // atteint : le palier « roue » est fini
+        Assert.True(there.Narrative!.Knows("fact.rebuild.moulin_a_foulon.roue"));
+        Assert.Equal(RebuildRefusal.NotByHand, far.GiveToRebuild("moulin_a_foulon", "bief", out _, out _));   // il faut y aller
+    }
+
+    // --- Relecture indépendante de la PR #224 : boutique et réparation fermées tant que le lieu n'est pas reconstruit ------------
+
+    [Theory]
+    [InlineData("merchant.charron_hameau", "hameau", 3, 66.0, -34.0, true)]
+    [InlineData("merchant.foulonniere", "moulin_a_foulon", 2, 506.0, 852.0, true)]
+    [InlineData("merchant.frere_hospitalier", "dortoir_de_l_abbaye", 3, 1647.0, 105.0, false)]
+    public void Boutique_et_reparation_seulement_une_fois_le_lieu_reconstruit(string merchant, string site, int stages, double x, double z, bool repairs)
+    {
+        long noon = WorldEventSchedule.TickAt(new WorldClock(50), 12 * 60);   // en plein jour : les boutiques sont ouvertes
+        Action<JsonObject>? calm = null;
+        WorldSession ruin = At(x, z, noon, null, calm, 10_000);
+        Assert.Equal(TradeRefusal.NotYetOpen, ruin.TradeStatus(merchant));
+        Assert.Equal(TradeRefusal.NotYetOpen, ruin.CanTrade(merchant));
+        Assert.Equal(repairs ? RepairRefusal.NotHere : RepairRefusal.Closed, ruin.CanRepairHere(merchant));
+        var started = new SavedRebuilds(new[] { new SavedRebuild(site, 1) });   // en chantier : pas encore
+        Assert.Equal(TradeRefusal.NotYetOpen, At(x, z, noon, started, calm, 10_000).CanTrade(merchant));
+
+        WorldSession open = At(x, z, noon, new SavedRebuilds(new[] { new SavedRebuild(site, stages, done: true) }), calm, 10_000);
+        Assert.Equal(TradeRefusal.None, open.CanTrade(merchant));
+        Assert.Equal(repairs ? RepairRefusal.None : RepairRefusal.Closed, open.CanRepairHere(merchant));
+    }
+}
+

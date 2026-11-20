@@ -266,7 +266,9 @@ internal static class ScenarioTestData
                     slot["rain"]!["position"] = new JsonArray(spot.Item1, spot.Item2);
                 }
             // V2.30.5 : les marchands des boutiques de la route d'Ambre (et le notable), hors du cœur, attendent sur l'ancienne place du bourg.
-            if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal))
+            // V2.43.2b : les PNJ des lieux reconstruits hors du cœur (pont, moulin à foulon, tour de signal, abbaye) attendent là aussi.
+            if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal)
+                || (string?)npc["id"] is "npc.passeuse_du_pont" or "npc.foulonniere" or "npc.guetteuse" or "npc.frere_hospitalier")
             {
                 var at = new JsonArray(-62.0 + town++, -6.0);
                 npc["position"] = at.DeepClone();

@@ -217,7 +217,7 @@ public class V14ForgeTests
         Assert.Equal((0, 35, 10, 70, 45), (book.Failure.FailPercent(0, 0), book.Failure.FailPercent(1, 0), book.Failure.FailPercent(1, 100),
             book.Failure.FailPercent(2, 0), book.Failure.FailPercent(2, 100)));
         Assert.Equal(new[] { "forge" }, book.Repair.Places);
-        Assert.Equal(new[] { "merchant.armurier" }, book.Repair.Merchants);
+        Assert.Equal(new[] { "merchant.armurier", "merchant.charron_hameau", "merchant.foulonniere" }, book.Repair.Merchants);
         // Prix : 30 % de la valeur au prorata de ce qui manque, arrondi vers le haut, au moins 5 cuivre.
         Assert.Equal((0L, 54L, 75L, 5L, 5L), (book.Repair.Price(300, 0, 100), book.Repair.Price(300, 60, 100), book.Repair.Price(250, 100, 100),
             book.Repair.Price(10, 1, 100), book.Repair.Price(0, 50, 100)));
