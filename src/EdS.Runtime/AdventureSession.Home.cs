@@ -162,5 +162,114 @@ namespace EdS.Runtime
             AnnounceLearned();
             return true;
         }
+    
+        // --- Sous-lot V2.53.3 : rendu, mode décoration, coffre ----------------------------------------------------------------------
+
+        /// <summary>Un meuble que l'on peut poser : identifiant, nom, usage, et combien en poser (objets de l'inventaire ; une décoration : 0 ou 1).</summary>
+        public readonly struct HomePieceLine
+        {
+            public HomePieceLine(string piece, string name, HomeUse use, int available, double width, double depth)
+            {
+                Piece = piece;
+                Name = name;
+                Use = use;
+                Available = available;
+                Width = width;
+                Depth = depth;
+            }
+
+            public string Piece { get; }
+            public string Name { get; }
+            public HomeUse Use { get; }
+            public int Available { get; }
+            public double Width { get; }
+            public double Depth { get; }
+        }
+
+        /// <summary>Les meubles posables maintenant (au moins un disponible), dans l'ordre du catalogue ; vide hors de la maison.</summary>
+        public IReadOnlyList<HomePieceLine> HomePiecesToPlace
+        {
+            get
+            {
+                if (!AtHome) return Array.Empty<HomePieceLine>();
+                var list = new List<HomePieceLine>();
+                foreach (HomePiece p in _home!.Furniture)
+                {
+                    int n = p.Item != null ? World.Inventory.BaseAvailable(p.Item)
+                        : HomeRules.Owns(World.Character.Feasts, p) && Home!.Placed.All(x => x.Piece != p.Id) ? 1 : 0;
+                    if (n > 0) list.Add(new HomePieceLine(p.Id, HomePieceName(p), p.Use, n, p.Width * HomeLook.Cell, p.Depth * HomeLook.Cell));
+                }
+                return list;
+            }
+        }
+
+        /// <summary>Nom affiché d'un meuble : celui de son objet, ou de sa décoration de fête.</summary>
+        public string HomePieceName(HomePiece piece) => piece.Item != null ? ItemName(piece.Item)
+            : World.FeastBook?.Ref(piece.FeastCode) is EdS.Data.Feasts.FeastRef r ? Text(r.Name) : piece.Id;
+
+        /// <summary>Nom affiché du meuble <paramref name="piece"/> (identifiant s'il est inconnu).</summary>
+        public string HomePieceNameOf(string piece) => _home?.Piece(piece) is HomePiece p ? HomePieceName(p) : piece;
+
+        /// <summary>Les places du sac (nom, quantité), dans l'ordre de l'inventaire (pour ranger au coffre).</summary>
+        public IReadOnlyList<(string Name, int Count)> BagLines => World.Inventory.Stacks.Select(s => (ItemName(s.Item), s.Count)).ToList();
+
+        /// <summary>Les meubles posés, tels qu'ils se dessinent ; vide hors de la maison.</summary>
+        public IReadOnlyList<HomePieceLook> HomePieces => AtHome ? HomeLook.Pieces(_home!, Home!, _zone) : (IReadOnlyList<HomePieceLook>)Array.Empty<HomePieceLook>();
+
+        /// <summary>Le sol ouvert aujourd'hui (mètres), ou null hors de la maison.</summary>
+        public (double MinX, double MinZ, double MaxX, double MaxZ)? HomeFloor => AtHome ? HomeLook.Floor(_home!, Home!, _zone) : ((double, double, double, double)?)null;
+
+        /// <summary>Clé du dessin de la maison (vide hors de la maison).</summary>
+        public string HomeKey => AtHome ? HomeLook.Key(Home) : string.Empty;
+
+        /// <summary>Case de la grille sous un point de la maison.</summary>
+        public (int X, int Z) HomeCellAt(double x, double z) => HomeLook.CellAt(_zone, x, z);
+
+        /// <summary>Aperçu du mode décoration : le meuble tel qu'il se dessinerait sur la case, ou null (hors de la maison, meuble inconnu).</summary>
+        public HomePieceLook? HomePreview(string piece, int x, int z, int turn) =>
+            AtHome && _home!.Piece(piece) is HomePiece def ? HomeLook.At(def, x, z, turn, _zone) : (HomePieceLook?)null;
+
+        /// <summary>Ce que donnerait la pose de <paramref name="piece"/> sur la case, sans rien changer (aperçu du mode décoration).</summary>
+        public HomeRefusal CanPlaceFurniture(string piece, int x, int z, int turn)
+        {
+            if (!AtHome) return HomeRefusal.NotThere;
+            if (!(_home!.Piece(piece) is HomePiece def)) return HomeRefusal.UnknownPiece;
+            if (HomePiecesToPlace.All(l => l.Piece != piece)) return HomeRefusal.NotAvailable;
+            return HomeRules.CanPlace(Home!, _home, def, x, z, turn);
+        }
+
+        /// <summary>Pose un meuble (mode décoration) ; le motif d'un refus s'affiche, rien ne change.</summary>
+        public bool PlaceFurniture(string piece, int x, int z, int turn) => HomeDone(World.PlaceFurniture(piece, x, z, turn));
+
+        /// <summary>Déplace le meuble qui couvre la case (<paramref name="fromX"/>, <paramref name="fromZ"/>).</summary>
+        public bool MoveFurniture(int fromX, int fromZ, int x, int z, int turn) => HomeDone(World.MoveFurniture(fromX, fromZ, x, z, turn));
+
+        /// <summary>Un quart de tour au meuble qui couvre la case.</summary>
+        public bool RotateFurniture(int x, int z) => HomeDone(World.RotateFurniture(x, z));
+
+        /// <summary>Reprend le meuble qui couvre la case (un objet revient dans l'inventaire).</summary>
+        public bool PickUpFurniture(int x, int z) => HomeDone(World.PickUpFurniture(x, z));
+
+        /// <summary>Le coffre : places dans l'ordre (nom, quantité), et sa capacité ; vide hors de la maison.</summary>
+        public IReadOnlyList<(string Item, string Name, int Count)> HomeChest => AtHome
+            ? Home!.Chest.Select(s => (s.Item, ItemName(s.Item), s.Count)).ToList()
+            : (IReadOnlyList<(string, string, int)>)Array.Empty<(string, string, int)>();
+
+        /// <summary>Places du coffre de la maison aujourd'hui (0 hors de la maison).</summary>
+        public int HomeChestSize => AtHome ? HomeRules.Tier(Home!, _home!).Chest : 0;
+
+        /// <summary>Range au coffre toute la pile de la place <paramref name="place"/> de l'inventaire.</summary>
+        public bool ChestPut(int place) =>
+            place >= 0 && place < World.Inventory.Stacks.Count && HomeDone(World.ChestPut(place, World.Inventory.AvailableAt(place)));
+
+        /// <summary>Reprend du coffre toute la pile de sa place <paramref name="place"/>.</summary>
+        public bool ChestTake(int place) => AtHome && place >= 0 && place < Home!.Chest.Count && HomeDone(World.ChestTake(place, Home.Chest[place].Count));
+
+        private bool HomeDone(HomeRefusal refusal)
+        {
+            if (refusal != HomeRefusal.None) return HomeRefused(refusal);
+            _dirty = true;
+            return true;
+        }
     }
 }

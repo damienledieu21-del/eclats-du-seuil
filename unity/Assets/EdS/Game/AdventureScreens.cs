@@ -9,7 +9,7 @@ namespace EdS.Game
     {
         // Sous-lot V1.1 : Merchant, la boutique d'un marchand (F en lui parlant) ; sous-lot V1.7 : Guild, le tableau de la maîtresse de guilde.
         // Sous-lot F4 : Feast, l'étal de fête du forain (réponse « Voir l'étal de fête » de son dialogue).
-        public enum Panel { None, Inventory, Journal, Crafting, Map, Skills, Merchant, Guild, Feast }
+        public enum Panel { None, Inventory, Journal, Crafting, Map, Skills, Merchant, Guild, Feast, Home }   // V2.53.3 : Home, le panneau de la maison (H)
 
         public Panel Open { get; private set; }
 

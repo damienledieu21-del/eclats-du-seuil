@@ -2182,6 +2182,7 @@ namespace EdS.Game
             ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
             ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
             ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
+            ReleaseHome();   // V2.53.3 : matériaux de la maison du joueur
             Object.Destroy(_root);
         }
 
