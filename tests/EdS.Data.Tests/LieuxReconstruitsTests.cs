@@ -127,6 +127,19 @@ public class LieuxReconstruitsTests
         Refused(Read(Catalog(r => Site(r, 1)["place"] = "hameau")), "$.data.sites[1].place", ValidationCode.DuplicateId);
         Refused(Read(Catalog(r => Site(r, 1)["id"] = "hameau")), "$.data.sites[1].id", ValidationCode.DuplicateId);
         Refused(Read(Catalog(r => Site(r)["margin"] = 257)), "$.data.sites[0].margin", ValidationCode.OutOfRange);
+        // Revue Codex de la PR #224 : une marge énorme avec un endroit à atteindre : le rapport, jamais un débordement.
+        RebuildLoadResult huge = Read(Catalog(r =>
+        {
+            Site(r)["margin"] = 922337203685477.5807m;
+            Need(r, 0, 2).Remove("defeat");
+            Need(r, 0, 2)["reach"] = new JsonArray(80, -30);
+        }));
+        Refused(huge, "$.data.sites[0].margin", ValidationCode.OutOfRange);
+        Refused(Read(Catalog(r =>
+        {
+            Need(r, 0, 2).Remove("defeat");
+            Need(r, 0, 2)["reach"] = new JsonArray(500, 500);   // marge valide : l'endroit hors du lieu est signalé
+        })), "$.data.sites[0].stages[0].needs[2].reach", ValidationCode.OutOfRange);
         Refused(Read(Catalog(r => Site(r)["stages"] = new JsonArray())), "$.data.sites[0].stages", ValidationCode.MissingField);
         Refused(Read(Catalog(r => Site(r)["stages"]![1]!["id"] = "done")), "$.data.sites[0].stages[1].id", ValidationCode.InvalidValue);
         Refused(Read(Catalog(r => Site(r)["stages"]![1]!["id"] = "deblaiement")), "$.data.sites[0].stages[1].id", ValidationCode.DuplicateId);

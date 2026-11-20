@@ -271,7 +271,8 @@ namespace EdS.Data.Rebuilds
                 { r.Add(p + ".place", ValidationCode.UnknownReference, $"lieu « {x.Place} » inconnu dans la zone « {zone.Id} »."); ok = false; }
                 else if (!places.Add(x.Place)) { r.Add(p + ".place", ValidationCode.DuplicateId, $"le lieu « {x.Place} » a déjà un chantier."); ok = false; }
                 Fixed margin = x.Margin ?? Fixed.Zero;
-                if (margin < Fixed.Zero || margin > MaxMargin) { r.Add(p + ".margin", ValidationCode.OutOfRange, $"marge hors de [0, {MaxMargin}] m."); ok = false; }
+                bool marginOk = margin >= Fixed.Zero && margin <= MaxMargin;
+                if (!marginOk) { r.Add(p + ".margin", ValidationCode.OutOfRange, $"marge hors de [0, {MaxMargin}] m."); ok = false; }
 
                 var stages = new List<RebuildStage>();
                 if (x.Stages is null || x.Stages.Count == 0) { Missing(r, p + ".stages", "au moins un palier"); ok = false; }
@@ -294,7 +295,7 @@ namespace EdS.Data.Rebuilds
                             var needIds = new HashSet<string>(StringComparer.Ordinal);
                             for (int n = 0; n < st.Needs.Count; n++)
                             {
-                                RebuildNeed? need = Need(st.Needs[n], $"{sp}.needs[{n}]", needIds, items, discoveries, r, place, margin);
+                                RebuildNeed? need = Need(st.Needs[n], $"{sp}.needs[{n}]", needIds, items, discoveries, r, place, marginOk ? margin : (Fixed?)null);
                                 if (need is null) ok = false; else needs.Add(need);
                             }
                         }
@@ -339,7 +340,7 @@ namespace EdS.Data.Rebuilds
         }
 
         private static RebuildNeed? Need(RebuildNeedData? x, string p, HashSet<string> ids, ItemCatalog items, HashSet<string> discoveries, ValidationReport r,
-            Place? place, Fixed margin)
+            Place? place, Fixed? margin)
         {
             if (x is null) { Missing(r, p, "besoin"); return null; }
             bool ok = true;
@@ -374,8 +375,9 @@ namespace EdS.Data.Rebuilds
             {
                 if (reach.X is null || reach.Z is null) { Missing(r, p + ".reach", "[x, z]"); return null; }
                 var at = new GroundVector(reach.X.Value, reach.Z.Value);
-                if (place is null) return null;
-                if (at.X < place.Min.X - margin || at.X > place.Max.X + margin || at.Z < place.Min.Z - margin || at.Z > place.Max.Z + margin)
+                // Revue Codex de la PR #224 : sans lieu ni marge valides (déjà signalés), pas de bornes à calculer (aucun débordement).
+                if (place is null || !(margin is Fixed mg)) return null;
+                if (at.X < place.Min.X - mg || at.X > place.Max.X + mg || at.Z < place.Min.Z - mg || at.Z > place.Max.Z + mg)
                 { r.Add(p + ".reach", ValidationCode.OutOfRange, "endroit hors du lieu et de sa marge."); return null; }
                 return ok ? new RebuildNeed(x.Id!, RebuildNeedKind.Reach, null, 1, at) : null;
             }
