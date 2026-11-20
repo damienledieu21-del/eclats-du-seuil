@@ -1360,7 +1360,8 @@ namespace EdS.Game
                     // Sous-lot 11.7 : dans les Vallons, le combat commence dès que les joueurs présents sont prêts, et l'autre (ou le robot,
                     // 10 s plus tard) le rejoint en cours.
                     _net = NetworkSession.HostGame(data, coop.Setup, name, build, Protocol.DefaultPort, true, bot ? new BuildChoice(RobotBuild) : null,
-                        vallons ? new RoomOptions { JoinDuringCombat = true } : null, vallons && bot ? BotDelaySeconds : 0);
+                        vallons ? new RoomOptions { JoinDuringCombat = true } : null, vallons && bot ? BotDelaySeconds : 0,
+                        () => DateTimeOffset.UtcNow.ToUnixTimeSeconds());   // V2.44.1 : ce poste héberge, sa date fait foi pour tous les joueurs
                 }
                 _menuOpen = false;
                 _paused = false;
@@ -1476,6 +1477,12 @@ namespace EdS.Game
                 return;
             }
             NetworkClient client = _net.Client;
+            // Sous-lot V2.44.1 (protocole 6) : en réseau, la saison montrée est celle de la date du serveur, jamais celle de ce poste.
+            if (client != null && client.ServerCivilNow.HasValue)
+            {
+                if (_seasonView == null) _seasonView = new SeasonView();
+                _seasonView.SyncServer(client.ServerCivilNow.Value);
+            }
             NetworkCombat combat = client?.Combat;
             if (combat != null && combat != _shownCombat)
             {

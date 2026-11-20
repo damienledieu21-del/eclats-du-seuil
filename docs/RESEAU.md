@@ -172,6 +172,18 @@ Le serveur reste seul juge (endurance, recharge, mur, garde) : un refus est écr
 
 **Compagnons (moteur 0.33.0, protocole inchangé : 5)** : l'état courant (`state`) transporte l'instantané au **format 8** (objet `companion` sur la ligne d'un compagnon) et l'en-tête du journal au **format 27** ; le protocole 5 ne change pas de forme (il porte ces textes tels quels). Les commandes `order` et `duo` n'ont pas encore de forme réseau (ni intention, ni action dans `tick`) : une salle n'admet pas encore de compagnon commandé ; elles arriveront avec l'interface des compagnons, sous un nouveau numéro de protocole.
 
+## Protocole 6 : saison du serveur (V2.44.1)
+
+Décision de Damien du 15 novembre 2026 (le serveur fait foi), appliquée le 20 novembre 2026. Un client d'une autre version est refusé dès la présentation.
+
+| Changement | Détail |
+|---|---|
+| `season` (serveur → client) | `{"type":"season","utc":…}` : instant civil UTC (secondes) relevé par l'hôte du serveur, entier dans [0, `ParisTime.MaxUnixSeconds`] (fin de l'an 9999, heure de Paris) ; tout autre champ, une valeur hors bornes ou non entière est refusé. Un client ne peut pas l'envoyer. |
+| Quand | À l'accueil (`welcome`, s'il y a déjà eu un relevé) et à **chaque relevé** de l'horloge de l'hôte (`RoomHost`, toutes les 30 s ; `CombatRoom.SetCivilTime`). Un relevé refusé (hors bornes) ne change rien et n'envoie rien. Sans horloge civile (hôte de test), rien n'est envoyé. |
+| Client | `NetworkClient.ServerCivilUtcSeconds` (dernier reçu), `ServerCivilNow` (prolongé du temps écoulé chez le client, plafonné au calendrier), `ServerSeason` (`SeasonCalendar.AtUtc`). Dans Unity, la saison d'une partie en réseau vient de là (`SeasonView.SyncServer`), jamais de l'horloge du poste ; `NetworkSession.HostGame(…, civilClock)` donne l'horloge du poste hôte à sa salle. |
+
+Affichage et monde seulement : aucune règle de combat ne lit la saison, le combat partagé (journal, empreintes, état courant) n'en dépend pas.
+
 ## Réseau simulé
 
 `SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, écoute arrêtée qui coupe les connexions pas encore acceptées et libère son adresse, 64 connexions au plus en attente d'acceptation, mêmes limites que TCP (taille des messages ; 4 096 messages et 64 Mio non lus au plus ; 4 096 messages et 64 Mio en route par émetteur, au-delà l'émetteur est fermé « file d'envoi pleine »). Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.

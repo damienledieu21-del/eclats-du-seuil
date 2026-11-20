@@ -410,6 +410,9 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 | **V2.43** | Lieux reconstruits (décisions de Damien du 19 novembre 2026, [CADRAGE](CADRAGE.md) § 7 terdecies), en 4 PR : **V2.43.1** cœur (catalogue `rebuilds`, règles, état dans la sauvegarde) ; **V2.43.2** contenu des 5 lieux (paliers, textes, PNJ et services) ; **V2.43.3** Unity (décor selon l'état) ; **V2.43.4** intérieurs des lieux reconstruits et mise à jour de la PR #202 | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis ; on réutilise d'abord l'échafaudage du fort et les modèles du lot C et du Bourg |
 | **V2.44** | Saisons comme dans la vraie vie (sujet 12) : saison donnée par le serveur d'après la date, lac gelé, vendanges, neige au col, feuillages | M | V2.33, V2.36, V2.40 | variantes d'hiver (neige sur les toits, arbres nus), glace |
 
+
+**Décisions de Damien du 20 novembre 2026 pour le V2.44** (Retenu, [CADRAGE.md](CADRAGE.md#7-ter-saisons-retenu)) : la neige ralentit le déplacement hors des chemins (aucun effet sur les chemins), hors combat seulement sauf contrainte du moteur, valeur modeste à confirmer ; vendanges = récolte de raisin en septembre, repousse comme les cèpes (événement au château plus tard) ; créatures de saison avec le bestiaire existant (ours qui hibernent, plus de loups l'hiver) ; toits enneigés par shader sur tous les bâtiments, sans crédit. Découpage en PR empilées : **V2.44.1** le serveur fait foi (protocole 6, message `season`), **V2.44.2** cœur (saisons en schéma 2 : vigne, neige au col, ralentissement, créatures), **V2.44.3** l'hiver dans Unity (glace de l'eau, neige des toits, rochers, sol et col, fondu du feuillage), **V2.44.4** vendanges (rangs en 3 états, modèles du lot C reliés).
+
 ### Étape 4 : le dessous
 
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |

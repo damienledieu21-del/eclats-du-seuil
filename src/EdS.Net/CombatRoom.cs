@@ -225,13 +225,20 @@ namespace EdS.Net
         /// <summary>Saison réelle (heure de Paris) au dernier instant fourni par l'hôte du serveur, ou null.</summary>
         public EdS.Domain.Time.SeasonState? CivilSeason { get; private set; }
 
-        /// <summary>L'hôte du serveur fournit l'instant UTC <paramref name="unixSeconds"/> ; hors bornes : refusé, rien ne change.</summary>
+        /// <summary>
+        /// L'hôte du serveur fournit l'instant UTC <paramref name="unixSeconds"/> ; hors bornes : refusé, rien ne change et rien n'est envoyé.
+        /// Sous-lot V2.44.1 (protocole 6) : l'instant part aussitôt à chaque joueur accueilli (<see cref="SeasonMessage"/>), le client en
+        /// tire la saison au lieu de sa propre horloge.
+        /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">Instant hors bornes.</exception>
         public void SetCivilTime(long unixSeconds)
         {
             EdS.Domain.Time.SeasonState state = EdS.Domain.Time.SeasonCalendar.AtUtc(unixSeconds);   // lève avant toute mutation
+            var message = new SeasonMessage(unixSeconds);
             CivilSeason = state;
             CivilUtcSeconds = unixSeconds;
+            foreach (Client client in _clients)
+                if (client.Seat != null) Send(client, message);
         }
 
         /// <summary>Avance le temps de la salle : messages reçus, délais, ticks du combat.</summary>
@@ -475,6 +482,7 @@ namespace EdS.Net
             seat.DisconnectedAt = null;
             client.Seat = seat;
             Send(client, new WelcomeMessage(Protocol.Version, seat.Id, seat.Token!, TickMs));
+            if (CivilUtcSeconds is long utc) Send(client, new SeasonMessage(utc));   // V2.44.1 : la date du serveur, dès l'accueil
         }
 
         private void HandleSeated(Client client, Seat seat, NetMessage message)

@@ -74,16 +74,16 @@ namespace EdS.Net
         /// Héberge une salle sur ce poste pour le scénario donné (deux places pour <c>coop/duo_meute</c>) et la rejoint. Avec
         /// <paramref name="botBuild"/>, un équipier robot prend l'autre place, après <paramref name="botDelaySeconds"/> secondes (sous-lot
         /// 11.7 : avec <see cref="RoomOptions.JoinDuringCombat"/>, il arrive pendant le combat). <paramref name="lan"/> faux : ce poste
-        /// seulement.
+        /// seulement. <paramref name="civilClock"/> (sous-lot V2.44.1) : horloge civile UTC de l'hôte, envoyée à chaque joueur (protocole 6).
         /// </summary>
         public static NetworkSession HostGame(GameData data, CombatSetup scenario, string name, BuildChoice build, int port = Protocol.DefaultPort,
-            bool lan = true, BuildChoice? botBuild = null, RoomOptions? options = null, double botDelaySeconds = 0)
+            bool lan = true, BuildChoice? botBuild = null, RoomOptions? options = null, double botDelaySeconds = 0, Func<long>? civilClock = null)
         {
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (scenario is null) throw new ArgumentNullException(nameof(scenario));
             var room = new CombatRoom(data, scenario, options);
             var listener = new TcpNetListener(lan ? IPAddress.Any : IPAddress.Loopback, port);
-            var host = new RoomHost(room, listener);
+            var host = new RoomHost(room, listener, civilClock);   // V2.44.1 : l'horloge civile de l'hôte fait foi pour tous les joueurs
             try
             {
                 host.Start();
