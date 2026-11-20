@@ -323,7 +323,7 @@
       "text.ui.door_blocked": "Impossible de passer la porte : un ennemi est trop près.",
       "text.ui.continue_hint": "Entrée : reprendre à {0}",
       "text.ui.next_rest": "Équipement et niveau changent à la prochaine halte, près d'un point sûr.",
-      "text.ui.help": "F parler, commercer, récolter ou passer une porte · I personnage et équipement · J journal des quêtes (suivre, récompenses) · K atelier · P potion · Entrée halte · F6 sauvegarder · N entraînement",
+      "text.ui.help": "F parler, commercer, récolter ou passer une porte · I personnage et équipement · J journal des quêtes (suivre, récompenses) · K atelier · P potion · Entrée halte · F6 sauvegarder · N maison (chez soi, ou rentrer depuis un point sûr)",
       "text.ui.slot.weapon": "Arme",
       "text.ui.slot.shield": "Bouclier",
       "text.ui.slot.chest": "Torse",
@@ -2460,7 +2460,12 @@
       "text.ui.home.sleep": "Dormir",
       "text.ui.home.carry_hint": "{0} : R pour tourner, clic gauche pour poser, Échap pour annuler",
       "text.ui.home.open_hint": "H : votre maison",
-      "text.ui.home.go_home_hint": "H : rentrer chez soi"
+      "text.ui.home.go_home_hint": "H : rentrer chez soi",
+      "text.ui.hud.btn.home": "Maison",
+      "text.ui.home.touch_turn": "Tourner",
+      "text.ui.home.touch_cancel": "Annuler",
+      "text.ui.home.carry_hint_touch": "{0} : touchez le sol pour poser ; Tourner, Annuler",
+      "text.ui.hud.settings.quit_adventure": "Quitter l'aventure"
     }
   }
 }

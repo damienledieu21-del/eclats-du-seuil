@@ -75,6 +75,9 @@ namespace EdS.Runtime
         /// combat d'un chantier séparé ; sa place est prévue ici et reste masquée tant que la règle n'existe pas (<c>dodge</c> faux).
         /// </summary>
         Dodge,
+
+        /// <summary>V2.53.3 (décision de Damien du 20 novembre 2026) : « Maison » : le panneau « Chez soi », ou rentrer chez soi depuis un point sûr.</summary>
+        Home,
     }
 
     /// <summary>Ce qui est en jeu : entraînement (seul), coopération en réseau, aventure dans les Vallons.</summary>
@@ -454,9 +457,11 @@ namespace EdS.Runtime
                 Add(HudButton.Journal);
                 Add(HudButton.Talents);
                 Add(HudButton.Workshop);
+                Add(HudButton.Home);   // V2.53.3 : la maison (décision de Damien du 20 novembre 2026)
             }
             Add(HudButton.Restart);
-            Add(HudButton.NextScene);
+            // V2.53.3 (décision de Damien du 20 novembre 2026) : dans l'aventure, plus de « Scène » (quitter l'aventure passe par le menu de la pause).
+            if (_mode != HudMode.Adventure) Add(HudButton.NextScene);
             Add(HudButton.Help);
             Add(HudButton.Menu);
         }

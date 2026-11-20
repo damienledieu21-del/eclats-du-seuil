@@ -345,7 +345,7 @@ namespace EdS.Game
         private UiText _sensitivity, _brightness;
         private float _shownSensitivity = float.NaN;
         private UiText _settingsTitle;
-        private UiButton _slower, _faster, _darker, _brighter, _creatorButton;
+        private UiButton _slower, _faster, _darker, _brighter, _creatorButton, _quitButton;
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
         private System.Action _openCreator;
@@ -355,6 +355,11 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.16 : action du bouton « Mon personnage » des réglages (ouvre le créateur de personnage).</summary>
         public void OnCreator(System.Action openCreator) => _openCreator = openCreator;
+
+        /// <summary>V2.53.3 (décision de Damien du 20 novembre 2026) : « Quitter l'aventure », dans le menu de la pause (N n'y sert plus).</summary>
+        public void OnQuitAdventure(System.Action quit) => _quitAdventure = quit;
+
+        private System.Action _quitAdventure;
 
         /// <summary>Actions des boutons des réglages : souris libre ou clic maintenu, haut-bas inversé, sensibilité (pas de ±0,25).</summary>
         public void OnSettings(System.Action toggleClickLook, System.Action toggleInvert, System.Action<float> stepSensitivity)
@@ -368,10 +373,12 @@ namespace EdS.Game
         /// Essai réaliste 9 (Damien, 29 octobre 2026 : « sans clic comme maintenant mais on peut le changer dans les réglages ») : les
         /// réglages de la caméra, montrés pendant la pause (le curseur y est rendu).
         /// </summary>
-        public void Settings(bool shown, bool clickLook, bool invertY, float sensitivity)
+        public void Settings(bool shown, bool clickLook, bool invertY, float sensitivity, bool quit = false)
         {
             UiKit.Show(_settings, shown);
             if (!shown) return;
+            UiKit.Show(_quitButton.Rect, quit);   // V2.53.3 : seulement dans l'aventure
+            _quitButton.Text.Value = UiTexts.Get(HudTextsV21.QuitAdventure);
             // Libellés lus dans les données à l'affichage (le HUD est construit avant le chargement des textes).
             _settingsTitle.Value = UiTexts.Get(HudTextsV21.SettingsTitle);
             _slower.Text.Value = _darker.Text.Value = UiTexts.Get(HudTextsV21.Minus);
@@ -392,7 +399,7 @@ namespace EdS.Game
         private void BuildSettings()
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 540f, 560f, 420f, 0.5f, 0.5f);   // V2.13 : luminosité ; V2.16 : Mon personnage
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 567f, 560f, 474f, 0.5f, 0.5f);   // V2.53.3 : et Quitter l'aventure   // V2.13 : luminosité ; V2.16 : Mon personnage
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _settingsTitle = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(_settingsTitle.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
@@ -420,6 +427,8 @@ namespace EdS.Game
             // Sous-lot V2.16 : le créateur de personnage (corps, coiffure, couleurs).
             _creatorButton = UiKit.Button(_settings, "Mon personnage", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _openCreator?.Invoke());
             At(_creatorButton.Rect, 280f, 358f, 440f, 44f, 0.5f, 0.5f);
+            _quitButton = UiKit.Button(_settings, "Quitter l'aventure", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _quitAdventure?.Invoke());
+            At(_quitButton.Rect, 280f, 412f, 440f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 

@@ -69,6 +69,38 @@ namespace EdS.Game
         public bool RestartPressed => Tapped(HudButton.Restart);
         public bool NextScenePressed => Tapped(HudButton.NextScene);
 
+        /// <summary>V2.53.3 : le bouton « Maison » (panneau « Chez soi », ou rentrer chez soi depuis un point sûr).</summary>
+        public bool HomePressed => Tapped(HudButton.Home);
+
+        // --- V2.53.3 : mode décoration au doigt (décision de Damien du 20 novembre 2026) ---------------------------------------
+
+        /// <summary>Zones du mode décoration : Tourner et Annuler (à la place de Parade et Garde), et le sol où poser (moitié droite).</summary>
+        private const int HomeTurnZone = 1100, HomeCancelZone = 1101, HomeFloorZone = 1102;
+
+        private bool _homeCarrying;
+        private Vector2? _homeTap;
+
+        /// <summary>Le jeu dit si un meuble est en train d'être posé (mode décoration) : Parade et Garde laissent place à Tourner et Annuler.</summary>
+        public bool HomeCarrying
+        {
+            get => _homeCarrying;
+            set
+            {
+                if (_homeCarrying == value) return;
+                _homeCarrying = value;
+                _zonesVersion = -1;   // les zones changent
+            }
+        }
+
+        public bool HomeTurnPressed => _homeCarrying && _gestures.WasTapped(HomeTurnZone);
+        public bool HomeCancelPressed => _homeCarrying && _gestures.WasTapped(HomeCancelZone);
+
+        /// <summary>
+        /// Où poser : la position à l'écran (pixels, origine en bas à gauche, comme la souris) d'un doigt qui vient de se poser (Began
+        /// seulement) sur le sol, hors de tout bouton ; null sinon. Ce doigt est une zone à part : il ne tourne pas la vue (aucune fuite).
+        /// </summary>
+        public Vector2? HomeTap => _homeCarrying ? _homeTap : null;
+
         // Sous-lot 12.8 : aventure (Rejouer y devient Halte : faire halte, ou reprendre après une défaite).
         public bool ActPressed => Tapped(HudButton.Act);
         public bool PotionPressed => Tapped(HudButton.Potion);
@@ -194,7 +226,7 @@ namespace EdS.Game
         /// monter) : ni dessiné ni touchable.
         /// </summary>
         private bool Hidden(HudButton b) =>
-            !_layout.Has(b) || (_layout.InDrawer(b) ? !_drawerOpen : _drawerOpen && b != HudButton.More && b != HudButton.Map && _layout.Drawer.Overlaps(_layout.Button(b)));
+            !_layout.Has(b) || (_homeCarrying && (b == HudButton.Parry || b == HudButton.Guard)) || (_layout.InDrawer(b) ? !_drawerOpen : _drawerOpen && b != HudButton.More && b != HudButton.Map && _layout.Drawer.Overlaps(_layout.Button(b)));
 
         /// <summary>Zones touchables, refaites seulement quand la disposition ou le tiroir changent.</summary>
         private void Zones()
@@ -212,6 +244,14 @@ namespace EdS.Game
                 string key = HudTextsV21.Button(b, _layout.Mode);
                 _labels[i] = key != null ? UiTexts.Get(key) : b >= HudButton.Skill1 && b <= HudButton.Skill6 ? (b - HudButton.Skill1 + 1).ToString() : null;
                 _labelSizes[i] = _layout.LabelFont(box);
+            }
+            // V2.53.3 : mode décoration : Tourner et Annuler aux places de Parade et Garde ; le reste de la moitié droite pose le meuble.
+            if (_homeCarrying)
+            {
+                UiBox turn = _layout.Button(HudButton.Parry), cancel = _layout.Button(HudButton.Guard);
+                _zones.Add(new GestureButton(HomeTurnZone, turn.X, turn.Y, turn.W, turn.H));
+                _zones.Add(new GestureButton(HomeCancelZone, cancel.X, cancel.Y, cancel.W, cancel.H));
+                _zones.Add(new GestureButton(HomeFloorZone, Hud.Width / 2f, 0f, Hud.Width / 2f, Hud.VirtualHeight));
             }
             // Compagnons : le haut du panneau ouvre le menu ; ses six cases, seulement menu ouvert.
             if (_layout.CompanionShown)
@@ -286,6 +326,7 @@ namespace EdS.Game
             }
             Zones();
             _gestures.Update(Fingers(), _zones, Hud.Width);
+            _homeTap = _homeCarrying ? FloorTap() : null;
             // Tiroir « Plus » : le toucher l'ouvre ou le ferme ; un bouton du tiroir touché le referme après son action ; un doigt posé
             // ailleurs (hors du tiroir et de « Plus ») le referme aussi (relecture indépendante de la PR #161).
             if (Tapped(HudButton.More)) _drawerOpen = !_drawerOpen;
@@ -295,6 +336,21 @@ namespace EdS.Game
                     if (_layout.InDrawer(_layout.UtilityAt(i)) && Tapped(_layout.UtilityAt(i))) _drawerOpen = false;
                 if (_drawerOpen && DrawerDismissed(_fingers, _layout)) _drawerOpen = false;
             }
+        }
+
+        /// <summary>V2.53.3 : un doigt posé à cette image (Began) dans la zone du sol, hors de toute autre zone ; sa position en pixels d'écran.</summary>
+        private Vector2? FloorTap()
+        {
+            for (int i = 0; i < _fingers.Count; i++)
+            {
+                FingerPoint f = _fingers[i];
+                if (f.Phase != FingerPhase.Began || f.X < Hud.Width / 2f) continue;
+                bool onButton = false;
+                for (int k = 0; k < _zones.Count && !onButton; k++)
+                    if (_zones[k].Id != HomeFloorZone && _zones[k].Contains(f.X, f.Y)) onButton = true;
+                if (!onButton) return new Vector2(f.X * Hud.Scale, Screen.height - f.Y * Hud.Scale);
+            }
+            return null;
         }
 
         /// <summary>Un doigt vient de se poser hors du tiroir ouvert et hors du bouton « Plus » (le tiroir se referme).</summary>
@@ -352,6 +408,17 @@ namespace EdS.Game
                 if (_labels[i] == null) continue;
                 _label.fontSize = Mathf.RoundToInt(_labelSizes[i]);
                 GUI.Label(rect, _labels[i], _label);
+            }
+            if (_homeCarrying)   // V2.53.3 : Tourner et Annuler du mode décoration
+            {
+                foreach ((HudButton at, int zoneId, string key) in new[] { (HudButton.Parry, HomeTurnZone, "text.ui.home.touch_turn"), (HudButton.Guard, HomeCancelZone, "text.ui.home.touch_cancel") })
+                {
+                    UiBox box = _layout.Button(at);
+                    Rect rect = Box(box);
+                    UiV21Art.DrawButton(rect, _gestures.IsHeld(zoneId));
+                    _label.fontSize = Mathf.RoundToInt(_layout.LabelFont(box));
+                    GUI.Label(rect, UiTexts.Get(key), _label);
+                }
             }
             UiBox zone = _layout[HudPart.Joystick];
             if (_gestures.StickActive)

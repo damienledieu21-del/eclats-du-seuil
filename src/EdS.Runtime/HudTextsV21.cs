@@ -16,7 +16,7 @@ namespace EdS.Runtime
             Unblockable = "text.ui.hud.unblockable", Seconds = "text.ui.hud.seconds", Level = "text.ui.hud.level", UltimateKey = "text.ui.hud.ultimate_key",
             SettingsTitle = "text.ui.hud.settings.title", CameraClick = "text.ui.hud.settings.camera_click", CameraFree = "text.ui.hud.settings.camera_free",
             InvertOn = "text.ui.hud.settings.invert_on", InvertOff = "text.ui.hud.settings.invert_off", Sensitivity = "text.ui.hud.settings.sensitivity",
-            Creator = "text.ui.hud.settings.creator", Minus = "text.ui.hud.settings.minus", Plus = "text.ui.hud.settings.plus";
+            Creator = "text.ui.hud.settings.creator", QuitAdventure = "text.ui.hud.settings.quit_adventure", Minus = "text.ui.hud.settings.minus", Plus = "text.ui.hud.settings.plus";
 
         /// <summary>Huit directions de la boussole, dans le sens des aiguilles d'une montre depuis le nord (0°, 45°, …).</summary>
         public static readonly string[] Compass =
@@ -57,6 +57,7 @@ namespace EdS.Runtime
                 case HudButton.Restart: return mode == HudMode.Adventure ? "text.ui.hud.btn.halt" : "text.ui.hud.btn.restart";
                 case HudButton.NextScene: return "text.ui.hud.btn.next_scene";
                 case HudButton.Help: return "text.ui.hud.btn.help";
+                case HudButton.Home: return "text.ui.hud.btn.home";   // V2.53.3
                 case HudButton.More: return "text.ui.hud.btn.more";
                 default: return null;
             }

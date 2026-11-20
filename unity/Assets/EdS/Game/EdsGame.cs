@@ -218,6 +218,7 @@ namespace EdS.Game
                 _hud = HudView.Create();
                 _creator = new HeroCreatorView(_hud.CenterFrame);   // sous-lot V2.16 : créateur de personnage
                 _hud.OnCreator(OpenCreator);
+                _hud.OnQuitAdventure(() => _quitAdventure = _adventure != null);   // V2.53.3
                 // Essai réaliste 9 : réglages de la caméra dans la pause (souris libre ou clic maintenu, haut-bas inversé, sensibilité).
                 _hud.OnSettings(() => _camera.SetClickLook(!_camera.ClickLook), () => _camera.SetInvertY(!_camera.InvertY),
                     step => _camera.SetSensitivity(_camera.Sensitivity + step));
@@ -604,8 +605,11 @@ namespace EdS.Game
             // V2.53 (revue Codex de la PR #207) : sous l'écran de chargement peint, aucune commande ne passe (Entrée, Échap, I/J/K/L, F6, N,
             // T, B…) ; seul le temps avance (le geste qui abrège l'écran est lu par LoadingView).
             creating |= _loading.Active;
-            if (!creating && (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed))
+            // V2.53.3 (décision de Damien du 20 novembre 2026) : N est la touche de la maison ; on quitte l'aventure par le menu de la pause
+            // (« Quitter l'aventure »), demandé ici une fois.
+            if (!creating && _quitAdventure)
             {
+                _quitAdventure = false;
                 LeaveAdventure();
                 Load(0, null);
                 return;
@@ -656,8 +660,9 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
                 // Sous-lot V1.5 : B ouvre l'écran des compétences (K est l'atelier) ; elles se changent hors combat, effet à la halte.
                 if (Input.GetKeyDown(KeyCode.B)) _screens.Toggle(AdventureScreens.Panel.Skills);
-                // V2.53.3 : H ouvre le panneau de la maison (chez soi), ou ramène chez soi depuis un point sûr (le point sûr à soi).
-                if (Input.GetKeyDown(KeyCode.H) && !talking)
+                // V2.53.3 (décision de Damien du 20 novembre 2026) : N (ou le bouton « Maison ») ouvre le panneau de la maison (chez soi),
+                // ou ramène chez soi depuis un point sûr (le point sûr à soi). H reste l'aide.
+                if ((Input.GetKeyDown(KeyCode.N) || _touch.HomePressed) && !talking)
                 {
                     if (a.AtHome) _screens.Toggle(AdventureScreens.Panel.Home);
                     else if (a.CanGoHome) a.GoHome();
@@ -719,7 +724,9 @@ namespace EdS.Game
             }
             else
             {
-                ReadCombatInput();
+                // V2.53.3 (décision de Damien du 20 novembre 2026) : en mode décoration, les commandes de combat sont suspendues (R tourne le meuble).
+                if (_homeCarry == null) ReadCombatInput();
+                else _combat.SetGuard(false);
                 ReadMountInput();
                 Move(player);
                 a.Advance(Time.deltaTime);
@@ -965,6 +972,7 @@ namespace EdS.Game
         // --- V2.53.3 : mode décoration de la maison --------------------------------------------------------------------------------
 
         private string _homeCarry;
+        private bool _quitAdventure;
         private int _homeTurn;
 
         /// <summary>
@@ -977,14 +985,18 @@ namespace EdS.Game
             {
                 _homeCarry = chosen;
                 _homeTurn = 0;
-                Say(string.Format(a.Text("text.ui.home.carry_hint"), a.HomePieceNameOf(chosen)));
+                Say(string.Format(a.Text(_touch.Active ? "text.ui.home.carry_hint_touch" : "text.ui.home.carry_hint"), a.HomePieceNameOf(chosen)));
             }
+            if (_homeCarry != null && (!a.AtHome || _touch.HomeCancelPressed)) _homeCarry = null;   // V2.53.3 : Annuler au doigt
+            _touch.HomeCarrying = _homeCarry != null;
             if (_homeCarry == null) return null;
-            if (!a.AtHome) { _homeCarry = null; return null; }
             if (_screens.Open != AdventureScreens.Panel.None || _paused) return null;
-            if (Input.GetKeyDown(KeyCode.R)) _homeTurn = (_homeTurn + 1) & 3;
+            if (Input.GetKeyDown(KeyCode.R) || _touch.HomeTurnPressed) _homeTurn = (_homeTurn + 1) & 3;
             float floorY = _arena.Feet(_combat.PlayerId) is Vector3 feet ? feet.y : 0f;
-            Ray ray = _camera.Camera.ScreenPointToRay(Input.mousePosition);
+            // Au doigt : un toucher (Began) sur le sol pose le meuble là ; à la souris : il suit le pointeur, le clic gauche le pose.
+            Vector2? tap = _touch.HomeTap;
+            Vector3 pointer = tap is Vector2 t0 ? new Vector3(t0.x, t0.y, 0f) : Input.mousePosition;
+            Ray ray = _camera.Camera.ScreenPointToRay(pointer);
             if (Mathf.Abs(ray.direction.y) < 1e-4f) return null;
             float t = (floorY - ray.origin.y) / ray.direction.y;
             if (t <= 0f) return null;
@@ -996,7 +1008,8 @@ namespace EdS.Game
             look = a.HomePreview(_homeCarry, ox, oz, _homeTurn) ?? look;
             bool ok = a.CanPlaceFurniture(_homeCarry, ox, oz, _homeTurn) == EdS.World.HomeRefusal.None;
             bool overUi = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-            if (Input.GetMouseButtonDown(0) && !overUi && a.PlaceFurniture(_homeCarry, ox, oz, _homeTurn))
+            bool place = tap != null || (!_touch.Active && Input.GetMouseButtonDown(0) && !overUi);
+            if (place && a.PlaceFurniture(_homeCarry, ox, oz, _homeTurn))
             {
                 string placed = _homeCarry;
                 bool more = false;
@@ -1953,7 +1966,7 @@ namespace EdS.Game
                 string notice = !a.MustContinue ? null
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
-                _hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
+                _hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity, true);
                 _hud.Clock(a.EventBanner ?? a.ScarLabel);   // V2.5 : « En cours : … » ; V2.6 : « Cicatrice du Seuil · palier 2 sur 4 »
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
