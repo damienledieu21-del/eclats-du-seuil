@@ -139,7 +139,13 @@ namespace EdS.World
         /// Sous-lot V2.44.2 : le sol est enneigé sous le joueur (neige de plaine ou du col, contenu saisonnier de version 2, date fournie) ;
         /// faux dans un intérieur, sans date, sans joueur présent.
         /// </summary>
-        public bool SnowUnderPlayer => _seasons?.Snow != null && ((INarrativeWorld)this).PlayerPosition is GroundVector at && _seasons.SnowAt(CivilDay, at);
+        public bool SnowUnderPlayer => _seasons?.Snow != null && InSeasonZone && ((INarrativeWorld)this).PlayerPosition is GroundVector at && _seasons.SnowAt(CivilDay, at);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #229 : la partie se joue dehors, dans la zone du contenu saisonnier (jamais dans un intérieur : la
+        /// boulangerie, l'auberge ; jamais dans une autre zone, où les lieux du col et les routes ne veulent rien dire).
+        /// </summary>
+        private bool InSeasonZone => _seasons != null && Definition is ZoneDefinition d && !d.Indoor && d.Id == _seasons.ZoneId;
 
         /// <summary>
         /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026 : la neige ralentit hors des chemins, hors combat) : le joueur doit

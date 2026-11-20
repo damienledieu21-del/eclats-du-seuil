@@ -326,7 +326,7 @@ namespace EdS.Domain.Combat
 
         /// <summary>
         /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026 : la neige ralentit hors des chemins, hors combat) : facteur du pas d'un
-        /// personnage dans la neige (<see cref="CombatAction.Snow"/>) : −10 % (valeur proposée par Claude, posée en question à Damien), à
+        /// personnage dans la neige (<see cref="CombatAction.Snow"/>) : −10 % (validé par Damien le 20 novembre 2026, cheval compris), à
         /// pied comme en selle. Constante du moteur, hors du fichier de règles (aucun changement de leur schéma).
         /// </summary>
         public Fixed SnowSpeedFactor => Fixed.FromRatio(9, 10);

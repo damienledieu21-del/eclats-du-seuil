@@ -951,7 +951,7 @@ namespace EdS.Simulation.Engine
                         $"{who} réconforté sans commande comfort passée.");
                 // Sous-lot V2.44.2, neige (format 11) : de même, une commande snow à un tick passé.
                 if (f.Snowbound)
-                    Require(f.Character != null && _spatial && _setup.Commands.Any(c => c.Action == CombatAction.Snow && c.Actor == f.Id && c.AtMs / _tickMs <= Math.Max(0, previous)),
+                    Require(!f.IsDead && f.Character != null && _spatial && _setup.Commands.Any(c => c.Action == CombatAction.Snow && c.Actor == f.Id && c.AtMs / _tickMs <= Math.Max(0, previous)),
                         $"{who} dans la neige sans commande snow passée.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))

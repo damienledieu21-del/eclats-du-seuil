@@ -319,6 +319,12 @@ namespace EdS.Data.Seasons
         public IReadOnlyList<SeasonalPassage> Passages { get; }
         public IReadOnlyList<SeasonalLock> Locks { get; }
 
+        /// <summary>
+        /// Relecture indépendante de la PR #229 : zone contre laquelle ce contenu a été validé (lieux du col, routes, créatures) ; la neige ne
+        /// s'applique que dans elle.
+        /// </summary>
+        public string ZoneId { get; }
+
         /// <summary>Schéma 2 : la vigne ; null en version 1.</summary>
         public SeasonVine? Vine { get; }
 
@@ -336,6 +342,7 @@ namespace EdS.Data.Seasons
         public ZoneDefinition ApplyTo(ZoneDefinition zone)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (zone.Id != ZoneId) throw new ArgumentException($"Contenu saisonnier validé pour la zone {ZoneId}, pas pour {zone.Id}.", nameof(zone));
             if (CreatureSeasons.Count == 0) return zone;
             foreach (string creature in CreatureSeasons.Keys)
                 if (!zone.Populations.Any(p => p.Creature == creature))
@@ -343,8 +350,10 @@ namespace EdS.Data.Seasons
             return zone.WithSeasons(CreatureSeasons);
         }
         internal SeasonBook(int schemaVersion, string contentVersion, Fixed[] presence, int maxPerVolume, IEnumerable<SeasonalPassage> passages,
-            IEnumerable<SeasonalLock> locks, SeasonVine? vine = null, SeasonSnow? snow = null, IReadOnlyDictionary<string, PopulationSeasons>? creatures = null)
+            IEnumerable<SeasonalLock> locks, SeasonVine? vine = null, SeasonSnow? snow = null, IReadOnlyDictionary<string, PopulationSeasons>? creatures = null,
+            string zoneId = "")
         {
+            ZoneId = zoneId;
             CreatureSeasons = Frozen.Dictionary(creatures ?? new Dictionary<string, PopulationSeasons>(), nameof(creatures));
             Vine = vine;
             Snow = snow;
@@ -532,7 +541,7 @@ namespace EdS.Data.Seasons
                 creatures = ValidateCreatures(d.Creatures, zone, r);
             }
             if (!r.IsValid || document.ContentVersion is null) return new SeasonLoadResult(r, null);
-            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, presence, perVolume, passages, locks, vine, snow, creatures));
+            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, presence, perVolume, passages, locks, vine, snow, creatures, zone.Id));
         }
 
         private static AnnualDate? Date(AnnualDateData? x, string path, string what, ValidationReport r)

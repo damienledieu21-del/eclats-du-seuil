@@ -2709,6 +2709,7 @@ namespace EdS.Simulation.Engine
                 f.Result.DeathTick = tick;   // sous-lot 8.6 (X10)
                 f.Guarding = false;
                 f.ParryOpen = false;
+                f.Snowbound = false;         // V2.44.2 (relecture indépendante de la PR #229) : la neige ne reste pas posée sur un mort
                 f.NextAttackTick = null;     // sous-lot 11.1 : un assaillant mort n'a plus de tour (vue du pilote, télégraphie)
                 if (f.Body != null) f.Body.Moving = false;   // sous-lot 11.4 : un mort ne marche plus et n'est plus solide pour personne
                 // A6 : provenance de l'effet mortel ; sans effet mortel (points de vie nuls dès le départ), racine propre.

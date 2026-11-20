@@ -202,6 +202,24 @@ public class SaisonsV2442Tests
     }
 
     [Fact]
+    public void La_neige_ne_reste_pas_posee_sur_un_mort()
+    {
+        // Relecture indépendante de la PR #229 : un personnage qui meurt dans la neige n'y est plus (l'instantané refuse un mort dans la neige).
+        JsonObject root = Json();
+        JsonObject ogre = root["data"]!["combatants"]![1]!.AsObject();
+        ogre["firstAttackMs"] = 100;
+        ogre["attacks"]![0]!["rawDamage"] = 100000;
+        root["data"]!["combatants"]![0]!["position"] = new JsonArray(9.6, 0);
+        root["data"]!["commands"] = new JsonArray(new JsonObject { ["atMs"] = 0, ["actor"] = "bastion", ["action"] = "snow" });
+        var engine = new CombatEngine(Load(root), new MemoryCombatLog());
+        engine.Step();
+        Assert.True(engine.View("bastion").Snowbound);
+        while (!engine.View("bastion").IsDead && !engine.IsFinished) engine.Step();
+        Assert.True(engine.View("bastion").IsDead);
+        Assert.False(engine.View("bastion").Snowbound);   // aucune ligne de plus au journal : l'état seul est retiré
+    }
+
+    [Fact]
     public void Lot_de_plusieurs_ticks_la_neige_suit_la_source_au_tick_pres()
     {
         JsonObject root = Json();
@@ -336,6 +354,31 @@ public class SaisonsV2442Tests
         w.Step();
         Assert.True(w.InCombat);
         Assert.False(w.SnowWanted);
+        // Relecture indépendante de la PR #229 : jamais dans un intérieur, jamais dans une autre zone que celle du contenu saisonnier.
+        foreach (string other in new[] { "zone.boulangerie", "zone.auberge" })
+        {
+            ZoneDefinition inside = ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, other), ScenariosDir, ShippedData, Items).Zone!;
+            Assert.True(inside.Indoor);
+            SavedCharacter hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
+            var room = new WorldSession(new WorldSave(inside.Id, 0, 0, Array.Empty<string>(), hero), inside, ShippedData, Progression, Items);
+            room.UseSeasons(Book(zone));
+            room.Step();
+            room.SetCivilTime(Utc(2027, 1, 10));
+            Assert.False(room.SnowUnderPlayer);
+            Assert.False(room.SnowWanted);
+        }
+        JsonObject renamed = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        renamed["data"]!["id"] = "zone.vallons_bis";
+        renamed["data"]!["safePoints"]![0]!["position"] = new JsonArray(-18, -20);
+        ZoneDefinition elsewhere = ZoneJsonReader.Read(renamed.ToJsonString(), ScenariosDir, ShippedData, Items).Zone!;
+        Assert.Equal("zone.vallons_bis", elsewhere.Id);
+        SavedCharacter walker = PlayerCharacters.Create("bastion", "class.bastion", Progression);
+        var away = new WorldSession(new WorldSave(elsewhere.Id, 0, 0, Array.Empty<string>(), walker), elsewhere, ShippedData, Progression, Items);
+        away.UseSeasons(Book(zone));
+        away.Step();
+        away.SetCivilTime(Utc(2027, 1, 10));
+        Assert.False(away.SnowWanted);
+        Assert.Throws<ArgumentException>(() => Book(zone).ApplyTo(elsewhere));
         // Sans contenu saisonnier : jamais.
         WorldSession bare = Play(zone, seasons: false);
         bare.SetCivilTime(Utc(2027, 1, 10));
