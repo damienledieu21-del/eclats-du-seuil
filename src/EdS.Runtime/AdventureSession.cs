@@ -454,6 +454,9 @@ namespace EdS.Runtime
             long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
             if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
             if (World != null) world.CarryComfort(World.ComfortUntilMinute);   // sous-lot F7 : le réconfort d'un plat suit le personnage (hors sauvegarde)
+            // V2.53.2 (relecture indépendante de la PR #230) : l'attente de l'atelier de la maison suit le personnage d'une session à l'autre
+            // (porte, retour à la maison, halte) ; hors sauvegarde (décision de Damien du 20 novembre 2026) : seul un rechargement l'efface.
+            if (World != null) world.CarryHomeCraft(World.HomeCraftReadyTick);
             World = world;
             _explored = -1;   // sous-lot V2.29 (2) : nouvelle session, relevé repris
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
@@ -1005,7 +1008,8 @@ namespace EdS.Runtime
         /// encore reconstruit, « passer la porte » sinon (null : pas de porte à portée).
         /// </summary>
         public string? DoorHint => DoorInReach is Door door
-            ? string.Format(Text(World.DoorAwaitsRebuild(door.Id) ? "text.ui.rebuild.door_closed_hint" : "text.ui.door_hint"), door.Name)
+            ? string.Format(Text(World.DoorAwaitsRebuild(door.Id) ? "text.ui.rebuild.door_closed_hint"
+                : World.DoorAwaitsHome(door.Id) ? "text.ui.home.door_closed_hint" : "text.ui.door_hint"), door.Name)
             : null;
 
         public bool CanUseDoor => DoorInReach != null && Dialogue is null && !MustContinue
@@ -1035,6 +1039,12 @@ namespace EdS.Runtime
             if (World.DoorAwaitsRebuild(door.Id))
             {
                 Say("text.ui.rebuild.door_closed");
+                return false;
+            }
+            // V2.53.2 : la porte de la maison du joueur reste fermée tant qu'elle n'est pas achetée.
+            if (World.DoorAwaitsHome(door.Id))
+            {
+                Say("text.ui.home.door_closed");
                 return false;
             }
             // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
@@ -1177,7 +1187,7 @@ namespace EdS.Runtime
         /// </summary>
         public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d
             ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text))
-                .Concat(CardAnswers).Concat(FeastAnswers).ToList()   // V2.32 : les mises des Trois Feux ; F4 : l'étal et les activités de fête
+                .Concat(CardAnswers).Concat(FeastAnswers).Concat(HomeAnswers).ToList()   // V2.32 : les mises des Trois Feux ; F4 : l'étal et les activités de fête
             : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
@@ -1190,8 +1200,9 @@ namespace EdS.Runtime
             if (index >= open.Options.Count)
             {
                 // Sous-lot V2.32 : une réponse de cartes ; sous-lot F4 : puis une réponse de fête (étal du forain, activité d'un invité).
-                int cards = CardAnswers.Count;
-                return index - open.Options.Count < cards ? ChooseCards(index - open.Options.Count) : ChooseFeast(index - open.Options.Count - cards);
+                int cards = CardAnswers.Count, feasts = FeastAnswers.Count, extra = index - open.Options.Count;
+                // V2.53.2 : puis une réponse de la maison (maître d'œuvre : acheter, agrandir).
+                return extra < cards ? ChooseCards(extra) : extra < cards + feasts ? ChooseFeast(extra - cards) : ChooseHome(extra - cards - feasts);
             }
             DialogueRefusal refusal = World.Choose(open.Options[index].Index, out _, out IReadOnlyList<StoryEvent> events);
             foreach (StoryEvent e in events) Story(e);

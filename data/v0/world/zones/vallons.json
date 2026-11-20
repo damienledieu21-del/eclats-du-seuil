@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.27.0-provisoire",
+  "contentVersion": "0.28.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -3464,6 +3464,17 @@
         ],
         "to": "zone.dortoir_abbaye",
         "toDoor": "sortie"
+      },
+      {
+        "id": "porte_maison_joueur",
+        "name": "Votre maison",
+        "position": [
+          -1062.0,
+          8.0
+        ],
+        "to": "zone.maison_joueur",
+        "toDoor": "sortie",
+        "building": "maison_ville_86"
       }
     ],
     "chiefs": [

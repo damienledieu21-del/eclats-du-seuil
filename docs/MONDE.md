@@ -1356,6 +1356,24 @@ Règles pures (`EdS.World/Home.cs`, `HomeRules`) : achat (une fois, bourse suffi
 
 Sauvegarde v29 : `character.home` (voir § Sauvegarde et [DONNEES](DONNEES.md)).
 
+**Contenu (V2.53.2)** : `data/v0/world/home.json` (0.1.0-provisoire). La maison est la **maison_ville_86** du Bourg d'Aube (porte `porte_maison_joueur` en (-1062 ; 8), « Votre maison ») ; son intérieur `zone.maison_joueur` (« Chez soi », 10 m × 8 m, point sûr `chez_soi`) : la grille part du coin bas-gauche du lieu `sol_de_la_maison` et chaque palier ouvre un sol plus grand à partir de ce coin. **Maître Bertin**, le maître d'œuvre (`npc.maitre_oeuvre`, devant la porte), vend la maison et l'agrandit (réponses « [Maison] » de son dialogue). Montants proposés par Claude et **validés par Damien le 20 novembre 2026** (prix, paliers, lit à 120 minutes, meubles ; attente de l'atelier hors sauvegarde) :
+
+| Palier | Besoins | Sol | Coffre | Meubles |
+|---|---|---|---|---|
+| Achat | 8 000 cuivre (80 argent) | 4,5 m × 4 m | 8 places | 10 |
+| Grande salle | 3 000 cuivre, 20 planches, 6 pierres taillées | 6 m × 5 m | 16 | 16 |
+| Seconde pièce | 4 000 cuivre, 30 planches, 12 pierres taillées | 8 m × 6,5 m | 24 | 24 |
+| Grande maison | 6 000 cuivre, 40 planches, 20 pierres taillées | 10 m × 8 m | 32 | 32 |
+
+Meubles : **dix objets** (`item.meuble_*`, piles de 5), fabriqués au moulin par le **bûcheron** (lit, coffre, table, banc, chaise, armoire, étagère, établi : 2 à 6 planches) ou à la carrière par le **tailleur de pierre** (foyer de cuisine, banc de pierre : 3 à 6 pierres taillées), et les **60 décorations des fêtes** (emprise d'après leur taille, arrondie à 0,25 m). Modèles : ceux du lot C qui attendaient une place (lit, coffre, table, banc, armoire et étagère du logement ; chaise ; établi ; foyer de cuisine ; banc de pierre) ; aucun modèle à générer.
+
+- **Porte** : fermée tant que la maison n'est pas achetée (« Porte fermée (Votre maison) : la maison est à vendre »).
+- **Point sûr à soi** : `chez_soi` (halte), fermé tant que la maison n'est pas achetée ; depuis n'importe quel point sûr où la halte est possible, **rentrer chez soi** (`AdventureSession.GoHome`).
+- **Lit** : dormir (`Sleep`) fait une halte (sauvegarde, PV pleins) et donne le **réconfort** des plats de fête (marche un peu plus rapide hors combat, aucune statistique de combat) pendant **120 minutes de jeu** (proposition). C'est la seule règle de repos existante (la halte) qu'il réutilise.
+- **Atelier** : un **foyer** posé permet la cuisine, un **établi** le bois et la pierre, comme en ville (pas la forge à qualité), mais **plus lentement** : 30 secondes de jeu entre deux fabrications (proposition ; `CraftRefusal.HomeTooSoon`).
+
+Limites du contenu : les meubles posés ne sont pas encore des obstacles du combat (on traverse une table) ; l'aire de l'intérieur est celle de la maison agrandie au plus, même avant les agrandissements (les murs de chaque palier sont dessinés par Unity, V2.53.3) ; l'attente de l'atelier suit le personnage d'une session à l'autre (porte, retour à la maison, halte : l'aventure la reporte), mais elle n'est pas sauvegardée (décision de Damien du 20 novembre 2026) : seul un rechargement de la partie l'efface ; les faits d'histoire de la maison ne sont pas encore écrits.
+
 Limites du cœur : pas encore de contenu (zone, porte, paliers, meubles, recettes, PNJ vendeur : V2.53.2) ni de rendu (V2.53.3) ; le coffre s'ouvre partout dans la maison (le meuble « coffre » le dessine seulement) ; la pose au mur et l'empilement viendront plus tard.
 
 ## Sauvegarde

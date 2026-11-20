@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((16, 16, "0.38.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((16, 16, "0.39.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -128,6 +128,8 @@ public sealed class V23JourneeTests : IDisposable
             || l.Text == "text.v210.colporteur.retrouvailles" || l.Conditions.Any(c => c.Kind == ConditionKind.Festival)
             // Fêtes d'Orsédia (F3) : ou les retrouvailles du forain des fêtes (il n'est là que pendant les fêtes).
             || l.Text == "text.fetes.forain.retrouvailles"
+            // V2.53.2 : les retrouvailles de Maître Bertin, le maître d'œuvre de la maison (PNJ nouveau, sans quête).
+            || l.Text == "text.home.maitre_oeuvre.retrouvailles"
             // 17 novembre 2026 : les retrouvailles des voyageurs de passage (PNJ nouveaux, sans quête).
             || l.Text.StartsWith("text.lotc.", StringComparison.Ordinal)
             // V2.43.2b : les retrouvailles des PNJ des lieux reconstruits (PNJ nouveaux, sans quête).

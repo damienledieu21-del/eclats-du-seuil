@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.24.0-provisoire",
+  "contentVersion": "0.25.0-provisoire",
   "data": {
     "slots": [
       {
@@ -2233,6 +2233,86 @@
         "type": "material",
         "rarity": "very_rare",
         "stack": 1
+      },
+      {
+        "id": "item.meuble_lit",
+        "name": "Lit",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_coffre",
+        "name": "Coffre",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_table",
+        "name": "Table",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_banc",
+        "name": "Banc",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_chaise",
+        "name": "Chaise",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_armoire",
+        "name": "Armoire",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_etagere",
+        "name": "Étagère",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_etabli",
+        "name": "Établi",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.meuble_foyer",
+        "name": "Foyer de cuisine",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "marteau_du_carrier"
+      },
+      {
+        "id": "item.meuble_banc_de_pierre",
+        "name": "Banc de pierre",
+        "type": "material",
+        "rarity": "common",
+        "stack": 5,
+        "icon": "marteau_du_carrier"
       }
     ],
     "loot": [
