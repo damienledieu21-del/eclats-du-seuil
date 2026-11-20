@@ -1726,6 +1726,16 @@ namespace EdS.Runtime
             }
         }
 
+        /// <summary>V2.43.3 : obstacles que le grand décor des lieux remplace (la vue ne les dessine plus), selon l'état des lieux.</summary>
+        public IReadOnlyList<string> RebuildCovered()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<string>();
+            var covered = new List<string>();
+            foreach (RebuildSite site in book.Sites)
+                if (RebuildDecor.Landmark(site, World.RebuildPhaseOf(site.Id), RegionMap.Whole.Obstacles).Covered is string id) covered.Add(id);
+            return covered;
+        }
+
         /// <summary>
         /// V2.43.3 : décor des chantiers de la zone en jeu, selon l'état de chaque lieu (<see cref="RebuildDecor"/>), posé sur l'aire entière
         /// (obstacles de l'aire, pas seulement ceux de la fenêtre). Vide sans catalogue des chantiers dans cette zone.
@@ -1743,7 +1753,14 @@ namespace EdS.Runtime
                 if (!BourgModels.IsGround(b.Piece) && b.Covers is null) avoid.Add((b.X, b.Z));
             var spots = new List<DecorSpot>();
             foreach (RebuildSite site in book.Sites)
-                spots.AddRange(RebuildDecor.Layout(site, World.RebuildPhaseOf(site.Id), World.RebuildState.Of(site.Id)?.Stage ?? 0, obstacles, map.Roads, doors, avoid));
+            {
+                // 20 novembre 2026 : d'abord le grand décor du lieu (pont, tour, dortoir, moulin), que les petites pièces évitent.
+                RebuildPhase phase = World.RebuildPhaseOf(site.Id);
+                IReadOnlyList<DecorSpot> landmark = RebuildDecor.Landmark(site, phase, map.Obstacles).Spots;
+                spots.AddRange(landmark);
+                spots.AddRange(RebuildDecor.Layout(site, phase, World.RebuildState.Of(site.Id)?.Stage ?? 0, obstacles, map.Roads, doors, avoid,
+                    landmark.Select(RebuildDecor.BoxOf).ToList()));
+            }
             return spots;
         }
 

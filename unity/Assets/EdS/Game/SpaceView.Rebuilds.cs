@@ -13,6 +13,7 @@ namespace EdS.Game
     public sealed partial class SpaceView
     {
         private GameObject _rebuildRoot;
+        private readonly Dictionary<string, List<GameObject>> _obstacleParts = new Dictionary<string, List<GameObject>>();
         private Material _scaffoldWood, _scaffoldPlank;   // relecture indépendante de la PR #225 : une fois par vue, rendus avec elle
         private string _rebuildKey;
         private float _rebuildPoll;
@@ -32,6 +33,11 @@ namespace EdS.Game
             if (_rebuildRoot != null) Object.Destroy(_rebuildRoot);
             _rebuildRoot = new GameObject("Chantiers");
             _rebuildRoot.transform.SetParent(_root.transform, false);
+            // 20 novembre 2026 : l'obstacle que le grand décor d'un lieu remplace (la tour de signal) n'est plus dessiné.
+            var covered = new HashSet<string>(adventure.RebuildCovered());
+            foreach (KeyValuePair<string, List<GameObject>> o in _obstacleParts)
+                foreach (GameObject g in o.Value)
+                    if (g != null) g.SetActive(!covered.Contains(o.Key));
             if (key.Length == 0) return;
             StyleCatalog catalog = StyleCatalog.Loaded;
             float minX = Raw(_space.Min.X.Raw) - RebuildMargin, maxX = Raw(_space.Max.X.Raw) + RebuildMargin;
@@ -40,16 +46,32 @@ namespace EdS.Game
             {
                 float x = (float)spot.X, z = (float)spot.Z;
                 if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-                if (spot.Piece == RebuildDecor.Scaffold) { ScaffoldAt(x, z, (float)spot.Yaw); continue; }
                 GameObject prefab = catalog != null ? catalog.OwnDecorPiece(spot.Piece) : null;
+                if (prefab == null && spot.Piece == RebuildDecor.Scaffold) { ScaffoldAt(x, z, (float)spot.Yaw); continue; }   // sans le modèle : fait par le code
                 if (prefab == null) continue;   // modèle absent du catalogue : rien
                 var holder = new GameObject(prefab.name + " (chantier)");
                 holder.transform.SetParent(_rebuildRoot.transform, false);
-                holder.transform.position = new Vector3(x, Ground(x, z, (float)RebuildDecor.Radius(spot.Piece)), z);
+                holder.transform.position = new Vector3(x, PieceGround(spot), z);
                 holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             }
+        }
+
+        /// <summary>
+        /// Sol d'une pièce : au plus bas sous son pied (les petites pièces, comme le décor de l'atelier) ; un pont repose sur ses deux rives
+        /// (le plus haut des deux bouts, pas le fond du ravin) ; un grand bâtiment sur le sol sous son centre.
+        /// </summary>
+        private static float PieceGround(DecorSpot spot)
+        {
+            float x = (float)spot.X, z = (float)spot.Z;
+            if (!RebuildDecor.Models.TryGetValue(spot.Piece, out (double W, double D) size) || size.W < 6.0) return Ground(x, z, (float)RebuildDecor.Radius(spot.Piece));
+            if (spot.Piece.StartsWith("pont_", System.StringComparison.Ordinal))
+            {
+                float a = (float)spot.Yaw * Mathf.Deg2Rad, half = (float)size.W / 2f, dx = Mathf.Cos(a) * half, dz = -Mathf.Sin(a) * half;
+                return Mathf.Max(StyleWorld.StandHeight(x + dx, z + dz), StyleWorld.StandHeight(x - dx, z - dz));
+            }
+            return StyleWorld.StandHeight(x, z);
         }
 
         /// <summary>

@@ -188,6 +188,7 @@ namespace EdS.Game
 
             // V2.30.2 : Bourg d'Aube fortifié habillé des modèles de l'atelier, calculé sur l'aire entière (le même d'une fenêtre à l'autre).
             _bourg = map != null ? map.Bourg : BourgModels.Dress(space.Obstacles, _roads);
+            _obstacleParts.Clear();   // V2.43.3 : ce qui dessine chaque obstacle de cette vue
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
@@ -283,6 +284,16 @@ namespace EdS.Game
         /// murets de pierres sèches suivent le sol eux-mêmes. Ses coupes (occulteurs, boîtes de la caméra) montent avec lui.
         /// </summary>
         private void Obstacle(SpaceObstacle obstacle)
+        {
+            int first = _root.transform.childCount;
+            ObstacleDrawn(obstacle);
+            // V2.43.3 : ce qui dessine l'obstacle, pour le cacher quand le grand décor d'un lieu reconstruit le remplace.
+            var parts = new List<GameObject>();
+            for (int i = first; i < _root.transform.childCount; i++) parts.Add(_root.transform.GetChild(i).gameObject);
+            _obstacleParts[obstacle.Id] = parts;
+        }
+
+        private void ObstacleDrawn(SpaceObstacle obstacle)
         {
             int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
             _draped = false;

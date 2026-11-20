@@ -16,8 +16,68 @@ namespace EdS.Runtime
     /// </summary>
     public static class RebuildDecor
     {
-        /// <summary>Échafaudage fait par le code (pas de modèle à l'atelier : le fort des bandits n'en a qu'une fiche).</summary>
-        public const string Scaffold = "echafaudage";
+        /// <summary>
+        /// Échafaudage : le modèle Tripo des lieux reconstruits (« chantiers_echafaudage_simple », 20 novembre 2026) ; sans lui, la vue en
+        /// fait un en bois brut par le code.
+        /// </summary>
+        public const string Scaffold = "echafaudage_simple";
+
+        /// <summary>Modèles Tripo des lieux reconstruits (Decor/chantiers, 20 novembre 2026), avec leur emprise au sol (m, largeur X, profondeur Z).</summary>
+        public static readonly IReadOnlyDictionary<string, (double W, double D)> Models = new Dictionary<string, (double, double)>
+        {
+            ["echafaudage_simple"] = (4.3, 3.7), ["echafaudage_grand"] = (8.1, 5.7), ["palan_et_pierres"] = (4.8, 2.7),
+            ["pont_en_chantier"] = (11.6, 8.4), ["pont_reconstruit"] = (12.9, 3.7),
+            ["tour_de_signal_en_chantier"] = (8.5, 8.2), ["tour_de_signal_restauree"] = (9.7, 9.4),
+            ["dortoir_en_chantier"] = (8.1, 6.0), ["dortoir_couvert"] = (16.1, 11.5),
+            ["roue_du_foulon"] = (4.6, 2.4), ["maillets_du_foulon"] = (3.0, 2.6),
+        };
+
+        /// <summary>
+        /// Grand décor d'un lieu (20 novembre 2026) : le modèle du lieu en chantier et une fois reconstruit, posé sur son obstacle d'ancrage
+        /// (ou au centre du lieu), décalé et tourné ; <c>Covers</c> : l'obstacle d'ancrage n'est plus dessiné (le modèle le remplace).
+        /// </summary>
+        private static readonly Dictionary<string, (string? Anchor, bool Covers, (string Piece, double Dx, double Dz, double Yaw)[] Building, (string Piece, double Dx, double Dz, double Yaw)[] Rebuilt)> Landmarks =
+            new Dictionary<string, (string?, bool, (string, double, double, double)[], (string, double, double, double)[])>
+            {
+                // Le pont enjambe le ravin (12 m d'est en ouest) : le modèle a sa longueur sur X.
+                ["pont_effondre"] = ("ravin_pont_effondre_passage", false, new[] { ("pont_en_chantier", 0.0, 0.0, 0.0) }, new[] { ("pont_reconstruit", 0.0, 0.0, 0.0) }),
+                // La tour de signal des bergers : le modèle remplace la tour dessinée par le code.
+                ["tour_de_signal"] = ("tour_de_signal_bergers", true, new[] { ("tour_de_signal_en_chantier", 0.0, 0.0, 0.0) }, new[] { ("tour_de_signal_restauree", 0.0, 0.0, 0.0) }),
+                // Le dortoir, au milieu de ses murs éboulés.
+                ["dortoir_de_l_abbaye"] = (null, false, new[] { ("dortoir_en_chantier", 0.0, 0.0, 0.0) }, new[] { ("dortoir_couvert", 0.0, 0.0, 0.0) }),
+                // Le moulin à foulon : le palan pendant le chantier ; la roue côté rivière et les maillets de l'autre côté une fois reconstruit.
+                ["moulin_a_foulon"] = ("maison_moulin_a_foulon_chute", false, new[] { ("palan_et_pierres", 8.0, 0.0, 90.0) },
+                    new[] { ("roue_du_foulon", -7.5, 0.0, 90.0), ("maillets_du_foulon", 7.5, 0.0, 90.0) }),
+            };
+
+        /// <summary>Le grand décor du lieu <paramref name="site"/> dans l'état <paramref name="phase"/> (rien en ruine), et l'obstacle qu'il remplace (ou null).</summary>
+        public static (IReadOnlyList<DecorSpot> Spots, string? Covered) Landmark(RebuildSite site, RebuildPhase phase, IReadOnlyList<SpaceObstacle> obstacles)
+        {
+            if (site is null) throw new ArgumentNullException(nameof(site));
+            if (phase == RebuildPhase.Ruin || !Landmarks.TryGetValue(site.Id, out var l)) return (Array.Empty<DecorSpot>(), null);
+            double cx = (site.Place.Min.X.Raw + site.Place.Max.X.Raw) / 20000.0, cz = (site.Place.Min.Z.Raw + site.Place.Max.Z.Raw) / 20000.0;
+            if (l.Anchor != null)
+                foreach (SpaceObstacle o in obstacles ?? Array.Empty<SpaceObstacle>())
+                {
+                    if (o.Id != l.Anchor) continue;
+                    double x0 = double.MaxValue, x1 = double.MinValue, z0 = double.MaxValue, z1 = double.MinValue;
+                    foreach (GroundVector p in o.Points)
+                    {
+                        x0 = Math.Min(x0, p.X.Raw / 10000.0); x1 = Math.Max(x1, p.X.Raw / 10000.0);
+                        z0 = Math.Min(z0, p.Z.Raw / 10000.0); z1 = Math.Max(z1, p.Z.Raw / 10000.0);
+                    }
+                    cx = (x0 + x1) / 2; cz = (z0 + z1) / 2;
+                    break;
+                }
+            var spots = new List<DecorSpot>();
+            foreach ((string piece, double dx, double dz, double yaw) in phase == RebuildPhase.Rebuilt ? l.Rebuilt : l.Building)
+                spots.Add(new DecorSpot(piece, cx + dx, cz + dz, yaw, 1.0));
+            return (spots, l.Covers ? l.Anchor : null);
+        }
+
+        /// <summary>L'emprise au sol d'une pièce posée (boîte tournée), pour que les petites pièces l'évitent.</summary>
+        public static IReadOnlyList<(double X, double Z)> BoxOf(DecorSpot s) =>
+            Models.TryGetValue(s.Piece, out var m) ? FeastLooks.Box(s.X, s.Z, s.Yaw, m.W, m.D) : FeastLooks.Box(s.X, s.Z, s.Yaw, 2 * Radius(s.Piece), 2 * Radius(s.Piece));
 
         public const string WoodFull = "h24_tas_bois_plein", WoodHalf = "h24_tas_bois_moitie", WoodLow = "h24_tas_bois_presque_vide";
         public const string EmptyCart = "r20_chariot_plateau_vide", LoadedCart = "r20_chariot_plateau_caisses";
@@ -28,7 +88,7 @@ namespace EdS.Runtime
         {
             switch (piece)
             {
-                case Scaffold: return 3.0;
+                case Scaffold: return 2.9;
                 case EmptyCart: case LoadedCart: return 2.4;
                 case WoodFull: case WoodHalf: case WoodLow: case Chips: return 1.6;
                 case Tools: return 1.0;
@@ -59,7 +119,8 @@ namespace EdS.Runtime
         /// pas posée. Déterministe.
         /// </summary>
         public static IReadOnlyList<DecorSpot> Layout(RebuildSite site, RebuildPhase phase, int stage, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
-            IReadOnlyList<StyleRoad>? roads = null, IReadOnlyList<(double X, double Z)>? doors = null, IReadOnlyList<(double X, double Z)>? avoid = null)
+            IReadOnlyList<StyleRoad>? roads = null, IReadOnlyList<(double X, double Z)>? doors = null, IReadOnlyList<(double X, double Z)>? avoid = null,
+            IReadOnlyList<IReadOnlyList<(double X, double Z)>>? reserved = null)
         {
             if (site is null) throw new ArgumentNullException(nameof(site));
             if (obstacles is null) throw new ArgumentNullException(nameof(obstacles));
@@ -67,7 +128,7 @@ namespace EdS.Runtime
             var placed = new List<DecorSpot>();
             if (pieces.Count == 0) return placed;
             IReadOnlyList<StyleRoad> streets = FeastLooks.Streets(roads) ?? Array.Empty<StyleRoad>();
-            var taken = new List<IReadOnlyList<(double X, double Z)>>();
+            var taken = new List<IReadOnlyList<(double X, double Z)>>(reserved ?? Array.Empty<IReadOnlyList<(double X, double Z)>>());   // le grand décor du lieu
             double x0 = site.Place.Min.X.Raw / 10000.0, z0 = site.Place.Min.Z.Raw / 10000.0;
             double x1 = site.Place.Max.X.Raw / 10000.0, z1 = site.Place.Max.Z.Raw / 10000.0;
             double cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
