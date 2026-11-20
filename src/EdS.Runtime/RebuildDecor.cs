@@ -75,6 +75,13 @@ namespace EdS.Runtime
             return (spots, l.Covers ? l.Anchor : null);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #225 : la pièce est un grand modèle (pont, tour, dortoir, échafaudages) qui s'efface quand il cache le joueur,
+        /// comme un bâtiment (le système d'occultation de la vue).
+        /// </summary>
+        public static bool Occludes(string piece) =>
+            Models.TryGetValue(piece, out var m) && Math.Max(m.W, m.D) >= 4.0 && piece != "palan_et_pierres" && piece != "roue_du_foulon";
+
         /// <summary>L'emprise au sol d'une pièce posée (boîte tournée), pour que les petites pièces l'évitent.</summary>
         public static IReadOnlyList<(double X, double Z)> BoxOf(DecorSpot s) =>
             Models.TryGetValue(s.Piece, out var m) ? FeastLooks.Box(s.X, s.Z, s.Yaw, m.W, m.D) : FeastLooks.Box(s.X, s.Z, s.Yaw, 2 * Radius(s.Piece), 2 * Radius(s.Piece));

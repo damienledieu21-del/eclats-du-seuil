@@ -167,4 +167,23 @@ public class DecorDesChantiersTests
         Assert.Equal(RebuildDecor.Models.Count * 3, Directory.GetFiles(folder).Count(f => !f.EndsWith(".meta", StringComparison.Ordinal)));
         Assert.InRange(total, 1, 24L * 1024 * 1024);   // 18 Mo livrés : au plus 24 Mo pour les onze
     }
+
+    [Fact]
+    public void Revue_codex_225_occultation_et_original_garde_sans_modele()
+    {
+        // Les grands modèles s'effacent devant le joueur (pont, tour, dortoir, échafaudages), pas les petites pièces.
+        Assert.All(new[] { "pont_reconstruit", "tour_de_signal_restauree", "tour_de_signal_en_chantier", "dortoir_couvert", "dortoir_en_chantier", "echafaudage_simple" },
+            p => Assert.True(RebuildDecor.Occludes(p), p));
+        Assert.All(new[] { RebuildDecor.Crate, RebuildDecor.Barrel, RebuildDecor.WoodFull, "palan_et_pierres" }, p => Assert.False(RebuildDecor.Occludes(p), p));
+        // L'obstacle remplacé est donné avec la pièce qui le remplace (la vue ne le cache que si elle l'a posée).
+        AdventureSession a = Adventure(Mixed);
+        Assert.Equal(new[] { ("tour_de_signal_bergers", "tour_de_signal_restauree") }, a.RebuildCovers());
+        // Source de la vue : occulteurs inscrits et rendus à chaque refonte ; l'original caché seulement si la pièce est posée.
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Rebuilds.cs"));
+        Assert.Contains("AddModelOccluders(model)", view, StringComparison.Ordinal);
+        Assert.Contains("_occluders.Remove(o)", view, StringComparison.Ordinal);
+        Assert.Contains("if (placed.Contains(piece)) covered.Add(obstacle);", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("adventure.RebuildCovered()", view, StringComparison.Ordinal);
+    }
 }
+
