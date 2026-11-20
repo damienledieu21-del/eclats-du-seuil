@@ -188,7 +188,7 @@ public class Lot114aSpaceValidationTests
     [Fact]
     public void Identifiants_des_actions_et_des_regles_de_contact()
     {
-        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select", "leave", "dodge", "mount", "dismount", "comfort", "comfortEnd" }, CombatActionIds.Named);   // 11.4c : select ; 11.4d : leave ; esquive : dodge
+        Assert.Equal(new[] { "guardStart", "guardStop", "parry", "move", "stop", "select", "leave", "dodge", "mount", "dismount", "comfort", "comfortEnd", "snow", "snowEnd" }, CombatActionIds.Named);   // 11.4c : select ; 11.4d : leave ; esquive : dodge
         Assert.Equal(new[] { "guardStart", "guardStop", "parry" }, CombatActionIds.Defensive);   // protocole du lot 10 inchangé
         Assert.True(CombatActionIds.TryParseNamed("move", out CombatAction move) && move == CombatAction.Move);
         Assert.False(CombatActionIds.TryParseDefensive("move", out _));

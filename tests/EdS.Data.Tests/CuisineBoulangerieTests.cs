@@ -52,7 +52,7 @@ public class CuisineBoulangerieTests
     public void Metier_de_cuisine_quatorze_recettes_au_four_de_Firmin_et_au_feu_de_camp()
     {
         CraftingBook book = Shipped.Value;
-        Assert.Equal("0.15.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.16.0-provisoire", book.ContentVersion);   // V2.44.2 : vendanges
         Assert.Contains(book.Professions, p => p.Id == "cuisine");
         Assert.Equal("Cuisine et boulangerie", Texts.Get("text.profession.cuisine"));
         Assert.Equal(15, Cuisine.Count());   // 16 novembre 2026 : la fouace des Semailles ; 19 novembre 2026 : la pâte brisée (dossier de Firmin)
