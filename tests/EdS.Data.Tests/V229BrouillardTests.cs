@@ -102,7 +102,7 @@ public class V229BrouillardTests : IDisposable
     [Fact]
     public void Version_23_cases_explorees_ecrites_relues_et_controlees()
     {
-        Assert.Equal((28, 23, 22), (SaveValidator.CurrentSchemaVersion, SaveValidator.ExploredSince, SaveValidator.MountSince));
+        Assert.Equal((29, 23, 22), (SaveValidator.CurrentSchemaVersion, SaveValidator.ExploredSince, SaveValidator.MountSince));
         var cells = new ExploredCells(RegionGrid.Vallons());
         cells.Reveal(At(-18, -12), 128);
         var map = new Dictionary<string, string> { ["zone.vallons"] = cells.ToHex()! };

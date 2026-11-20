@@ -31,11 +31,14 @@ namespace EdS.World
             saved is null ? RebuildPhase.Ruin : saved.Done ? RebuildPhase.Rebuilt : RebuildPhase.Building;
 
         /// <summary>Le palier en cours, ou null (lieu reconstruit).</summary>
-        public static RebuildStage? CurrentStage(SavedRebuild? saved, RebuildSite site)
+        public static RebuildStage? CurrentStage(SavedRebuild? saved, RebuildSite site) => CurrentStage(saved, site.Stages);
+
+        /// <summary>Maison du joueur (V2.53.1) : le palier en cours d'une suite de paliers quelconque, ou null.</summary>
+        public static RebuildStage? CurrentStage(SavedRebuild? saved, IReadOnlyList<RebuildStage> stages)
         {
             if (saved?.Done == true) return null;   // reconstruit pour toujours, même si le catalogue a grandi
             int stage = saved?.Stage ?? 0;
-            return stage < site.Stages.Count ? site.Stages[stage] : null;
+            return stage < stages.Count ? stages[stage] : null;
         }
 
         /// <summary>Ce qui reste à apporter au besoin <paramref name="need"/> du palier en cours.</summary>
@@ -91,15 +94,26 @@ namespace EdS.World
         public static SavedRebuild Give(SavedRebuild? saved, RebuildSite site, string need, long amount, Func<RebuildNeed, bool> alreadyMet, out IReadOnlyList<RebuildStage> finished)
         {
             if (site is null) throw new ArgumentNullException(nameof(site));
+            return Give(saved, site.Id, site.Stages, need, amount, alreadyMet, out finished);
+        }
+
+        /// <summary>
+        /// Maison du joueur (V2.53.1) : comme <see cref="Give(SavedRebuild?, RebuildSite, string, long, Func{RebuildNeed, bool}, out IReadOnlyList{RebuildStage})"/>,
+        /// pour une suite de paliers <paramref name="stages"/> nommée <paramref name="id"/> (les paliers d'agrandissement de la maison).
+        /// </summary>
+        public static SavedRebuild Give(SavedRebuild? saved, string id, IReadOnlyList<RebuildStage> stages, string need, long amount, Func<RebuildNeed, bool> alreadyMet,
+            out IReadOnlyList<RebuildStage> finished)
+        {
+            if (stages is null) throw new ArgumentNullException(nameof(stages));
             if (alreadyMet is null) throw new ArgumentNullException(nameof(alreadyMet));
             if (amount < 1) throw new ArgumentOutOfRangeException(nameof(amount));
-            RebuildStage stage = CurrentStage(saved, site) ?? throw new ArgumentException($"« {site.Id} » est déjà reconstruit.", nameof(site));
+            RebuildStage stage = CurrentStage(saved, stages) ?? throw new ArgumentException($"« {id} » est déjà reconstruit.", nameof(stages));
             RebuildNeed n = stage.Need(need) ?? throw new ArgumentException($"Besoin « {need} » hors du palier « {stage.Id} ».", nameof(need));
             long put = Math.Min(amount, Remaining(saved, n));
             var given = new Dictionary<string, long>(saved?.Given.ToDictionary(g => g.Key, g => g.Value, StringComparer.Ordinal)
                 ?? new Dictionary<string, long>(StringComparer.Ordinal), StringComparer.Ordinal);
             if (put > 0) given[n.Id] = checked((given.TryGetValue(n.Id, out long had) ? had : 0) + put);
-            return Settle(site, saved?.Stage ?? 0, given, alreadyMet, out finished);
+            return Settle(id, stages, saved?.Stage ?? 0, given, alreadyMet, out finished);
         }
 
         /// <summary>
@@ -115,16 +129,17 @@ namespace EdS.World
                 finished = Array.Empty<RebuildStage>();
                 return null;
             }
-            return Settle(site, saved?.Stage ?? 0, saved?.Given.ToDictionary(g => g.Key, g => g.Value, StringComparer.Ordinal)
+            return Settle(site.Id, site.Stages, saved?.Stage ?? 0, saved?.Given.ToDictionary(g => g.Key, g => g.Value, StringComparer.Ordinal)
                 ?? new Dictionary<string, long>(StringComparer.Ordinal), alreadyMet, out finished);
         }
 
-        private static SavedRebuild Settle(RebuildSite site, int stage, Dictionary<string, long> given, Func<RebuildNeed, bool> alreadyMet, out IReadOnlyList<RebuildStage> finished)
+        private static SavedRebuild Settle(string id, IReadOnlyList<RebuildStage> stages, int stage, Dictionary<string, long> given, Func<RebuildNeed, bool> alreadyMet,
+            out IReadOnlyList<RebuildStage> finished)
         {
             var done = new List<RebuildStage>();
-            while (stage < site.Stages.Count)
+            while (stage < stages.Count)
             {
-                RebuildStage s = site.Stages[stage];
+                RebuildStage s = stages[stage];
                 foreach (RebuildNeed n in s.Needs)
                     if (n.Kind == RebuildNeedKind.Discover && !given.ContainsKey(n.Id) && alreadyMet(n)) given[n.Id] = 1;
                 if (s.Needs.Any(n => (given.TryGetValue(n.Id, out long g) ? g : 0) < n.Amount)) break;
@@ -133,7 +148,7 @@ namespace EdS.World
                 given.Clear();
             }
             finished = done;
-            return new SavedRebuild(site.Id, stage, stage >= site.Stages.Count ? null : given, stage >= site.Stages.Count);
+            return new SavedRebuild(id, stage, stage >= stages.Count ? null : given, stage >= stages.Count);
         }
     }
 }

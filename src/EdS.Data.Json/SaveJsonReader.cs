@@ -318,6 +318,40 @@ namespace EdS.Data.Json
                     }
                     c.Rebuilds = list;
                 },
+                ["home"] = (v, p) =>   // maison du joueur (version 29), facultative
+                {
+                    c.Present.Add("home");
+                    var h = new SavedHomeData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["stage"] = (e, ep) => h.Stage = input.Int32(e, ep),
+                        ["given"] = (e, ep) =>
+                        {
+                            if (!input.RequireKind(e, JsonValueKind.Object, ep, "objet « besoin : quantité »")) return;
+                            var list = new List<KeyValuePair<string, long?>>();
+                            foreach (JsonProperty property in input.UniqueProperties(e, ep))
+                            {
+                                if (list.Count >= SavedRebuild.MaxNeeds) { input.Report.Add(ep, ValidationCode.LimitExceeded, $"au plus {SavedRebuild.MaxNeeds} besoins."); return; }
+                                list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, ep + "." + property.Name)));
+                            }
+                            h.Given = list;
+                        },
+                        ["placed"] = (e, ep) => h.Placed = input.ReadLimitedList(e, ep, SavedHome.MaxPieces, n => $"{n} meubles, au plus {SavedHome.MaxPieces}.",
+                            (q, qp) =>
+                            {
+                                var x = new SavedPieceData();
+                                return input.ReadFields(q, qp, new Dictionary<string, Action<JsonElement, string>>
+                                {
+                                    ["piece"] = (f, fp) => x.Piece = input.Text(f, fp),
+                                    ["x"] = (f, fp) => x.X = input.Int32(f, fp),
+                                    ["z"] = (f, fp) => x.Z = input.Int32(f, fp),
+                                    ["turn"] = (f, fp) => x.Turn = input.Int32(f, fp),
+                                }) ? x : null;
+                            }),
+                        ["chest"] = (e, ep) => h.Chest = input.ReadLimitedList(e, ep, SavedHome.MaxChest, n => $"{n} places, au plus {SavedHome.MaxChest}.",
+                            (q, qp) => ReadStack(input, q, qp)),
+                    })) c.Home = h;
+                },
                 ["cards"] = (v, p) =>   // cartes à la taverne (version 25), facultatif
                 {
                     c.Present.Add("cards");
@@ -799,6 +833,16 @@ namespace EdS.Data.Json
                     + r.Stage.ToString(CultureInfo.InvariantCulture) + ", \"given\": {"
                     + string.Join(", ", r.Given.Select(g => "\"" + g.Key + "\": " + g.Value.ToString(CultureInfo.InvariantCulture))) + "}"
                     + (r.Done ? ", \"done\": true" : "") + "}"))).Append("},\n");
+            }
+            if (c.Home is SavedHome home)   // maison du joueur (version 29) : état déjà validé à la construction (identifiants au format)
+            {
+                string N(long n) => n.ToString(CultureInfo.InvariantCulture);
+                b.Append("      \"home\": {\"stage\": ").Append(N(home.Stage))
+                    .Append(", \"given\": {").Append(string.Join(", ", home.Given.Select(g => "\"" + g.Key + "\": " + N(g.Value)))).Append('}')
+                    .Append(", \"placed\": [").Append(string.Join(", ", home.Placed.Select(x => "{\"piece\": \"" + x.Piece + "\", \"x\": " + N(x.X)
+                        + ", \"z\": " + N(x.Z) + ", \"turn\": " + N(x.Turn) + "}"))).Append(']')
+                    .Append(", \"chest\": [").Append(string.Join(", ", home.Chest.Select(st => "{\"item\": " + Quoted(st.Item) + ", \"count\": " + N(st.Count)
+                        + InstanceFields(st) + "}"))).Append("]},\n");
             }
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));

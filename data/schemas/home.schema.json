@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/home.schema.json",
+  "title": "Éclats du Seuil — maison du joueur",
+  "description": "Maison du joueur (sous-lot V2.53.1, décisions de Damien du 20 novembre 2026), version 1 : zone intérieure et porte qui y mène (fermée tant que la maison n'est pas achetée), prix d'achat en cuivre (une fois), maison achetée (sol en mètres sur la grille de 0,25 m, places du coffre, meubles posés au plus), paliers d'agrandissement (besoins d'un chantier : or ou matériaux ; jamais moins que le palier précédent), meubles posables (un objet ou une décoration de fête, emprise au sol, usage). Documentation. La validation qui fait foi est celle du programme (HomeValidator), avec les zones, le catalogue d'objets et les fêtes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "home"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interior",
+        "door",
+        "price",
+        "base",
+        "stages",
+        "furniture"
+      ],
+      "properties": {
+        "interior": {
+          "type": "string"
+        },
+        "door": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "base": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "floor",
+            "chest",
+            "pieces"
+          ],
+          "properties": {
+            "floor": {
+              "$ref": "#/$defs/size"
+            },
+            "chest": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "pieces": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 128
+            }
+          }
+        },
+        "stages": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "furniture": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/piece"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "depth"
+      ],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "need": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "coins": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "item": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9999
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "needs",
+        "floor",
+        "chest",
+        "pieces"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "needs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/need"
+          }
+        },
+        "floor": {
+          "$ref": "#/$defs/size"
+        },
+        "chest": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "pieces": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      }
+    },
+    "piece": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "size"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 64
+        },
+        "item": {
+          "type": "string"
+        },
+        "feast": {
+          "type": "string",
+          "pattern": "^F(0[1-9]|1[0-2])_D0[1-5]$"
+        },
+        "size": {
+          "$ref": "#/$defs/size"
+        },
+        "use": {
+          "enum": [
+            "decor",
+            "chest",
+            "bed",
+            "kitchen",
+            "workbench"
+          ]
+        }
+      }
+    }
+  }
+}

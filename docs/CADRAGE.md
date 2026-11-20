@@ -95,7 +95,7 @@ Les chiffres d'une tranche ou d'une alpha (24 places, niveaux 1 à 10…) sont *
 | Q22 | Régions | Final : **cinq régions, une ville centrale, le Cœur du Seuil**. Noms de travail : Vallons d'Aube, Forêt des Murmures, Côte des Brumes, Crêtes de Fer, Plateau de Cendre, Havre d'Ambre (ville), Cœur du Seuil (expéditions avancées) | Recommandation | Tranche : les Vallons (Retenu). Trois régions : cible possible d'une alpha élargie. Une région n'est pas une bande de niveau unique |
 | Q23 | Cœur du Seuil | **Expéditions principales faisables seul ou à plusieurs** ; des expéditions **exclusivement collectives** sont possibles, annoncées comme telles | Retenu (collectives exclusives : 20/10, L11-D9) | Pas d'obligation de groupe indirecte pour les voies essentielles. Réveil renforcé d'un boss solo : solution solo exigeante prévue |
 | Q24 | Montures, voyages | **Montures et points de voyage**, destinations découvertes au préalable | Recommandation | Ne décide ni du vol libre ni de la navigation |
-| Q25 | Logement | **Refuge personnel évolutif** (camp, maison, atelier, domaine) | Retenu | « Plus tard » est un ordre de réalisation |
+| Q25 | Logement | **Refuge personnel évolutif** (camp, maison, atelier, domaine) ; maison du Bourg achetée puis agrandie (Damien, 20 novembre 2026, § 7 quaterdecies) | Retenu | « Plus tard » est un ordre de réalisation |
 | Q26 | Jour, nuit, météo | **Effets sur le jeu** (créatures, traces, ressources, passages, manifestations), règles apprenables | Retenu | Les occasions importantes reviennent ; pas d'heure réelle très restrictive. *Note technique de Claude* : le temps du monde découlera des ticks du serveur (contrat de déterminisme) |
 
 ### E. Métiers et économie
@@ -428,7 +428,7 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 | Interface des fêtes (F4) | L'étal du forain et les activités des invités passent par des **réponses du dialogue** (« [Fête] … »), comme les mises des Trois Feux : **gardé**. La **bourse** n'affiche que la monnaie de la fête en cours ; **toutes les monnaies** restent visibles à l'étal : **gardé**. | Retenu (Damien, 19 novembre 2026) |
 | Décor du mois (F5) | En plus de la place du village et de la place du marché du Bourg : **devant l'auberge**, au **parvis de la chapelle** et aux **portes du Bourg**, mêmes règles de placement. | Retenu (Damien, 19 novembre 2026) |
-| Maison du joueur | **Oui**, en **chantier à part**, après les lieux reconstruits ; les décorations de fête achetées y seront posées. Pas encore faite. | Retenu (Damien, 19 novembre 2026), à venir |
+| Maison du joueur | **Oui**, en **chantier à part**, après les lieux reconstruits ; les décorations de fête achetées y seront posées. Chantier V2.53 ouvert le 20 novembre 2026 (§ 7 quaterdecies). | Retenu (Damien, 19 novembre 2026), en cours |
 | Réconfort d'un plat de fête (F6) | Un **vrai petit confort hors combat pendant 60 minutes de jeu** (marche un peu plus rapide hors combat, ou endurance qui revient plus vite hors combat), **aucune statistique de combat** ; déterministe et testé côté cœur ; hors sauvegarde si le format devait changer (perdu au rechargement). Valeur : **+10 % de vitesse de marche hors combat**, avec le changement du moteur (moteur 0.35.0, journal 29, instantané 10, nouvelle référence figée ; journaux historiques jamais modifiés), fait au sous-lot F7. | Retenu (Damien, 19 novembre 2026) |
 | Accessoire de fête des habitants | **Un accessoire par fête** (masque, couronne…) : **oui, plus tard**, dans un chantier à part avec les costumes en 3D. | Retenu (Damien, 19 novembre 2026), à venir |
 
@@ -460,6 +460,18 @@ Réponses de Damien du 19 novembre 2026, rapportées par la session principale (
 | Montants et services des 5 lieux | Les paliers proposés par Claude (V2.43.2b, tableau de [MONDE](MONDE.md#lieux-reconstruits-sous-lot-v243)) et tous les services (réparation chez le charron et la foulonnière, points sûrs au pont et à la tour, boutiques du charron, de la foulonnière et du frère hospitalier) sont **validés tels quels**. | Retenu (Damien, 19 novembre 2026, réponses à la PR #224) |
 | Modèles des lieux reconstruits | **Jusqu'à 330 crédits Tripo** pour les ~11 modèles des lieux (échafaudages, pont, palan, tour de signal, dortoir, roue et maillets du foulon) ; génération lancée par la session principale (`AssetLab/Lieux_Reconstruits/tripo_lieux.py`), jamais par un agent. | Retenu (Damien, 20 novembre 2026, PR #225) |
 | Intérieurs des lieux reconstruits | Hameau : **atelier du charron** (fiche I11) ; pont : **relais** façon maison du péager (I17) ; moulin à foulon : sur le modèle du **moulin du village** ; tour de signal : **salle de garde** ; abbaye : **dortoir** avec les lits du lot C. Chaque **porte s'ouvre une fois le lieu reconstruit**. | Retenu (Damien, 20 novembre 2026) ; V2.43.4 |
+
+## 7 quaterdecies. Maison du joueur, V2.53 (Retenu)
+
+Réponses de Damien du 20 novembre 2026, rapportées par la session principale ([MONDE.md](MONDE.md#maison-du-joueur-sous-lot-v253)). Elles précisent, pour ce chantier, Q25 (refuge personnel évolutif) et les sujets 8 et 50 de la [feuille de route](FEUILLE_DE_ROUTE.md) (chambre à soi puis terrain dans un quartier) : la maison de ce chantier est **une seule maison dans le Bourg** ; le terrain dans un quartier avec des voisins reste à venir (lot 13 et au-delà).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Achat et agrandissement | La maison s'**achète une fois en or**, puis s'**agrandit par paliers** (or, planches, pierre taillée), avec le système des chantiers (paliers, apports plafonnés, refus atomiques). | Retenu (Damien, 20 novembre 2026) |
+| Combien, où | **Une seule maison**, dans le **Bourg fortifié**. | Retenu (Damien, 20 novembre 2026) |
+| Pose des meubles | **Pose libre au sol**, grille de **0,25 m**, rotation par **quarts de tour** ; la pose au mur viendra plus tard. | Retenu (Damien, 20 novembre 2026) |
+| À quoi elle sert | **À tout** : décor, **coffre**, **atelier** (cuisine ou établi) plus lent qu'en ville, **point sûr à soi**, **lit** (bonus de repos, aucune statistique de combat sauf règle de repos existante). | Retenu (Damien, 20 novembre 2026) |
+| Montants (prix, paliers, bonus du lit, vitesse de l'atelier) | Propositions de Claude posées en question dans les PR V2.53. | Ouvert |
 
 ## 8. Points ouverts
 

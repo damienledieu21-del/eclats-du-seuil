@@ -369,7 +369,7 @@ namespace EdS.Data.Rebuilds
             return new RebuildLoadResult(r, new RebuildBook(document.SchemaVersion!.Value, document.ContentVersion, zone.Id, sites));
         }
 
-        private static RebuildNeed? Need(RebuildNeedData? x, string p, HashSet<string> ids, ItemCatalog items, HashSet<string> discoveries, ValidationReport r,
+        internal static RebuildNeed? Need(RebuildNeedData? x, string p, HashSet<string> ids, ItemCatalog items, HashSet<string> discoveries, ValidationReport r,
             Place? place, Fixed? margin)
         {
             if (x is null) { Missing(r, p, "besoin"); return null; }
