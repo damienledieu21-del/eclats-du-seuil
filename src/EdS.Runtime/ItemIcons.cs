@@ -111,7 +111,7 @@ namespace EdS.Runtime
             ("ver", new[] { "worm", "bait" }), ("mouche", new[] { "fly", "insect", "bait" }),
             // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
             ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
-            ("trompette", new[] { "mushroom" }),
+            ("trompette", new[] { "mushroom" }), ("raisin", new[] { "grape", "fruit" }),   // V2.44.2 : vendanges
             // Grand Solitaire : butin du boss du monde (trophée, mantelet, appel de la monture).
             ("trophee", new[] { "trophy", "plaque" }), ("mantelet", new[] { "cloak", "cape", "mantle" }), ("appel", new[] { "horn", "whistle" }),
             // Cuisine et boulangerie : ingrédients, pâtisseries et plats.

@@ -327,6 +327,8 @@ namespace EdS.Simulation.Engine
             if (f.Guarding) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.GuardSpeedFactor, RoundingMode.Floor).Raw;
             // Sous-lot F7 : réconforté par un plat de fête, à pied : +10 % (la monture garde sa vitesse).
             if (f.Comforted && !f.Mounted) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.ComfortSpeedFactor, RoundingMode.Floor).Raw;
+            // Sous-lot V2.44.2 : dans la neige hors des chemins, −10 %, à pied comme en selle (après le réconfort).
+            if (f.Snowbound) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.SnowSpeedFactor, RoundingMode.Floor).Raw;
             Fixed modifier = MovementSpeedModifier(f);
             if (modifier != Fixed.Zero)
                 step = Fixed.Multiply(Fixed.FromRaw(step), Fixed.Max(Fixed.Zero, Fixed.One + modifier), RoundingMode.Floor).Raw;

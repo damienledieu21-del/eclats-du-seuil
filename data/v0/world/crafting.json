@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.16.0-provisoire",
+  "contentVersion": "0.17.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -1218,6 +1218,36 @@
         "position": [
           -70,
           42
+        ],
+        "respawnMs": 120000,
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
+      },
+      {
+        "id": "raisin_vignes_ouest",
+        "profession": "herboristerie",
+        "item": "item.raisin",
+        "count": 1,
+        "position": [
+          -1435,
+          -698.25
+        ],
+        "respawnMs": 120000,
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
+      },
+      {
+        "id": "raisin_vignes_est",
+        "profession": "herboristerie",
+        "item": "item.raisin",
+        "count": 1,
+        "position": [
+          -1225,
+          -691.25
         ],
         "respawnMs": 120000,
         "xp": 10,

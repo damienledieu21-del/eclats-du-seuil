@@ -67,7 +67,7 @@ public class V240PassagesTests
         // Décisions de Damien du 16 novembre 2026 (23 h) et du 17 novembre (1 h 10) : bestiaire existant, de jour et de nuit.
         ZoneDefinition zone = Vallons.Value;
         var mine = zone.Populations.Where(p => p.Creature.Contains("_passage", StringComparison.Ordinal)).ToList();
-        Assert.Equal(9, mine.Count);
+        Assert.Equal(10, mine.Count);   // V2.44.2 : le loup de l hiver du col
         Assert.Equal(3, mine.Count(p => p.Hours != null));
         Assert.All(mine, p => Assert.InRange(zone.MinLevelAt(zone.Setup.Combatants.Single(c => c.Id == p.Creature).Placement!.Position), 7, 22));
     }

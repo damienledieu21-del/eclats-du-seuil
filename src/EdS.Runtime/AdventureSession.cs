@@ -385,7 +385,7 @@ namespace EdS.Runtime
             // Saisons : le contenu saisonnier (nœuds de saison, Échos de la brume, lac gelé et île).
             // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
             string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
-            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition, craftingBook) : null;   // revue Codex de la PR #229 : nœuds de la vigne vérifiés
             // Grand Solitaire, 2e partie : les boss du monde (fichier absent, données d'essai réduites : aucun ; présent, il doit être valide).
             string bossesPath = WorldBossJsonReader.PathIn(dataDirectory);
             WorldBossLoadResult? worldBosses = File.Exists(bossesPath) ? WorldBossJsonReader.ReadFile(bossesPath, catalogTexts, definition, catalog, scenariosDirectory, data) : null;
@@ -401,7 +401,15 @@ namespace EdS.Runtime
             // Maison du joueur (sous-lot V2.53.1) : facultative de même ; présente, elle doit être valide (zones reliées, objets, fêtes).
             string homePath = HomeJsonReader.PathIn(dataDirectory);
             HomeLoadResult? home = File.Exists(homePath) ? HomeJsonReader.ReadFile(homePath, zones.Zones, catalog, feasts?.Book) : null;
-            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
+            // Sous-lot V2.44.2 : les créatures de saison (ours qui hibernent, loups de l'hiver) ne sont là qu'en leurs saisons.
+            IReadOnlyList<ZoneDefinition> played = zones.Zones;
+            if (seasons?.Book is SeasonBook seasonBook && seasonBook.CreatureSeasons.Count > 0)
+            {
+                var list = played.ToList();
+                list[0] = seasonBook.ApplyTo(list[0]);
+                played = list;
+            }
+            return new AdventureSession(data, progression, catalog, played, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
@@ -507,6 +515,7 @@ namespace EdS.Runtime
             AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
             // Sous-lot F7 : réconfort d'un plat de fête, hors combat (monde) ; revue Codex de la PR #223 : relu avant chaque tick du lot.
             Combat.ComfortSource = () => World.ComfortWanted;
+            Combat.SnowSource = () => World.SnowWanted;   // sous-lot V2.44.2 : la neige ralentit hors des chemins, hors combat
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             // Pêche et carnet : la touche s'annonce une fois.

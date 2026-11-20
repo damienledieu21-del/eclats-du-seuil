@@ -92,8 +92,15 @@ namespace EdS.Data.Zones
         /// </summary>
         public PopulationWeather? Weather { get; }
 
-        /// <summary>Sous-lot V2.4 : la créature dépend du moment ou du temps (<see cref="Hours"/> ou <see cref="Weather"/>).</summary>
-        public bool Timed => Hours != null || Weather != null;
+        /// <summary>
+        /// Sous-lot V2.44.2 (décision de Damien du 20 novembre 2026) : saisons où la créature est dans le monde, ou null (toute l'année). Elles
+        /// viennent du contenu saisonnier (<c>seasons.json</c> en version 2, <c>SeasonBook.ApplyTo</c>), pas du fichier de zone. Hors de ses
+        /// saisons, elle s'en va au calme et n'est pas là au début d'une session ; elle revient avec sa saison.
+        /// </summary>
+        public PopulationSeasons? Seasons { get; }
+
+        /// <summary>Sous-lot V2.4 : la créature dépend du moment, du temps ou de la saison (<see cref="Hours"/>, <see cref="Weather"/>, <see cref="Seasons"/>).</summary>
+        public bool Timed => Hours != null || Weather != null || Seasons != null;
 
         /// <summary>Sous-lot V2.4 : signe de son arrivée à ses heures ou par son temps (celui des heures d'abord), ou null.</summary>
         public string? TimedSign => Hours?.Sign ?? Weather?.Sign;
@@ -106,8 +113,9 @@ namespace EdS.Data.Zones
         public Fixed? Territory { get; }
 
         internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null,
-            int? level = null, PopulationHours? hours = null, PopulationWeather? weather = null, Fixed? territory = null)
+            int? level = null, PopulationHours? hours = null, PopulationWeather? weather = null, Fixed? territory = null, PopulationSeasons? seasons = null)
         {
+            Seasons = seasons;
             Territory = territory;
             Hours = hours;
             Weather = weather;
@@ -126,6 +134,16 @@ namespace EdS.Data.Zones
     /// Sous-lot V2.1 (schéma 8, jour et nuit qui changent le monde) : heures d'une population. Les moments sont ceux du temps du monde, dans
     /// l'ordre de <c>EdS.World.DayPhase</c> : nuit (22 h à 5 h), aube (5 h à 7 h), jour (7 h à 19 h), crépuscule (19 h à 22 h).
     /// </summary>
+    /// <summary>Sous-lot V2.44.2 : saisons d'une population (masque, bit = <see cref="EdS.Domain.Time.Season"/>).</summary>
+    public sealed class PopulationSeasons
+    {
+        public int Mask { get; }
+
+        internal PopulationSeasons(int mask) => Mask = mask;
+
+        public bool IsActive(EdS.Domain.Time.Season season) => (Mask & (1 << (int)season)) != 0;
+    }
+
     public sealed class PopulationHours
     {
         /// <summary>Noms des moments, dans l'ordre de <c>DayPhase</c> (indice = valeur du moment).</summary>
@@ -434,6 +452,19 @@ namespace EdS.Data.Zones
         /// ses dégâts grandissent de <see cref="ZoneScaling.Scale(AssailantSetup, int, int)"/>. Sans <see cref="Scaling"/>, la zone telle quelle.
         /// Rien n'est modifié : une nouvelle définition est rendue.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.44.2 : la même zone, dont les populations nommées dans <paramref name="seasons"/> ne sont là qu'en leurs saisons (contenu
+        /// saisonnier validé contre cette zone). Les autres populations, la simulation et tout le reste sont repris tels quels.
+        /// </summary>
+        internal ZoneDefinition WithSeasons(IReadOnlyDictionary<string, PopulationSeasons> seasons)
+        {
+            if (seasons is null) throw new ArgumentNullException(nameof(seasons));
+            var populations = Populations.Select(p => !seasons.TryGetValue(p.Creature, out PopulationSeasons s) ? p
+                : new Population(p.Creature, p.Template, p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, s)).ToList();
+            return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, populations, Passages,
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region);
+        }
+
         public ZoneDefinition ForLevel(int playerLevel)
         {
             if (playerLevel < 1) throw new ArgumentOutOfRangeException(nameof(playerLevel));
@@ -449,7 +480,7 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
             var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
-                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory)).ToList();
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, p.Seasons)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
                 ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region);

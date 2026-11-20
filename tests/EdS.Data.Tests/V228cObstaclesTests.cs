@@ -91,7 +91,7 @@ public class V228cObstaclesTests
     private static ZoneLoadResult With(IEnumerable<JsonObject> extra, Action<JsonObject>? scenario = null) =>
         V228b2cChefsTests.Read(scenario: s =>
         {
-            s["schemaVersion"] = 23;
+            s["schemaVersion"] = 24;
             JsonArray obstacles = s["data"]!["space"]!["obstacles"]!.AsArray();
             foreach (JsonObject o in extra) obstacles.Add(o);
             scenario?.Invoke(s);
@@ -154,7 +154,7 @@ public class V228cObstaclesTests
             },
             scenario: s =>
             {
-                s["schemaVersion"] = 23;
+                s["schemaVersion"] = 24;
                 Small(s);
                 JsonArray combatants = s["data"]!["combatants"]!.AsArray();
                 foreach (JsonNode? c in combatants.Where(c => (string)c!["id"]! == "loup_est").ToList()) combatants.Remove(c);
@@ -219,7 +219,7 @@ public class V228cObstaclesTests
         // Pré-alpha : une version antérieure est refusée entière (aucune migration) ; les scénarios livrés passent en schéma 19 (20 depuis l'esquive).
         ZoneLoadResult loaded = Read(21, 11, 21, 7, schema: 18);
         Assert.False(loaded.IsValid);
-        Assert.Contains("version de format 18 antérieure à la version 23", loaded.Report.ToString(), StringComparison.Ordinal);
+        Assert.Contains("version de format 18 antérieure à la version 24", loaded.Report.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class V228cObstaclesTests
         JsonObject Fight(int count, bool zone)
         {
             var root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
-            root["schemaVersion"] = 23;
+            root["schemaVersion"] = 24;
             if (!zone) root["data"]!["zone"] = false;
             root["data"]!["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-4000, -4000), ["max"] = new JsonArray(4000, 4000) };
             var obstacles = new JsonArray();

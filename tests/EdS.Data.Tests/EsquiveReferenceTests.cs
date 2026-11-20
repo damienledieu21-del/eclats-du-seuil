@@ -56,7 +56,7 @@ public class EsquiveReferenceTests
     [Fact]
     public void Versions_et_regles_livrees()
     {
-        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.FromInt(3), 150L, 300L, 20L, 1000L),
@@ -161,7 +161,7 @@ public class EsquiveReferenceTests
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
-        Assert.Equal(23, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // compagnons : 21 (esquive : 20)
+        Assert.Equal(24, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // compagnons : 21 (esquive : 20)
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Contains("dodge", scenario.ToJsonString());
         JsonNode dodge = rules["properties"]!["data"]!["properties"]!["combat"]!["properties"]!["dodge"]!;

@@ -1374,7 +1374,7 @@ public class V226SecteursMondeTests
 
     private static Population Pop(AssailantSetup template) =>
         (Population)typeof(Population).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            .Single().Invoke(new object?[] { template.Id, template, 90_000L, Fixed.FromInt(20), null, null, null, null, null, null, null });
+            .Single().Invoke(new object?[] { template.Id, template, 90_000L, Fixed.FromInt(20), null, null, null, null, null, null, null, null });
 
     [Fact]
     public void Propriete_populations_en_chaine_chaque_population_designe_un_combattant_present()
@@ -1459,7 +1459,7 @@ public class V226SecteursMondeTests
 
     private static Population Pop(AssailantSetup template, long respawnMs) =>
         (Population)typeof(Population).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            .Single().Invoke(new object?[] { template.Id, template, respawnMs, Fixed.FromInt(20), null, null, null, null, null, null, null });
+            .Single().Invoke(new object?[] { template.Id, template, respawnMs, Fixed.FromInt(20), null, null, null, null, null, null, null, null });
 
     [Fact]
     public void Propriete_chaque_population_de_chaque_secteur_revient_apres_son_depart()
