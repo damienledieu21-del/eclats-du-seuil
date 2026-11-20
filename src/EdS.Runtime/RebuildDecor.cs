@@ -28,7 +28,7 @@ namespace EdS.Runtime
             ["echafaudage_simple"] = (4.3, 3.7), ["echafaudage_grand"] = (8.1, 5.7), ["palan_et_pierres"] = (4.8, 2.7),
             ["pont_en_chantier"] = (11.6, 8.4), ["pont_reconstruit"] = (12.9, 3.7),
             ["tour_de_signal_en_chantier"] = (8.5, 8.2), ["tour_de_signal_restauree"] = (9.7, 9.4),
-            ["dortoir_en_chantier"] = (8.1, 6.0), ["dortoir_couvert"] = (16.1, 11.5),
+            ["dortoir_en_chantier"] = (14.0, 10.4), ["dortoir_couvert"] = (16.1, 11.5),
             ["roue_du_foulon"] = (4.6, 2.4), ["maillets_du_foulon"] = (3.0, 2.6),
         };
 
