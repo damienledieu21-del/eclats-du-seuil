@@ -15,6 +15,12 @@ namespace EdS.Game
     {
         private const int HomeRows = 10;
 
+        /// <summary>
+        /// Revue Codex de la PR #231 : trois colonnes qui tiennent dans le panneau (<see cref="PanelWidth"/>, 1 500) : meubles à poser de 60 à
+        /// 500, meubles posés de 520 à 960, coffre et sac de 980 à 1 440 (boutons compris, à droite de leur colonne).
+        /// </summary>
+        internal const float ListWidth = 440f, PlacedX = 520f, ChestX = 980f, ChestWidth = 460f;
+
         private readonly List<(RectTransform Row, UiText Name, UiButton Act)> _homeToPlace = new List<(RectTransform, UiText, UiButton)>();
         private readonly List<(RectTransform Row, UiText Name, UiButton Turn, UiButton Take)> _homePlaced = new List<(RectTransform, UiText, UiButton, UiButton)>();
         private readonly List<(RectTransform Row, UiText Name, UiButton Act)> _homeChest = new List<(RectTransform, UiText, UiButton)>();
@@ -49,37 +55,38 @@ namespace EdS.Game
 
         private void BuildHome(RectTransform page)
         {
-            _homeToPlaceTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, 460f, 20f, 0f, 0.5f, 14f, true);
-            _homePlacedTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 560f, 168f, 460f, 20f, 0f, 0.5f, 14f, true);
-            _homeChestTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 1060f, 168f, 520f, 20f, 0f, 0.5f, 14f, true);
-            _homeBagTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 1060f, 500f, 520f, 20f, 0f, 0.5f, 14f, true);
+            _homeToPlaceTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 168f, ListWidth, 20f, 0f, 0.5f, 14f, true);
+            _homePlacedTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, PlacedX, 168f, ListWidth, 20f, 0f, 0.5f, 14f, true);
+            _homeChestTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, ChestX, 168f, ChestWidth, 20f, 0f, 0.5f, 14f, true);
+            _homeBagTitle = Text(page, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, ChestX, 500f, ChestWidth, 20f, 0f, 0.5f, 14f, true);
             for (int i = 0; i < HomeRows; i++)
             {
                 int index = i;
-                _homeToPlace.Add(HomeRow(page, "Meuble à poser", 60f, 190f + i * 56f, 460f, () => CarryHomeRow(index)));
-                var placed = HomeRow(page, "Meuble posé", 560f, 190f + i * 56f, 460f, () => PickUpHomeRow(index));
+                _homeToPlace.Add(HomeRow(page, "Meuble à poser", 60f, 190f + i * 56f, ListWidth, () => CarryHomeRow(index)));
+                var placed = HomeRow(page, "Meuble posé", PlacedX, 190f + i * 56f, ListWidth, () => PickUpHomeRow(index));
                 UiButton turn = UiKit.Button(placed.Item1, "Tourner", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => TurnHomeRow(index));
-                UiKit.Place(turn.Rect, new Vector2(320f, 25f), new Vector2(110f, 36f), new Vector2(1f, 0.5f));
+                UiKit.Place(turn.Rect, new Vector2(ListWidth - 136f, 25f), new Vector2(110f, 36f), new Vector2(1f, 0.5f));
+                placed.Item2.Rect.sizeDelta = new Vector2(ListWidth - 260f, placed.Item2.Rect.sizeDelta.y);   // le nom laisse la place aux deux boutons
                 _homePlaced.Add((placed.Item1, placed.Item2, turn, placed.Item3));
             }
             for (int i = 0; i < 5; i++)
             {
                 int index = i;
-                _homeChest.Add(HomeRow(page, "Place du coffre", 1060f, 190f + i * 56f, 520f, () => _session?.ChestTake(_homeChestOffset + index)));
-                _homeBag.Add(HomeRow(page, "Place du sac", 1060f, 522f + i * 56f, 520f, () => _session?.ChestPut(_homeBagOffset + index)));
+                _homeChest.Add(HomeRow(page, "Place du coffre", ChestX, 190f + i * 56f, ChestWidth, () => _session?.ChestTake(_homeChestOffset + index)));
+                _homeBag.Add(HomeRow(page, "Place du sac", ChestX, 522f + i * 56f, ChestWidth, () => _session?.ChestPut(_homeBagOffset + index)));
             }
             _homeMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeOffset = KeyBindings.NextPage(_homeOffset, _homeLines.Count, HomeRows));
-            UiKit.Place(_homeMore.Rect, new Vector2(520f, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
+            UiKit.Place(_homeMore.Rect, new Vector2(60f + ListWidth, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
             _homePlacedMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homePlacedOffset = KeyBindings.NextPage(_homePlacedOffset, _homeLooks.Count, HomeRows));
-            UiKit.Place(_homePlacedMore.Rect, new Vector2(1020f, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
+            UiKit.Place(_homePlacedMore.Rect, new Vector2(PlacedX + ListWidth, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
             _homeBagMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeBagOffset = KeyBindings.NextPage(_homeBagOffset, _session != null ? _session.BagLines.Count : 0, 5));
-            UiKit.Place(_homeBagMore.Rect, new Vector2(1580f, 810f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
+            UiKit.Place(_homeBagMore.Rect, new Vector2(ChestX + ChestWidth, 810f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
             // Relecture de la PR #231 : le coffre a 8 places ou plus : « Suivants » comme pour le sac (rien n'y reste hors d'atteinte).
             _homeChestMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink,
                 () => _homeChestOffset = KeyBindings.NextPage(_homeChestOffset, _session != null ? _session.HomeChest.Count : 0, 5));
-            UiKit.Place(_homeChestMore.Rect, new Vector2(1580f, 478f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
+            UiKit.Place(_homeChestMore.Rect, new Vector2(ChestX + ChestWidth, 478f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
             _homeSleep = UiKit.Button(page, "Dormir", "bouton", "", UiFace.Bold, 16f, new Color(0.1f, 0.05f, 0.02f), () => SleepAtHome());
-            UiKit.Place(_homeSleep.Rect, new Vector2(1440f, 860f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
+            UiKit.Place(_homeSleep.Rect, new Vector2(ChestX + ChestWidth, 860f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
         }
 
         private void CarryHomeRow(int row)

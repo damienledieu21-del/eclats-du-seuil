@@ -115,4 +115,17 @@ public class MaisonTouchesTests
         Assert.Equal(count, seen.Count);
         Assert.Throws<ArgumentOutOfRangeException>(() => KeyBindings.NextPage(0, 1, 0));
     }
+
+    [Fact]
+    public void Panneau_de_la_maison_tient_dans_la_largeur_du_livre()
+    {
+        // Revue Codex de la PR #231 : en 4:3, la colonne coffre et sac débordait (x = 1 580 pour un panneau de 1 500).
+        string book = Source("AdventureBook.Home.cs"), shell = Source("AdventureBook.cs");
+        float Const(string source, string name) => float.Parse(System.Text.RegularExpressions.Regex.Match(source, name + @" = ([0-9.]+)f").Groups[1].Value,
+            System.Globalization.CultureInfo.InvariantCulture);
+        float panel = Const(shell, "PanelWidth"), list = Const(book, "ListWidth"), placed = Const(book, "PlacedX"), chest = Const(book, "ChestX"),
+            chestWidth = Const(book, "ChestWidth");
+        Assert.True(60f + list <= placed && placed + list <= chest && chest + chestWidth <= panel - 60f, $"{placed} {chest} {chestWidth} {panel}");
+        Assert.DoesNotMatch(@"new Vector2\((1[5-9][0-9]{2}|[2-9][0-9]{3})f", book);   // aucune position au-delà du panneau
+    }
 }
