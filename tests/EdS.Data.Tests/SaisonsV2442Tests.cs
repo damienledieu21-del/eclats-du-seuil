@@ -326,6 +326,34 @@ public class SaisonsV2442Tests
         Assert.Throws<ArgumentNullException>(() => SeasonSnow.OnRoad(null!, on));
     }
 
+    private static Road RoadOf(double width, params (double X, double Z)[] points) =>
+        (Road)typeof(Road).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Single()
+            .Invoke(new object?[] { "essai", RoadKind.Dirt, Fixed.FromRaw((long)(width * 10000)),
+                points.Select(p => new GroundVector(Fixed.FromRaw((long)(p.X * 10000)), Fixed.FromRaw((long)(p.Z * 10000)))).ToList() });
+
+    private static GroundVector At(decimal x, decimal z) => new GroundVector(Fixed.FromRaw((long)(x * 10000)), Fixed.FromRaw((long)(z * 10000)));
+
+    [Fact]
+    public void Sur_un_chemin_aux_bornes_extremes_sans_debordement()
+    {
+        // Revue Codex de la PR #229 : segment de 8 km et point à 4 km de l'axe (cross² ≈ 10³¹, au-delà d'un decimal) : exact, sans débordement.
+        Road far = RoadOf(20, (-4000, 0), (4000, 0));
+        Assert.False(SeasonSnow.OnRoad(new[] { far }, At(0, 4000)));
+        Assert.True(SeasonSnow.OnRoad(new[] { far }, At(0, 10)));          // bord compris (demi-largeur 10 m)
+        Assert.False(SeasonSnow.OnRoad(new[] { far }, At(0, 10.0001m)));   // un dix-millième au-delà
+        Assert.True(SeasonSnow.OnRoad(new[] { far }, At(-4010, 0)));       // au bout, dans le disque
+        Assert.False(SeasonSnow.OnRoad(new[] { far }, At(-4010.0001m, 0)));
+        // Diagonale d'un coin à l'autre de la borne de ±4 096 m.
+        Road diagonal = RoadOf(20, (-4096, -4096), (4096, 4096));
+        Assert.True(SeasonSnow.OnRoad(new[] { diagonal }, At(0, 0)));
+        Assert.True(SeasonSnow.OnRoad(new[] { diagonal }, At(7, -7)));     // à 9,9 m de l'axe
+        Assert.False(SeasonSnow.OnRoad(new[] { diagonal }, At(8, -8)));    // à 11,3 m
+        Assert.False(SeasonSnow.OnRoad(new[] { diagonal }, At(4096, -4096)));
+        Assert.False(SeasonSnow.OnRoad(new[] { diagonal }, At(-4096, 4096)));
+        // Déterministe : mêmes réponses à chaque appel.
+        Assert.Equal(SeasonSnow.OnRoad(new[] { diagonal }, At(7, -7)), SeasonSnow.OnRoad(new[] { diagonal }, At(7, -7)));
+    }
+
     // --- Monde -------------------------------------------------------------------------------------------------------
 
     [Fact]

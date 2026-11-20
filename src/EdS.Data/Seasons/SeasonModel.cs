@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
@@ -281,23 +282,35 @@ namespace EdS.Data.Seasons
             foreach (Road road in roads)
             {
                 long half = road.Width.Raw / 2;
-                decimal limit = (decimal)half * half;
                 for (int i = 0; i + 1 < road.Points.Count; i++)
-                    if (SegmentDistanceSquared(px, pz, road.Points[i], road.Points[i + 1]) <= limit) return true;
-                if (road.Points.Count == 1 && SegmentDistanceSquared(px, pz, road.Points[0], road.Points[0]) <= limit) return true;
+                    if (WithinSegment(px, pz, road.Points[i], road.Points[i + 1], half)) return true;
+                if (road.Points.Count == 1 && WithinSegment(px, pz, road.Points[0], road.Points[0], half)) return true;
             }
             return false;
         }
 
-        private static decimal SegmentDistanceSquared(long px, long pz, GroundVector a, GroundVector b)
+        /// <summary>
+        /// Revue Codex de la PR #229 : <paramref name="px"/>, <paramref name="pz"/> est à au plus <paramref name="half"/> du segment, calcul exact
+        /// en entiers vérifiés. Écarts et produits (bornés par les coordonnées de ±4 096 m) tiennent dans un <c>long</c> ; seul le test à la
+        /// droite (cross² ≤ half² × len, jusqu'à 10³² environ) passe par <see cref="BigInteger"/>, sans division ni arrondi.
+        /// </summary>
+        private static bool WithinSegment(long px, long pz, GroundVector a, GroundVector b, long half)
         {
-            decimal ax = a.X.Raw, az = a.Z.Raw, dx = b.X.Raw - ax, dz = b.Z.Raw - az, wx = px - ax, wz = pz - az;
-            decimal len = dx * dx + dz * dz, dot = wx * dx + wz * dz;
-            if (len == 0 || dot <= 0) return wx * wx + wz * wz;
-            if (dot >= len) { decimal ex = px - b.X.Raw, ez = pz - b.Z.Raw; return ex * ex + ez * ez; }
-            // Distance au carré à la droite : |w × d|² / |d|² (exact en décimal à 28 chiffres pour des coordonnées de ±4 096 m).
-            decimal cross = wx * dz - wz * dx;
-            return cross * cross / len;
+            checked
+            {
+                long ax = a.X.Raw, az = a.Z.Raw, dx = b.X.Raw - ax, dz = b.Z.Raw - az, wx = px - ax, wz = pz - az;
+                long limit = half * half;
+                long len = dx * dx + dz * dz, dot = wx * dx + wz * dz;
+                if (len == 0 || dot <= 0) return wx * wx + wz * wz <= limit;
+                if (dot >= len)
+                {
+                    long ex = px - b.X.Raw, ez = pz - b.Z.Raw;
+                    return ex * ex + ez * ez <= limit;
+                }
+                // Distance au carré à la droite : cross² / len ≤ half²  ⇔  cross² ≤ half² × len (len > 0).
+                long cross = wx * dz - wz * dx;
+                return BigInteger.Multiply(cross, cross) <= BigInteger.Multiply(limit, len);
+            }
         }
     }
 
