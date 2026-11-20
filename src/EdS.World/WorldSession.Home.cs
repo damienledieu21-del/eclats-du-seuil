@@ -31,7 +31,7 @@ namespace EdS.World
         /// </summary>
         public void UseHome(HomeBook? book)
         {
-            if (book != null && _character.Home is SavedHome home && HomeRules.Mismatch(home, book, _items) is string why)
+            if (book != null && _character.Home is SavedHome home && HomeRules.Mismatch(home, book, _items, _character.Feasts) is string why)
                 throw new ArgumentException($"Maison sauvegardée hors du catalogue de la maison : {why}.", nameof(book));
             _home = book;
         }
@@ -104,7 +104,7 @@ namespace EdS.World
         /// <summary>Le meuble est disponible : une copie de base dans l'inventaire, ou une décoration de fête possédée.</summary>
         private bool HasPiece(HomePiece piece) => piece.Item != null
             ? Inventory.BaseAvailable(piece.Item) >= 1
-            : _character.Feasts.Entries.TryGetValue(piece.Festival!, out SavedFeast feast) && feast.Owned.Contains(piece.FeastCode!);
+            : HomeRules.Owns(_character.Feasts, piece);
 
         /// <summary>
         /// Pose le meuble <paramref name="piece"/> en (<paramref name="x"/>, <paramref name="z"/>) cases, tourné de <paramref name="turn"/>

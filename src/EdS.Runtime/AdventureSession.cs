@@ -330,7 +330,7 @@ namespace EdS.Runtime
             if (_home != null && save.Character?.Home is SavedHome savedHome)
             {
                 var homeReport = new ValidationReport();
-                HomeRules.Check(savedHome, _home, items, homeReport, "$.data.character.home");
+                HomeRules.Check(savedHome, _home, items, save.Character!.Feasts, homeReport, "$.data.character.home");
                 if (!homeReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (maison du joueur) : {homeReport}");
             }
             (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);

@@ -287,11 +287,17 @@ public class MaisonTests
         void Off(SavedHome h, string path, ValidationCode code)
         {
             var report = new ValidationReport();
-            HomeRules.Check(h, b, ItemsCatalog, report, P);
+            HomeRules.Check(h, b, ItemsCatalog, Owned, report, P);
             Assert.Contains(report.Errors, e => e.Path == path && e.Code == code);
-            Assert.NotNull(HomeRules.Mismatch(h, b, ItemsCatalog));
+            Assert.NotNull(HomeRules.Mismatch(h, b, ItemsCatalog, Owned));
         }
-        Assert.Null(HomeRules.Mismatch(Saved.WithPlaced(new[] { new SavedPiece("table", 0, 0, 0) }), b, ItemsCatalog));
+        Assert.Null(HomeRules.Mismatch(Saved.WithPlaced(new[] { new SavedPiece("table", 0, 0, 0) }), b, ItemsCatalog, Owned));
+        Assert.Null(HomeRules.Mismatch(Saved, b, ItemsCatalog, Owned));
+        // Relecture indépendante de la PR #228 : une décoration de fête posée doit être possédée (portefeuille de sa fête).
+        var report = new ValidationReport();
+        HomeRules.Check(Saved, b, ItemsCatalog, SavedFeasts.Empty, report, P);
+        Assert.Contains(report.Errors, e => e.Path == P + ".placed[0].piece" && e.Code == ValidationCode.InvalidValue);
+        Assert.NotNull(HomeRules.Mismatch(Saved, b, ItemsCatalog, new SavedFeasts(new[] { new SavedFeast("festival.lanternes", owned: new[] { "F01_D02" }) })));
         Off(new SavedHome(3), P + ".stage", ValidationCode.OutOfRange);
         Off(new SavedHome(1, new[] { new KeyValuePair<string, long>("or", 1) }), P + ".given.or", ValidationCode.UnknownReference);
         Off(new SavedHome(0, new[] { new KeyValuePair<string, long>("or", 1_001) }), P + ".given.or", ValidationCode.OutOfRange);
@@ -305,6 +311,35 @@ public class MaisonTests
     }
 
     // --- Dans la partie --------------------------------------------------------------------------------
+
+    private static SavedFeasts Owned => new SavedFeasts(new[] { new SavedFeast("festival.lanternes", owned: new[] { Deco }) });
+
+    [Fact]
+    public void Rotation_refusee_si_elle_sort_du_sol_ou_chevauche()
+    {
+        HomeBook b = Sample.Value;
+        SavedHome h = new SavedHome(0, placed: new[] { new SavedPiece("table", 0, 0, 0), new SavedPiece("table", 4, 4, 0) });   // 8 × 6 cases
+        Assert.Equal(HomeRefusal.OutOfFloor, HomeRules.Rotate(h, b, 4, 4, out SavedHome same));   // 2 × 4 en (4, 4) : 4 + 4 > 6
+        Assert.Same(h, same);
+        h = h.WithPlaced(h.Placed.Append(new SavedPiece("lanterne", 1, 3, 0)));
+        Assert.Equal(HomeRefusal.Overlap, HomeRules.Rotate(h, b, 0, 0, out same));   // 2 × 4 en (0, 0) : sur la lanterne (1, 3)
+        Assert.Same(h, same);
+        Assert.Equal(0, h.Placed.Single(p => p.X == 0 && p.Z == 0).Turn);
+    }
+
+    [Fact]
+    public void Reprise_refusee_inventaire_plein_le_meuble_reste_pose()
+    {
+        WorldSession w = Inside(Hero().WithFeasts(Owned).WithHome(new SavedHome(0, placed: new[] { new SavedPiece("table", 0, 0, 0), new SavedPiece("lanterne", 7, 5, 0) })));
+        while (w.Inventory.FreePlaces > 0) Assert.Equal(InventoryRefusal.None, w.Inventory.Add(Plank, 20));
+        var before = w.Inventory.Stacks.ToList();
+        Assert.Equal(HomeRefusal.InventoryFull, w.PickUpFurniture(1, 1));
+        Assert.Equal(2, w.HomeState!.Placed.Count);   // rien n'est perdu
+        Assert.Equal(before, w.Inventory.Stacks);
+        Assert.Equal(0, w.Inventory.Count(Rubble));
+        Assert.Equal(HomeRefusal.None, w.PickUpFurniture(7, 5));   // une décoration ne prend pas de place dans l'inventaire
+        Assert.Single(w.HomeState!.Placed);
+    }
 
     private static WorldSession Outside(SavedCharacter hero)
     {
@@ -350,8 +385,7 @@ public class MaisonTests
     [Fact]
     public void Meubles_et_coffre_dans_la_maison_refus_atomiques()
     {
-        var feasts = new SavedFeasts(new[] { new SavedFeast("festival.lanternes", owned: new[] { Deco }) });
-        SavedCharacter hero = Hero(0, new ItemStack(Rubble, 2), new ItemStack(Plank, 20), new ItemStack(Plank, 5)).WithFeasts(feasts).WithHome(SavedHome.Bought);
+        SavedCharacter hero = Hero(0, new ItemStack(Rubble, 2), new ItemStack(Plank, 20), new ItemStack(Plank, 5)).WithFeasts(Owned).WithHome(SavedHome.Bought);
         Assert.Equal(HomeRefusal.NotThere, Outside(hero).PlaceFurniture("table", 0, 0, 0));
         WorldSession w = Inside(hero);
         Assert.Equal(HomeRefusal.None, w.PlaceFurniture("table", 0, 0, 0));

@@ -261,21 +261,27 @@ namespace EdS.World
             return HomeRefusal.None;
         }
 
+        /// <summary>La décoration de fête <paramref name="piece"/> est possédée (portefeuille de sa fête, <c>owned</c>).</summary>
+        public static bool Owns(SavedFeasts feasts, HomePiece piece) =>
+            piece.FeastCode != null && feasts.Entries.TryGetValue(piece.Festival!, out SavedFeast f) && f.Owned.Contains(piece.FeastCode);
+
         /// <summary>Pourquoi la maison gardée ne va pas avec le catalogue (premier écart, voir <see cref="Check"/>), ou null si elle va.</summary>
-        public static string? Mismatch(SavedHome home, HomeBook book, ItemCatalog items)
+        public static string? Mismatch(SavedHome home, HomeBook book, ItemCatalog items, SavedFeasts feasts)
         {
             var report = new ValidationReport();
-            Check(home, book, items, report, "$.data.character.home");
+            Check(home, book, items, feasts, report, "$.data.character.home");
             return report.IsValid ? null : report.Errors[0].Message;
         }
 
         /// <summary>
         /// Accord de la maison gardée avec le catalogue, chaque écart avec son chemin et son code : paliers au-delà du dernier, apports hors du
         /// palier en cours ou au-delà du besoin ; meubles inconnus, hors du sol, qui se chevauchent, trop nombreux, décoration posée deux fois ;
-        /// coffre trop plein, objets inconnus ou instances refusées par le catalogue, piles trop hautes.
+        /// décoration de fête posée sans être possédée (<paramref name="feasts"/>, portefeuilles du personnage) ; coffre trop plein, objets
+        /// inconnus ou instances refusées par le catalogue, piles trop hautes.
         /// </summary>
-        public static void Check(SavedHome home, HomeBook book, ItemCatalog items, ValidationReport report, string path)
+        public static void Check(SavedHome home, HomeBook book, ItemCatalog items, SavedFeasts feasts, ValidationReport report, string path)
         {
+            if (feasts is null) throw new ArgumentNullException(nameof(feasts));
             if (home is null) throw new ArgumentNullException(nameof(home));
             if (book is null) throw new ArgumentNullException(nameof(book));
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -295,13 +301,15 @@ namespace EdS.World
             }
             HomeTier tier = Tier(home, book);
             if (home.Placed.Count > tier.Pieces) report.Add(path + ".placed", ValidationCode.LimitExceeded, $"{home.Placed.Count} meubles posés, au plus {tier.Pieces}.");
-            var feasts = new HashSet<string>(StringComparer.Ordinal);
+            var placedFeasts = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < home.Placed.Count; i++)
             {
                 string pp = $"{path}.placed[{i}]";
                 SavedPiece p = home.Placed[i];
                 if (!(book.Piece(p.Piece) is HomePiece def)) { report.Add(pp + ".piece", ValidationCode.UnknownReference, $"meuble « {p.Piece} » inconnu."); continue; }
-                if (def.FeastCode != null && !feasts.Add(def.Id)) report.Add(pp + ".piece", ValidationCode.DuplicateId, $"décoration « {def.Id} » posée deux fois.");
+                if (def.FeastCode != null && !placedFeasts.Add(def.Id)) report.Add(pp + ".piece", ValidationCode.DuplicateId, $"décoration « {def.Id} » posée deux fois.");
+                else if (def.FeastCode != null && !Owns(feasts, def))
+                    report.Add(pp + ".piece", ValidationCode.InvalidValue, $"décoration « {def.FeastCode} » posée sans être possédée (portefeuille de « {def.Festival} »).");
                 (int w, int d) = def.Footprint(p.Turn);
                 if (p.X + w > tier.Width || p.Z + d > tier.Depth) { report.Add(pp, ValidationCode.OutOfRange, $"« {def.Id} » déborde du sol."); continue; }
                 for (int k = 0; k < i; k++)
