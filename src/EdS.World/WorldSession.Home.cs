@@ -39,6 +39,35 @@ namespace EdS.World
         /// <summary>La porte <paramref name="door"/> est celle de la maison, qui n'est pas encore achetée (fermée).</summary>
         public bool DoorAwaitsHome(string door) => _home != null && _home.Door == door && Definition?.Id == _home.DoorZone && _character.Home is null;
 
+        /// <summary>V2.53.2 : le point sûr <paramref name="safePoint"/> est celui de la maison, pas encore achetée (ni repos, ni retour).</summary>
+        public bool AwaitsHomeSafePoint(string safePoint) =>
+            _home != null && _character.Home is null && Definition?.Id == _home.Interior && Definition.SafePoints.Any(s => s.Id == safePoint);
+
+        /// <summary>Tick du monde où l'atelier de la maison est de nouveau libre (hors sauvegarde).</summary>
+        private long _homeCraftReadyTick;
+
+        /// <summary>
+        /// V2.53.2 : la recette <paramref name="r"/> se fabrique à l'atelier de la maison : dans la maison achetée, un meuble posé qui la sert
+        /// (foyer : cuisine ; établi : bois et pierre), et pas une recette de la forge à qualité.
+        /// </summary>
+        private bool HomeWorkshopFor(EdS.Data.Crafting.Recipe r) =>
+            !r.Quality && _home is HomeBook book && _character.Home is SavedHome home && Definition?.Id == book.Interior
+            && home.Placed.Any(p => book.Piece(p.Piece) is HomePiece piece && HomeRules.WorkshopServes(piece.Use, r.Profession));
+
+        /// <summary>
+        /// V2.53.2 : dormir dans son lit (dans la maison, un lit posé, hors combat) : réconfort pendant <see cref="HomeRules.BedComfortMinutes"/>
+        /// minutes de jeu (marche un peu plus rapide hors combat, aucune statistique de combat ; un réconfort plus long en cours est gardé).
+        /// </summary>
+        public HomeRefusal SleepInBed()
+        {
+            HomeRefusal why = Inside(out HomeBook book, out SavedHome home);
+            if (why != HomeRefusal.None) return why;
+            if (!HomeRules.Has(home, book, HomeUse.Bed)) return HomeRefusal.NothingThere;
+            long until = checked(NowMinute + HomeRules.BedComfortMinutes);
+            if (!(ComfortUntilMinute is long now) || now < until) CarryComfort(until);
+            return HomeRefusal.None;
+        }
+
         /// <summary>Le personnage est vivant, présent, hors combat, dans la zone <paramref name="zone"/>.</summary>
         private HomeRefusal HomeWhere(string zone)
         {

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.38.0-provisoire",
+  "contentVersion": "0.39.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -2174,6 +2174,16 @@
           105
         ],
         "dialogue": "dialogue.hospitalier",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.maitre_oeuvre",
+        "name": "text.home.maitre_oeuvre.name",
+        "position": [
+          -1059.0,
+          6.5
+        ],
+        "dialogue": "dialogue.maitre_oeuvre",
         "faction": "villagers"
       }
     ],
@@ -24136,6 +24146,40 @@
                   }
                 ],
                 "text": "text.v243.hospitalier.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.maitre_oeuvre",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.home.maitre_oeuvre.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maitre_oeuvre"
+                  }
+                ],
+                "text": "text.home.maitre_oeuvre.retrouvailles"
               }
             ],
             "choices": [

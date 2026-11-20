@@ -1,0 +1,26 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 253,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -5.0,
+          -4.0
+        ],
+        "max": [
+          5.0,
+          4.0
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

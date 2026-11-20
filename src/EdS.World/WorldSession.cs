@@ -570,9 +570,13 @@ namespace EdS.World
         {
             Workshop workshop = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
             Recipe? r = workshop.Book.Recipes.FirstOrDefault(x => x.Id == recipe);
-            CraftRefusal refusal = workshop.Craft(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory, strikes, _character.Id, Zone.Time.Day,
+            bool inTown = r != null && ((INarrativeWorld)this).InPlace(r.Place);
+            bool atHome = !inTown && r != null && HomeWorkshopFor(r);   // V2.53.2 : l'atelier de la maison, plus lent
+            if (atHome && Zone.WorldTick < _homeCraftReadyTick) { done = null; return CraftRefusal.HomeTooSoon; }
+            CraftRefusal refusal = workshop.Craft(recipe, inTown || atHome, Inventory, strikes, _character.Id, Zone.Time.Day,
                 _character.Crafts, out done);
             if (refusal == CraftRefusal.None) _character = _character.WithCrafts(Math.Min(SavedCharacter.MaxCrafts, checked(_character.Crafts + 1)));
+            if (refusal == CraftRefusal.None && atHome) _homeCraftReadyTick = checked(Zone.WorldTick + HomeRules.WorkshopDelayTicks);
             return refusal;
         }
 
@@ -581,7 +585,10 @@ namespace EdS.World
         {
             Workshop workshop = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
             Recipe? r = workshop.Book.Recipes.FirstOrDefault(x => x.Id == recipe);
-            return workshop.Check(recipe, r != null && ((INarrativeWorld)this).InPlace(r.Place), Inventory);
+            bool inTown = r != null && ((INarrativeWorld)this).InPlace(r.Place);
+            bool atHome = !inTown && r != null && HomeWorkshopFor(r);   // V2.53.2 : l'atelier de la maison
+            if (atHome && Zone.WorldTick < _homeCraftReadyTick) return CraftRefusal.HomeTooSoon;
+            return workshop.Check(recipe, inTown || atHome, Inventory);
         }
 
         /// <summary>Retire de l'inventaire les objets de soin que le moteur a bus depuis le dernier relevé.</summary>

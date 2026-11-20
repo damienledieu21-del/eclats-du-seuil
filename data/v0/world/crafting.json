@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -841,6 +841,186 @@
           "count": 1
         },
         "xp": 25
+      },
+      {
+        "id": "recipe.meuble_lit",
+        "name": "text.recipe.meuble_lit",
+        "profession": "bucheronnage",
+        "requiredLevel": 2,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 6
+          }
+        ],
+        "output": {
+          "item": "item.meuble_lit",
+          "count": 1
+        },
+        "xp": 40
+      },
+      {
+        "id": "recipe.meuble_coffre",
+        "name": "text.recipe.meuble_coffre",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 4
+          }
+        ],
+        "output": {
+          "item": "item.meuble_coffre",
+          "count": 1
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.meuble_table",
+        "name": "text.recipe.meuble_table",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 4
+          }
+        ],
+        "output": {
+          "item": "item.meuble_table",
+          "count": 1
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.meuble_banc",
+        "name": "text.recipe.meuble_banc",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.meuble_banc",
+          "count": 1
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.meuble_chaise",
+        "name": "text.recipe.meuble_chaise",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.meuble_chaise",
+          "count": 1
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.meuble_armoire",
+        "name": "text.recipe.meuble_armoire",
+        "profession": "bucheronnage",
+        "requiredLevel": 3,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 6
+          }
+        ],
+        "output": {
+          "item": "item.meuble_armoire",
+          "count": 1
+        },
+        "xp": 45
+      },
+      {
+        "id": "recipe.meuble_etagere",
+        "name": "text.recipe.meuble_etagere",
+        "profession": "bucheronnage",
+        "requiredLevel": 2,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.meuble_etagere",
+          "count": 1
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.meuble_etabli",
+        "name": "text.recipe.meuble_etabli",
+        "profession": "bucheronnage",
+        "requiredLevel": 3,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.planche",
+            "count": 5
+          }
+        ],
+        "output": {
+          "item": "item.meuble_etabli",
+          "count": 1
+        },
+        "xp": 50
+      },
+      {
+        "id": "recipe.meuble_foyer",
+        "name": "text.recipe.meuble_foyer",
+        "profession": "taille_de_pierre",
+        "requiredLevel": 3,
+        "place": "carriere",
+        "inputs": [
+          {
+            "item": "item.pierre_taillee",
+            "count": 6
+          }
+        ],
+        "output": {
+          "item": "item.meuble_foyer",
+          "count": 1
+        },
+        "xp": 55
+      },
+      {
+        "id": "recipe.meuble_banc_de_pierre",
+        "name": "text.recipe.meuble_banc_de_pierre",
+        "profession": "taille_de_pierre",
+        "requiredLevel": 1,
+        "place": "carriere",
+        "inputs": [
+          {
+            "item": "item.pierre_taillee",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.meuble_banc_de_pierre",
+          "count": 1
+        },
+        "xp": 30
       }
     ],
     "nodes": [
