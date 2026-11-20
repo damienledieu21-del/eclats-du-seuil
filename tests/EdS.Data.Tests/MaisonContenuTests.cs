@@ -273,4 +273,27 @@ public class MaisonContenuTests : IDisposable
         Assert.Equal(20, a.World.Inventory.Count("item.planche"));
         Assert.False(a.ChestTake(0));
     }
+
+    [Fact]
+    public void Halte_au_lit_tout_ou_rien_si_la_sauvegarde_echoue()
+    {
+        // Revue Codex de la PR #230 : une écriture qui échoue ne laisse ni réconfort ni halte.
+        string data = Data();
+        var hero = Player(0).WithHome(new SavedHome(0, placed: new[] { new SavedPiece("meuble_lit", 0, 4, 0) }));
+        AdventureSession a = Load(data, hero);
+        Assert.True(a.UseDoor());
+        a.Advance(0.05);
+        a.DrainMessages();
+        string before = File.ReadAllText(SavePath);
+        Directory.CreateDirectory(SaveStore.TemporaryPath(SavePath));   // le fichier temporaire ne peut pas s'écrire
+        Assert.False(a.Sleep());
+        Assert.Null(a.World.ComfortUntilMinute);
+        Assert.Null(a.ComfortText);
+        Assert.Equal(before, File.ReadAllText(SavePath));
+        Assert.Contains(a.DrainMessages(), m => m.StartsWith("Sauvegarde impossible pour l'instant", StringComparison.Ordinal));
+        Directory.Delete(SaveStore.TemporaryPath(SavePath));
+        Assert.True(a.Sleep());   // l'écriture revenue, la halte réussit
+        Assert.NotNull(a.World.ComfortUntilMinute);
+        Assert.Contains("Bien reposé", a.ComfortText, StringComparison.Ordinal);
+    }
 }

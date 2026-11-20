@@ -110,10 +110,25 @@ namespace EdS.Runtime
         public bool Sleep()
         {
             if (World.IsDefeated || Dialogue != null || MustContinue) return false;
+            // Revue Codex de la PR #230 : tout ou rien. Le réconfort n'est gardé que si la halte (sauvegarde puis nouvelle session) réussit ;
+            // si l'écriture échoue (disque plein, accès refusé), le réconfort et son nom d'avant reviennent, le motif s'affiche.
+            long? comfortBefore = World.ComfortUntilMinute;
+            string? dishBefore = _comfortDish;
+            WorldSession before = World;
             HomeRefusal refusal = World.SleepInBed();
             if (refusal != HomeRefusal.None) return HomeRefused(refusal);
             _comfortDish = Text("text.ui.home.rested");
-            Reopen("text.ui.home.slept");
+            try
+            {
+                Reopen("text.ui.home.slept");
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+            {
+                if (World == before) World.CarryComfort(comfortBefore);   // la session n'a pas changé : son réconfort revient
+                _comfortDish = dishBefore;
+                Say("text.ui.save_failed", e.Message);
+                return false;
+            }
             return true;
         }
 
