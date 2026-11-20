@@ -114,6 +114,43 @@ namespace EdS.Runtime
             new VintageProp("vendanges/panier", -1247.5, -684.25, 0),
         };
 
+        /// <summary>
+        /// Modèles Tripo des rangs en trois états (Decor/vendanges, 20 novembre 2026, 90 crédits), avec leur taille d'export (m, longueur X,
+        /// profondeur Z, hauteur) : posés par modules de <see cref="ModuleLength"/> m le long de chaque rang, étirés à sa longueur et à sa
+        /// largeur.
+        /// </summary>
+        public static IReadOnlyDictionary<string, (double W, double D, double H)> Models { get; } = new Dictionary<string, (double, double, double)>(StringComparer.Ordinal)
+        {
+            ["rang_vigne_vert"] = (3.19, 1.84, 1.6),
+            ["rang_vigne_mur"] = (2.4, 2.13, 1.61),
+            ["rang_vigne_vendange"] = (4.27, 0.84, 1.6),
+        };
+
+        /// <summary>Longueur (m) d'un module de rang (8 par rang de 40 m).</summary>
+        public const double ModuleLength = 5.0;
+
+        /// <summary>Largeur (m) d'un rang de modèle (le rang du moteur fait 0,8 m).</summary>
+        public const double ModuleWidth = 0.9;
+
+        /// <summary>
+        /// Pièce de modèle du rang pour l'état <paramref name="state"/> et la saison <paramref name="season"/> : vert, mûr, vendangé (l'automne),
+        /// ou null (cep nu de l'hiver et de la fin de l'hiver : seuls les piquets et le fil).
+        /// </summary>
+        public static string? ModelPiece(VineState? state, int season) => state switch
+        {
+            VineState.Ripe => "rang_vigne_mur",
+            VineState.Harvested => season == 2 ? "rang_vigne_vendange" : null,
+            _ => "rang_vigne_vert",
+        };
+
+        /// <summary>Échelle (x, y, z) d'un module de la pièce <paramref name="piece"/> étiré à <paramref name="length"/> m de long.</summary>
+        public static (double X, double Y, double Z) ModuleScale(string piece, double length)
+        {
+            if (!Models.TryGetValue(piece, out (double W, double D, double H) size)) throw new ArgumentException("Pièce de rang inconnue " + piece, nameof(piece));
+            if (!(length > 0)) throw new ArgumentOutOfRangeException(nameof(length));
+            return (length / size.W, 1.0, ModuleWidth / size.D);
+        }
+
         /// <summary>Les objets de vendange sont posés : vigne mûre (septembre).</summary>
         public static bool PropsShown(VineState? state) => state == VineState.Ripe;
     }

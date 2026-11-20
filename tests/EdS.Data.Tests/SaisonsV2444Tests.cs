@@ -92,6 +92,32 @@ public class SaisonsV2444Tests
     }
 
     [Fact]
+    public void Modeles_Tripo_des_rangs_en_trois_etats()
+    {
+        Assert.Equal("rang_vigne_vert", VineLook.ModelPiece(VineState.Green, 1));
+        Assert.Equal("rang_vigne_vert", VineLook.ModelPiece(null, 3));
+        Assert.Equal("rang_vigne_mur", VineLook.ModelPiece(VineState.Ripe, 2));
+        Assert.Equal("rang_vigne_vendange", VineLook.ModelPiece(VineState.Harvested, 2));
+        Assert.Null(VineLook.ModelPiece(VineState.Harvested, 3));   // cep nu : piquets et fil seuls
+        Assert.Null(VineLook.ModelPiece(VineState.Harvested, 0));
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Modeles", "Decor", "vendanges");
+        foreach (string piece in VineLook.Models.Keys)
+        {
+            Assert.True(File.Exists(Path.Combine(folder, "vendanges_" + piece + ".fbx")), piece);
+            Assert.True(File.Exists(Path.Combine(folder, "vendanges_" + piece + "_couleur.jpg")), piece);
+            Assert.True(AtelierDecor.IsPiece("vendanges_" + piece, piece));
+            (double x, double y, double z) = VineLook.ModuleScale(piece, VineLook.ModuleLength);
+            Assert.Equal(VineLook.ModuleLength, x * VineLook.Models[piece].W, 6);
+            Assert.Equal(VineLook.ModuleWidth, z * VineLook.Models[piece].D, 6);
+            Assert.Equal(1.0, y);
+        }
+        Assert.Throws<ArgumentException>(() => VineLook.ModuleScale("rang_inconnu", 5));
+        Assert.Throws<ArgumentOutOfRangeException>(() => VineLook.ModuleScale("rang_vigne_vert", 0));
+        // 8 modules par rang de 40 m.
+        Assert.Equal(9, VineLook.Along(-1455, -700.4, -1415, -699.6, VineLook.ModuleLength).Count);
+    }
+
+    [Fact]
     public void Modeles_du_lot_C_relies_aux_vendanges()
     {
         Assert.Equal("C_RE_S06", LotCModels.ForNode("raisin_vignes_ouest"));

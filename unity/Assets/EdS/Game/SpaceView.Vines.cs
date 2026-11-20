@@ -19,6 +19,9 @@ namespace EdS.Game
             public GameObject Leaves;
             public Vector3 LeafScale;
             public GameObject Grapes;
+            public GameObject Trellis;   // piquets et fil (seuls l'hiver quand les modèles sont là)
+            public GameObject Models;    // modules du modèle de l'état montré
+            public float X0, Z0, X1, Z1;
         }
 
         private readonly List<VineRow> _vineRows = new List<VineRow>();
@@ -42,6 +45,8 @@ namespace EdS.Game
             }
             var row = new GameObject(id + " (rang de vigne)");
             row.transform.SetParent(_root.transform, false);
+            var trellis = new GameObject("Palissage");
+            trellis.transform.SetParent(row.transform, false);
             bool alongX = x1 - x0 >= z1 - z0;
             float length = alongX ? x1 - x0 : z1 - z0;
             Vector3 center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
@@ -49,12 +54,12 @@ namespace EdS.Game
             // Piquets tous les 5 m et fil de palissage.
             foreach ((double x, double z) in VineLook.Along(x0, z0, x1, z1, VineLook.StakeSpacing))
             {
-                GameObject stake = Primitive(PrimitiveType.Cylinder, row.transform, _vineWood);
+                GameObject stake = Primitive(PrimitiveType.Cylinder, trellis.transform, _vineWood);
                 float h = StyleWorld.StandHeight((float)x, (float)z);
                 stake.transform.position = new Vector3((float)x, h + 0.65f, (float)z);
                 stake.transform.localScale = new Vector3(0.07f, 0.65f, 0.07f);
             }
-            GameObject wire = Primitive(PrimitiveType.Cube, row.transform, _vineWood);
+            GameObject wire = Primitive(PrimitiveType.Cube, trellis.transform, _vineWood);
             wire.transform.position = new Vector3(center.x, ground + 1.05f, center.z);
             wire.transform.localScale = alongX ? new Vector3(length, 0.02f, 0.02f) : new Vector3(0.02f, 0.02f, length);
             // Feuillage : une haie basse le long du fil.
@@ -81,7 +86,9 @@ namespace EdS.Game
                 }
             }
             grapes.SetActive(false);
-            _vineRows.Add(new VineRow { Leaves = leaves, LeafScale = scale, Grapes = grapes });
+            var models = new GameObject("Modules");
+            models.transform.SetParent(row.transform, false);
+            _vineRows.Add(new VineRow { Leaves = leaves, LeafScale = scale, Grapes = grapes, Trellis = trellis, Models = models, X0 = x0, Z0 = z0, X1 = x1, Z1 = z1 });
         }
 
         private static GameObject Primitive(PrimitiveType type, Transform parent, Material material)
@@ -103,6 +110,23 @@ namespace EdS.Game
             var color = new Color(look.R, look.G, look.B);
             _vineLeaves.SetColor("_BaseColor", color);
             _vineLeaves.SetColor("_Color", color);
+            // Modèles Tripo des rangs (Decor/vendanges) : modules de l'état montré ; sans eux, formes faites par le code.
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            bool modeled = catalog != null && catalog.OwnDecorPiece("rang_vigne_vert") != null;
+            string piece = VineLook.ModelPiece(state, season);
+            GameObject prefab = modeled && piece != null ? catalog.OwnDecorPiece(piece) : null;
+            foreach (VineRow row in _vineRows)
+            {
+                if (row.Models == null) continue;
+                for (int c = row.Models.transform.childCount - 1; c >= 0; c--) Object.Destroy(row.Models.transform.GetChild(c).gameObject);
+                if (!modeled) continue;
+                row.Leaves.SetActive(false);
+                row.Grapes.SetActive(false);
+                row.Trellis.SetActive(prefab == null);   // l'hiver, cep nu : piquets et fil seuls
+                if (prefab != null) Modules(row, prefab, piece);
+            }
+            Vintage(VineLook.PropsShown(state));
+            if (modeled) return;
             foreach (VineRow row in _vineRows)
             {
                 if (row.Leaves != null)
@@ -113,6 +137,26 @@ namespace EdS.Game
                 if (row.Grapes != null) row.Grapes.SetActive(look.Grapes);
             }
             Vintage(VineLook.PropsShown(state));
+        }
+
+        /// <summary>Modules du modèle <paramref name="prefab"/> le long du rang, étirés à sa longueur et à sa largeur, posés sur le sol.</summary>
+        private static void Modules(VineRow row, GameObject prefab, string piece)
+        {
+            bool alongX = row.X1 - row.X0 >= row.Z1 - row.Z0;
+            IReadOnlyList<(double X, double Z)> spots = VineLook.Along(row.X0, row.Z0, row.X1, row.Z1, VineLook.ModuleLength);
+            for (int i = 0; i + 1 < spots.Count; i++)
+            {
+                float x = (float)((spots[i].X + spots[i + 1].X) / 2), z = (float)((spots[i].Z + spots[i + 1].Z) / 2);
+                double length = alongX ? spots[i + 1].X - spots[i].X : spots[i + 1].Z - spots[i].Z;
+                (double sx, double sy, double sz) = VineLook.ModuleScale(piece, length);
+                var holder = new GameObject(piece + " " + i);
+                holder.transform.SetParent(row.Models.transform, false);
+                holder.transform.position = new Vector3(x, StyleWorld.StandHeight(x, z), z);
+                holder.transform.rotation = Quaternion.Euler(0f, alongX ? 0f : 90f, 0f);
+                holder.transform.localScale = new Vector3((float)sx, (float)sy, (float)sz);
+                GameObject model = Object.Instantiate(prefab, holder.transform, false);
+                foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            }
         }
 
         private void Vintage(bool shown)
