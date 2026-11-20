@@ -95,6 +95,8 @@ public class SaisonsV2443Tests
         Assert.Contains("terrain.SampleHeight(", cover);
         Assert.DoesNotContain("StyleWorld.StandHeight", cover);
         Assert.Contains("if (_terrainMeshes.TryGetValue(t, out Mesh mesh) && mesh != null) Object.Destroy(mesh);", cover);
+        Assert.Contains("if (_ice != null && _ice != _water) Object.Destroy(_ice);", space);   // 3e tour : la copie de l'eau qui gèle est libérée
+        Assert.Contains("if (_ice != null && _ice != _water && _ice != StyleWorld.Water()) Object.Destroy(_ice);", Game("CellStreamView.cs"));
         Assert.Contains("foreach (SpaceObstacle o in OpenIceStrips(space, map))\n                rivers.Add(", space.Replace("\r\n", "\n"));
         Assert.Contains("_EdsIce > 0.001h && _IceAllowed > 0.5h", eau);   // seule la bande du lac gèle
     }
