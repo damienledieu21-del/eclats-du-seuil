@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "kind": "seasons",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "mistEchoes": {
       "presence": {
@@ -67,7 +67,7 @@
           "month": 4,
           "day": 15
         },
-        "altitude": 30,
+        "altitude": 220,
         "places": [
           "col_des_cretes_de_fer"
         ]

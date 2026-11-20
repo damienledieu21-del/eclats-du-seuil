@@ -56,6 +56,9 @@ namespace EdS.Game
         private const float CutHeight = 0.12f;
 
         private readonly GameObject _root;
+
+        /// <summary>V2.44.3 : racine du décor (neige posée, SnowCover).</summary>
+        public Transform Root => _root != null ? _root.transform : null;
         private readonly List<Occluder> _occluders = new List<Occluder>();
 
         /// <summary>Sous-lot V2.12.6 : boîtes des bâtiments (maisons, auberge, chapelle, grange…) contre lesquelles la caméra s'arrête.</summary>

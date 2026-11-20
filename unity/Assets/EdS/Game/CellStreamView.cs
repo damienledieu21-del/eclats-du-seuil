@@ -22,6 +22,9 @@ namespace EdS.Game
     {
         private static CellStreamView _current;
 
+        /// <summary>V2.44.3 : racine du terrain de la région affiché (neige posée, SnowCover), ou null.</summary>
+        public static Transform CurrentRoot => _current != null && _current._root != null ? _current._root.transform : null;
+
         private readonly string _key;
         private readonly GameObject _root;
         private readonly RegionTerrain _terrain;

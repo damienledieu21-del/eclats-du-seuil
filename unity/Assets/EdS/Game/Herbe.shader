@@ -44,11 +44,19 @@ Shader "EdS/Herbe"
         // Saisons : teinte de saison et neige posées par SeasonView (globales ; jamais posées, elles valent 0 et rien ne change).
         half4 _EdsSeasonTint;
         half _EdsSnow;
+        float4 _EdsSnowPass;   // V2.44.3 : neige du col (quantité, limite en m, fondu en m)
 
-        half3 EdsSeason(half3 albedo, half up)
+        // V2.44.3 : neige au point de hauteur y : celle de la plaine, ou celle du col au-dessus de sa limite (fondu en dessous).
+        half EdsSnowAt(float y)
+        {
+            half pass = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
+            return max(_EdsSnow, pass);
+        }
+
+        half3 EdsSeason(half3 albedo, half up, float y)
         {
             albedo = lerp(albedo, albedo * _EdsSeasonTint.rgb * 2.0h, _EdsSeasonTint.a);
-            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(_EdsSnow * saturate(up * 1.5h - 0.3h)));
+            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(EdsSnowAt(y) * saturate(up * 1.5h - 0.3h)));
         }
 
 
@@ -157,7 +165,7 @@ Shader "EdS/Herbe"
                 // (moins noir qu'avant).
                 half3 halfDir = normalize(sun.direction + view);
                 half sheen = pow(saturate(dot(normalWS, halfDir)), 24.0h) * _Sheen * input.height;
-                half3 color = EdsSeason(input.color, normalWS.y * input.height) * light * lerp(0.62h, 1.0h, input.height) + sun.color * sun.shadowAttenuation * sheen * 0.35h;
+                half3 color = EdsSeason(input.color, normalWS.y * input.height, input.positionWS.y) * light * lerp(0.62h, 1.0h, input.height) + sun.color * sun.shadowAttenuation * sheen * 0.35h;
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }

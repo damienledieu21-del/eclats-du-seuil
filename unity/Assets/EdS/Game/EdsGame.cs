@@ -476,6 +476,7 @@ namespace EdS.Game
 
         /// <summary>Saisons : date fournie au cœur et saison exposée au rendu (teinte, neige, glace).</summary>
         private SeasonView _seasonView;
+        private SnowCover _snowCover;   // V2.44.3 : neige posée sur le décor
 
         /// <summary>Relecture de la PR #102 : liste des compagnons à montrer, réutilisée à chaque image.</summary>
         private readonly List<CompanionDefinition> _companionList = new List<CompanionDefinition>();
@@ -531,6 +532,8 @@ namespace EdS.Game
             _scars = null;
             _seasonView = null;   // saisons
             SeasonView.Clear();
+            _snowCover?.Clear();   // V2.44.3
+            _snowCover = null;
             _weatherFx = null;
             StyleWorld.SetWeather(null);
             StyleWorld.SetFeast(FeastMood.None);   // relecture de la PR #220 : l'ambiance de fête ne survit pas à l'aventure
@@ -753,6 +756,8 @@ namespace EdS.Game
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
             if (_seasonView == null) _seasonView = new SeasonView();
             _seasonView.Sync(a, Time.deltaTime);   // saisons : l'hôte fournit la date, puis teinte, neige et glace pour le rendu
+            if (_snowCover == null) _snowCover = new SnowCover();
+            _snowCover.Sync(Time.deltaTime, a.Indoors, _arena.DecorRoot, CellStreamView.CurrentRoot);   // V2.44.3 : neige sur les toits, les rochers et le sol
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             HumanBodies.Feast = a.FeastNumber;   // sous-lot F6 : aux teintes de la fête d'Orsédia en cours

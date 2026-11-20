@@ -69,6 +69,9 @@ namespace EdS.Game
 
         // Sous-lot 11.6 : combat positionné (null sinon) ; places du tick précédent et du tick affiché, pour glisser entre les deux.
         private SpaceView _space;
+
+        /// <summary>V2.44.3 : racine du décor de l'espace affiché (neige posée), ou null.</summary>
+        public Transform DecorRoot => _space?.Root;
         private IReadOnlyList<ConvexPolygon> _obstacles;
         private GameObject _defaultGround;
         private readonly Dictionary<string, Vector3> _from = new Dictionary<string, Vector3>();
