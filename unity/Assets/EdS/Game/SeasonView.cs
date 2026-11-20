@@ -1,4 +1,5 @@
 using System;
+using EdS.Domain.Time;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -9,7 +10,8 @@ namespace EdS.Game
     /// en multijoueur, le serveur fait foi), puis expose au rendu la saison et sa transition : globales de shader <c>_EdsSeasonTint</c>
     /// (teinte autour de 0,5 = neutre, force dans a), <c>_EdsSnow</c> (neige sur les faces tournées vers le haut), <c>_EdsIce</c> (glace du
     /// lac, de 0 à 1) et <c>_EdsSeason</c> (saison, transition adoucie, neige, glace). Les shaders d'herbe et de feuillage les lisent ; à 0
-    /// (jamais posées), ils ne changent rien. Affichage seulement : aucune règle de combat ne lit la saison.
+    /// (jamais posées), ils ne changent rien. Affichage seulement : aucune règle de combat ne lit la saison. En solo, le poste est l'hôte
+    /// (<see cref="Sync"/>) ; en réseau, la date vient du serveur (<see cref="SyncServer"/>, protocole 6, sous-lot V2.44.1).
     /// </summary>
     public sealed class SeasonView
     {
@@ -36,7 +38,20 @@ namespace EdS.Game
                 _sinceClock = 0f;
                 adventure.SetCivilTime(DateTimeOffset.UtcNow.ToUnixTimeSeconds());   // l'hôte fournit la date, en UTC (le fuseau du téléphone n'y est pour rien)
             }
-            SeasonLook look = adventure.SeasonShown;
+            Show(adventure.SeasonShown);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.44.1 (protocole 6, le serveur fait foi) : en partie en réseau, la saison vient de la date du serveur
+        /// (<c>NetworkClient.ServerCivilNow</c>), jamais de l'horloge du poste.
+        /// </summary>
+        public void SyncServer(long serverUtcSeconds)
+        {
+            Show(SeasonLook.Of(SeasonCalendar.AtUtc(serverUtcSeconds)));
+        }
+
+        private void Show(SeasonLook look)
+        {
             if (_shown && look.Equals(_last)) return;
             _shown = true;
             _last = look;

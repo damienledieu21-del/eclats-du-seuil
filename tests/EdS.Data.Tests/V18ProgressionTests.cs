@@ -321,7 +321,7 @@ public class V18ProgressionTests : IDisposable
     {
         // Réponse de Damien du 31 octobre 2026 : le protocole accepte huit actives (0 à 7) et l'ultime à l'emplacement 8, sans changer de
         // numéro (le protocole 4 n'est pas encore fusionné).
-        Assert.Equal(5, Protocol.Version);   // esquive : protocole 5 (huit actives et ultime inchangés)
+        Assert.Equal(6, Protocol.Version);   // V2.44.1 : protocole 6 (huit actives et ultime inchangés) (huit actives et ultime inchangés)
         foreach (int slot in new[] { 0, 4, 5, 6, 7, 8 })
         {
             string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false,\"dodge\":false}}";

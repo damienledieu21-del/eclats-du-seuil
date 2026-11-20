@@ -15,11 +15,13 @@ namespace EdS.Net
     /// l'ultime ; les règles 0.15.0 n'ouvrent que six actives). Version 5 depuis l'esquive (décision de Damien du 14 novembre 2026) :
     /// <c>dodge</c> dans les intentions (bond dans le cap de marche, ou vers l'arrière sans cap), action <c>dodge</c> (direction facultative)
     /// dans les commandes, instantané au format 7 dans l'état courant ; un client d'une autre version est refusé dès la présentation.
+    /// Version 6 depuis le sous-lot V2.44.1 (saisons, décision de Damien du 20 novembre 2026 : le serveur fait foi) : message
+    /// <see cref="SeasonMessage"/> (instant civil UTC de l'hôte du serveur), envoyé à l'accueil et à chaque relevé de l'horloge de l'hôte.
     /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
     {
-        public const int Version = 5;
+        public const int Version = 6;
 
         /// <summary>Port TCP par défaut du serveur (hôte Unity ou serveur dédié).</summary>
         public const int DefaultPort = 7777;
@@ -425,6 +427,28 @@ namespace EdS.Net
         {
             Tick = tick;
             Reason = reason ?? throw new ArgumentNullException(nameof(reason));
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.44.1 (protocole 6, décision de Damien du 20 novembre 2026 : le serveur fait foi) : instant civil UTC (secondes) relevé
+    /// par l'hôte du serveur, dans [<c>ParisTime.MinUnixSeconds</c>, <c>ParisTime.MaxUnixSeconds</c>]. Envoyé à l'accueil (si l'hôte en a
+    /// fourni un) et à chaque relevé ; le client en tire la saison (<c>SeasonCalendar.AtUtc</c>) au lieu de sa propre horloge. Affichage et
+    /// monde seulement : aucune règle de combat ne lit la saison, le combat partagé n'en dépend pas.
+    /// </summary>
+    public sealed class SeasonMessage : NetMessage
+    {
+        public const string Id = "season";
+        public override string Type => Id;
+        public override MessageDirection Direction => MessageDirection.ServerToClient;
+        public long UtcSeconds { get; }
+
+        /// <exception cref="ArgumentOutOfRangeException">Instant hors du calendrier.</exception>
+        public SeasonMessage(long utcSeconds)
+        {
+            if (utcSeconds < EdS.Domain.Time.ParisTime.MinUnixSeconds || utcSeconds > EdS.Domain.Time.ParisTime.MaxUnixSeconds)
+                throw new ArgumentOutOfRangeException(nameof(utcSeconds), utcSeconds, "instant hors du calendrier.");
+            UtcSeconds = utcSeconds;
         }
     }
 

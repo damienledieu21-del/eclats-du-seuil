@@ -39,7 +39,7 @@ public class EsquiveReseauTests
     [Fact]
     public void Protocole_5_intention_et_commandes_d_esquive_relues_a_l_identique()
     {
-        Assert.Equal(5, Protocol.Version);
+        Assert.Equal(6, Protocol.Version);   // V2.44.1 : protocole 6 garde l'esquive
         var input = new InputMessage(false, false, null, null, null, 16, dodge: true);
         string text = MessageCodec.EncodeText(input);
         var read = (InputMessage)MessageCodec.Decode(Encoding.UTF8.GetBytes(text), MessageDirection.ClientToServer, out string? error)!;

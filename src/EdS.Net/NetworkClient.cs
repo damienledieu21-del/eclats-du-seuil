@@ -173,6 +173,33 @@ namespace EdS.Net
         /// <summary>Secondes écoulées depuis la coupure ; null si le client n'est pas coupé.</summary>
         public double? DisconnectedSeconds => _disconnectedAt is double at ? Now - at : (double?)null;
 
+        /// <summary>
+        /// Sous-lot V2.44.1 (protocole 6, le serveur fait foi) : dernier instant civil UTC reçu du serveur (<see cref="SeasonMessage"/>), ou
+        /// null tant qu'il n'en a envoyé aucun (hôte sans horloge civile).
+        /// </summary>
+        public long? ServerCivilUtcSeconds { get; private set; }
+
+        private double _civilReceivedAt;
+
+        /// <summary>
+        /// Instant civil du serveur prolongé par le temps écoulé chez le client depuis sa réception (secondes entières, plafonné au
+        /// calendrier), ou null : c'est la date que le client montre, jamais la sienne.
+        /// </summary>
+        public long? ServerCivilNow
+        {
+            get
+            {
+                if (!(ServerCivilUtcSeconds is long utc)) return null;
+                double elapsed = Math.Floor(Math.Max(0, Now - _civilReceivedAt));
+                long max = EdS.Domain.Time.ParisTime.MaxUnixSeconds;
+                return elapsed >= max - utc ? max : utc + (long)elapsed;
+            }
+        }
+
+        /// <summary>Saison au <see cref="ServerCivilNow"/>, ou null.</summary>
+        public EdS.Domain.Time.SeasonState? ServerSeason =>
+            ServerCivilNow is long now ? EdS.Domain.Time.SeasonCalendar.AtUtc(now) : (EdS.Domain.Time.SeasonState?)null;
+
         /// <summary>Un retour est encore possible : coupé pendant un combat, avec un jeton, dans le délai du serveur.</summary>
         public bool CanReconnect =>
             (Status == ClientStatus.Disconnected || Status == ClientStatus.Reconnecting) && Token != null && DisconnectedSeconds < Options.ReconnectSeconds;
@@ -382,6 +409,10 @@ namespace EdS.Net
                         // Revue Codex de la PR #20 : une fin qui ne concorde pas avec le combat local n'est pas acceptée en silence.
                         if (Combat.EndProblem != null) Error = Protocol.Text("fin du combat non vérifiée : " + Combat.EndProblem);
                     }
+                    return 0;
+                case SeasonMessage season:
+                    ServerCivilUtcSeconds = season.UtcSeconds;
+                    _civilReceivedAt = Now;
                     return 0;
                 case ErrorMessage failure:
                     Fail("refusé par le serveur : " + failure.Reason);
