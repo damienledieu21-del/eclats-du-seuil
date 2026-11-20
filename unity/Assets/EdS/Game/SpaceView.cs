@@ -69,6 +69,18 @@ namespace EdS.Game
         private readonly Dictionary<string, long> _firstSeen = new Dictionary<string, long>();
         private readonly Material _fill;
         private readonly Material _water;
+
+        /// <summary>V2.44.3 : eau qui gèle en hiver (copie de l'eau, <c>_IceAllowed</c> à 1) : la seule bande praticable du lac.</summary>
+        private readonly Material _ice;
+
+        /// <summary>V2.44.3 : copie de <paramref name="water"/> qui gèle (EdS/Eau) ; la même sans ce shader.</summary>
+        internal static Material IceOf(Material water)
+        {
+            if (water == null || !water.HasProperty("_IceAllowed")) return water;
+            var ice = new Material(water) { name = "Eau (glace du lac)" };
+            ice.SetFloat("_IceAllowed", 1f);
+            return ice;
+        }
         private readonly GameObject _terrain;
 
         /// <summary>Essai réaliste : polygones d'eau dont le lit est creusé dans le terrain (vide sans la vraie eau ou sans terrain).</summary>
@@ -145,6 +157,7 @@ namespace EdS.Game
             _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));   // annonce sans le shader « EdS/Annonce »
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
+            _ice = IceOf(_water);   // V2.44.3 : la bande du lac gelé (seule eau qui gèle)
 
             // Intérieurs : une pièce (plancher, murs, meubles, lumières), sans terrain, herbe ni ciel.
             if (map != null && map.Indoor)
@@ -194,6 +207,7 @@ namespace EdS.Game
             _obstacleParts.Clear();   // V2.43.3 : ce qui dessine chaque obstacle de cette vue
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
+            OpenIce(space, map);   // V2.44.3 : la bande du lac gelé, ouverte (obstacle retiré), reste dessinée, en glace
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
             QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
             BourgDecor();   // V2.30.2 : palissade, tours et portes du Bourg fortifié (modèles de l'atelier)
@@ -287,6 +301,22 @@ namespace EdS.Game
         /// replat horizontal ; un arbre monte au point le plus bas sous son pied (rien ne flotte) ; l'eau reste dans le creux, les bois et les
         /// murets de pierres sèches suivent le sol eux-mêmes. Ses coupes (occulteurs, boîtes de la caméra) montent avec lui.
         /// </summary>
+        /// <summary>
+        /// V2.44.3 : quand la glace est praticable, le passage du lac gelé n'est plus un obstacle de la session : sa bande (dans cette vue) est
+        /// dessinée quand même, avec l'eau qui gèle, pour qu'on voie où marcher.
+        /// </summary>
+        private void OpenIce(CombatSpace space, AdventureMap map)
+        {
+            if (map == null || _rivers.Count == 0) return;
+            foreach (SpaceObstacle o in map.Whole.Obstacles)
+            {
+                if (!WinterLook.IceWater(o.Id) || space.Obstacles.Any(s => s.Id == o.Id)) continue;
+                if (o.Points.Max(p => p.X.Raw) < space.Min.X.Raw || o.Points.Min(p => p.X.Raw) > space.Max.X.Raw
+                    || o.Points.Max(p => p.Z.Raw) < space.Min.Z.Raw || o.Points.Min(p => p.Z.Raw) > space.Max.Z.Raw) continue;
+                WaterSurface(o.Id + " (glace)", o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList(), _ice);
+            }
+        }
+
         private void Obstacle(SpaceObstacle obstacle)
         {
             int first = _root.transform.childCount;
@@ -380,13 +410,14 @@ namespace EdS.Game
             if (id.StartsWith("riviere"))
             {
                 // Essai réaliste (27 octobre 2026) : la vraie eau coule sous le sol, entre ses berges (le lit est creusé dans le terrain).
+                Material water = WinterLook.IceWater(id) ? _ice : _water;   // V2.44.3 : seule la bande du lac gèle
                 if (_rivers.Count > 0)
                 {
-                    WaterSurface(id, points);
+                    WaterSurface(id, points, water);
                     return;
                 }
                 // Eau : prisme bas (la rivière arrête la marche et, au 11.6, la vue : un seul genre d'obstacle dans le moteur).
-                Prism(id, points, 0.12f, _water, false, 4f);
+                Prism(id, points, 0.12f, water, false, 4f);
                 return;
             }
             // V2.30.2 : un obstacle du Bourg fortifié habillé par les modèles de l'atelier (posés par BourgDecor) n'a pas de forme faite par le code.
@@ -1501,7 +1532,7 @@ namespace EdS.Game
         /// Essai réaliste (demande de Damien du 27 octobre 2026) : surface de l'eau, à <see cref="StyleRules.WaterLevel"/> sous le sol, sur
         /// le polygone de la rivière (ses berges creusées l'entourent) ; matériau « EdS/Eau ».
         /// </summary>
-        private GameObject WaterSurface(string name, List<Vector3> points)
+        private GameObject WaterSurface(string name, List<Vector3> points, Material material = null)
         {
             float y = (float)StyleRules.WaterLevel;
             var vertices = points.Select(p => new Vector3(p.x, y, p.z)).ToList();
@@ -1522,7 +1553,7 @@ namespace EdS.Game
             var go = new GameObject(name + " (eau)");
             go.transform.SetParent(_root.transform, false);
             go.AddComponent<MeshFilter>().mesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = _water;
+            go.AddComponent<MeshRenderer>().sharedMaterial = material != null ? material : _water;
             _waters.Add(go);
             return go;
         }
@@ -1993,7 +2024,7 @@ namespace EdS.Game
             Renderer[] all = o.Renderer != null ? new[] { o.Renderer } : o.Transform.GetComponentsInChildren<Renderer>();
             var renderers = new List<Renderer>();
             foreach (Renderer r in all)
-                if (r != null && !(r is ParticleSystemRenderer)) renderers.Add(r);
+                if (r != null && !(r is ParticleSystemRenderer) && r.gameObject.name != WinterLook.OverlayName) renderers.Add(r);   // V2.44.3 : la neige posée suit son modèle (SnowCover)
             if (renderers.Count == 0) return;
             var copies = new Dictionary<Material, Material>();
             var solid = new Material[renderers.Count][];

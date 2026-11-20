@@ -69,7 +69,8 @@ public sealed class V228dDecorCasesTests : IDisposable
         (double, double, double, double) bounds = (grid.OriginX, grid.OriginZ, grid.OriginX + grid.Columns * 128.0, grid.OriginZ + grid.Rows * 128.0);
         double water = whole.Obstacles.Where(o => o.Low && o.Id.StartsWith("riviere", StringComparison.Ordinal))
             .Sum(o => Area(CellDecor.ClipPolygon(o.Points.Select(p => (p.X.Raw / 1e4, p.Z.Raw / 1e4)).ToList(), bounds)));
-        Assert.Equal(water, sets.Sum(s => s.Water.Sum(Area)), 3);
+        Assert.Equal(water, sets.Sum(s => s.Water.Sum(Area) + s.Ice.Sum(Area)), 3);   // V2.44.3 : la bande du lac gelé à part
+        Assert.True(sets.Sum(s => s.Ice.Sum(Area)) > 20 * 300);   // V2.44.3 : la bande de 20 m du lac gelé, seule eau qui gèle
         Assert.Equal(whole.Roads.Sum(r => Length(r.Points)), sets.Sum(s => s.Roads.Sum(r => Length(r.Points))), 3);
         var rocks = sets.SelectMany(s => s.Rocks).Select(r => r.Id).ToList();
         Assert.Equal(rocks.Count, rocks.Distinct().Count());

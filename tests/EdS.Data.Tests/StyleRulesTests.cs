@@ -768,7 +768,7 @@ public class StyleRulesTests
         Assert.Contains("double dig = banks.Count > 0 ? StyleRules.ChannelDepth(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;", world, StringComparison.Ordinal);
         Assert.Contains("data.SetHeights(0, 0, heights);", world, StringComparison.Ordinal);
         Assert.Contains("layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1f);", world, StringComparison.Ordinal);
-        Assert.Contains("WaterSurface(id, points);", view, StringComparison.Ordinal);
+        Assert.Contains("WaterSurface(id, points, water);", view, StringComparison.Ordinal);
         Assert.Contains("WaterSurface(\"Rivière (sous le pont)\"", view, StringComparison.Ordinal);
         // Pont, palissade, haie, moulin.
         // Essai réaliste 5 : le pont cintré fait par le code remplace le tronçon du ponton, le muret de pierres sèches la haie d'arbustes.

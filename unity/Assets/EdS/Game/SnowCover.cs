@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EdS.Runtime;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,60 +9,48 @@ namespace EdS.Game
     /// V2.44.3 (décision de Damien du 20 novembre 2026 : toits enneigés par shader sur tous les bâtiments, sans crédit) : neige posée sur
     /// le décor. Tant qu'il neige (<see cref="SeasonView.SnowShown"/>), chaque modèle opaque du décor (bâtiments, toits, rochers, murets,
     /// objets, sol de la région) reçoit un double qui le redessine avec « EdS/Neige » (une fois par sous-maillage) : le shader ne blanchit
-    /// que les faces tournées vers le haut, selon la neige de la plaine ou celle du col au-dessus de sa limite. Les feuillages, l'herbe et
-    /// l'eau ont leur propre neige (ou leur glace) ; les personnages et les bêtes (maillages animés) n'en reçoivent pas. Sans neige, les
-    /// doubles sont cachés ; jamais dans une pièce. Affichage seulement.
+    /// que les faces tournées vers le haut. Règles (portables, testées) : <see cref="WinterLook"/>. Relecture indépendante de la PR #232 :
+    /// le double suit son modèle à chaque image (coupé, en fondu parce qu'il cache le joueur : sa neige aussi) et le fondu des obstacles
+    /// l'ignore ; aucun modèle animé (bêtes, objets tenus) ; aucune allocation par image. Affichage seulement.
     /// </summary>
     public sealed class SnowCover
     {
-        /// <summary>Intervalle (s) entre deux recherches de nouveaux modèles (le décor change par cases et par fenêtres).</summary>
-        public const float RescanSeconds = 2f;
-
-        /// <summary>Doubles au plus (garde-fou de rendu sur mobile).</summary>
-        public const int MaxOverlays = 6000;
-
-        private const string OverlayName = "Neige posée";
-
-        /// <summary>Shaders qui ont leur propre neige ou n'en portent pas (feuillage, herbe, eau, effets).</summary>
-        private static readonly string[] Skipped = { "EdS/Feuillage", "EdS/Herbe", "EdS/Eau", "EdS/Particule", "EdS/Annonce", "EdS/Echo", "EdS/Faille", "EdS/Neige" };
-
-        private readonly Dictionary<MeshRenderer, GameObject> _overlays = new Dictionary<MeshRenderer, GameObject>();
+        private readonly Dictionary<MeshRenderer, MeshRenderer> _overlays = new Dictionary<MeshRenderer, MeshRenderer>();
         private readonly HashSet<MeshRenderer> _refused = new HashSet<MeshRenderer>();
         private readonly List<MeshRenderer> _dead = new List<MeshRenderer>();
+        private readonly List<MeshRenderer> _found = new List<MeshRenderer>();
+        private readonly List<(string Shader, int Queue)> _materials = new List<(string Shader, int Queue)>();
         private Material _material;
         private bool _tried;
-        private bool _shown;
         private float _sinceScan = float.MaxValue;
 
         /// <summary>
-        /// Chaque image : avec de la neige, les doubles sont montrés et, toutes les <see cref="RescanSeconds"/> s, les nouveaux modèles des
-        /// racines <paramref name="roots"/> en reçoivent un ; sans neige (ou dans une pièce), ils sont cachés.
+        /// Chaque image : chaque double suit son modèle (montré seulement s'il neige, le modèle affiché et opaque) ; toutes les
+        /// <see cref="WinterLook.RescanSeconds"/> s, les nouveaux modèles des deux racines en reçoivent un. Rien dans une pièce.
         /// </summary>
-        public void Sync(float deltaTime, bool indoors, params Transform[] roots)
+        public void Sync(float deltaTime, bool indoors, Transform decor, Transform region)
         {
             bool snowing = !indoors && SeasonView.SnowShown > 0.001f && Material() != null;
-            if (!snowing)
-            {
-                if (_shown) Show(false);
-                return;
-            }
-            if (!_shown) Show(true);
+            Follow(snowing);
+            if (!snowing) return;
             _sinceScan += deltaTime;
-            if (_sinceScan < RescanSeconds) return;
+            if (_sinceScan < WinterLook.RescanSeconds) return;
             _sinceScan = 0f;
             Prune();
-            foreach (Transform root in roots)
-                if (root != null) Scan(root);
+            if (decor != null) Scan(decor);
+            if (region != null) Scan(region);
         }
 
-        /// <summary>Détruit tous les doubles (décor quitté).</summary>
+        /// <summary>Détruit les doubles et le matériau (décor quitté).</summary>
         public void Clear()
         {
-            foreach (GameObject o in _overlays.Values)
-                if (o != null) Object.Destroy(o);
+            foreach (MeshRenderer o in _overlays.Values)
+                if (o != null) Object.Destroy(o.gameObject);
             _overlays.Clear();
             _refused.Clear();
-            _shown = false;
+            if (_material != null) Object.Destroy(_material);
+            _material = null;
+            _tried = false;
             _sinceScan = float.MaxValue;
         }
 
@@ -80,17 +69,21 @@ namespace EdS.Game
             return _material;
         }
 
-        private void Show(bool shown)
+        private void Follow(bool snowing)
         {
-            _shown = shown;
-            foreach (GameObject o in _overlays.Values)
-                if (o != null) o.SetActive(shown);
+            foreach (KeyValuePair<MeshRenderer, MeshRenderer> e in _overlays)
+            {
+                if (e.Key == null || e.Value == null) continue;
+                Material first = e.Key.sharedMaterial;
+                bool shown = WinterLook.OverlayShown(snowing, e.Key.enabled, first != null ? first.renderQueue : WinterLook.CutoutQueue);
+                if (e.Value.enabled != shown) e.Value.enabled = shown;
+            }
         }
 
         private void Prune()
         {
             _dead.Clear();
-            foreach (KeyValuePair<MeshRenderer, GameObject> e in _overlays)
+            foreach (KeyValuePair<MeshRenderer, MeshRenderer> e in _overlays)
                 if (e.Key == null || e.Value == null) _dead.Add(e.Key);
             foreach (MeshRenderer r in _dead) _overlays.Remove(r);
             _refused.RemoveWhere(r => r == null);
@@ -98,27 +91,22 @@ namespace EdS.Game
 
         private void Scan(Transform root)
         {
-            MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>(false);
-            if (renderers == null) return;
-            foreach (MeshRenderer r in renderers)
+            _found.Clear();
+            root.GetComponentsInChildren(false, _found);
+            foreach (MeshRenderer r in _found)
             {
-                if (_overlays.Count >= MaxOverlays) return;
+                if (_overlays.Count >= WinterLook.MaxOverlays) return;
                 if (r == null || _overlays.ContainsKey(r) || _refused.Contains(r)) continue;
-                if (r.gameObject.name == OverlayName || !Accepts(r))
-                {
-                    _refused.Add(r);
-                    continue;
-                }
                 MeshFilter filter = r.GetComponent<MeshFilter>();
                 Mesh mesh = filter != null ? filter.sharedMesh : null;
-                if (mesh == null)
+                if (mesh == null || !WinterLook.Accepts(r.gameObject.name, r.enabled, Animated(r.transform), Materials(r)))
                 {
                     _refused.Add(r);
                     continue;
                 }
-                var overlay = new GameObject(OverlayName);
+                var overlay = new GameObject(WinterLook.OverlayName);
                 overlay.layer = r.gameObject.layer;
-                overlay.transform.SetParent(r.transform, false);
+                overlay.transform.SetParent(r.transform, false);   // suit la place et l'échelle de son modèle (obstacle abaissé compris)
                 overlay.AddComponent<MeshFilter>().sharedMesh = mesh;
                 MeshRenderer drawn = overlay.AddComponent<MeshRenderer>();
                 var materials = new Material[System.Math.Max(1, mesh.subMeshCount)];
@@ -126,25 +114,26 @@ namespace EdS.Game
                 drawn.sharedMaterials = materials;
                 drawn.shadowCastingMode = ShadowCastingMode.Off;
                 drawn.receiveShadows = true;
-                _overlays[r] = overlay;
+                _overlays[r] = drawn;
             }
         }
 
-        /// <summary>Un modèle opaque du décor : aucun de ses matériaux n'est transparent ni n'a sa propre neige.</summary>
-        private static bool Accepts(MeshRenderer r)
+        private List<(string Shader, int Queue)> Materials(MeshRenderer r)
         {
-            if (!r.enabled) return false;
+            _materials.Clear();
             Material[] materials = r.sharedMaterials;
-            if (materials == null || materials.Length == 0) return false;
+            if (materials == null) return _materials;
             foreach (Material m in materials)
-            {
-                if (m == null || m.shader == null) return false;
-                if (m.renderQueue >= 2450) return false;   // découpé, transparent
-                string name = m.shader.name;
-                foreach (string s in Skipped)
-                    if (name == s) return false;
-            }
-            return true;
+                _materials.Add(m == null || m.shader == null ? ((string)null, WinterLook.CutoutQueue) : (m.shader.name, m.renderQueue));
+            return _materials;
+        }
+
+        /// <summary>Relecture de la PR #232 : un ancêtre animé (bête, objet tenu, partie rigide d'un modèle animé).</summary>
+        private static bool Animated(Transform t)
+        {
+            for (; t != null; t = t.parent)
+                if (t.GetComponent<Animator>() != null || t.GetComponent<Animation>() != null) return true;
+            return false;
         }
     }
 }

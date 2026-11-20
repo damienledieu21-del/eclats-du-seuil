@@ -123,9 +123,9 @@ namespace EdS.Runtime
         /// <summary>Jours entre <paramref name="date"/> et l'occurrence de <paramref name="day"/> juste avant (ou juste après) ; grand si hors du calendrier.</summary>
         private static long DaysFrom(EdS.Data.Seasons.AnnualDate day, CivilDate date, bool back)
         {
-            int[] years = back ? new[] { date.Year, date.Year - 1 } : new[] { date.Year, date.Year + 1 };
-            foreach (int y in years)
+            for (int step = 0; step < 2; step++)   // relecture de la PR #232 : sans allocation
             {
+                int y = back ? date.Year - step : date.Year + step;
                 if (y < CivilDate.MinYear || y > CivilDate.MaxYear) continue;
                 long n = new CivilDate(y, day.Month, day.Day).DayNumber - date.DayNumber;
                 if (back ? n <= 0 : n >= 0) return Math.Abs(n);

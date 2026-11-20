@@ -19,6 +19,8 @@ Shader "EdS/Eau"
         _Sparkle ("Éclat du soleil", Range(0, 10)) = 3.0
         [HideInInspector] _ReflectionCube ("Reflets des objets (sonde, posée par le jeu)", Cube) = "" {}
         [HideInInspector] _ProbeWeight ("Part de la sonde", Range(0, 1)) = 0
+        // V2.44.3 (réponse de Damien du 20 novembre 2026 : seul le lac gèle, là où la glace est praticable) : 1 sur la bande du lac gelé.
+        [HideInInspector] _IceAllowed ("Gèle en hiver", Float) = 0
     }
 
     SubShader
@@ -61,6 +63,7 @@ Shader "EdS/Eau"
                 half _SkyBoost;
                 half _Sparkle;
                 half _ProbeWeight;
+                half _IceAllowed;
             CBUFFER_END
 
             // V2.44.3 (saisons) : glace (0 : eau libre ; de 0 à 1 : la glace se forme par plaques du 1er au 7 décembre ; 1 : glace
@@ -147,7 +150,7 @@ Shader "EdS/Eau"
 
                 // V2.44.3 : glace. Plaques qui gagnent l'eau pendant qu'elle se forme (bord net, bruit en deux octaves), puis une couche
                 // entière quand elle est praticable : mate, bleutée, sans vagues ni éclat, un peu de ciel ; la neige de la plaine s'y pose.
-                if (_EdsIce > 0.001h)
+                if (_EdsIce > 0.001h && _IceAllowed > 0.5h)
                 {
                     float2 p = input.positionWS.xz;
                     half n = (half)(Noise(p * 0.09) * 0.65 + Noise(p * 0.37) * 0.35);

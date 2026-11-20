@@ -85,12 +85,59 @@ public class SaisonsV2443Tests
         Assert.Contains("ZWrite Off", neige);
         string build = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"));
         Assert.Contains("Shader.Find(\"EdS/Neige\")", build);
-        string game = Game("EdsGame.cs"), cover = Game("SnowCover.cs"), view = Game("SeasonView.cs"), trees = Game("SpaceView.Trees.cs");
+        string game = Game("EdsGame.cs"), view = Game("SeasonView.cs"), space = Game("SpaceView.cs");
         Assert.Contains("_snowCover.Sync(Time.deltaTime, a.Indoors, _arena.DecorRoot, CellStreamView.CurrentRoot)", game);
         Assert.Contains("_snowCover?.Clear();", game);
-        Assert.Contains("\"EdS/Feuillage\", \"EdS/Herbe\", \"EdS/Eau\"", cover);
-        Assert.Contains("ShadowCastingMode.Off", cover);
         Assert.Contains("_EdsSnowPass", view);
-        Assert.Contains("FadingFrom(season) != _treeFrom", trees);
+        Assert.Contains("r.gameObject.name != WinterLook.OverlayName", space);   // le fondu des obstacles ignore la neige posée
+        Assert.Contains("_EdsIce > 0.001h && _IceAllowed > 0.5h", eau);   // seule la bande du lac gèle
+    }
+
+    // --- Comportement (règles portables, relecture indépendante de la PR #232) ---------------------------------------------
+
+    private static readonly (string, int)[] Opaque = { ("Universal Render Pipeline/Lit", 2000) };
+
+    [Fact]
+    public void Neige_posee_seulement_sur_le_decor_opaque_immobile()
+    {
+        Assert.True(WinterLook.Accepts("toit", true, false, Opaque));
+        Assert.True(WinterLook.Accepts("maison", true, false, new[] { ("Universal Render Pipeline/Lit", 2000), ("Universal Render Pipeline/Lit", 2449) }));
+        Assert.False(WinterLook.Accepts("toit", false, false, Opaque));   // coupé
+        Assert.False(WinterLook.Accepts("loup", true, true, Opaque));     // ancêtre animé (bête, objet tenu)
+        Assert.False(WinterLook.Accepts(WinterLook.OverlayName, true, false, Opaque));   // jamais un double de double
+        Assert.False(WinterLook.Accepts("vide", true, false, Array.Empty<(string, int)>()));
+        Assert.False(WinterLook.Accepts("vitre", true, false, new[] { ("Universal Render Pipeline/Lit", 2000), ("Universal Render Pipeline/Lit", 3000) }));
+        Assert.False(WinterLook.Accepts("haie", true, false, new[] { ("Universal Render Pipeline/Lit", 2450) }));   // découpé
+        Assert.False(WinterLook.Accepts("cassé", true, false, new[] { ((string)null!, 2000) }));
+        foreach (string shader in WinterLook.SkippedShaders)
+            Assert.False(WinterLook.Accepts("x", true, false, new[] { (shader, 2000) }), shader);
+        Assert.Contains("EdS/Feuillage", WinterLook.SkippedShaders);
+        Assert.Contains("EdS/Neige", WinterLook.SkippedShaders);
+        Assert.Throws<ArgumentNullException>(() => WinterLook.Accepts("x", true, false, null!));
+        Assert.Equal((6000, 2f), (WinterLook.MaxOverlays, WinterLook.RescanSeconds));
+    }
+
+    [Theory]
+    [InlineData(true, true, 2000, true)]
+    [InlineData(false, true, 2000, false)]   // plus de neige : caché
+    [InlineData(true, false, 2000, false)]   // modèle coupé (obstacle qui cache le joueur) : sa neige aussi
+    [InlineData(true, true, 3000, false)]    // modèle en fondu transparent : sa neige ne flotte pas
+    [InlineData(true, true, 2449, true)]
+    public void Le_double_suit_son_modele(bool snowing, bool enabled, int queue, bool shown)
+    {
+        Assert.Equal(shown, WinterLook.OverlayShown(snowing, enabled, queue));
+    }
+
+    [Fact]
+    public void Seule_la_bande_praticable_du_lac_gele()
+    {
+        // Réponse de Damien du 20 novembre 2026 : seul le lac gèle, là où la glace est praticable ; les rivières restent libres.
+        ZoneDefinition zone = GrandeCarteLieux.Vallons.Value;
+        var waters = zone.Setup.Space!.Obstacles.Where(o => o.Id.StartsWith("riviere", StringComparison.Ordinal)).ToList();
+        var frozen = waters.Where(o => WinterLook.IceWater(o.Id)).Select(o => o.Id).ToList();
+        Assert.Equal(new[] { "riviere_glace_du_lac_marais" }, frozen);
+        Assert.Equal(zone.Passages.Single(p => p.Id == "glace_du_lac").Obstacle, frozen[0]);
+        Assert.False(WinterLook.IceWater("riviere_grand_lac"));
+        Assert.False(WinterLook.IceWater(null!));
     }
 }
