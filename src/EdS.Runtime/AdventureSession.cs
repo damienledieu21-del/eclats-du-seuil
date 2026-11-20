@@ -975,6 +975,14 @@ namespace EdS.Runtime
         /// La porte à portée se passe : personnage vivant, aucun ennemi vivant à moins de <see cref="RestSafety"/> (on ne fuit pas un combat
         /// par une porte, même règle que la halte), aucun dialogue ouvert.
         /// </summary>
+        /// <summary>
+        /// Relecture indépendante de la PR #226 : l'indication à l'écran devant la porte à portée : « porte fermée » pour la porte d'un lieu pas
+        /// encore reconstruit, « passer la porte » sinon (null : pas de porte à portée).
+        /// </summary>
+        public string? DoorHint => DoorInReach is Door door
+            ? string.Format(Text(World.DoorAwaitsRebuild(door.Id) ? "text.ui.rebuild.door_closed_hint" : "text.ui.door_hint"), door.Name)
+            : null;
+
         public bool CanUseDoor => DoorInReach != null && Dialogue is null && !MustContinue
             && !CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any();
 

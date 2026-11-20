@@ -2393,7 +2393,8 @@
       "text.v243.foulonniere.retrouvailles": "Revoilà mon bâtisseur de roue ! Les maillets vous saluent.",
       "text.v243.guetteuse.retrouvailles": "Je vous ai vu venir de loin, comme toujours.",
       "text.v243.hospitalier.retrouvailles": "Que la paix de l'Aube vous garde. Un lit vous attend si besoin.",
-      "text.ui.rebuild.door_closed": "Le lieu n'est pas encore reconstruit : la porte reste fermée."
+      "text.ui.rebuild.door_closed": "Le lieu n'est pas encore reconstruit : la porte reste fermée.",
+      "text.ui.rebuild.door_closed_hint": "Porte fermée ({0}) : le lieu n'est pas encore reconstruit"
     }
   }
 }
