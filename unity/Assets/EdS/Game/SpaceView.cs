@@ -2135,6 +2135,7 @@ namespace EdS.Game
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
             ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
             ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
+            ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
             Object.Destroy(_root);
         }
 

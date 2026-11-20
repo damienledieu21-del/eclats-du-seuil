@@ -13,6 +13,7 @@ namespace EdS.Game
     public sealed partial class SpaceView
     {
         private GameObject _rebuildRoot;
+        private Material _scaffoldWood, _scaffoldPlank;   // relecture indépendante de la PR #225 : une fois par vue, rendus avec elle
         private string _rebuildKey;
         private float _rebuildPoll;
 
@@ -21,7 +22,7 @@ namespace EdS.Game
 
         public void Rebuilds(AdventureSession adventure, float deltaTime)
         {
-            if (adventure == null || _root == null) return;
+            if (adventure == null || _root == null || _indoor) return;   // relecture de la PR #225 : jamais en intérieur
             _rebuildPoll -= deltaTime;
             if (_rebuildPoll > 0f && _rebuildKey != null) return;
             _rebuildPoll = 0.5f;
@@ -61,8 +62,9 @@ namespace EdS.Game
             holder.transform.SetParent(_rebuildRoot.transform, false);
             holder.transform.position = new Vector3(x, Ground(x, z, 2.2f), z);
             holder.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-            Material wood = ArenaView.MakeMaterial(new Color(0.52f, 0.38f, 0.24f));
-            Material plank = ArenaView.MakeMaterial(new Color(0.62f, 0.48f, 0.31f));
+            if (_scaffoldWood == null) _scaffoldWood = ArenaView.MakeMaterial(new Color(0.52f, 0.38f, 0.24f));
+            if (_scaffoldPlank == null) _scaffoldPlank = ArenaView.MakeMaterial(new Color(0.62f, 0.48f, 0.31f));
+            Material wood = _scaffoldWood, plank = _scaffoldPlank;
             var parts = new List<(Vector3 Center, Vector3 Size, Material Mat)>();
             foreach (float px in new[] { -2f, 2f })
                 foreach (float pz in new[] { -1f, 1f })
@@ -79,6 +81,14 @@ namespace EdS.Game
                 p.transform.localScale = size;
                 p.GetComponent<Renderer>().sharedMaterial = mat;
             }
+        }
+
+        /// <summary>Relecture indépendante de la PR #225 : les matériaux de l'échafaudage, rendus avec la vue (<see cref="Destroy"/>).</summary>
+        private void ReleaseRebuilds()
+        {
+            if (_scaffoldWood != null) Object.Destroy(_scaffoldWood);
+            if (_scaffoldPlank != null) Object.Destroy(_scaffoldPlank);
+            _scaffoldWood = _scaffoldPlank = null;
         }
     }
 }

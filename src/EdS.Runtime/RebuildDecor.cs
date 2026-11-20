@@ -51,33 +51,57 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Les pièces posées pour <paramref name="site"/> : chacune à la première place candidate libre (bord intérieur du lieu, à
-        /// 2,5 m du bord, tous les 3 m, en partant du coin sud-ouest dans le sens des aiguilles d'une montre), tournée vers le centre ; une
-        /// pièce sans place libre n'est pas posée.
+        /// Les pièces posées pour <paramref name="site"/> : chacune à la première place candidate qui convient (bord intérieur du lieu, à
+        /// 2,5 m du bord, tous les 3 m, en partant du coin sud-ouest ; puis des anneaux dans la marge du lieu, tous les 3 m), tournée vers le centre. Relecture indépendante de la PR #225 : mêmes
+        /// règles que le décor des fêtes (<see cref="FeastLooks.Fits"/>) : emprise hors des obstacles, hors des rues et chemins, à
+        /// <see cref="FeastLooks.DoorClearance"/> m des portes, à <see cref="FeastLooks.PeopleClearance"/> m des PNJ (places de jour et de
+        /// pluie), des invités et des points sûrs (<paramref name="avoid"/>), sans toucher une pièce déjà posée. Une pièce sans place n'est
+        /// pas posée. Déterministe.
         /// </summary>
-        public static IReadOnlyList<DecorSpot> Layout(RebuildSite site, RebuildPhase phase, int stage, IReadOnlyList<SpaceObstacle> obstacles)
+        public static IReadOnlyList<DecorSpot> Layout(RebuildSite site, RebuildPhase phase, int stage, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
+            IReadOnlyList<StyleRoad>? roads = null, IReadOnlyList<(double X, double Z)>? doors = null, IReadOnlyList<(double X, double Z)>? avoid = null)
         {
             if (site is null) throw new ArgumentNullException(nameof(site));
             if (obstacles is null) throw new ArgumentNullException(nameof(obstacles));
             IReadOnlyList<string> pieces = PiecesFor(phase, stage);
             var placed = new List<DecorSpot>();
             if (pieces.Count == 0) return placed;
+            IReadOnlyList<StyleRoad> streets = FeastLooks.Streets(roads) ?? Array.Empty<StyleRoad>();
+            var taken = new List<IReadOnlyList<(double X, double Z)>>();
             double x0 = site.Place.Min.X.Raw / 10000.0, z0 = site.Place.Min.Z.Raw / 10000.0;
             double x1 = site.Place.Max.X.Raw / 10000.0, z1 = site.Place.Max.Z.Raw / 10000.0;
             double cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+            // Bord intérieur du lieu d'abord, puis des anneaux de plus en plus larges dans sa marge (un petit lieu, comme le moulin à foulon).
             List<(double X, double Z)> spots = Ring(x0 + 2.5, z0 + 2.5, x1 - 2.5, z1 - 2.5, 3.0);
+            double margin = site.Margin.Raw / 10000.0;
+            for (double out_ = 3.0; out_ <= margin; out_ += 3.0) spots.AddRange(Ring(x0 - out_, z0 - out_, x1 + out_, z1 + out_, 3.0));
             foreach (string piece in pieces)
             {
-                double r = Radius(piece);
+                double side = 2 * Radius(piece);
                 foreach ((double x, double z) in spots)
                 {
-                    if (Crowded(x, z, r, placed) || Blocked(x, z, r, obstacles)) continue;
-                    double yaw = Math.Atan2(cx - x, cz - z) * 180.0 / Math.PI;
-                    placed.Add(new DecorSpot(piece, x, z, Math.Round(yaw, 3), 1.0));
+                    double yaw = Math.Round(Math.Atan2(cx - x, cz - z) * 180.0 / Math.PI, 3);
+                    if (!FeastLooks.Fits(x, z, yaw, side, side, obstacles, taken, streets, doors ?? Array.Empty<(double, double)>(),
+                        avoid ?? Array.Empty<(double, double)>())) continue;
+                    placed.Add(new DecorSpot(piece, x, z, yaw, 1.0));
+                    taken.Add(FeastLooks.Box(x, z, yaw, side + 1.0, side + 1.0));   // un demi-mètre entre deux pièces
                     break;
                 }
             }
             return placed;
+        }
+
+        /// <summary>Les polygones des obstacles, en mètres (pour <see cref="Layout"/>).</summary>
+        public static IReadOnlyList<IReadOnlyList<(double X, double Z)>> Polygons(IEnumerable<SpaceObstacle> obstacles)
+        {
+            var list = new List<IReadOnlyList<(double X, double Z)>>();
+            foreach (SpaceObstacle o in obstacles)
+            {
+                var pts = new List<(double X, double Z)>(o.Points.Count);
+                foreach (GroundVector p in o.Points) pts.Add((p.X.Raw / 10000.0, p.Z.Raw / 10000.0));
+                list.Add(pts);
+            }
+            return list;
         }
 
         private static List<(double X, double Z)> Ring(double x0, double z0, double x1, double z1, double step)
@@ -89,38 +113,6 @@ namespace EdS.Runtime
             for (double z = z1 - step; z >= z0; z -= step) ring.Add((x1, z));
             for (double x = x1 - step; x > x0; x -= step) ring.Add((x, z0));
             return ring;
-        }
-
-        private static bool Crowded(double x, double z, double r, List<DecorSpot> placed)
-        {
-            foreach (DecorSpot p in placed)
-            {
-                double d = r + Radius(p.Piece) + 0.5, dx = p.X - x, dz = p.Z - z;
-                if (dx * dx + dz * dz < d * d) return true;
-            }
-            return false;
-        }
-
-        /// <summary>Le disque (x, z, r) touche-t-il un obstacle (dedans, ou à moins de r de son bord) ?</summary>
-        public static bool Blocked(double x, double z, double r, IReadOnlyList<SpaceObstacle> obstacles)
-        {
-            foreach (SpaceObstacle o in obstacles)
-            {
-                IReadOnlyList<GroundVector> pts = o.Points;
-                bool inside = false;
-                double best = double.MaxValue;
-                for (int i = 0, j = pts.Count - 1; i < pts.Count; j = i++)
-                {
-                    double xi = pts[i].X.Raw / 10000.0, zi = pts[i].Z.Raw / 10000.0, xj = pts[j].X.Raw / 10000.0, zj = pts[j].Z.Raw / 10000.0;
-                    if ((zi > z) != (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
-                    double dx = xj - xi, dz = zj - zi, len = dx * dx + dz * dz;
-                    double t = len <= 0 ? 0 : Math.Max(0, Math.Min(1, ((x - xi) * dx + (z - zi) * dz) / len));
-                    double px = xi + t * dx - x, pz = zi + t * dz - z;
-                    best = Math.Min(best, px * px + pz * pz);
-                }
-                if (inside || best < r * r) return true;
-            }
-            return false;
         }
     }
 }
