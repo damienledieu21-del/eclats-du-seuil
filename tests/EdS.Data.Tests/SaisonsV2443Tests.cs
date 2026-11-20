@@ -117,6 +117,36 @@ public class SaisonsV2443Tests
         Assert.Equal((6000, 2f), (WinterLook.MaxOverlays, WinterLook.RescanSeconds));
     }
 
+    [Fact]
+    public void Refus_passager_reexamine_refus_definitif_retenu()
+    {
+        // Revue Codex de la PR #232 : un modèle coupé ou en fondu au moment de la recherche est réexaminé plus tard.
+        Assert.Equal(WinterLook.Verdict.Accepted, WinterLook.Judge("toit", true, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Later, WinterLook.Judge("toit", false, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Later, WinterLook.Judge("toit en fondu", true, false, new[] { ("Universal Render Pipeline/Lit", 3000) }));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("loup", true, true, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("loup coupé", false, true, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge(WinterLook.OverlayName, true, false, Opaque));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("buisson", false, false, new[] { ("EdS/Feuillage", 2450) }));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("vide", true, false, Array.Empty<(string, int)>()));
+        Assert.Equal(WinterLook.Verdict.Never, WinterLook.Judge("cassé", true, false, new[] { ((string)null!, 2000) }));
+        // Accepts reste vrai seulement pour Accepted.
+        Assert.Equal(WinterLook.Accepts("toit", false, false, Opaque), WinterLook.Judge("toit", false, false, Opaque) == WinterLook.Verdict.Accepted);
+    }
+
+    [Theory]
+    [InlineData(100f, 2f)]
+    [InlineData(400f, 2f)]
+    [InlineData(800f, 4f)]
+    [InlineData(1200f, 6f)]
+    public void Couche_de_neige_du_terrain_bornee(float side, float step)
+    {
+        // Revue Codex de la PR #232 : le terrain du catalogue reçoit une couche de neige ; au plus 201 × 201 sommets (maillage 16 bits).
+        Assert.Equal(step, WinterLook.TerrainSnowStep(side), 3);
+        int cells = (int)Math.Ceiling(side / WinterLook.TerrainSnowStep(side));
+        Assert.True((cells + 1) * (cells + 1) < 65536);
+    }
+
     [Theory]
     [InlineData(true, true, 2000, true)]
     [InlineData(false, true, 2000, false)]   // plus de neige : caché
