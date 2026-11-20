@@ -38,7 +38,7 @@
 | Journal | 29 (réconfort ; 28 : monture) | `CombatEngine.cs` (`LogFormatVersion`) |
 | Scénarios (schéma) | 23 (actions `comfort` et `comfortEnd`, réconfort ; 22 : `mount`, `carried.mounted`, actions `mount` et `dismount`, monture ; 21 : `companion`, actions `order` et `duo`, compagnons ; 20 : action `dodge`, esquive ; 19 : aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
 | Instantané (format) | 10 (`comforted`, réconfort ; 9 : monture) | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
-| Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
+| Protocole réseau | 6 (message `season` : date du serveur, V2.44.1, décision du 20 novembre 2026 ; 5 : esquive) | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v16 (v4 à v15 encore lues ; `lane` sur `contestOpen` et `contest` : piste de concours, deux concours à la même fête, décision du 16 novembre 2026, en v16 ; `hasSigned` et `present`, concours de pâtisserie, en v15 ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |

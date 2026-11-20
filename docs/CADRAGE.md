@@ -270,6 +270,18 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+### Saisons comme dans la vraie vie, V2.44 (décisions de Damien du 20 novembre 2026)
+
+Rapportées par la session principale. Elles précisent le sujet 12 « Fêtes et saisons » et le chantier V2.44 ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md), [MONDE.md](MONDE.md#saisons-comme-dans-la-vraie-vie-v244-décisions-de-damien-du-20-novembre-2026)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Neige et déplacement | La neige **ralentit le déplacement hors des chemins** ; sur les chemins, aucun effet. **Hors combat seulement**, sauf si le moteur impose autre chose (question posée dans la PR). La valeur est proposée par Claude, modeste, et posée en question à Damien. | Retenu (Damien, 20 novembre 2026) ; valeur : Ouvert |
+| Vendanges | Une **récolte de saison** : on cueille du **raisin en septembre**, avec une **repousse comme les cèpes**. Un événement au château viendra plus tard. | Retenu (Damien, 20 novembre 2026) |
+| Créatures de saison | La saison change les créatures, **avec le bestiaire existant** : les ours hibernent, plus de loups l'hiver, etc. | Retenu (Damien, 20 novembre 2026) |
+| Toits enneigés | Par **shader**, sur **tous les bâtiments**, sans aucun crédit dépensé. | Retenu (Damien, 20 novembre 2026) |
+| Date en multijoueur | Le **serveur fait foi** (déjà retenu le 15 novembre) : depuis le protocole 6 (V2.44.1), il envoie sa date à chaque joueur, qui n'utilise plus l'horloge de son appareil en partie en réseau. | Retenu (Damien, 15 novembre 2026), appliqué le 20 novembre 2026 |
+
 ## 7 undecies. Lot C : intérieurs de métier et forge de Maëlle (Retenu)
 
 Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la session principale (modèles Tripo du lot C, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)).

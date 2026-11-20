@@ -84,6 +84,9 @@ namespace EdS.Net
                 case EndMessage m:
                     w.Field("tick", m.Tick).Field("reason", m.Reason);
                     break;
+                case SeasonMessage m:
+                    w.Field("utc", m.UtcSeconds);
+                    break;
                 case ErrorMessage m:
                     w.Field("reason", m.Reason);
                     break;
@@ -248,6 +251,7 @@ namespace EdS.Net
                     RejectedMessage.Id => ReadReason(root, r => new RejectedMessage(r)),
                     PongMessage.Id => ReadPong(root),
                     EndMessage.Id => ReadEnd(root),
+                    SeasonMessage.Id => ReadSeason(root),
                     ErrorMessage.Id => ReadReason(root, r => new ErrorMessage(r)),
                     _ => null,
                 };
@@ -258,7 +262,7 @@ namespace EdS.Net
                 HelloMessage.Id or ReconnectMessage.Id or BuildMessage.Id or ReadyMessage.Id or InputMessage.Id or PingMessage.Id
                     or ResyncRequestMessage.Id or ByeMessage.Id => MessageDirection.ClientToServer,
                 WelcomeMessage.Id or LobbyMessage.Id or StartMessage.Id or TickMessage.Id or StateMessage.Id or RejectedMessage.Id
-                    or PongMessage.Id or EndMessage.Id or ErrorMessage.Id => MessageDirection.ServerToClient,
+                    or PongMessage.Id or EndMessage.Id or SeasonMessage.Id or ErrorMessage.Id => MessageDirection.ServerToClient,
                 _ => null,
             };
 
@@ -788,6 +792,22 @@ namespace EdS.Net
                     return null;
                 }
                 return create(reason);
+            }
+
+            /// <summary>Sous-lot V2.44.1 : instant civil de l'hôte du serveur, borné au calendrier.</summary>
+            private NetMessage? ReadSeason(JsonElement root)
+            {
+                long? utc = null;
+                if (!Fields(root, "$", new Dictionary<string, Action<JsonElement, string>>
+                {
+                    ["utc"] = (v, p) => utc = Long(v, p, EdS.Domain.Time.ParisTime.MinUnixSeconds, EdS.Domain.Time.ParisTime.MaxUnixSeconds),
+                })) return null;
+                if (utc is null)
+                {
+                    if (_in.Report.IsValid) Missing("$", "utc");
+                    return null;
+                }
+                return new SeasonMessage(utc.Value);
             }
 
             private NetMessage? ReadEnd(JsonElement root)
