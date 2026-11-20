@@ -248,12 +248,14 @@ namespace EdS.Game
         private void BuildPurse(RectTransform page)
         {
             _purse = Text(page, UiFace.Bold, 17f, UiKit.Dawn, TextAnchor.MiddleRight, 1442f, 168f, 520f, 22f, 1f, 0.5f, 4f);
+            BuildDishes(page);   // sous-lot F6 : les plats de fête, sous l'aide du sac
         }
 
         private void RefreshPurse(AdventureSession a)
         {
-            _purse.Value = a.Text("text.ui.purse") + " · " + a.Purse;
+            _purse.Value = a.Text("text.ui.purse") + " · " + a.Purse + FeastPurse(a);   // sous-lot F4 : la monnaie de la fête en cours
             if (_tipAnchor != null && _tipAnchor == _shopTipAnchor) ClearTip();   // fiche restée de la boutique
+            RefreshDishes(a);   // sous-lot F6 : les plats de fête gardés
         }
 
         private void ClearTip()

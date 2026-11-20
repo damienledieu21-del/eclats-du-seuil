@@ -1,0 +1,111 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "seed": 264,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -1.85,
+          -2.6
+        ],
+        "max": [
+          1.85,
+          2.6
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "echelle_trappe",
+          "points": [
+            [
+              -1.65,
+              -1.8
+            ],
+            [
+              -0.75,
+              -1.8
+            ],
+            [
+              -0.75,
+              -0.5
+            ],
+            [
+              -1.65,
+              -0.5
+            ]
+          ]
+        },
+        {
+          "id": "meules",
+          "points": [
+            [
+              0.1,
+              -0.35
+            ],
+            [
+              1.6,
+              -0.35
+            ],
+            [
+              1.6,
+              1.15
+            ],
+            [
+              0.1,
+              1.15
+            ]
+          ]
+        },
+        {
+          "id": "sacs_en_attente",
+          "points": [
+            [
+              -1.75,
+              1.6
+            ],
+            [
+              -0.65,
+              1.6
+            ],
+            [
+              -0.65,
+              2.3
+            ],
+            [
+              -1.75,
+              2.3
+            ]
+          ]
+        },
+        {
+          "id": "caisse_a_grain",
+          "points": [
+            [
+              -1.75,
+              -0.1
+            ],
+            [
+              -0.75,
+              -0.1
+            ],
+            [
+              -0.75,
+              0.6
+            ],
+            [
+              -1.75,
+              0.6
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

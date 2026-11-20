@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/rebuilds.schema.json",
+  "title": "Éclats du Seuil — lieux reconstruits",
+  "description": "Lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026), version 1 : chantiers des lieux nommés de la zone, paliers dans l'ordre, besoins variés (or en cuivre, matériaux de métier, créatures vaincues dans le lieu ou autour, découverte, endroit à atteindre), et ce que le lieu apporte une fois reconstruit (PNJ, points sûrs). Documentation. La validation qui fait foi est celle du programme (RebuildValidator), avec la zone, le catalogue d'objets et l'histoire. Version 2 (V2.43.4, 20 novembre 2026) : rebuilt.doors ; la version 1 est encore lue.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "kind": {
+      "const": "rebuilds"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sites"
+      ],
+      "properties": {
+        "sites": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "place",
+              "stages"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "place": {
+                "type": "string",
+                "description": "Lieu nommé de la zone (un seul chantier par lieu)."
+              },
+              "margin": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 256,
+                "description": "Marge autour du lieu, en mètres (0 par défaut)."
+              },
+              "stages": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "needs"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64,
+                      "description": "« started » et « done » sont réservés."
+                    },
+                    "needs": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 8,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]*$",
+                            "maxLength": 64
+                          },
+                          "coins": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9999999999,
+                            "description": "Or, en cuivre (100 cuivre = 1 argent, 100 argent = 1 or)."
+                          },
+                          "item": {
+                            "type": "string",
+                            "description": "Matériau de métier du catalogue d'objets (avec count)."
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9999
+                          },
+                          "defeat": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 999,
+                            "description": "Créatures vaincues dans le lieu ou autour."
+                          },
+                          "discover": {
+                            "type": "string",
+                            "description": "Découverte de l'histoire."
+                          },
+                          "reach": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "number"
+                            },
+                            "description": "V2.43.2b : endroit où aller [x, z], dans le lieu ou sa marge, atteint à 4 m près."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "rebuilt": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "V2.43.2b : ce que le lieu apporte une fois reconstruit : PNJ de l'histoire et points sûrs de la zone qui n'existent qu'alors (un seul lieu par PNJ et par point sûr ; jamais l'entrée de la zone).",
+                "properties": {
+                  "npcs": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "safePoints": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "doors": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Version 2 (V2.43.4) : portes de la zone vers l'intérieur du lieu, fermées tant que le lieu n'est pas reconstruit."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

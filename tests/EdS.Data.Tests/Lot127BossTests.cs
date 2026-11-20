@@ -171,8 +171,8 @@ public class Lot127BossTests
         // la nuit, le plafond de l'essai passe à 49 ; sous-lot V2.4 : 63 créatures avec les bêtes de la brume, les cerfs et les lièvres, le
         // plafond de l'essai passe à 64).
         // Sous-lot V2.9.2 : 66 créatures avec les deux ours et le vieux Brunot, le plafond de l'essai passe à 67.
-        // Sous-lots V2.31 et V2.32 : 73 créatures avec celles des lieux de la grande carte, le plafond de l'essai passe à 74.
-        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 74"), directory =>
+        // Sous-lots V2.31 et V2.32 : 73 créatures avec celles des lieux de la grande carte, le plafond de l'essai passe à 74 ; V2.33 à V2.39 : 96 créatures, plafond à 97 ; créatures de nuit des lieux : 109, plafond à 110 ; V2.40 : 118, plafond à 119.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 119"), directory =>
         {
             ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
             Assert.Equal("$.data.boss.forms", First(r));

@@ -108,7 +108,7 @@ public class ReproducibilityTests
     // format 26 ; sans esquive : seul l'en-tête change (ancienne empreinte 4dffbe01…). Compagnons : moteur 0.33.0, format 27 ; sans
     // compagnon : seul l'en-tête change (ancienne empreinte e6eacb98…). Sous-lot V2.28d (2), monture : moteur 0.34.0, format 28 ; sans
     // monture : seul l'en-tête change (ancienne empreinte 92e480c0…).
-    internal const string ReferenceHash = "9e32e7b946e14c4b519a50ca298f715e72fcd7260530940cbc80ea94fe5da4af";
+    internal const string ReferenceHash = "dab096f7cf3c8ebdebdcba8c149e20698632a4886673e7b3b29c69d5266732d0";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

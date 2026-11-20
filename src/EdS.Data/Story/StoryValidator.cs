@@ -159,6 +159,12 @@ namespace EdS.Data.Story
         /// « fête.piste » dans <c>story.festivals</c> de la sauvegarde, format inchangé). La version 15 reste lue telle quelle.</remarks>
         public const int CurrentSchemaVersion = 16;
 
+        /// <summary>
+        /// Lot C (décision de Damien du 17 novembre 2026) : nombre de portes au plus entre la zone de l'histoire et la pièce d'un créneau ou
+        /// d'un PNJ (1 : une pièce des Vallons ; 2 : une pièce derrière elle, comme la cuisine de l'auberge ou les archives de la guilde).
+        /// </summary>
+        public const int MaxSlotDepth = 2;
+
         /// <summary>Concours de pâtisserie : version 15, encore lue (sans <c>lane</c>).</summary>
         public const int Schema15 = 15;
 
@@ -334,7 +340,7 @@ namespace EdS.Data.Story
         /// <param name="levelCap">Relecture indépendante de la PR #82 : plafond de niveau actuel (progression) ; une condition
         /// <c>levelAtLeast</c> au-dessus reçoit un avertissement (personne ne l'atteint tant que le plafond ne monte pas). Null : pas de contrôle.</param>
         public static StoryLoadResult Validate(StoryDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null,
-            IReadOnlyList<ZoneDefinition>? interiors = null, int? levelCap = null)
+            IReadOnlyList<ZoneDefinition>? interiors = null, int? levelCap = null, IEnumerable<string>? worldFacts = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
@@ -359,6 +365,9 @@ namespace EdS.Data.Story
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
             var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>()) { LevelCap = levelCap };
+            // Lieux reconstruits (revue Codex de la PR #221) : faits appris par le monde hors de l'histoire (chantiers des lieux), qu'une
+            // condition, un objectif ou une boutique peut attendre.
+            foreach (string f in worldFacts ?? Array.Empty<string>()) if (IsFactId(f)) c.AddWorldFact(f);
             StoryBook? book = c.Run(schema, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
@@ -389,6 +398,13 @@ namespace EdS.Data.Story
             // Revue Codex de la PR #174 (4e tour) : fêtes du calendrier seulement (affichage) : jamais au jour du jeu, donc refusées dans le gameplay.
             private readonly HashSet<string> _calendarOnly = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
+            private readonly HashSet<string> _worldFacts = new HashSet<string>(StringComparer.Ordinal);
+
+            public void AddWorldFact(string fact)
+            {
+                _factsSet.Add(fact);
+                _worldFacts.Add(fact);
+            }
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
 
@@ -557,7 +573,7 @@ namespace EdS.Data.Story
                     _r.Add("$.data.festivals", ValidationCode.LimitExceeded,
                         $"{_contestKeys.Count} concours (fêtes et pistes) fermés par des effets « contest » : au plus {EdS.Data.Saves.SavedStory.MaxFestivals}, gardés par la sauvegarde.");
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet, _contestKeys);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet, _contestKeys, _worldFacts);
             }
 
             /// <summary>
@@ -642,15 +658,52 @@ namespace EdS.Data.Story
                     { _r.Add(path, ValidationCode.InvalidValue, $"« {side} » est la pièce d'une scène : aucun PNJ n'y va ni n'en sort."); ok = false; continue; }
                     ZoneDefinition? inside = _interiors.FirstOrDefault(z => z.Id == side);
                     if (inside is null) continue;   // zone du PNJ inconnue : déjà refusée
-                    if (!_zone.Doors.Any(d => d.To == side))
-                    { _r.Add(path, ValidationCode.InvalidValue, $"porte manquante : aucune porte de « {_zone.Id} » vers « {side} » (le PNJ ne peut pas passer)."); ok = false; }
-                    else if (!inside.Doors.Any(d => d.To == _zone.Id))
-                    { _r.Add(path, ValidationCode.InvalidValue, $"porte manquante : aucune porte de « {side} » vers « {_zone.Id} » (le PNJ ne peut pas passer)."); ok = false; }
+                    // Lot C (décision de Damien du 17 novembre 2026) : une pièce derrière une pièce (la cuisine derrière la salle de l'auberge),
+                    // à MaxSlotDepth portes au plus de la zone de l'histoire, chaque porte du chemin ayant sa porte de retour.
+                    if (!SlotDepths.ContainsKey(side))
+                    {
+                        _r.Add(path, ValidationCode.InvalidValue, $"porte manquante : « {side} » n'est pas relié à « {_zone.Id} » par des portes dans les deux sens, "
+                            + $"en {MaxSlotDepth} portes au plus (le PNJ ne peut pas passer).");
+                        ok = false;
+                    }
                 }
                 if (!ok) return false;
                 zone = id == _zone.Id ? null : id;
                 where = found;
                 return true;
+            }
+
+            private const int MaxSlotDepth = StoryValidator.MaxSlotDepth;
+
+            private Dictionary<string, int>? _slotDepths;
+
+            /// <summary>
+            /// Pièces où un PNJ peut se tenir, avec leur nombre de portes depuis la zone de l'histoire : parcours en largeur par des portes qui
+            /// ont chacune leur porte de retour, borné à <see cref="MaxSlotDepth"/>, sans passer par la pièce d'une scène. Calculé une fois.
+            /// </summary>
+            private Dictionary<string, int> SlotDepths => _slotDepths ??= BuildSlotDepths();
+
+            private Dictionary<string, int> BuildSlotDepths()
+            {
+                var depths = new Dictionary<string, int>(StringComparer.Ordinal);
+                var zones = new Dictionary<string, ZoneDefinition>(StringComparer.Ordinal);
+                foreach (ZoneDefinition z in _interiors) if (!zones.ContainsKey(z.Id)) zones.Add(z.Id, z);
+                var frontier = new List<ZoneDefinition> { _zone };
+                for (int depth = 1; depth <= MaxSlotDepth && frontier.Count > 0; depth++)
+                {
+                    var next = new List<ZoneDefinition>();
+                    foreach (ZoneDefinition from in frontier)
+                        foreach (Door door in from.Doors)
+                        {
+                            if (door.To == _zone.Id || depths.ContainsKey(door.To) || !zones.TryGetValue(door.To, out ZoneDefinition? to)) continue;
+                            if (!to.Doors.Any(d => d.To == from.Id)) continue;   // pas de porte de retour
+                            if (_d.Scenes?.Any(sc => sc?.Zone == to.Id) == true) continue;   // la pièce d'une scène : personne n'y passe
+                            depths.Add(to.Id, depth);
+                            next.Add(to);
+                        }
+                    frontier = next;
+                }
+                return depths;
             }
 
             /// <summary>Sous-lot V2.3 : minute du jour d'une heure « HH:MM » (00:00 à 23:59), ou null si elle est mal formée.</summary>

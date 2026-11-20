@@ -89,7 +89,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(32, book.NpcsIn(null).Count());   // V2.30.5 : six marchands de la route d'Ambre et la famille Vaudry ; V2.14 : la fromagère et le marchand d'épices (jours de marché) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(37, book.NpcsIn(null).Count());   // V2.43.2b : cinq PNJ des lieux reconstruits ;   // fêtes d'Orsédia (F3) : le forain des fêtes ; 17 novembre 2026 : Achille vit chez lui (zone.chaumiere) ; V2.30.5 : six marchands de la route d'Ambre et la famille Vaudry ; V2.14 : la fromagère et le marchand d'épices (jours de marché) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -103,8 +103,12 @@ public class V16QuetesTests
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
         Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone",
+                "$.data.npcs[20].zone",   // 17 novembre 2026 : Achille vit chez lui
                 "$.data.npcs[27].zone", "$.data.npcs[30].zone", "$.data.npcs[31].zone",
-                "$.data.npcs[34].zone", "$.data.npcs[35].zone", "$.data.npcs[36].zone", "$.data.scenes[0].zone" },   // V2.14 : Bastien et Margot dans leur boutique ;   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
+                "$.data.npcs[34].zone", "$.data.npcs[35].zone", "$.data.npcs[36].zone",
+                "$.data.npcs[45].zone", "$.data.npcs[46].zone",   // 17 novembre 2026 : les voyageurs de passage, dans les chambres
+                "$.data.npcs[47].zone", "$.data.npcs[48].zone",   // et Perrine et Huguet, à l'auberge
+                "$.data.scenes[0].zone" },   // V2.14 : Bastien et Margot dans leur boutique ;   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
             alone.Report.Errors.Where(e => !e.Path.Contains(".schedule[", StringComparison.Ordinal)).Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         // Sous-lot V2.3.1 : les créneaux qui mènent dans un intérieur (la salle de l'auberge) visent aussi une zone inconnue.
         Assert.All(alone.Report.Errors.Where(e => e.Path.Contains(".schedule[", StringComparison.Ordinal)),
@@ -242,9 +246,9 @@ public class V16QuetesTests
         Assert.Equal("loup", z.PopulationOf("loup12")!.Family);   // par défaut : sans les chiffres finaux
         Assert.Equal("sanglier", z.PopulationOf("sanglier")!.Family);
         Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_arc3", "bandit_epee1", "bandit_epee2", "bandit_epee3", "bandit_epee4", "grand_borgne", "le_borgne" },   // sous-lot V1.7 : le Borgne ; V1.9.3 : trois bandits ; V1.9.4 : le Grand Borgne
-            z.Populations.Where(p => p.Family == "bandit").Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
+            z.Populations.Where(p => p.Family == "bandit" && !IsLieu(p.Creature)).Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         Assert.Equal("loup_blanc", z.PopulationOf("loup_blanc")!.Family);
-        Assert.Equal(22, z.Populations.Count(p => p.Family == "loup"));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée) ; V2.4 : plus les trois loups gris de la brume
+        Assert.Equal(22, z.Populations.Count(p => p.Family == "loup" && !IsLieu(p.Creature)));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée) ; V2.4 : plus les trois loups gris de la brume
     }
 
     [Fact]
@@ -457,7 +461,7 @@ public class V16QuetesTests
         // passent en version 8.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 2, Peaux)));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Equal(26, SaveValidator.CurrentSchemaVersion);   // titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V1.3   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
+        Assert.Equal(28, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V1.3   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,

@@ -115,7 +115,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Null(Vallons.PopulationOf("sanglier")!.Hours);
         Assert.Null(Vallons.PopulationOf("loup_blanc")!.Hours);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.apprentie", "npc.armurier", "npc.epiciere", "npc.doyen",
-            "npc.herboriste_hameau", "npc.fermier" }, Vallons.NightSpots.Select(n => n.Npc));
+            "npc.herboriste_hameau" }, Vallons.NightSpots.Select(n => n.Npc));   // 17 novembre 2026 : Achille dort chez lui (zone.chaumiere)
         // Ceux qui veillent restent à leur place : Aldric (la garde de nuit), le capitaine, Lison (le puits la nuit), Sauge (ouverte la nuit),
         // le boulanger (le pain se fait la nuit), Gaspard, Renart (son étal reste ouvert la nuit).
         foreach (string npc in new[] { "npc.archer_garde", "npc.capitaine", "npc.lison", "npc.herboriste", "npc.boulanger", "npc.gaspard", "npc.renart" })
@@ -132,6 +132,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
             root["data"]!.AsObject().Remove("nightSpots");
             root["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
@@ -150,6 +151,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             root["data"]!.AsObject().Remove("nightSpots");
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");   // V2.4
         }));
@@ -159,6 +161,7 @@ public sealed class V21JourNuitTests : IDisposable
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
@@ -254,7 +257,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.True(Present(w, "loup1") && Present(w, "sanglier"));   // les autres, toujours
         // Sous-lot V2.4 : par temps clair (les échos de la brume, loup_echo5 et 6, ne viennent que par brume).
         Assert.Equal(night ? 11 : 0, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants
-            .Count(c => c.Id.StartsWith("loup_nuit", StringComparison.Ordinal) || c.Id.StartsWith("loup_echo", StringComparison.Ordinal)));
+            .Count(c => (c.Id.StartsWith("loup_nuit", StringComparison.Ordinal) || c.Id.StartsWith("loup_echo", StringComparison.Ordinal)) && !IsLieu(c.Id)));   // lieux à part
         Assert.Equal(night ? 0 : 5, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants.Count(c => Sleepers.Contains(c.Id)));
     }
 
@@ -362,7 +365,7 @@ public sealed class V21JourNuitTests : IDisposable
         Until(w, DayPhase.Night, 20);
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", text, StringComparison.Ordinal);
-        Assert.Equal(26, SaveValidator.CurrentSchemaVersion);   // titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(28, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         // Session suivante, toujours la nuit : les bêtes de la nuit sont là d'emblée, les sangliers dorment.
         var next = new WorldSession(back, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));

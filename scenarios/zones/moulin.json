@@ -1,0 +1,132 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "seed": 263,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -1.85,
+          -2.6
+        ],
+        "max": [
+          1.85,
+          2.6
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "rouet_moulin",
+          "points": [
+            [
+              0.15,
+              -0.4
+            ],
+            [
+              1.65,
+              -0.4
+            ],
+            [
+              1.65,
+              1.2
+            ],
+            [
+              0.15,
+              1.2
+            ]
+          ]
+        },
+        {
+          "id": "bac_a_farine",
+          "points": [
+            [
+              -1.65,
+              0.0
+            ],
+            [
+              -0.75,
+              0.0
+            ],
+            [
+              -0.75,
+              0.7
+            ],
+            [
+              -1.65,
+              0.7
+            ]
+          ]
+        },
+        {
+          "id": "sacs_de_grain",
+          "points": [
+            [
+              -1.65,
+              1.5
+            ],
+            [
+              -0.55,
+              1.5
+            ],
+            [
+              -0.55,
+              2.2
+            ],
+            [
+              -1.65,
+              2.2
+            ]
+          ]
+        },
+        {
+          "id": "echelle_meunier",
+          "points": [
+            [
+              -1.65,
+              -1.8
+            ],
+            [
+              -0.75,
+              -1.8
+            ],
+            [
+              -0.75,
+              -0.5
+            ],
+            [
+              -1.65,
+              -0.5
+            ]
+          ]
+        },
+        {
+          "id": "pupitre_pesee",
+          "points": [
+            [
+              0.55,
+              1.8
+            ],
+            [
+              1.45,
+              1.8
+            ],
+            [
+              1.45,
+              2.35
+            ],
+            [
+              0.55,
+              2.35
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

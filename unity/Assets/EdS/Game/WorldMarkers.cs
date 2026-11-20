@@ -16,7 +16,7 @@ namespace EdS.Game
     /// caisse. Sans catalogue, les formes simples restent.
     /// </para>
     /// </summary>
-    public sealed class WorldMarkers
+    public sealed partial class WorldMarkers
     {
         private const float NpcLabelRange = 15f, NodeLabelRange = 7f, SafeLabelRange = 12f;
 
@@ -91,6 +91,14 @@ namespace EdS.Game
         private ShopsView _shops;
         private readonly Dictionary<string, Marker> _signs = new Dictionary<string, Marker>();
         private int _signMinute = -1;
+
+        // Pâtisseries de Firmin (19 novembre 2026) : l'étal du fournil, refait quand ce qui est en vente (ou la pièce présentée) change.
+        private Transform _firminRoot;
+        private Bounds _firminTop;
+        private float _firminFace;
+        private string _firminShown;
+        private int _firminMinute = -1;
+        private readonly List<GameObject> _firminPieces = new List<GameObject>();
         private const float SignLabelRange = 14f;
 
         /// <summary>Sous-lot V2.1 : temps (s) depuis la dernière relecture des places des PNJ.</summary>
@@ -268,7 +276,16 @@ namespace EdS.Game
                 GameObject table = Wave5View.PlaceNear(root, Wave5Role.BakeryTable, "table du fournil", baker.X, baker.Z, face - 90, 2.4, 1.1, obstacles, face);
                 // Sous-lot V2.12 : sans la table de Poly Haven, l'étal marchand de RPG Food Props sert de vitrine.
                 if (table == null) table = Wave5View.PlaceNear(root, Wave5Role.TraderTable, "étal du fournil", baker.X, baker.Z, face - 90, 2.4, 1.2, obstacles, face);
-                if (table != null) Showcase(root, table, catalog, face);
+                // Pâtisseries de Firmin : avec leurs modèles préparés, l'étal montre ce que la boulangerie vend aujourd'hui (FirminStall) ;
+                // sans eux, la vitrine d'avant (pains scannés).
+                if (table != null && catalog.LotCModel(FirminPastries.All[0].ModelCode(3)) != null && StyleLook.VisibleBounds(table, out Bounds top))
+                {
+                    _firminRoot = root;
+                    _firminTop = top;
+                    _firminFace = face;
+                    FirminStall(adventure);
+                }
+                else if (table != null) Showcase(root, table, catalog, face);
             }
             if (Npc("epiciere") is WorldMarker grocer)
             {
@@ -495,6 +512,37 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>
+        /// Pâtisseries de Firmin (19 novembre 2026) : les modèles du dossier posés sur la table du fournil, à la place des pains de la vitrine
+        /// (même grille de 3 × 2) : la pièce que le joueur a présentée au concours aujourd'hui d'abord (au modèle de son niveau de réussite,
+        /// <see cref="AdventureSession.PresentedPastry"/>), puis ce que la boulangerie a encore en vente (<see cref="AdventureSession.FirminShowcase"/>).
+        /// Recalculé une fois par minute du monde, refait seulement si la liste change. Modèles à l'échelle réelle, sans collision.
+        /// </summary>
+        private void FirminStall(AdventureSession adventure)
+        {
+            int minute = adventure.World.Zone.Time.Minute;
+            if (minute == _firminMinute) return;
+            _firminMinute = minute;
+            var codes = new List<string>();
+            if (adventure.PresentedPastry is string presented) codes.Add(presented);
+            foreach (string code in adventure.FirminShowcase())
+                if (codes.Count < FirminPastries.ShowcaseSlots && !codes.Contains(code)) codes.Add(code);
+            string key = string.Join(",", codes);
+            if (key == _firminShown) return;
+            _firminShown = key;
+            foreach (GameObject g in _firminPieces)
+                if (g != null) Object.Destroy(g);
+            _firminPieces.Clear();
+            for (int i = 0; i < codes.Count; i++)
+            {
+                float u = (i % 3 - 1) * 0.3f, v = (i / 3 - 0.5f) * 0.32f;
+                Vector3 at = _firminTop.center + Quaternion.Euler(0f, _firminFace, 0f) * new Vector3(u * _firminTop.size.x / 1.2f, 0f, v);
+                at.y = _firminTop.max.y;
+                GameObject piece = LotCLook.Place(_firminRoot, codes[i], "étal de Firmin " + i, at, _firminFace + StyleRules.Variant("firmin" + codes[i], 40) - 20);
+                if (piece != null) _firminPieces.Add(piece);
+            }
+        }
+
         /// <summary>Les braises du four (Sacha.Julien), entendues tout près du four seulement (son 3D en boucle).</summary>
         private static void OvenSound(GameObject oven, StyleCatalog catalog)
         {
@@ -619,6 +667,41 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Décision de Damien du 16 novembre 2026 : les autres pièces de forge du lot C (soufflet, bac de trempe, tas de charbon, meule,
+        /// râtelier d'armes, présentoir de fers, établi) autour de la forge en plein air, à leurs places de <see cref="LotCModels.ForgeYard"/>
+        /// (testées : hors des passages, loin de Maëlle et de son apprentie), et les outils côte à côte sur l'établi. Sans modèle, rien.
+        /// </summary>
+        private static void ForgeYard(Transform holder, string id)
+        {
+            Vector3 center = holder.position;
+            GameObject bench = null;
+            foreach (LotCYardPiece piece in LotCModels.ForgeYard)
+            {
+                string code = LotCModels.ForVillage(piece.Key, id);
+                if (code == null) continue;
+                Vector3 at = StyleWorld.OnGround(new Vector3(center.x + (float)piece.Dx, 0f, center.z + (float)piece.Dz));
+                GameObject placed = LotCLook.Place(holder, code, id + "/" + piece.Key, at, (float)piece.Yaw);
+                if (piece.Key == "forge/etabli") bench = placed;
+            }
+            // Décision du 17 novembre 2026 : l'auvent au-dessus de la cour de travail (place testée : poteaux libres).
+            LotCYardPiece awning = LotCModels.ForgeAwning;
+            string awningCode = LotCModels.ForVillage(awning.Key, id);
+            if (awningCode != null)
+                LotCLook.Place(holder, awningCode, id + "/auvent", StyleWorld.OnGround(new Vector3(center.x + (float)awning.Dx, 0f, center.z + (float)awning.Dz)), (float)awning.Yaw);
+            if (bench == null || !StyleLook.VisibleBounds(bench, out Bounds top)) return;
+            // Les outils en rang sur le plateau, le long de son grand côté, chacun tourné en travers.
+            IReadOnlyList<string> tools = LotCModels.ForgeToolCodes;
+            bool alongX = top.size.x >= top.size.z;
+            float length = (alongX ? top.size.x : top.size.z) * 0.8f;
+            for (int i = 0; i < tools.Count; i++)
+            {
+                float t = -length / 2f + length * (i + 0.5f) / tools.Count;
+                Vector3 at = new Vector3(top.center.x + (alongX ? t : 0f), top.max.y, top.center.z + (alongX ? 0f : t));
+                LotCLook.Place(holder, tools[i], id + "/outil" + i, at, alongX ? 90f : 0f);
+            }
+        }
+
+        /// <summary>
         /// Forge de Maëlle : une enclume (faite par le code, fer sombre) avec le marteau posé dessus, le foyer de pierre à côté avec ses
         /// braises et une lueur qui vacille, un tonneau et une caisse derrière. Sans le foyer dans le catalogue, l'enclume simple reste.
         /// </summary>
@@ -660,6 +743,7 @@ namespace EdS.Game
                 BarrelLook.Make(holder, m.Data.Id + "/tonneau", barrelAt, 35f);
             }
             StyleLook.Prop(holder, StyleProp.Crate, m.Data.Id + "/caisse", c + new Vector3(-1.7f, 0f, -1.6f), 75f);
+            ForgeYard(holder, m.Data.Id);
             // Braises au fond du foyer et lueur orange (une seule lumière par forge).
             StyleLook.VisibleBounds(pit, out Bounds b);
             GameObject embers = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -844,6 +928,8 @@ namespace EdS.Game
                 if (g != null && g.activeSelf != festive) g.SetActive(festive);
             // Sous-lot V2.14 : étals selon la phase du marché, fumée du fournil ; l'étiquette des enseignes une fois par minute du monde.
             _shops?.Sync(adventure, Time.deltaTime);
+            if (_firminRoot != null) FirminStall(adventure);   // pâtisseries de Firmin : une fois par minute du monde
+            SyncFeastStall(adventure);   // sous-lot F4 : l'étal de fête du forain, refait quand la fête change
             if (_signs.Count > 0 && adventure.World.Zone.Time.Minute != _signMinute)
             {
                 _signMinute = adventure.World.Zone.Time.Minute;

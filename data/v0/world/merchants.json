@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "merchants",
-  "contentVersion": "0.16.0-provisoire",
+  "contentVersion": "0.19.0-provisoire",
   "data": {
     "values": [
       {
@@ -330,6 +330,22 @@
         "value": 20
       },
       {
+        "item": "item.bois",
+        "value": 15
+      },
+      {
+        "item": "item.pierre",
+        "value": 15
+      },
+      {
+        "item": "item.planche",
+        "value": 50
+      },
+      {
+        "item": "item.pierre_taillee",
+        "value": 60
+      },
+      {
         "item": "item.eclat_de_seuil",
         "value": 300
       },
@@ -544,6 +560,10 @@
       {
         "item": "item.pate_feuilletee",
         "value": 12
+      },
+      {
+        "item": "item.pate_brisee",
+        "value": 10
       },
       {
         "item": "item.tarte_renversee_aux_pommes",
@@ -1179,6 +1199,65 @@
             "always": false,
             "stock": 8,
             "door": true
+          },
+          {
+            "item": "item.levain",
+            "price": 8,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.pate_feuilletee",
+            "price": 15,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.pate_brisee",
+            "price": 12,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.tarte_renversee_aux_pommes",
+            "price": 75,
+            "always": true,
+            "stock": 3,
+            "fresh": true,
+            "weekdays": [
+              6
+            ]
+          },
+          {
+            "item": "item.fouace_des_semailles",
+            "price": 150,
+            "always": true,
+            "stock": 2,
+            "fresh": true,
+            "weekdays": [
+              5,
+              6
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          {
+            "item": "item.couronne_des_moissons",
+            "price": 150,
+            "always": true,
+            "stock": 2,
+            "fresh": true,
+            "weekdays": [
+              5,
+              6
+            ],
+            "seasons": [
+              "autumn"
+            ]
           }
         ]
       },
@@ -1715,6 +1794,111 @@
             "price": 40,
             "always": false,
             "stock": 3
+          }
+        ]
+      },
+      {
+        "id": "merchant.charron_hameau",
+        "npc": "npc.charron_hameau",
+        "greeting": "text.v243.charron.accueil",
+        "sellPercent": 25,
+        "closed": [
+          "night"
+        ],
+        "daily": 1,
+        "faction": "villagers",
+        "offers": [
+          {
+            "item": "item.planche",
+            "price": 70,
+            "always": true,
+            "stock": 10
+          },
+          {
+            "item": "item.bois",
+            "price": 25,
+            "always": true,
+            "stock": 20
+          },
+          {
+            "item": "item.pierre",
+            "price": 25,
+            "always": false,
+            "stock": 10
+          },
+          {
+            "item": "item.pierre_taillee",
+            "price": 90,
+            "always": false,
+            "stock": 5
+          }
+        ]
+      },
+      {
+        "id": "merchant.foulonniere",
+        "npc": "npc.foulonniere",
+        "greeting": "text.v243.foulonniere.accueil",
+        "sellPercent": 25,
+        "closed": [
+          "night"
+        ],
+        "daily": 1,
+        "faction": "villagers",
+        "offers": [
+          {
+            "item": "item.cape_de_laine",
+            "price": 320,
+            "always": true,
+            "stock": 2
+          },
+          {
+            "item": "item.braies_de_toile",
+            "price": 320,
+            "always": true,
+            "stock": 2
+          },
+          {
+            "item": "item.gambison",
+            "price": 470,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.bobine_de_fil",
+            "price": 18,
+            "always": false,
+            "stock": 6
+          }
+        ]
+      },
+      {
+        "id": "merchant.frere_hospitalier",
+        "npc": "npc.frere_hospitalier",
+        "greeting": "text.v243.hospitalier.accueil",
+        "sellPercent": 25,
+        "closed": [
+          "night"
+        ],
+        "daily": 1,
+        "faction": "villagers",
+        "offers": [
+          {
+            "item": "item.potion_de_soin",
+            "price": 60,
+            "always": true,
+            "stock": 6
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "price": 210,
+            "always": false,
+            "stock": 2
+          },
+          {
+            "item": "item.herbe_de_l_aube",
+            "price": 22,
+            "always": false,
+            "stock": 6
           }
         ]
       }

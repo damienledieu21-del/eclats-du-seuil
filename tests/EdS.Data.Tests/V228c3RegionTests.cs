@@ -78,7 +78,7 @@ public sealed class V228c3RegionTests : IDisposable
         var core = new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac",
             "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups", "four_de_firmin", "feu_de_camp" };   // cuisine : deux postes
         var region = zone.Places.Where(p => !core.Contains(p.Id)).ToList();
-        Assert.Equal(31, region.Count);   // V2.31 et V2.32 : cascade, moulin à foulon, cabane du pêcheur, pont suspendu, arbre millénaire, tanière, cabane du bûcheron, lisière ; V2.30 : place du marché et église de la ville ; relecture de la PR #170 : six lieux de transition
+        Assert.Equal(57, region.Count);   // V2.40 : sept lieux des passages ;   // V2.33 à V2.39 : 19 lieux ;   // V2.31 et V2.32 : cascade, moulin à foulon, cabane du pêcheur, pont suspendu, arbre millénaire, tanière, cabane du bûcheron, lisière ; V2.30 : place du marché et église de la ville ; relecture de la PR #170 : six lieux de transition
         foreach (Place p in region)
         {
             Assert.False(p.Min.X.Raw < Fixed.FromInt(140).Raw && p.Max.X.Raw > Fixed.FromInt(-100).Raw && p.Min.Z.Raw < Fixed.FromInt(100).Raw
@@ -150,7 +150,7 @@ public sealed class V228c3RegionTests : IDisposable
                 }
             }
         }
-        Assert.Equal(2, crossings);   // le chemin de la bergerie, au gué sud ; V2.31 : le sentier du pont suspendu, à son passage
+        Assert.Equal(4, crossings);   // le chemin de la bergerie, au gué sud ; V2.31 : le sentier du pont suspendu, à son passage ; V2.40 : le chemin du pont des Murmures, à la passerelle des Ronces et à la porte du pont (fermées)
     }
 
     [Fact]
@@ -231,5 +231,29 @@ public sealed class V228c3RegionTests : IDisposable
         // Le relief de la région est propre au repère des Vallons : une autre grande aire n'en a pas.
         var other = new ReliefSettings { RegionGrid = (0, 0, 32, 24) };
         Assert.Equal(0, GroundRelief.For(whole, other).Region(180, 1360));
+    }
+
+    [Fact]
+    public void Chaque_point_sur_sur_un_sol_de_25_degres_au_plus()
+    {
+        // Relecture indépendante de la PR #214 : chaque point sûr de la zone (dont les lacets du col, la mine et le fort) est sur un sol de
+        // 25° au plus dans le relief d'affichage : pente sur 2 m, dans huit directions, jusqu'à 8 m autour.
+        AdventureMap whole = Whole();
+        GroundRelief relief = GroundRelief.For(whole);
+        ZoneDefinition zone = Zone();
+        Assert.Contains(zone.SafePoints, s => s.Id == "lacets_du_col");
+        double limit = Math.Tan(25 * Math.PI / 180);
+        foreach (SafePoint s in zone.SafePoints)
+        {
+            (double x, double z) = P(s.Position);
+            double steep = 0;
+            for (int k = 0; k < 8; k++)
+            {
+                double ux = Math.Cos(k * Math.PI / 4), uz = Math.Sin(k * Math.PI / 4);
+                for (double r = 0; r + 2 <= 8; r += 2)
+                    steep = Math.Max(steep, Math.Abs(relief.Height(x + ux * (r + 2), z + uz * (r + 2)) - relief.Height(x + ux * r, z + uz * r)) / 2);
+            }
+            Assert.True(steep <= limit, $"{s.Id} : pente {steep:0.00} ({Math.Atan(steep) * 180 / Math.PI:0}°)");
+        }
     }
 }

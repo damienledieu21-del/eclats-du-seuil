@@ -505,6 +505,13 @@ namespace EdS.World
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.
             _host = hosted is null ? null : HostFor(hosted, save, storyZone, log, caughtUp);
+            // Revue Codex de la PR #206 : les passages saisonniers de la zone (même identifiant qu'un passage des saisons : la glace du lac)
+            // sont ouverts dans chaque session de secteur qui s'ouvre pendant que la saison les ouvre (WorldSession.PassageOpen).
+            if (_host != null && hosted != null)
+            {
+                _host.SeasonalPassages = () => SeasonalPassageKeys(hosted);
+                _host.SeasonRelocate = (at, radius) => OffSeasonalStrip(hosted, _seasons, at, radius);
+            }
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
@@ -1307,7 +1314,7 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V2.31 (décision de Damien du 16 novembre 2026 : le pont suspendu, vrai troisième passage sur la rivière) : passages que les
-        /// effets d'une quête terminée ouvrent et que la sauvegarde n'a pas encore (sauvegarde d'avant l'ajout de l'effet) ; vide sans histoire,
+        /// effets d'une quête terminée (les siens et ceux de ses étapes, V2.40 : la passerelle des Ronces à la fin du chapitre 1) ouvrent et que la sauvegarde n'a pas encore (sauvegarde d'avant l'ajout de l'effet) ; vide sans histoire,
         /// sans personnage ou pour une autre zone que celle de l'histoire. Les passages ne se referment jamais : les rouvrir ne change rien d'autre.
         /// </summary>
         internal static IReadOnlyList<string> CaughtUpPassages(WorldSave save, ZoneDefinition zone, StoryBook? story, string? storyZone)
@@ -1316,7 +1323,7 @@ namespace EdS.World
             var consumed = new HashSet<string>(save.Consumed, StringComparer.Ordinal);
             return story.Quests
                 .Where(q => hero.Story.Quests.TryGetValue(q.Id, out QuestProgress? p) && p.Step == QuestProgress.Done)
-                .SelectMany(q => q.Effects)
+                .SelectMany(q => q.Effects.Concat(q.Steps.SelectMany(s => s.Effects)))   // V2.40 : les étapes aussi (fin du chapitre 1)
                 .Where(e => e.Kind == EffectKind.OpenPassage && zone.Passages.Any(p => p.Id == e.Id) && !consumed.Contains(zone.PassageKey(e.Id)))
                 .Select(e => e.Id).Distinct(StringComparer.Ordinal).ToList();
         }
@@ -1335,6 +1342,14 @@ namespace EdS.World
         }
 
         public bool IsPassageOpen(string passage) => Definition is { } zone && Registered(zone.PassageKey(passage));
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : clés des passages de <paramref name="zone"/> qui sont aussi des passages des saisons et que la saison
+        /// ouvre maintenant (glace du lac praticable) ; vide sans saisons ou sans date civile.
+        /// </summary>
+        internal IEnumerable<string> SeasonalPassageKeys(ZoneDefinition zone) =>
+            _seasons is null ? Array.Empty<string>()
+                : zone.Passages.Where(p => _seasons.Passages.Any(s => s.Id == p.Id) && PassageOpen(p.Id)).Select(p => zone.PassageKey(p.Id)).ToList();
 
         /// <summary>Vie en cours d'une population (<c>loup1</c>, puis <c>loup1_v2</c>…).</summary>
         public string CurrentCreature(string population) =>
@@ -1409,6 +1424,7 @@ namespace EdS.World
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
                 _tickDone = false;
+                RenewSeasonalSessions();   // revue Codex de la PR #206 : gel ou fonte en direct
                 _host.Step(null, _tickPopulations, _afterZone ??= AfterSector, _reserved ??= ReservedIn);
                 if (!_tickDone) AfterZone(Array.Empty<ZoneEvent>());   // le personnage n'est dans aucun secteur simulé (reprise d'un passage)
                 Follow();
@@ -1473,6 +1489,8 @@ namespace EdS.World
             Practice(me);
             // Sous-lot V2.29 (2) : cases vues et points de vue, avant les quêtes (une découverte peut servir de condition).
             Explore(story);
+            // Lieux reconstruits (sous-lot V2.43.1) : découvertes faites et paliers complets, avant les quêtes (un fait de chantier peut servir de condition).
+            StepRebuilds(story);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
@@ -1592,6 +1610,8 @@ namespace EdS.World
                 Population? population = PopulationOf(e.Combatant);
                 Population? eventModel = population is null ? _events?.Of(e.Combatant) : null;
                 Narrative?.Defeated(population?.Creature ?? e.Combatant, population?.Family ?? eventModel?.Family);
+                // Lieux reconstruits (sous-lot V2.43.1) : compte pour les besoins de combat des chantiers où se tient le personnage.
+                RebuildDefeat();
             }
             experience = gains;
             rolls = loot;

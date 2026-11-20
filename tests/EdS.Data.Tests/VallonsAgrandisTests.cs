@@ -114,7 +114,7 @@ public class VallonsAgrandisTests
     {
         ZoneDefinition zone = Zone();
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
-        Assert.Equal(26, roads.Count);   // V2.31, V2.32 : sentiers de la cascade, du pont suspendu et de l'arbre ; V2.30.1 : rues des boutiques et du marché, sentier de l'herboristerie, dans la ville ; // V2.25.1 : chemin et aire de la grange ; V2.28c (3) : huit routes et chemins de la région
+        Assert.Equal(32, roads.Count);   // V2.40 : rue de la porte nord, chemin du pont des Murmures, route de l'Est ;   // V2.33, V2.37, V2.38 : allée du château, chemins de la bouche et du fort ; V2.31, V2.32 : sentiers de la cascade, du pont suspendu et de l'arbre ; V2.30.1 : rues des boutiques et du marché, sentier de l'herboristerie, dans la ville
         // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
         // V2.7 : sauf la planque des contrebandiers, point sûr secret, loin des routes par nature.
         foreach (SafePoint s in zone.SafePoints.Where(x => x.Id != "planque_des_contrebandiers"))
@@ -455,6 +455,7 @@ public class VallonsAgrandisTests
         {
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             JsonArray roads = Roads(root);
             for (int i = roads.Count; i <= ZoneValidator.MaxRoads; i++)
             {
@@ -471,6 +472,7 @@ public class VallonsAgrandisTests
         {
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             Roads(root)[0]!["points"] = new JsonArray(Enumerable.Range(0, ZoneValidator.MaxRoadPoints + 1).Select(i => (JsonNode?)new JsonArray(-90 + i, 0)).ToArray());
         });
         Assert.Contains(longOld.Report.Errors, e => e.Path == "$.data.roads[0].points" && e.Code == ValidationCode.OutOfRange);

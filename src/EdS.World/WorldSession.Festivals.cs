@@ -106,6 +106,7 @@ namespace EdS.World
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
             // Sous-lot V2.14 : les marchands de passage du grand jour de marché sont sur la place de l'installation au démontage.
+            if (AwaitsRebuild(npc.Id)) return true;   // V2.43.2b : PNJ d'un lieu pas encore reconstruit
             return npc.Festivals.Count > 0 && !(Festival is Festival f && npc.Festivals.Contains(f.Id)) && !AtMarket(npc.Festivals, false);
         }
 
@@ -154,7 +155,11 @@ namespace EdS.World
         /// </summary>
         public void ContestHeld(string festival) => ContestHeld(festival, festival);
 
-        void INarrativeWorld.ContestHeld(string festival, string key) => ContestHeld(festival, key);
+        void INarrativeWorld.ContestHeld(string festival, string key, List<StoryEvent> events)
+        {
+            ContestHeld(festival, key);
+            FeastContest(festival, key, events);   // les 12 fêtes d'Orsédia (F3) : un concours lié à une activité de fête rapporte sa monnaie
+        }
 
         /// <summary>Schéma 16 : le personnage vient de concourir au concours de clé <paramref name="key"/> (fête ou « fête.piste ») de la fête <paramref name="festival"/>.</summary>
         public void ContestHeld(string festival, string contest)

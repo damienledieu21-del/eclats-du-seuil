@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 26
+      "const": 28
     },
     "kind": {
       "const": "save"
@@ -1097,6 +1097,120 @@
                     }
                   },
                   "description": "Cartes à la taverne (version 25, décisions de Damien du 16 novembre 2026) : graine, victoires, jeu rare remis, parties et gains du jour (plafond 150 cuivre), partie en cours ; absent tant que le personnage ne s'est jamais assis à une table."
+                },
+                "rebuilds": {
+                  "description": "Lieux reconstruits (version 28, sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : par lieu (ordre ordinal), paliers finis (stage), done quand le lieu est reconstruit et apports au palier en cours (given : besoin -> quantité, ordre ordinal, 1 au moins). Absent tant que le personnage n'a rien apporté ; un lieu absent est en ruine ; jamais de recul.",
+                  "type": "object",
+                  "maxProperties": 64,
+                  "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["stage", "given"],
+                    "properties": {
+                      "stage": { "type": "integer", "minimum": 0, "maximum": 8 },
+                      "done": { "const": true, "description": "Reconstruit pour toujours (revue Codex de la PR #221) : écrit seulement quand il vaut true ; alors given est vide." },
+                      "given": {
+                        "type": "object",
+                        "maxProperties": 8,
+                        "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+                        "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 9999999999 }
+                      }
+                    }
+                  }
+                },
+                "feasts": {
+                  "description": "Les 12 fêtes d'Orsédia (version 27, décisions de Damien du 17 novembre 2026) : titre de fête affiché, portefeuille de chaque fête (monnaie, activités de l'édition, récompenses gagnées et rattrapées, deux dernières éditions prises, décorations et costume achetés, plats). edition et done vont ensemble ; aucune entrée vide.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "wallets"
+                  ],
+                  "properties": {
+                    "shown": {
+                      "type": "string",
+                      "pattern": "^festival(\\.[a-z0-9_]+)+$",
+                      "maxLength": 64
+                    },
+                    "wallets": {
+                      "type": "object",
+                      "maxProperties": 16,
+                      "propertyNames": {
+                        "type": "string",
+                        "pattern": "^festival(\\.[a-z0-9_]+)+$",
+                        "maxLength": 64
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "coins",
+                          "wins",
+                          "bought",
+                          "editions",
+                          "owned",
+                          "dishes"
+                        ],
+                        "properties": {
+                          "coins": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 99999
+                          },
+                          "edition": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000
+                          },
+                          "done": {
+                            "type": "object",
+                            "maxProperties": 8,
+                            "propertyNames": {
+                              "pattern": "^[a-z][a-z0-9_]*$",
+                              "maxLength": 32
+                            },
+                            "additionalProperties": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100000000
+                            }
+                          },
+                          "wins": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "bought": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "editions": {
+                            "type": "array",
+                            "maxItems": 2,
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100000000
+                            }
+                          },
+                          "owned": {
+                            "type": "array",
+                            "maxItems": 6,
+                            "items": {
+                              "type": "string",
+                              "pattern": "^F(0[1-9]|1[0-2])_(D0[1-5]|C01)$"
+                            }
+                          },
+                          "dishes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 99
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

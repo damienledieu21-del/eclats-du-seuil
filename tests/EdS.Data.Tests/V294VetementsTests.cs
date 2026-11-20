@@ -61,6 +61,38 @@ public sealed class V294VetementsTests
         Assert.Single(StyleRules.Candidates(models, StyleSlot.Hero));
     }
 
+    [Fact]
+    public void Voyageurs_en_tenue_de_voyage_et_personnel_de_l_auberge()
+    {
+        // Réponses de Damien du 17 novembre 2026 : les voyageurs de passage ont toute l'année une cape et un sac ; Perrine porte le tablier.
+        foreach (string id in new[] { "npc.voyageur_convoyeur", "npc.voyageuse_pelerine" })
+        {
+            WardrobePlan summer = HumanWardrobe.Plan(id, "pnj", Look(id, "pnj"), WardrobeSeason.Summer, false, false);
+            Assert.Contains(summer.Requests, q => q.Slot == WardrobeSlot.Back && q.Kinds.Contains("cloak"));
+            Assert.Contains(summer.Requests, q => q.Slot == WardrobeSlot.Waist && q.Kinds.Contains("bag"));
+        }
+        Assert.False(Look("npc.voyageur_convoyeur", "pnj").Female);
+        Assert.True(Look("npc.voyageuse_pelerine", "pnj").Female);
+        Assert.True(Look("npc.serveuse", "pnj").Female);
+        Assert.False(Look("npc.palefrenier", "pnj").Female);
+        Assert.Contains(HumanWardrobe.Plan("npc.serveuse", "pnj", Look("npc.serveuse", "pnj"), WardrobeSeason.Summer, false, false).Requests,
+            q => q.Slot == WardrobeSlot.Waist && q.Kinds.Contains("apron"));
+    }
+
+    [Fact]
+    public void Le_sac_du_pack_est_reconnu_et_porte_par_les_voyageurs()
+    {
+        // Revue Codex de #212 : « Peasant_Bag » était ignoré, les voyageurs ne recevaient qu'une ceinture.
+        WardrobeItem bag = HumanWardrobe.Classify(O + "Male_Peasant_Bag.fbx", "")!.Value;
+        Assert.Equal((WardrobeFamily.Peasant, WardrobeSlot.Waist, "bag"), (bag.Family, bag.Slot, bag.Kind));
+        Assert.Equal((WardrobeSlot.Waist, "satchel"), (HumanWardrobe.Classify(O + "Peasant_Satchel.fbx", "")!.Value.Slot, HumanWardrobe.Classify(O + "Peasant_Satchel.fbx", "")!.Value.Kind));
+        Assert.Equal((WardrobeSlot.Waist, "pouch"), (HumanWardrobe.Classify(O + "Male_Peasant.fbx", "Peasant_Pouch")!.Value.Slot, HumanWardrobe.Classify(O + "Male_Peasant.fbx", "Peasant_Pouch")!.Value.Kind));
+        List<WardrobeItem> items = Items(Full.Append(O + "Male_Peasant_Belt.fbx").Append(O + "Male_Peasant_Bag.fbx"));
+        (int[]? picks, WardrobePlan _) = Dress("npc.voyageur_convoyeur", "pnj", items, WardrobeSeason.Summer);
+        Assert.NotNull(picks);
+        Assert.Contains(picks!, i => items[i].Slot == WardrobeSlot.Waist && items[i].Kind == "bag");
+    }
+
     private static HumanLook Look(string id, string role) => HumanLooks.For(id, role);
 
     private static (int[]? Picks, WardrobePlan Plan) Dress(string id, string role, IReadOnlyList<WardrobeItem> items, WardrobeSeason season = WardrobeSeason.Spring,

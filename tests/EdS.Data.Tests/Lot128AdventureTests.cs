@@ -95,18 +95,18 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube.", "Journal : " + V11TestData.Texts.Get("text.ch1.quest.reveil.odile") }, a.DrainMessages());
         Assert.Equal(1, a.Opened);
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
-        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur", "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville", "npc.notable_ville", "npc.notable_dame_ville" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur", "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville", "npc.notable_ville", "npc.notable_dame_ville", "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.palefrenier" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(21, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger et le pommier du bourg ; pêche : les deux nœuds d'appâts ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
+        Assert.Equal(27, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger et le pommier du bourg ; pêche : les deux nœuds d'appâts ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
         Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
-        Assert.Equal(17, a.Nodes().Count(n => n.Ready));
+        Assert.Equal(23, a.Nodes().Count(n => n.Ready));   // V2.43.2a : six nœuds de bois et de pierre
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere",
-            "porte_est_du_bourg", "place_du_marche_de_la_ville", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole", "pied_de_la_cascade", "arbre_millenaire" },   // V2.31, V2.32
+            "porte_est_du_bourg", "place_du_marche_de_la_ville", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole", "pied_de_la_cascade", "arbre_millenaire", "parvis_de_l_abbaye", "bouche_de_la_mine", "devant_le_fort", "lacets_du_col" },   // décision de Damien du 18 novembre 2026 : mine et fort   // V2.31, V2.32
             a.SafePoints().Select(s => s.Id));   // V2.28c (3) : les carrefours de la région
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);
-        Assert.Equal(5, a.Professions().Count);   // pêche (appâts ramassés), cuisine et boulangerie
+        Assert.Equal(7, a.Professions().Count);   // V2.43.2a : bûcheron, tailleur de pierre ;   // pêche (appâts ramassés), cuisine et boulangerie
         Assert.True(a.IsBoss("gardien_du_seuil") && a.IsBoss("gardien_eveille") && !a.IsBoss("loup1"));
         // Les créatures sont loin de l'entrée : aucune cible (la plus proche est à plus de 20 m), alors qu'il y a des ennemis en vue.
         Assert.Null(a.Combat.TargetId);
@@ -227,7 +227,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(CraftRefusal.NotHere, a.Craft("recipe.ferrure"));
         Assert.Equal(new[] { "Pas ici : approche-toi de l'atelier (forge de Maëlle, four de Firmin ou feu de camp de Gaspard), ou à 3 m du nœud." }, a.DrainMessages());
         Assert.Null(a.WorkshopHere);
-        Assert.Equal(new[] { "forge", "four_de_firmin", "feu_de_camp" }, a.Workshops().Select(w => w.Id));   // cuisine et boulangerie (réponse de Damien du 15 novembre 2026) : four de Firmin, feu de camp
+        Assert.Equal(new[] { "forge", "four_de_firmin", "feu_de_camp", "cabane_du_bucheron", "gradins_de_la_carriere", "moulin", "carriere" }, a.Workshops().Select(w => w.Id));   // cuisine et boulangerie (réponse de Damien du 15 novembre 2026) : four de Firmin, feu de camp
         WorldMarker forge = a.Workshops()[0];
         Assert.Equal(("forge", "Forge de Maëlle", -20.0, -4.0), (forge.Id, forge.Name, forge.X, forge.Z));
         Assert.True(WalkTo(a, forge.X, forge.Z + 1.5, 1));

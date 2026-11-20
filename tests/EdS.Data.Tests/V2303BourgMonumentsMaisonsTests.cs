@@ -124,7 +124,7 @@ public class V2303BourgMonumentsMaisonsTests
     {
         var doors = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "zones", "vallons.json")))!["data"]!["doors"]!.AsArray()
             .Select(d => (X: d!["position"]![0]!.GetValue<double>(), Z: d["position"]![1]!.GetValue<double>())).ToList();
-        Assert.Equal(9, doors.Count);
+        Assert.Equal(19, doors.Count);   // V2.43.4 : les cinq portes des lieux reconstruits ;   // lot C (16 novembre 2026) : et les cinq portes des intérieurs de métier, hors du Bourg
         foreach (BourgPiece p in Inside)
         {
             var f = BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw);

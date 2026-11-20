@@ -1,0 +1,111 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 243,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -3.0,
+          -2.5
+        ],
+        "max": [
+          3.0,
+          2.5
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "etabli",
+          "points": [
+            [
+              -2.7,
+              1.3
+            ],
+            [
+              -0.5,
+              1.3
+            ],
+            [
+              -0.5,
+              2.2
+            ],
+            [
+              -2.7,
+              2.2
+            ]
+          ]
+        },
+        {
+          "id": "enclume",
+          "points": [
+            [
+              0.6,
+              0.4
+            ],
+            [
+              1.4,
+              0.4
+            ],
+            [
+              1.4,
+              1.2
+            ],
+            [
+              0.6,
+              1.2
+            ]
+          ]
+        },
+        {
+          "id": "ratelier_bois",
+          "points": [
+            [
+              1.7,
+              1.2
+            ],
+            [
+              2.8,
+              1.2
+            ],
+            [
+              2.8,
+              2.3
+            ],
+            [
+              1.7,
+              2.3
+            ]
+          ]
+        },
+        {
+          "id": "coffre",
+          "points": [
+            [
+              -2.8,
+              -1.2
+            ],
+            [
+              -1.8,
+              -1.2
+            ],
+            [
+              -1.8,
+              -0.5
+            ],
+            [
+              -2.8,
+              -0.5
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

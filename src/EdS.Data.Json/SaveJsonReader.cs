@@ -34,6 +34,71 @@ namespace EdS.Data.Json
             return Read(JsonInput.Utf8(json, report, MaxBytes), report);
         }
 
+        /// <summary>Lieux reconstruits (version 28) : le chantier d'un lieu.</summary>
+        private static SavedRebuildData? ReadRebuild(JsonInput input, JsonElement element, string path)
+        {
+            var r = new SavedRebuildData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["stage"] = (v, p) => r.Stage = input.Int32(v, p),
+                ["done"] = (v, p) => r.Done = input.Boolean(v, p),   // revue Codex de la PR #221 : reconstruit pour toujours
+                ["given"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « besoin : quantité »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedRebuild.MaxNeeds) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedRebuild.MaxNeeds} besoins."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    r.Given = list;
+                },
+            }) ? r : null;
+        }
+
+        /// <summary>Les 12 fêtes d'Orsédia (version 27) : le portefeuille d'une fête.</summary>
+        private static SavedFeastData? ReadFeast(JsonInput input, JsonElement element, string path)
+        {
+            var w = new SavedFeastData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["coins"] = (v, p) => w.Coins = input.Int64(v, p),
+                ["edition"] = (v, p) => w.Edition = input.Int64(v, p),
+                ["done"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « activité : jour »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedFeast.MaxDone) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedFeast.MaxDone} activités."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    w.Done = list;
+                },
+                ["wins"] = (v, p) => w.Wins = input.Int64(v, p),
+                ["bought"] = (v, p) => w.Bought = input.Int64(v, p),
+                ["editions"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Array, p, "tableau")) return;
+                    if (v.GetArrayLength() > SavedFeast.KeptEditions) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedFeast.KeptEditions} éditions."); return; }
+                    var list = new List<long?>();
+                    int k = 0;
+                    foreach (JsonElement e in v.EnumerateArray()) list.Add(input.Int64(e, p + "[" + (k++).ToString(CultureInfo.InvariantCulture) + "]"));
+                    w.Editions = list;
+                },
+                ["owned"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Array, p, "tableau")) return;
+                    if (v.GetArrayLength() > SavedFeast.MaxOwned) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedFeast.MaxOwned} achats."); return; }
+                    var list = new List<string?>();
+                    int k = 0;
+                    foreach (JsonElement e in v.EnumerateArray()) list.Add(input.Text(e, p + "[" + (k++).ToString(CultureInfo.InvariantCulture) + "]"));
+                    w.Owned = list;
+                },
+                ["dishes"] = (v, p) => w.Dishes = input.Int32(v, p),
+            }) ? w : null;
+        }
+
         private static SaveLoadResult Read(byte[]? json, ValidationReport report)
         {
             var document = new SaveDocument();
@@ -219,6 +284,39 @@ namespace EdS.Data.Json
                         map[property.Name] = input.Text(property.Value, p + "." + property.Name);
                     }
                     c.Explored = map;
+                },
+                ["feasts"] = (v, p) =>   // les 12 fêtes d'Orsédia (version 27), facultatif
+                {
+                    c.Present.Add("feasts");
+                    var fd = new SavedFeastsData();
+                    bool fok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["shown"] = (e2, p2) => { fd.Present.Add("shown"); fd.Shown = input.Text(e2, p2); },
+                        ["wallets"] = (e2, p2) =>
+                        {
+                            if (!input.RequireKind(e2, JsonValueKind.Object, p2, "objet « fête : portefeuille »")) return;
+                            var list = new List<KeyValuePair<string, SavedFeastData?>>();
+                            foreach (JsonProperty property in input.UniqueProperties(e2, p2))
+                            {
+                                if (list.Count >= SavedFeasts.MaxEntries) { input.Report.Add(p2, ValidationCode.LimitExceeded, $"au plus {SavedFeasts.MaxEntries} fêtes."); return; }
+                                list.Add(new KeyValuePair<string, SavedFeastData?>(property.Name, ReadFeast(input, property.Value, p2 + "." + property.Name)));
+                            }
+                            fd.Wallets = list;
+                        },
+                    });
+                    if (fok) c.Feasts = fd;
+                },
+                ["rebuilds"] = (v, p) =>   // lieux reconstruits (version 28), facultatif
+                {
+                    c.Present.Add("rebuilds");
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « lieu : chantier »")) return;
+                    var list = new List<KeyValuePair<string, SavedRebuildData?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedRebuilds.MaxEntries) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedRebuilds.MaxEntries} chantiers."); return; }
+                        list.Add(new KeyValuePair<string, SavedRebuildData?>(property.Name, ReadRebuild(input, property.Value, p + "." + property.Name)));
+                    }
+                    c.Rebuilds = list;
                 },
                 ["cards"] = (v, p) =>   // cartes à la taverne (version 25), facultatif
                 {
@@ -676,6 +774,31 @@ namespace EdS.Data.Json
                         .Append(", \"game\": ").Append(Num(cg.Game)).Append(", \"stake\": ").Append(Num(cg.Stake))
                         .Append(", \"moves\": [").Append(string.Join(", ", cg.Moves.Select(m => Num(m)))).Append("]}");
                 b.Append("},\n");
+            }
+            if (!c.Feasts.IsEmpty)   // les 12 fêtes d'Orsédia (version 27) : état déjà validé à la construction (identifiants au format, aucun échappement)
+            {
+                string N(long n) => n.ToString(CultureInfo.InvariantCulture);
+                b.Append("      \"feasts\": {");
+                if (c.Feasts.Shown != null) b.Append("\"shown\": \"").Append(c.Feasts.Shown).Append("\", ");
+                b.Append("\"wallets\": {").Append(string.Join(", ", c.Feasts.Entries.Values.Select(f =>
+                {
+                    var w = new StringBuilder();
+                    w.Append('"').Append(f.Festival).Append("\": {\"coins\": ").Append(N(f.Coins));
+                    if (f.Edition is long ed)
+                        w.Append(", \"edition\": ").Append(N(ed)).Append(", \"done\": {").Append(string.Join(", ", f.Done.Select(d => "\"" + d.Key + "\": " + N(d.Value)))).Append('}');
+                    w.Append(", \"wins\": ").Append(N(f.Wins)).Append(", \"bought\": ").Append(N(f.Bought))
+                        .Append(", \"editions\": [").Append(string.Join(", ", f.Editions.Select(N))).Append(']')
+                        .Append(", \"owned\": [").Append(string.Join(", ", f.Owned.Select(o => "\"" + o + "\""))).Append(']')
+                        .Append(", \"dishes\": ").Append(N(f.Dishes)).Append('}');
+                    return w.ToString();
+                }))).Append("}},\n");
+            }
+            if (!c.Rebuilds.IsEmpty)   // lieux reconstruits (version 28) : état déjà validé à la construction (identifiants au format, aucun échappement)
+            {
+                b.Append("      \"rebuilds\": {").Append(string.Join(", ", c.Rebuilds.Entries.Select(r => "\"" + r.Site + "\": {\"stage\": "
+                    + r.Stage.ToString(CultureInfo.InvariantCulture) + ", \"given\": {"
+                    + string.Join(", ", r.Given.Select(g => "\"" + g.Key + "\": " + g.Value.ToString(CultureInfo.InvariantCulture))) + "}"
+                    + (r.Done ? ", \"done\": true" : "") + "}"))).Append("},\n");
             }
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));

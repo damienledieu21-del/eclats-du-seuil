@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.foulon",
+    "name": "Moulin à foulon",
+    "scenario": "zones/foulon",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Moulin à foulon",
+        "position": [
+          0,
+          -2.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "foulon",
+        "name": "Moulin à foulon",
+        "min": [
+          -3.5,
+          -3.0
+        ],
+        "max": [
+          3.5,
+          3.0
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Moulin à foulon",
+        "position": [
+          0,
+          -2.4
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_moulin_a_foulon"
+      }
+    ]
+  }
+}

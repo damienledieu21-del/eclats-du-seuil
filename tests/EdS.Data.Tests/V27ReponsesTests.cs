@@ -46,12 +46,12 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((6, 3, "0.16.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((7, 3, "0.19.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
             ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers"), ("merchant.boulangerie", "villagers"),   // V2.14 : boutiques et marché
             ("merchant.auberge", "villagers"), ("merchant.mercerie", "villagers"), ("merchant.fromagere", "villagers"), ("merchant.marchand_epices", "villagers"),
             ("merchant.armurier_ville", "guard"), ("merchant.forgeron_ville", "villagers"), ("merchant.tanneur_ville", "villagers"),
-            ("merchant.apothicaire_ville", "villagers"), ("merchant.tailleur_ville", "villagers"), ("merchant.taverne_ville", "villagers") },   // V2.30.5
+            ("merchant.apothicaire_ville", "villagers"), ("merchant.tailleur_ville", "villagers"), ("merchant.taverne_ville", "villagers"), ("merchant.charron_hameau", "villagers"), ("merchant.foulonniere", "villagers"), ("merchant.frere_hospitalier", "villagers") },   // V2.30.5
             ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
         Assert.Equal("liked", ShippedMerchants.Merchant("merchant.receleur").Standing);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
@@ -62,8 +62,7 @@ public class V27ReponsesTests
         V210TestData.MerchantsWithoutLiving(three);   // V2.10 : sans stock vivant ni étal ambulant (schéma 5)
         Assert.Contains(ReadMerchants(three).Report.Errors, e => e.Path == "$.data.merchants[0].faction" && e.Code == ValidationCode.InvalidValue);
         JsonArray list = three["data"]!["merchants"]!.AsArray();
-        list.RemoveAt(list.Count - 1);
-        foreach (JsonNode? m in list) m!.AsObject().Remove("faction");
+        foreach (JsonNode? m in list) { m!.AsObject().Remove("faction"); m.AsObject().Remove("standing"); }   // V2.43.2b : le receleur n'est plus le dernier
         MerchantsLoadResult old = ReadMerchants(three);
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.All(old.Book!.Merchants, m => Assert.Equal(("villagers", (string?)null), (m.Faction, m.Standing)));

@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.moulin_meules",
+    "name": "Étage des meules",
+    "scenario": "zones/moulin_meules",
+    "indoor": true,
+    "entry": "meules",
+    "safePoints": [
+      {
+        "id": "meules",
+        "name": "Meules",
+        "position": [
+          0.6,
+          -1.5
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "etage_des_meules",
+        "name": "Étage des meules",
+        "min": [
+          -1.85,
+          -2.6
+        ],
+        "max": [
+          1.85,
+          2.6
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Moulin",
+        "position": [
+          -0.1,
+          -1.2
+        ],
+        "to": "zone.moulin",
+        "toDoor": "etage"
+      }
+    ]
+  }
+}

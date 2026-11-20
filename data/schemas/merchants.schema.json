@@ -21,7 +21,8 @@
         3,
         4,
         5,
-        6
+        6,
+        7
       ]
     },
     "kind": {
@@ -219,6 +220,59 @@
                     "door": {
                       "type": "boolean",
                       "description": "Sous-lot V2.14 (schéma 6) : vendue aussi à la porte quand la boutique est fermée (obligatoire pour un objet utile à l'histoire)."
+                    },
+                    "weekdays": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 6,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 6
+                      },
+                      "description": "Pâtisseries de Firmin (schéma 7) : jours de la semaine où l'offre permanente est en vente (0 : lundi … 6 : dimanche) ; facultatif (tous les jours)."
+                    },
+                    "seasons": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "spring",
+                          "summer",
+                          "autumn",
+                          "winter"
+                        ]
+                      },
+                      "description": "Pâtisseries de Firmin (schéma 7) : saisons où l'offre permanente est en vente ; facultatif (toute l'année)."
+                    }
+                  },
+                  "if": {
+                    "properties": {
+                      "door": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "door"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "weekdays"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "seasons"
+                          ]
+                        }
+                      ]
                     }
                   }
                 }

@@ -13,6 +13,9 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
+using EdS.Data.Feasts;
+using EdS.Data.Rebuilds;
+using EdS.Data.Validation;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.WorldBosses;
@@ -236,6 +239,8 @@ namespace EdS.Runtime
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
+        private readonly RebuildBook? _rebuilds;   // lieux reconstruits (null : aucun)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)
@@ -262,8 +267,10 @@ namespace EdS.Runtime
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
-            WorldBossBook? worldBosses = null, FishingBook? fishing = null)
+            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null)
         {
+            _feasts = feasts;
+            _rebuilds = rebuilds;
             _worldBosses = worldBosses;
             _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
@@ -307,6 +314,14 @@ namespace EdS.Runtime
             // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
             // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
             // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
+            // Lieux reconstruits (relecture indépendante de la PR #221) : des chantiers gardés hors du catalogue (lieu ou palier retiré) sont
+            // une erreur de chargement, avec chemin et code, comme une donnée refusée ; jamais une exception brute à la mise en jeu.
+            if (_rebuilds != null)
+            {
+                var rebuildReport = new ValidationReport();
+                RebuildRules.Check(save.Character!.Rebuilds, _rebuilds, rebuildReport, "$.data.character.rebuilds");
+                if (!rebuildReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (lieux reconstruits) : {rebuildReport}");
+            }
             (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);
             Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
@@ -344,8 +359,10 @@ namespace EdS.Runtime
             TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(dataDirectory));
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             // Sous-lot V1.6 : les PNJ des intérieurs vivent dans les zones reliées par des portes.
+            // Lieux reconstruits (revue Codex de la PR #221) : l'histoire et les marchands connaissent les faits des chantiers.
+            string rebuildsPath = RebuildJsonReader.PathIn(dataDirectory);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog,
-                zones.Zones.Skip(1).ToList(), progression.LevelCap);
+                zones.Zones.Skip(1).ToList(), progression.LevelCap, RebuildJsonReader.DeclaredFacts(rebuildsPath));
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.
@@ -365,10 +382,17 @@ namespace EdS.Runtime
             // Pêche et carnet : facultative de même (données d'essai réduites) ; présente, elle doit être valide.
             string fishingPath = FishingJsonReader.PathIn(dataDirectory);
             FishingLoadResult? fishing = File.Exists(fishingPath) ? FishingJsonReader.ReadFile(fishingPath, catalogTexts, definition, catalog) : null;
+            // Les 12 fêtes d'Orsédia : facultatives de même (données d'essai réduites) ; présentes, elles doivent être valides.
+            string feastsPath = FeastJsonReader.PathIn(dataDirectory);
+            FeastLoadResult? feasts = File.Exists(feastsPath) ? FeastJsonReader.ReadFile(feastsPath, storyBook, catalogTexts) : null;
+            // Lieux reconstruits (sous-lot V2.43.1) : facultatifs de même (données d'essai réduites) ; présents, ils doivent être valides.
+            RebuildLoadResult? rebuilds = File.Exists(rebuildsPath) ? RebuildJsonReader.ReadFile(rebuildsPath, definition, catalog, storyBook) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
-                fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report));
+                fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
+                feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
+                rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -388,6 +412,8 @@ namespace EdS.Runtime
         {
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
+            world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
+            world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
             // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
             // cours continue d'une session à l'autre de cette zone.
@@ -403,11 +429,13 @@ namespace EdS.Runtime
             // (arrondi à la seconde au-dessus), pour que le temps serveur de la nouvelle ne recule pas sous celui d'une occurrence reprise.
             long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
             if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
+            if (World != null) world.CarryComfort(World.ComfortUntilMinute);   // sous-lot F7 : le réconfort d'un plat suit le personnage (hors sauvegarde)
             World = world;
             _explored = -1;   // sous-lot V2.29 (2) : nouvelle session, relevé repris
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
             GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
+            CloseFeastStall();   // sous-lot F4 : et l'étal de fête
             // Sous-lot V2.28b (2b) : le pont suit le personnage d'une session à l'autre (passage de secteur, session renouvelée) : moteur et
             // identité du moment (world.CombatantId, et plus PlayerId : au retour dans une session où il a déjà servi, il est bastion_p<n>).
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, world.CombatantId, () => Collect(world, world.Step()), TargetRange,
@@ -458,6 +486,8 @@ namespace EdS.Runtime
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
+            // Sous-lot F7 : réconfort d'un plat de fête, hors combat (monde) ; revue Codex de la PR #223 : relu avant chaque tick du lot.
+            Combat.ComfortSource = () => World.ComfortWanted;
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             // Pêche et carnet : la touche s'annonce une fois.
@@ -664,6 +694,9 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.ItemPresented:   // concours de pâtisserie : la pâtisserie de sa main, présentée au juge
                     Say("text.ui.item_presented", ItemName(e.Id));
+                    // Pâtisseries de Firmin : la pièce présentée, au modèle de son niveau de réussite, reste sur l'étal du juge ce jour-là.
+                    if (FirminPastries.QualityOf(e.Step) is ItemQuality presented && FirminPastries.Model(e.Id, presented, true) is string code)
+                        _presented = (code, World.Zone.Time.Day);
                     break;
                 case StoryEventKind.XpGiven:
                     Say("text.ui.xp", e.Value);
@@ -707,6 +740,12 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.StandingChanged:   // sous-lot V2.7 : un nouveau palier de réputation
                     ReputationMessage(e);
+                    break;
+                case StoryEventKind.FeastCoins:   // sous-lot F4 : gains de fête (activité ou concours de l'histoire)
+                case StoryEventKind.FeastWalletFull:
+                case StoryEventKind.FeastWon:
+                case StoryEventKind.FeastCountersFull:
+                    FeastMessage(e);
                     break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
@@ -783,6 +822,9 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
+            // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
+            // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
+            if (DoorFirst) return UseDoor();
             if (NpcInReach is Npc npc)
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
@@ -897,7 +939,8 @@ namespace EdS.Runtime
         /// </summary>
         public Npc? AwayStallInReach => Me is GroundVector p
             ? HomeNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !(World.NpcHere(n) && Within(p, World.NpcPosition(n), Narrative.TalkRange))
-                    && World.NpcActivity(n) != null && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
+                    && World.NpcActivity(n) != null && !World.AwaitsRebuild(n.Id)   // V2.43.2b : pas d'étal pour un lieu pas encore reconstruit
+                    && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
             : null;
 
@@ -920,6 +963,13 @@ namespace EdS.Runtime
         public Door? DoorInReach => Me is GroundVector p && !World.IsDefeated
             ? VisibleDoors.Where(d => Within(p, d.Position, DoorRange)).OrderBy(d => Distance2(p, d.Position)).ThenBy(d => d.Id, StringComparer.Ordinal).FirstOrDefault()
             : null;
+
+        /// <summary>
+        /// Revue Codex de la PR #209 (P1) : dans un intérieur, une porte à portée plus proche que le PNJ à portée (ou sans PNJ à portée) passe
+        /// avant lui (touche F, action tactile, indication à l'écran). Dehors, l'ordre d'avant ne change pas.
+        /// </summary>
+        public bool DoorFirst => !World.InStoryZone && Me is GroundVector p && DoorInReach is Door door
+            && (!(NpcInReach is Npc npc) || Distance2(p, door.Position) < Distance2(p, World.NpcPosition(npc)));
 
         /// <summary>
         /// La porte à portée se passe : personnage vivant, aucun ennemi vivant à moins de <see cref="RestSafety"/> (on ne fuit pas un combat
@@ -946,6 +996,12 @@ namespace EdS.Runtime
             if (World.DoorNeedsRank(door.Id) is string rank)
             {
                 Say("text.ui.guild.door_rank", RankName(rank));
+                return false;
+            }
+            // V2.43.4 : la porte de l'intérieur d'un lieu pas encore reconstruit reste fermée.
+            if (World.DoorAwaitsRebuild(door.Id))
+            {
+                Say("text.ui.rebuild.door_closed");
                 return false;
             }
             // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
@@ -1063,7 +1119,9 @@ namespace EdS.Runtime
         public bool Indoors => _zone.Indoor;
 
         /// <summary>Sous-lot V2.53 : l'écran de chargement peint du lieu où est le personnage (le village à défaut). Affichage seulement.</summary>
-        public LoadingScreen LoadingHere() => LoadingScreens.For(_zone, Me);
+        public LoadingScreen LoadingHere() =>
+            // Sous-lot F6 : pendant une fête d'Orsédia (dehors, dans la zone de l'histoire), l'image d'ambiance de la fête et son accroche.
+            !Indoors && World.InStoryZone && World.FeastNow is EdS.Data.Feasts.Feast feast ? LoadingScreens.ForFeast(feast.Number, feast.Motto) : LoadingScreens.For(_zone, Me);
 
         /// <summary>Intérieurs : identifiant de la zone en cours (« zone.vallons », « zone.auberge »).</summary>
         public string CurrentZone => _zone.Id;
@@ -1086,7 +1144,7 @@ namespace EdS.Runtime
         /// </summary>
         public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d
             ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text))
-                .Concat(CardAnswers).ToList()   // sous-lot V2.32 : puis les mises des Trois Feux (AdventureSession.Cards.cs)
+                .Concat(CardAnswers).Concat(FeastAnswers).ToList()   // V2.32 : les mises des Trois Feux ; F4 : l'étal et les activités de fête
             : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
@@ -1096,7 +1154,12 @@ namespace EdS.Runtime
         public DialogueRefusal Choose(int index)
         {
             if (!(Dialogue is DialogueView open) || index < 0) return DialogueRefusal.NoSuchChoice;
-            if (index >= open.Options.Count) return ChooseCards(index - open.Options.Count);   // sous-lot V2.32 : une réponse de cartes
+            if (index >= open.Options.Count)
+            {
+                // Sous-lot V2.32 : une réponse de cartes ; sous-lot F4 : puis une réponse de fête (étal du forain, activité d'un invité).
+                int cards = CardAnswers.Count;
+                return index - open.Options.Count < cards ? ChooseCards(index - open.Options.Count) : ChooseFeast(index - open.Options.Count - cards);
+            }
             DialogueRefusal refusal = World.Choose(open.Options[index].Index, out _, out IReadOnlyList<StoryEvent> events);
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;
@@ -1577,9 +1640,31 @@ namespace EdS.Runtime
         public GroundVector DoorToward(string? zone)
         {
             string target = zone ?? ZoneId;
-            Door? door = _zone.Doors.FirstOrDefault(d => d.To == target)
+            Door? door = _zone.Doors.FirstOrDefault(d => d.To == target) ?? FirstDoorOnWay(target)
                 ?? (World.InStoryZone ? null : _zone.Doors.FirstOrDefault(d => d.To == ZoneId));
             return door?.Position ?? _zone.Entry.Position;
+        }
+
+        /// <summary>
+        /// Lot C (décision de Damien du 17 novembre 2026 : PNJ dans une pièce derrière une pièce) : première porte de la zone en cours sur le
+        /// plus court chemin de portes vers <paramref name="target"/> (parcours en largeur sur les zones reliées, dans l'ordre des portes) ;
+        /// null s'il n'y en a pas.
+        /// </summary>
+        private Door? FirstDoorOnWay(string target)
+        {
+            var first = new Dictionary<string, Door>(StringComparer.Ordinal);
+            var queue = new Queue<ZoneDefinition>();
+            var seen = new HashSet<string>(StringComparer.Ordinal) { _zone.Id };
+            foreach (Door d in _zone.Doors)
+                if (seen.Add(d.To) && _zones.FirstOrDefault(z => z.Id == d.To) is ZoneDefinition z0) { first[d.To] = d; queue.Enqueue(z0); }
+            while (queue.Count > 0)
+            {
+                ZoneDefinition at = queue.Dequeue();
+                if (at.Id == target) return first[at.Id];
+                foreach (Door d in at.Doors)
+                    if (seen.Add(d.To) && _zones.FirstOrDefault(z => z.Id == d.To) is ZoneDefinition next) { first[d.To] = first[at.Id]; queue.Enqueue(next); }
+            }
+            return null;
         }
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
@@ -1629,6 +1714,69 @@ namespace EdS.Runtime
                 }
                 return _paths;
             }
+        }
+
+        /// <summary>
+        /// V2.43.3 : clé de l'état des chantiers de la zone en jeu (« lieu:état:paliers » de chaque lieu) : la vue refait le décor des
+        /// chantiers quand elle change. Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public string RebuildDecorKey
+        {
+            get
+            {
+                if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return string.Empty;
+                var parts = new List<string>(book.Sites.Count);
+                foreach (RebuildSite site in book.Sites)
+                    parts.Add(site.Id + ":" + (int)World.RebuildPhaseOf(site.Id) + ":" + (World.RebuildState.Of(site.Id)?.Stage ?? 0));
+                return string.Join(";", parts);
+            }
+        }
+
+        /// <summary>V2.43.3 : obstacles que le grand décor des lieux remplace (la vue ne les dessine plus), selon l'état des lieux.</summary>
+        public IReadOnlyList<string> RebuildCovered() => RebuildCovers().Select(c => c.Obstacle).ToList();
+
+        /// <summary>
+        /// Revue Codex de la PR #225 : chaque obstacle remplacé et la pièce qui le remplace ; la vue ne cache l'obstacle que si cette pièce a
+        /// bien été posée (modèle au catalogue).
+        /// </summary>
+        public IReadOnlyList<(string Obstacle, string Piece)> RebuildCovers()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<(string, string)>();
+            var covers = new List<(string, string)>();
+            foreach (RebuildSite site in book.Sites)
+            {
+                var landmark = RebuildDecor.Landmark(site, World.RebuildPhaseOf(site.Id), RegionMap.Whole.Obstacles);
+                if (landmark.Covered is string id && landmark.Spots.Count > 0) covers.Add((id, landmark.Spots[0].Piece));
+            }
+            return covers;
+        }
+
+        /// <summary>
+        /// V2.43.3 : décor des chantiers de la zone en jeu, selon l'état de chaque lieu (<see cref="RebuildDecor"/>), posé sur l'aire entière
+        /// (obstacles de l'aire, pas seulement ceux de la fenêtre). Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public IReadOnlyList<DecorSpot> RebuildSpots()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<DecorSpot>();
+            // Relecture indépendante de la PR #225 : comme le décor des fêtes : obstacles de l'aire entière, rues et chemins, portes, PNJ
+            // (places de jour et de pluie), invités, points sûrs, et les accessoires du Bourg fortifié.
+            AdventureMap map = RegionMap.Whole;
+            var obstacles = FeastObstacles();
+            var doors = map.Doors.Select(d => (d.X, d.Z)).ToList();
+            var avoid = FeastAvoid().ToList();
+            foreach (BourgPiece b in map.Bourg.Pieces)
+                if (!BourgModels.IsGround(b.Piece) && b.Covers is null) avoid.Add((b.X, b.Z));
+            var spots = new List<DecorSpot>();
+            foreach (RebuildSite site in book.Sites)
+            {
+                // 20 novembre 2026 : d'abord le grand décor du lieu (pont, tour, dortoir, moulin), que les petites pièces évitent.
+                RebuildPhase phase = World.RebuildPhaseOf(site.Id);
+                IReadOnlyList<DecorSpot> landmark = RebuildDecor.Landmark(site, phase, map.Obstacles).Spots;
+                spots.AddRange(landmark);
+                spots.AddRange(RebuildDecor.Layout(site, phase, World.RebuildState.Of(site.Id)?.Stage ?? 0, obstacles, map.Roads, doors, avoid,
+                    landmark.Select(RebuildDecor.BoxOf).ToList()));
+            }
+            return spots;
         }
 
         /// <summary>

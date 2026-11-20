@@ -480,9 +480,26 @@ public class V228b2bAventureTests : IDisposable
         JsonNode bossesBefore = JsonNode.Parse(File.ReadAllText(bossesPath))!;
         WorldBossesBefore(bossesBefore);   // sous-lot V2.30.1 : la cible « bourg » au bord du cœur, comme avant le déménagement
         File.WriteAllText(bossesPath, bossesBefore.ToJsonString());
+        SeasonsBefore(data);   // sous-lot V2.36 : l'île des saules dormants est hors de l'aire réduite
         foreach (string key in new[] { "events", "boss", "chiefs" }) zone["data"]!.AsObject().Remove(key);
         zone["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "seuil_est", ["name"] = "Seuil de l'est", ["position"] = new JsonArray(124, 0) });
         File.WriteAllText(zonePath, zone.ToJsonString());
+        // Sous-lot V2.43.2a : les recettes dont l'atelier est hors de l'aire d'avant (cabane du bûcheron, gradins de la carrière) sont retirées.
+        string craftingPath = Path.Combine(data, "world", "crafting.json");
+        JsonNode crafting = JsonNode.Parse(File.ReadAllText(craftingPath))!;
+        var kept = zone["data"]!["places"]!.AsArray().Select(n => (string)n!["id"]!).ToHashSet(StringComparer.Ordinal);
+        var recipes = crafting["data"]!["recipes"]!.AsArray();
+        foreach (var r in recipes.Where(r => !kept.Contains((string)r!["place"]!)).ToList()) recipes.Remove(r);
+        // … et les nœuds de récolte hors de l'aire réduite (forêt profonde, grande carrière).
+        var bounds = scenario["data"]!["space"]!["bounds"]!;
+        static double D(JsonNode n) => double.Parse(n.ToJsonString(), System.Globalization.CultureInfo.InvariantCulture);
+        bool Within(JsonNode p) => D(p[0]!) >= D(bounds["min"]![0]!) && D(p[0]!) <= D(bounds["max"]![0]!)
+            && D(p[1]!) >= D(bounds["min"]![1]!) && D(p[1]!) <= D(bounds["max"]![1]!);
+        var nodes = crafting["data"]!["nodes"]!.AsArray();
+        foreach (var n in nodes.Where(n => !Within(n!["position"]!)).ToList()) nodes.Remove(n);
+        File.WriteAllText(craftingPath, crafting.ToJsonString());
+        // Sous-lot V2.43.2b : sans les chantiers (la plupart de leurs lieux sont hors de l'aire d'avant).
+        File.Delete(Path.Combine(data, "world", "rebuilds.json"));
         // Chefs et événements du monde restent liés à leur session jusqu'au V2.28b (2c) : ils sont retirés de la zone, et de l'histoire et de la
         // Guilde, des marchands et des métiers ce qui en parle (l'élément de liste le plus proche qui les mentionne, la propriété qui porte leur nom).
         // Ce qui en découle (faits que plus rien n'apprend, références devenues inconnues) est retiré de proche en proche, d'après le

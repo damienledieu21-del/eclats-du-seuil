@@ -16,7 +16,20 @@ namespace EdS.Runtime
         public int Number { get; }
 
         /// <summary>Clé du texte du jeu (<c>text.loading.{Id}</c>).</summary>
-        public string TextKey => "text.loading." + Id;
+        public string TextKey => _textKey ?? "text.loading." + Id;
+
+        /// <summary>Sous-lot F6 : fichier de l'image (« ch_fete_01 »), ou null : celui du lieu (<see cref="LoadingScreens.ResourcePath"/>).</summary>
+        public string? File { get; }
+
+        private readonly string? _textKey;
+
+        internal LoadingScreen(int number, string id, string file, string textKey)
+        {
+            Number = number;
+            Id = id;
+            File = file;
+            _textKey = textKey;
+        }
 
         internal LoadingScreen(int number, string id)
         {
@@ -45,6 +58,16 @@ namespace EdS.Runtime
         /// <summary>Écran de repli : le village.</summary>
         public static LoadingScreen Default => All[1];
 
+        /// <summary>
+        /// Sous-lot F6 : pendant une fête d'Orsédia, l'écran de chargement est son image d'ambiance (n° <paramref name="feast"/>, 1 à 12 :
+        /// « ch_fete_01 »…), avec son accroche (<paramref name="motto"/>, clé de texte).
+        /// </summary>
+        public static LoadingScreen ForFeast(int feast, string motto)
+        {
+            if (feast < 1 || feast > 12) throw new ArgumentOutOfRangeException(nameof(feast));
+            return new LoadingScreen(100 + feast, "fete_" + feast.ToString("00"), "ch_fete_" + feast.ToString("00"), motto ?? throw new ArgumentNullException(nameof(motto)));
+        }
+
         // Lieu des données (identifiant) -> numéro d'écran. Les plaines n'ont pas d'image à elles : le lieu suivant qui les contient décide.
         private static readonly Dictionary<string, int> PlaceScreens = new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -52,15 +75,24 @@ namespace EdS.Runtime
             ["village"] = 2, ["moulin"] = 2, ["forge"] = 2, ["four_de_firmin"] = 2, ["champs"] = 2, ["champs_du_sud"] = 2, ["vergers"] = 2, ["vergers_du_sud"] = 2, ["pre_nord"] = 2,
             ["riviere"] = 3, ["vallee_de_la_riviere"] = 3, ["cascade"] = 3, ["moulin_a_foulon"] = 3, ["cabane_du_pecheur"] = 3, ["pont_suspendu"] = 3,   // V2.31
             ["coteaux_du_chateau"] = 4, ["route_d_havre_d_ambre"] = 4,
+            ["domaine_du_chateau"] = 4, ["pressoir_du_chateau"] = 4, ["chai_du_chateau"] = 4, ["vignes_du_chateau"] = 4,   // V2.33
             ["foret_des_loups"] = 5, ["foret_des_loups_profonde"] = 5, ["camp_des_rodeurs"] = 5,
             ["arbre_millenaire"] = 5, ["taniere_de_la_meute"] = 5, ["cabane_du_bucheron"] = 5, ["lisiere_de_la_foret"] = 5,   // V2.32
             ["hautes_collines"] = 6, ["hautes_pierres"] = 6, ["tour_de_guet"] = 6, ["epaulement_est"] = 6,
+            ["bergerie_des_collines"] = 6, ["cairns_de_la_crete"] = 6, ["tour_de_signal"] = 6,   // V2.34
             ["ruines"] = 7, ["abbaye_en_ruine"] = 7,
+            ["nef_de_l_abbaye"] = 7, ["cloitre_de_l_abbaye"] = 7, ["dortoir_de_l_abbaye"] = 7, ["jardin_de_l_abbaye"] = 7,   // V2.35
             ["lac"] = 8, ["grand_lac"] = 8, ["rives_du_lac"] = 8,
+            ["cabanes_sur_pilotis"] = 8, ["ile_des_saules_dormants"] = 8,   // V2.36
             ["carriere"] = 9, ["hameau"] = 9, ["grande_carriere"] = 9, ["feu_de_camp"] = 9,
+            ["village_des_mineurs"] = 9, ["carreau_de_la_mine"] = 9, ["gradins_de_la_carriere"] = 9,   // V2.37
             ["fort_des_bandits"] = 10, ["route_du_fort"] = 10,
+            ["enceinte_du_fort"] = 10, ["tour_des_bandits"] = 10,   // V2.38
             ["seuil"] = 11, ["coeur_du_seuil"] = 11, ["terres_corrompues"] = 11, ["landes_du_seuil"] = 11,
+            ["cercle_des_pierres_levees"] = 11,   // V2.39
             ["gorge_du_pont"] = 12, ["route_du_col"] = 12,
+            ["passerelle_des_ronces"] = 12, ["pont_des_murmures"] = 12, ["col_des_cretes_de_fer"] = 12,   // V2.40
+            ["abords_de_la_porte_nord"] = 1, ["poste_de_peage"] = 4, ["route_de_l_est"] = 7, ["pont_effondre"] = 7,   // V2.40
         };
 
         /// <summary>Écran d'un lieu des données (null s'il n'en a pas).</summary>
@@ -81,7 +113,9 @@ namespace EdS.Runtime
         public static string ResourcePath(LoadingScreen screen, DeviceTier tier)
         {
             if (screen is null) throw new ArgumentNullException(nameof(screen));
-            return "EdsInterface/Chargements/" + (MachineTier.Light(tier) ? "1280" : "1920") + "/ch_" + screen.Number.ToString("00") + "_" + FileSuffix[screen.Number - 1];
+            string folder = "EdsInterface/Chargements/" + (MachineTier.Light(tier) ? "1280" : "1920") + "/";
+            if (screen.File != null) return folder + screen.File;   // sous-lot F6 : l'image d'ambiance de la fête
+            return folder + "ch_" + screen.Number.ToString("00") + "_" + FileSuffix[screen.Number - 1];
         }
 
         private static readonly string[] FileSuffix =

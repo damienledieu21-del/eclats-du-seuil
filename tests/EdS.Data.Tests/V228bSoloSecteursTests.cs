@@ -32,6 +32,7 @@ public class V228bSoloSecteursTests
         {
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
+            ScenarioTestData.WithoutRebuildDoors(root);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
         }
         // Sous-lot V2.28c : les Vallons d'avant la surface étendue (le cœur seul) : ces essais portent sur l'hôte au cœur seul.
         string directory = Path.Combine(Path.GetTempPath(), "eds_v228b_" + Guid.NewGuid().ToString("N"));

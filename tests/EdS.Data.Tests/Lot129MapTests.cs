@@ -89,10 +89,10 @@ public class Lot129MapTests : IDisposable
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
         Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric", "Renart", "Lison", "Colombe", "Maître Josse", "Aubine", "Achille", "Garance", "Mahaut", "Thibaut", "Le capitaine Bérenger", "Colin", "Ysarn", "Gaut le receleur",
-            "Hugon", "Raoul", "Anselme", "Clémence", "Évrard", "Bertrand", "Aymon Vaudry", "Ermeline Vaudry" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
-        Assert.Equal(16, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // V2.31, V2.32 : pied de la cascade, arbre millénaire ; V2.30 : place du marché de la ville ; Vallons agrandis : bourg, ferme, hameau ; V2.28c (3) : huit carrefours de la région
+            "Hugon", "Raoul", "Anselme", "Clémence", "Évrard", "Bertrand", "Aymon Vaudry", "Ermeline Vaudry", "Baudouin", "Aveline", "Huguet" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
+        Assert.Equal(20, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // V2.35 : parvis de l'abbaye ; décision de Damien du 18 novembre 2026 : mine et fort ;   // V2.31, V2.32 : pied de la cascade, arbre millénaire ; V2.30 : place du marché de la ville ; Vallons agrandis : bourg, ferme, hameau ; V2.28c (3) : huit carrefours de la région
         // Cuisine et boulangerie : trois ateliers, la forge de Maëlle, le four de Firmin et le feu de camp.
-        Assert.Equal(3, markers.Count(m => m.Kind == MapMarkerKind.Workshop));
+        Assert.Equal(7, markers.Count(m => m.Kind == MapMarkerKind.Workshop));   // V2.43.2a : cabane du bûcheron, gradins de la carrière
         MapMarker forge = markers.First(m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));
         Assert.Contains(markers, m => m.Kind == MapMarkerKind.Node);

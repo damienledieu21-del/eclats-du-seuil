@@ -270,6 +270,29 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+## 7 undecies. Lot C : intérieurs de métier et forge de Maëlle (Retenu)
+
+Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la session principale (modèles Tripo du lot C, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Intérieurs de métier | Créer les intérieurs de la **forge**, de la **grange**, du **moulin**, de la **tour de guet**, d'une **maison paysanne**, et la **cuisine** et les **chambres** de l'auberge, meublés avec les modèles du lot C. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; réalisé dans la PR empilée sur #201 ([MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026)) |
+| Forge de Maëlle | **Toutes les pièces de forge** du lot C (soufflet, bac de trempe, meule, râtelier d'armes, présentoir de fers, tas de charbon, établi, outils) autour de la forge **en plein air**, sans bloquer le passage. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; même PR |
+| Plantes et filons | Plantes à récolter **grossies 2 fois** et **trois tailles de filons** : gardées. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; PR #196 |
+| Meubles des nouveaux lieux (I01 à I21) | La PR #202 **reste en brouillon** ; chaque meuble sera placé quand son lieu entrera dans les données. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) |
+| Porte de la forge couverte | Sur la **maison de Maëlle** (`maison3`) : le hameau a désormais cette porte (seule exception à « le hameau reste sans porte »). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Maison paysanne | La **maison d'Achille** (`maison9`, champs du sud). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Habitants des intérieurs de métier | Des habitants **vivent dans ces pièces** : emplois du temps adaptés en gardant leurs horaires (Maëlle à sa forge couverte et dans la cour, la meunière au moulin, Achille chez lui ; l'aubergiste et le personnel en cuisine, les voyageurs de passage dans les chambres la nuit). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; réalisé pour Maëlle (forge couverte 16 h à 19 h 30), Odile (salle du moulin l'après-midi) et Achille (repas de midi chez lui) ; le matin et la nuit restent ceux d'avant (règles de l'histoire : place du début du jeu le matin, devant sa porte la nuit). Cuisine et chambres : impossible tant qu'un PNJ ne passe qu'une porte depuis les Vallons (`StoryValidator.SlotZone`), et aucun voyageur de passage n'a d'emploi du temps : question posée dans la PR #209 |
+| Auvent de la forge | L'auvent (C_OV_A01) **au-dessus de la forge en plein air** de Maëlle, sans gêner ni les pièces ni le passage. | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; PR #209 (`LotCModels.ForgeAwning`, testé) |
+| Plans des intérieurs de métier | Recalés sur les **fiches de ChatGPT** (`AssetLab/Interieurs`) : dimensions des pièces et meubles aux cotes ; l'auberge suit ses trois niveaux (chambres, logement de Mathurin et dortoir, combles). | Réalisé (Claude, 17 novembre 2026) d'après les fiches ; écarts notés dans [MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026) |
+| PNJ dans une pièce derrière une pièce | La règle de l'histoire accepte une pièce reliée par porte à une pièce elle-même reliée aux Vallons : **deux portes au plus** (`StoryValidator.MaxSlotDepth`), chaque porte avec sa porte de retour, jamais par la pièce d'une scène ; refus « porte manquante » au-delà. L'affichage mène le PNJ à la première porte du chemin. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; PR empilée sur #209 |
+| Aubergiste en cuisine | Mathurin en cuisine aux heures du service, 11 h 30 à 12 h 30 et 17 h 30 à 18 h ; ses autres horaires ne changent pas. L'auberge n'a pas d'autre personnel dans les données. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
+| Voyageurs de passage | Deux PNJ simples, sans quête : un convoyeur et une voyageuse, arrivés le soir à la taverne, la nuit dans les chambres (leur zone), repartis le matin sur la route d'Ambre. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
+| Achille dort chez lui | Sa zone devient sa maison (`zone.chaumiere`) : il y dort et y prend son repas de midi ; ses journées aux champs et ses soirées à la taverne ne changent pas, ni ses quêtes. Seule exception à « le matin, chacun à sa place du début du jeu », avec les voyageurs. Aucune sauvegarde à migrer : la place d'un PNJ ne se sauvegarde pas. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
+| Odile le matin | Elle **reste dehors le matin**, sans exception (ses quêtes du moulin commencent là). | Retenu (Damien, 17 novembre 2026) ; PR #212 |
+| Personnel de l'auberge | Deux employés, avec prénom, horaires et quelques répliques : **Perrine, la serveuse** (en salle, en cuisine aux repas avec Mathurin, la nuit à l'auberge) et **Huguet, le garçon d'écurie** (à l'écurie devant l'auberge, son repas de midi en cuisine, la nuit dans la paille). | Retenu (Damien, 17 novembre 2026) ; PR #212 |
+| Voyageurs nommés | Un prénom (**Baudouin**, convoyeur ; **Aveline**, voyageuse), une **tenue de voyage** (cape et sac, toute l'année) et une réplique sur leur route. | Retenu (Damien, 17 novembre 2026) ; PR #212 |
+
 ## 7 quinquies. L'âme du jeu (Retenu)
 
 Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session principale. Elle précise le sujet 13 « L'âme du jeu » de la [feuille de route](FEUILLE_DE_ROUTE.md).
@@ -293,7 +316,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Brouillard de carte | **Sous le brouillard, tout est caché** : noms de lieux, PNJ, points sûrs, portes (et créatures) ne s'affichent que sur les cases vues ; le joueur et l'objectif de la quête suivie restent. | Retenu (Damien, 15 novembre 2026, vers 21 h 15) ; réalisé au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) |
 | Point de vue du sommet : brouillard | Monter au point de vue **lève le brouillard sur toute la région** (remplace « autour », ligne du 15 novembre 2026 ci-dessus). | Retenu (Damien, 16 novembre 2026) ; sous-lot V2.29.1 ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) |
 | Monture : quête du cheval | Une **vraie petite quête** pour obtenir la monture, au lieu de l'avoir directement à la fin du chapitre 1. | Retenu (Damien, 16 novembre 2026) ; sous-lot à venir, après le sommet ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md#0-ter-décisions-de-damien-du-16-novembre-2026-retenu)) |
-| Porte nord du Bourg | Une **porte nord**, reliée au chemin du pont des Murmures. | Retenu (Damien, 16 novembre 2026) ; prévue au V2.40 avec le chemin du pont |
+| Porte nord du Bourg | Une **porte nord**, reliée au chemin du pont des Murmures. | Retenu (Damien, 16 novembre 2026) ; réalisée au V2.40 (PR), avec la passerelle des Ronces ouverte à la fin du chapitre 1 (Damien, 18 novembre 2026) ([MONDE.md](MONDE.md)) |
 | Bourg déménagé : emplacement | Le bloc au nord-ouest de la place du marché est **gardé** ; ajustement possible après le test dans Unity. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; V2.30.1 |
 | Panneaux du village au Bourg | Des **panneaux aux croisements** entre le village et le Bourg, dès maintenant. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 | Quête du cheval : détails | **Achille, Brume et les rives du lac** confirmés ; **plus tard** : ramener un vrai cheval à la longe jusqu'à la ferme (modèle 3D et animations). | Retenu (Damien, 16 novembre 2026, vers 10 h) ; la suite est à faire avec le modèle du cheval (V2.28d (2c)) |
@@ -307,6 +330,8 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Bourg : maison notable (H09) | H09 reste un habitant : une famille du Bourg avec ses horaires, sans boutique. | Retenu (Damien, 17 novembre 2026, vers 2 h 15) ; réalisé au V2.30.5 (Aymon et Ermeline Vaudry) |
 | Lieux de la grande carte : créatures | Les lieux sont **peuplés dès leur sous-lot** avec le bestiaire existant (meute de la tanière, ours, etc.). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; V2.31 et suivants ([MONDE.md](MONDE.md)) |
 | Pont suspendu de la vallée | Un **vrai troisième passage** sur la rivière, ailleurs que sur le gué nord, relié par des sentiers ; il s'ouvre avec les gués (quête « Les passages de la vallée »). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; ouverture avec les gués : choix de Claude ; V2.31 ([MONDE.md](MONDE.md)) |
+| Lieux de la grande carte : nuit | Le pont suspendu s'ouvre **avec les gués** (gardé) ; les lieux ont aussi des **créatures de nuit** du bestiaire de nuit existant (loups de la nuit, échos). | Retenu (Damien, 17 novembre 2026, vers 1 h 10) ; V2.33 et suivants ([MONDE.md](MONDE.md)) |
+| Points sûrs et passerelle des Ronces | Points sûrs **devant l'entrée de la mine**, **devant le fort** et **plus bas sur la route du col** (là où la pente le permet) ; la **passerelle des Ronces** s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine. | Retenu (Damien, 18 novembre 2026) ; mine et fort au V2.33 à V2.39, col et passerelle au V2.40 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
@@ -330,6 +355,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fêtes sans contenu (suite) | Le choix du 15 novembre (les neuf fêtes n'affichent que leur nom) est **remplacé par le chantier des fêtes** : les douze fêtes ont leurs activités, leur monnaie, leur marchand et leurs récompenses ([§ 7 undecies](#7-undecies-les-12-fêtes-dorsédia-retenu)). | Retenu (Damien, 18 novembre 2026) |
 | Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
 ## 7 octies. Pêche : appâts (Retenu)
@@ -370,6 +396,58 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la sessi
 | Donne à chaque assise | Un **compteur d'assises persistant** dans la sauvegarde (v25) : la donne change à chaque fois qu'on s'assoit. | Retenu (Damien, 16 novembre 2026, vers 2 h 20) ; fait |
 | Où et quand on joue | Les joueurs de cartes sont **à l'auberge de 18 h à minuit** (d'après leur emploi du temps) ; mises proposées dans leur dialogue, écran de partie Unity. | Retenu (Damien, 16 novembre 2026, vers 14 h ; la PR #193 proposait 19 h à 22 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
 | Titre actif | Le joueur choisit **un titre affiché sous son nom** parmi ceux obtenus (titres de la guilde et « As des Trois Feux »), depuis la carte d'aventurier ; sauvegarde **v26** (`cards.shown`). | Retenu (Damien, 16 novembre 2026, vers 14 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
+
+## 7 undecies. Les 12 fêtes d'Orsédia (Retenu)
+
+Décisions de Damien du 17 novembre 2026, rapportées par la session principale, sur le dossier « Les 12 fêtes d'Orsédia » (AssetLab, `Fetes/`, 108 références). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#les-12-fêtes-dorsédia).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Monnaie de fête | **Chaque fête a sa monnaie propre** (12 monnaies). Elle est **liée au personnage**, **gardée d'une année sur l'autre**, **ni échangeable entre joueurs ni convertible en cuivre**. Elle se gagne **aux activités de la fête** et se dépense **chez le marchand de fête**. | Retenu (Damien, 17 novembre 2026) |
+| Récompense annuelle | **Une récompense annuelle par fête et par personnage**, jamais perdue pour toujours : une récompense ratée **se rattrape à la fête suivante** (l'année d'après), **achetable à prix plein** en monnaie de fête. | Retenu (Damien, 17 novembre 2026) |
+| Nature des récompenses | **Cosmétiques seulement, sans aucune statistique.** Chaque fête gagnée donne **en plus un titre** (mécanisme des titres existant). | Retenu (Damien, 17 novembre 2026) |
+| Raretés | Les **récompenses** sont de rareté **Rare**, les **costumes Communs**. | Retenu (Damien, 17 novembre 2026) |
+| Fenêtres | Déjà retenu le 15 novembre (§ 7 septies) : **vraies dates (7 à 14 jours)** ; sans date fournie, **repli sur le calendrier du jeu**. | Retenu (Damien, 15 et 17 novembre 2026) |
+| Économie des fêtes | Validée telle que proposée : **plafond 999** pièces par fête, le gain au-delà **perdu mais annoncé** (l'activité compte quand même) ; prix : **décoration 40 / 60 / 90** (jusqu'à 1 m, jusqu'à 2,5 m, au-delà), **costume 120**, **plat 5**, **récompense rattrapée 150** ; gains : **concours 30** (une fois par édition), **activité 10** (une fois par jour de fête). | Retenu (Damien, 18 novembre 2026) |
+| Gagner une fête | **3 activités différentes** dans l'édition pour Semailles et Moissons, **2** pour les autres fêtes. | Retenu (Damien, 18 novembre 2026) |
+| Rattrapage | On ne rattrape que **l'édition précédente**, et **sans le titre** (seule une fête gagnée le donne). | Retenu (Damien, 18 novembre 2026) |
+| Marchand de fête | **Un marchand dédié**, pas le colporteur : un **étal de fête sur la place**, avec **son propre PNJ forain**, dont le **décor change chaque mois** (sous-lot F3). | Retenu (Damien, 18 novembre 2026) |
+| Forain et décor de l'étal | **Maître Florentin**, le forain des fêtes, gardé (nom et place sur la place du bourg) ; le **décor automatique** de l'étal (les décorations de la fête qui tiennent sur un étal, jusqu'à 2,5 m) est gardé. | Retenu (Damien, 19 novembre 2026) |
+| Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
+| Interface des fêtes (F4) | L'étal du forain et les activités des invités passent par des **réponses du dialogue** (« [Fête] … »), comme les mises des Trois Feux : **gardé**. La **bourse** n'affiche que la monnaie de la fête en cours ; **toutes les monnaies** restent visibles à l'étal : **gardé**. | Retenu (Damien, 19 novembre 2026) |
+| Décor du mois (F5) | En plus de la place du village et de la place du marché du Bourg : **devant l'auberge**, au **parvis de la chapelle** et aux **portes du Bourg**, mêmes règles de placement. | Retenu (Damien, 19 novembre 2026) |
+| Maison du joueur | **Oui**, en **chantier à part**, après les lieux reconstruits ; les décorations de fête achetées y seront posées. Pas encore faite. | Retenu (Damien, 19 novembre 2026), à venir |
+| Réconfort d'un plat de fête (F6) | Un **vrai petit confort hors combat pendant 60 minutes de jeu** (marche un peu plus rapide hors combat, ou endurance qui revient plus vite hors combat), **aucune statistique de combat** ; déterministe et testé côté cœur ; hors sauvegarde si le format devait changer (perdu au rechargement). Valeur : **+10 % de vitesse de marche hors combat**, avec le changement du moteur (moteur 0.35.0, journal 29, instantané 10, nouvelle référence figée ; journaux historiques jamais modifiés), fait au sous-lot F7. | Retenu (Damien, 19 novembre 2026) |
+| Accessoire de fête des habitants | **Un accessoire par fête** (masque, couronne…) : **oui, plus tard**, dans un chantier à part avec les costumes en 3D. | Retenu (Damien, 19 novembre 2026), à venir |
+
+## 7 duodecies. Pâtisseries de Firmin (Retenu)
+
+Décisions de Damien du 19 novembre 2026, rapportées par la session principale, sur le dossier « Les pains et pâtisseries » (AssetLab, `Firmin/`, 16 modèles) et la PR #217 ; détail dans [MONDE.md](MONDE.md#pâtisseries-de-firmin-19-novembre-2026).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Niveaux de réussite au concours | **Trois niveaux** montrés, selon la qualité de la pièce de la main du joueur : normale → **raté** (N1), supérieure → **correct** (N2), chef-d'œuvre → **maîtrisé** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Pièce achetée à Firmin | Montrée **maîtrisée** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Recettes | **On suit le dossier** : la tarte renversée se fait sur **pâte brisée** (objet et recette nouveaux), le levain chef est un **levain de blé** ; la pâte feuilletée reste pour les chaussons. | Retenu (Damien, 19 novembre 2026) |
+| Calendrier de l'étal | Celui proposé par Claude : levain, pâtes brisée et feuilletée tous les jours ; tarte renversée le **dimanche** ; fouace les **samedis et dimanches de printemps** ; couronne les **samedis et dimanches d'automne**. | Retenu (Damien, 19 novembre 2026) |
+| Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. | Retenu (Damien, 19 novembre 2026) |
+
+## 7 terdecies. Lieux reconstruits, V2.43 (Retenu)
+
+Réponses de Damien du 19 novembre 2026, rapportées par la session principale ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md), V2.43 ; [MONDE.md](MONDE.md#lieux-reconstruits-sous-lot-v243)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Lieux reconstruisibles | On commence par **5 lieux** : le **hameau** de la carrière, le **pont effondré** de la route de l'Est, le **moulin à foulon**, la **tour de signal** du sommet et **une aile de l'abbaye** (le dortoir). Le format doit permettre d'en ajouter d'autres plus tard (H12 complet : villes, routes, mines, phares, ateliers). | Retenu (Damien, 19 novembre 2026) |
+| Avancement d'un chantier | Par **paliers de contributions variées** : or, matériaux de métier, combats et exploration autour du lieu. La contribution de **tous les joueurs** viendra au lot 13 avec l'état de région. | Retenu (Damien, 19 novembre 2026) |
+| Perte d'une reconstruction | Une reconstruction **n'est jamais perdue** (ni bandits, ni corruption, ni Envers). | Retenu (Damien, 19 novembre 2026) |
+| Ce qu'apporte un lieu reconstruit | Un **décor** et des **PNJ**, des **services** (marchand, artisan, point sûr, voyage) et **son intérieur**. | Retenu (Damien, 19 novembre 2026) |
+| Bois et pierre | On ajoute le **bois** et la **pierre** (bruts) et les **planches** et **pierres taillées** (travaillées, recettes dans les métiers existants) ; récolte du bois en forêt et de la pierre à une carrière, sur des nœuds de récolte comme ceux qui existent ; les paliers des chantiers s'en servent en plus des matériaux existants. | Retenu (Damien, 19 novembre 2026) ; V2.43.2a |
+| Métiers du bois et de la pierre | Deux **nouveaux métiers** : **bûcheron** (récolte du bois, planches) et **tailleur de pierre** (récolte de la pierre, pierres taillées), chacun avec sa progression, comme les métiers existants. Quantités validées : **3 bois → 2 planches**, **3 pierres → 1 pierre taillée**, nœuds qui repoussent en **60 s**. | Retenu (Damien, 19 novembre 2026, réponses à la PR #222) |
+| Ateliers faciles | La taille de la pierre se fait **aussi à la petite carrière** (niveau 6) ; les planches se scient **aussi** dans un lieu facile près du village (Claude a proposé le **moulin du village**, niveau 1) ; la cabane du bûcheron et les gradins gardent un second atelier. | Retenu (Damien, 19 novembre 2026, relecture de la PR #222) |
+| Montants et services des 5 lieux | Les paliers proposés par Claude (V2.43.2b, tableau de [MONDE](MONDE.md#lieux-reconstruits-sous-lot-v243)) et tous les services (réparation chez le charron et la foulonnière, points sûrs au pont et à la tour, boutiques du charron, de la foulonnière et du frère hospitalier) sont **validés tels quels**. | Retenu (Damien, 19 novembre 2026, réponses à la PR #224) |
+| Modèles des lieux reconstruits | **Jusqu'à 330 crédits Tripo** pour les ~11 modèles des lieux (échafaudages, pont, palan, tour de signal, dortoir, roue et maillets du foulon) ; génération lancée par la session principale (`AssetLab/Lieux_Reconstruits/tripo_lieux.py`), jamais par un agent. | Retenu (Damien, 20 novembre 2026, PR #225) |
+| Intérieurs des lieux reconstruits | Hameau : **atelier du charron** (fiche I11) ; pont : **relais** façon maison du péager (I17) ; moulin à foulon : sur le modèle du **moulin du village** ; tour de signal : **salle de garde** ; abbaye : **dortoir** avec les lits du lot C. Chaque **porte s'ouvre une fois le lieu reconstruit**. | Retenu (Damien, 20 novembre 2026) ; V2.43.4 |
 
 ## 8. Points ouverts
 

@@ -129,6 +129,9 @@ namespace EdS.World
         public TradeRefusal TradeStatus(string merchant)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
+            // Relecture indépendante de la PR #224 : le marchand d'un lieu pas encore reconstruit n'est pas là ; sa boutique (achat, vente,
+            // rachat, marchandage) et sa réparation ne sont pas encore ouvertes.
+            if (AwaitsRebuild(m.Npc)) return TradeRefusal.NotYetOpen;
             // Sous-lot V2.10 : un étal ambulant n'ouvre que pendant ses fêtes.
             // Sous-lot V2.14 : un jour de marché, ses marchands de passage vendent pendant toutes les heures du marché.
             if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id)) && !AtMarket(m.Festivals, true)) return TradeRefusal.NotFestival;

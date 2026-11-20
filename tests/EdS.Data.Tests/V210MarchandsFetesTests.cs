@@ -64,8 +64,8 @@ public class V210MarchandsFetesTests
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
         Assert.Equal((16, 12, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // concours de pâtisserie : schéma 15 ; fêtes aux vraies dates : 14
-        Assert.Equal((6, 4, "0.16.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
-        Assert.Equal((26, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
+        Assert.Equal((7, 4, "0.19.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
+        Assert.Equal((28, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi",
             "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil", "festival.grand_tournoi",
             "festival.etoiles_filantes", "festival.nuit_des_echos", "festival.givre" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi ; fêtes aux vraies dates : les neuf fêtes du calendrier seulement
@@ -149,7 +149,7 @@ public class V210MarchandsFetesTests
         JsonArray npcs = visit["data"]!["npcs"]!.AsArray();
         int c = npcs.ToList().FindIndex(x => (string?)x!["id"] == "npc.colporteur");
         npcs[c]!["festivals"]!.AsArray().Add("festival.marche");
-        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[5]" && e.Code == ValidationCode.DuplicateId);   // V2.14 : et le marché du mercredi
+        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[{npcs[c]!["festivals"]!.AsArray().Count - 1}]" && e.Code == ValidationCode.DuplicateId);   // V2.14 : et le marché du mercredi ; fêtes d'Orsédia (F3) : toutes les fêtes
     }
 
     [Theory]

@@ -51,6 +51,16 @@ Puis, vers 23 h :
 8. **Peupler les lieux** dès maintenant, avec le **bestiaire existant** (meute et tanière dans la forêt, ours, etc.), pour les lieux des V2.31 et V2.32 comme pour ceux des V2.33 à V2.40.
 9. **Pont suspendu** : un **vrai troisième passage** sur la rivière (pas sur le gué nord), relié par des sentiers.
 
+Puis, le 17 novembre 2026 vers 1 h 10 :
+
+10. **Pont suspendu ouvert avec les gués** par la quête des passages de la vallée : **gardé**.
+11. **Créatures de nuit** dans les nouveaux lieux, avec le bestiaire de nuit existant (loups de la nuit, échos) : **oui** (vallée et forêt comprises, au V2.33 et suivants).
+
+Puis, le 18 novembre 2026 :
+
+12. **Points sûrs** devant l'entrée de la mine (`bouche_de_la_mine`), devant le fort (`devant_le_fort`) et plus bas sur la route du col des Crêtes de Fer, là où la pente le permet (V2.40).
+13. **Passerelle des Ronces** : elle s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine (V2.40).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
@@ -282,7 +292,7 @@ Principe déjà en place (V2.3, V2.5, V2.6) : **ce qui n'est pas vu est calculé
 | **Caravanes** | Position = fonction du temps sur le graphe des routes (départ, vitesse, haltes) ; une attaque de bandits est un **événement du calendrier** sur un tronçon (tirage `Pcg32` comme V2.5). Sans joueur sur place, l'issue est tirée (pillée ou passée) | La caravane et ses gardes deviennent des combattants ; les joueurs peuvent la défendre ; elle passe d'un secteur à l'autre (2.4) | issue de chaque passage de caravane (registre) | quelques entiers par caravane |
 | Conséquences des caravanes | Une caravane pillée change les prix du marché (V2.10) et donne une quête de reprise au fort | — | — | — |
 | **Corruption du Seuil** | **Retenu (Damien, 11 novembre 2026)** : jamais les villes, elle s'arrête aux portes (village du cœur, intérieur de la palissade du Bourg). Un **palier de corruption par case** (0 à 4) qui avance depuis les terres corrompues tous les N jours du monde **si personne ne la repousse** ; elle progresse de case voisine en case voisine (les cicatrices de V2.6 généralisées) | Couleurs fanées, échos rôdeurs, failles plus fréquentes, PNJ qui fuient ; refermer les failles et purifier les autels fait **reculer** le front | 768 paliers et leur date (moins d'un kilo-octet) | négligeable |
-| **Lieux reconstruits** | Un lieu a un état (ruine, chantier, reconstruit) ; une reconstruction terminée **reste** (H12 : reconstruction collective) | Le décor et les PNJ suivent l'état | état par lieu | négligeable |
+| **Lieux reconstruits** | Un lieu a un état (ruine, chantier, reconstruit) ; une reconstruction terminée **reste** (H12 : reconstruction collective). **Retenu (Damien, 19 novembre 2026)** : 5 lieux pour commencer (hameau, pont effondré, moulin à foulon, tour de signal, dortoir de l'abbaye), paliers de contributions variées (or, matériaux de métier, combats et exploration autour du lieu), jamais perdue ; un lieu reconstruit apporte décor, PNJ, services (marchand, artisan, point sûr, voyage) et son intérieur | Le décor et les PNJ suivent l'état | état par lieu (sauvegarde en solo ; état de région au lot 13) | négligeable |
 | **Saisons** | **Retenu (sujet 12)** : comme dans la vraie vie, l'hiver du jeu pendant le vrai hiver. Le cœur n'a pas d'horloge réelle : la **saison est une donnée d'entrée** fournie par le serveur (ou l'hôte local) d'après la date du jour, au début de chaque session, comme le temps (V2.2) ; elle est écrite dans l'en-tête et la sauvegarde, donc rejouable | Lac gelé (glace praticable, l'île s'ouvre), vendanges (PNJ et récoltes des coteaux), neige au col (le passage se ferme), feuillage, herbes et créatures de saison | aucun | négligeable |
 | Populations des secteurs fermés | Rien ne vit : un secteur rouvert repart d'une session neuve (comme aujourd'hui) ; les morts récentes se rappellent par le registre | Réapparitions, laisse, territoire | registre du secteur | — |
 
@@ -372,6 +382,10 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.31 et V2.32** (16 novembre 2026, en PR, une PR pour les deux) : vallée de la rivière et cascade (bassin, rochers, moulin à foulon, cabane du pêcheur, pont suspendu, vrai troisième passage, sentiers et point sûr du pied de la cascade), forêt des Loups (arbre millénaire et cercle de druides, tanière, cabane du bûcheron, sentier et point sûr de l'arbre) ([MONDE.md](MONDE.md)). Créatures : sangliers de la rive est, meute de la tanière, ours. Écarts au plan : souches, troncs couchés, roue du moulin et ponton attendent leurs modèles (pas d'habit existant).
 
+**Avancement V2.33 à V2.39** (16 novembre 2026, en PR, une PR pour les sept, empilée sur celle du V2.31) : coteaux et château viticole, hautes collines, abbaye en ruine, marais du lac et île des saules dormants (verrou d'hiver accroché), carrière devenue mine (surface), fort des bandits, terres corrompues ([MONDE.md](MONDE.md)). Créatures du bestiaire existant (décision du 16 novembre, 23 h) : sangliers, cerfs, loups, échos, bandits. Écarts au plan : ni bergers ni moutons (pas de modèle ni de bête paisible de ce genre) ; pontons, barques, wagonnets, rails, cuves, charrette et états de la vigne (vert, mûr, vendangé : V2.44) attendent leurs modèles ; les murs de l'abbaye prennent l'habit des éboulements.
+
+**Avancement V2.40** (17 novembre 2026, en PR, empilée sur celle des V2.33 à V2.39) : porte nord du Bourg et chemin du pont des Murmures (§ 0 ter, décision du 16 novembre), passerelle des Ronces ouverte à la fin du chapitre 1 (décision du 18 novembre), pont des Murmures gardé, col des Crêtes de Fer (arche, refuge, éboulement), péage d'Havre d'Ambre, route de l'Est et pont effondré, créatures de jour et de nuit ([MONDE.md](MONDE.md)). Point sûr des lacets du col (décision du 18 novembre). Écarts au plan : pas de tablier ni de route au-delà de la gorge (avec la Forêt des Murmures : le pont des Murmures est cosmétique pour l'instant) ; les barrières (pont effondré, col, péage) se contournent jusqu'au bord de la région : toute la bordure de chaque passage sera fermée à l'arrivée des régions voisines ; pas de point sûr au refuge même (pente).
+
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
 | **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |
@@ -393,7 +407,7 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 |---|---|---|---|---|
 | **V2.41** | Caravanes et attaques des bandits | M | V2.26, V2.28, V2.38 | chariot bâché, attelage, coffres de marchandises |
 | **V2.42** | Corruption qui s'étend et recule | M | V2.39 | variantes corrompues des arbres et rochers, autels purifiés |
-| **V2.43** | Lieux reconstruits | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis |
+| **V2.43** | Lieux reconstruits (décisions de Damien du 19 novembre 2026, [CADRAGE](CADRAGE.md) § 7 terdecies), en 4 PR : **V2.43.1** cœur (catalogue `rebuilds`, règles, état dans la sauvegarde) ; **V2.43.2** contenu des 5 lieux (paliers, textes, PNJ et services) ; **V2.43.3** Unity (décor selon l'état) ; **V2.43.4** intérieurs des lieux reconstruits et mise à jour de la PR #202 | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis ; on réutilise d'abord l'échafaudage du fort et les modèles du lot C et du Bourg |
 | **V2.44** | Saisons comme dans la vraie vie (sujet 12) : saison donnée par le serveur d'après la date, lac gelé, vendanges, neige au col, feuillages | M | V2.33, V2.36, V2.40 | variantes d'hiver (neige sur les toits, arbres nus), glace |
 
 ### Étape 4 : le dessous

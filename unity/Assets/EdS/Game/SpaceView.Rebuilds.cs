@@ -1,0 +1,136 @@
+using System.Collections.Generic;
+using EdS.Runtime;
+using UnityEngine;
+
+namespace EdS.Game
+{
+    /// <summary>
+    /// Lieux reconstruits, sous-lot V2.43.3 : le décor des chantiers suit l'état de chaque lieu (<see cref="RebuildDecor"/>,
+    /// <see cref="AdventureSession.RebuildSpots"/>) : échafaudage fait par le code, tas de bois, chariot, éclats et outils pendant le
+    /// chantier ; chariot chargé, caisse et tonneau une fois reconstruit. L'état est relu deux fois par seconde ; le décor est refait quand
+    /// il change (un palier fini, un lieu reconstruit). Affichage seulement, sans collision.
+    /// </summary>
+    public sealed partial class SpaceView
+    {
+        private GameObject _rebuildRoot;
+        private readonly List<Occluder> _rebuildOccluders = new List<Occluder>();   // revue Codex de la PR #225 : rendus à chaque refonte
+        private readonly Dictionary<string, List<GameObject>> _obstacleParts = new Dictionary<string, List<GameObject>>();
+        private Material _scaffoldWood, _scaffoldPlank;   // relecture indépendante de la PR #225 : une fois par vue, rendus avec elle
+        private string _rebuildKey;
+        private float _rebuildPoll;
+
+        /// <summary>Marge (m) autour de la fenêtre dans laquelle le décor des chantiers est posé.</summary>
+        private const float RebuildMargin = 40f;
+
+        public void Rebuilds(AdventureSession adventure, float deltaTime)
+        {
+            if (adventure == null || _root == null || _indoor) return;   // relecture de la PR #225 : jamais en intérieur
+            _rebuildPoll -= deltaTime;
+            if (_rebuildPoll > 0f && _rebuildKey != null) return;
+            _rebuildPoll = 0.5f;
+            string key = adventure.RebuildDecorKey;
+            if (key == _rebuildKey && _rebuildRoot != null) return;
+            _rebuildKey = key;
+            foreach (Occluder o in _rebuildOccluders) { ReleaseFade(o); _occluders.Remove(o); }
+            _rebuildOccluders.Clear();
+            if (_rebuildRoot != null) Object.Destroy(_rebuildRoot);
+            _rebuildRoot = new GameObject("Chantiers");
+            _rebuildRoot.transform.SetParent(_root.transform, false);
+            var placed = new HashSet<string>();
+            if (key.Length > 0) PlaceRebuilds(adventure, placed);
+            // 20 novembre 2026 : l'obstacle que le grand décor d'un lieu remplace (la tour de signal) n'est plus dessiné, mais seulement si la
+            // pièce qui le remplace a bien été posée (revue Codex de la PR #225 : sans catalogue ni modèle, l'original reste).
+            var covered = new HashSet<string>();
+            foreach ((string obstacle, string piece) in adventure.RebuildCovers())
+                if (placed.Contains(piece)) covered.Add(obstacle);
+            foreach (KeyValuePair<string, List<GameObject>> o in _obstacleParts)
+                foreach (GameObject g in o.Value)
+                    if (g != null) g.SetActive(!covered.Contains(o.Key));
+        }
+
+        /// <summary>Pose le décor des chantiers proche de la fenêtre ; <paramref name="placed"/> reçoit les pièces posées par un modèle.</summary>
+        private void PlaceRebuilds(AdventureSession adventure, HashSet<string> placed)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            float minX = Raw(_space.Min.X.Raw) - RebuildMargin, maxX = Raw(_space.Max.X.Raw) + RebuildMargin;
+            float minZ = Raw(_space.Min.Z.Raw) - RebuildMargin, maxZ = Raw(_space.Max.Z.Raw) + RebuildMargin;
+            foreach (DecorSpot spot in adventure.RebuildSpots())
+            {
+                float x = (float)spot.X, z = (float)spot.Z;
+                if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
+                GameObject prefab = catalog != null ? catalog.OwnDecorPiece(spot.Piece) : null;
+                if (prefab == null && spot.Piece == RebuildDecor.Scaffold) { ScaffoldAt(x, z, (float)spot.Yaw); continue; }   // sans le modèle : fait par le code
+                if (prefab == null) continue;   // modèle absent du catalogue : rien
+                var holder = new GameObject(prefab.name + " (chantier)");
+                holder.transform.SetParent(_rebuildRoot.transform, false);
+                holder.transform.position = new Vector3(x, PieceGround(spot), z);
+                holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
+                GameObject model = Object.Instantiate(prefab, holder.transform, false);
+                foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                placed.Add(spot.Piece);
+                // Revue Codex de la PR #225 : les grands modèles (pont, tour, dortoir) s'effacent quand ils cachent le joueur, comme les bâtiments.
+                if (RebuildDecor.Occludes(spot.Piece))
+                {
+                    int before = _occluders.Count;
+                    AddModelOccluders(model);
+                    for (int i = before; i < _occluders.Count; i++) _rebuildOccluders.Add(_occluders[i]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sol d'une pièce : au plus bas sous son pied (les petites pièces, comme le décor de l'atelier) ; un pont repose sur ses deux rives
+        /// (le plus haut des deux bouts, pas le fond du ravin) ; un grand bâtiment sur le sol sous son centre.
+        /// </summary>
+        private static float PieceGround(DecorSpot spot)
+        {
+            float x = (float)spot.X, z = (float)spot.Z;
+            if (!RebuildDecor.Models.TryGetValue(spot.Piece, out (double W, double D) size) || size.W < 6.0) return Ground(x, z, (float)RebuildDecor.Radius(spot.Piece));
+            if (spot.Piece.StartsWith("pont_", System.StringComparison.Ordinal))
+            {
+                float a = (float)spot.Yaw * Mathf.Deg2Rad, half = (float)size.W / 2f, dx = Mathf.Cos(a) * half, dz = -Mathf.Sin(a) * half;
+                return Mathf.Max(StyleWorld.StandHeight(x + dx, z + dz), StyleWorld.StandHeight(x - dx, z - dz));
+            }
+            return StyleWorld.StandHeight(x, z);
+        }
+
+        /// <summary>
+        /// Échafaudage fait par le code (provisoire, faute de modèle) : quatre perches de 5 m, deux planchers à 1,8 m et 3,6 m, une
+        /// échelle de deux montants, en bois brut ; 4 × 2 m au sol.
+        /// </summary>
+        private void ScaffoldAt(float x, float z, float yaw)
+        {
+            var holder = new GameObject("Échafaudage (chantier)");
+            holder.transform.SetParent(_rebuildRoot.transform, false);
+            holder.transform.position = new Vector3(x, Ground(x, z, 2.2f), z);
+            holder.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            if (_scaffoldWood == null) _scaffoldWood = ArenaView.MakeMaterial(new Color(0.52f, 0.38f, 0.24f));
+            if (_scaffoldPlank == null) _scaffoldPlank = ArenaView.MakeMaterial(new Color(0.62f, 0.48f, 0.31f));
+            Material wood = _scaffoldWood, plank = _scaffoldPlank;
+            var parts = new List<(Vector3 Center, Vector3 Size, Material Mat)>();
+            foreach (float px in new[] { -2f, 2f })
+                foreach (float pz in new[] { -1f, 1f })
+                    parts.Add((new Vector3(px, 2.5f, pz), new Vector3(0.12f, 5f, 0.12f), wood));
+            foreach (float h in new[] { 1.8f, 3.6f }) parts.Add((new Vector3(0f, h, 0f), new Vector3(4.2f, 0.08f, 2.1f), plank));
+            foreach (float px in new[] { 2.3f, 2.7f }) parts.Add((new Vector3(px, 1.8f, -1.1f), new Vector3(0.07f, 3.6f, 0.07f), wood));
+            for (float h = 0.4f; h < 3.6f; h += 0.45f) parts.Add((new Vector3(2.5f, h, -1.1f), new Vector3(0.45f, 0.05f, 0.05f), wood));
+            foreach ((Vector3 center, Vector3 size, Material mat) in parts)
+            {
+                GameObject p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Object.Destroy(p.GetComponent<Collider>());
+                p.transform.SetParent(holder.transform, false);
+                p.transform.localPosition = center;
+                p.transform.localScale = size;
+                p.GetComponent<Renderer>().sharedMaterial = mat;
+            }
+        }
+
+        /// <summary>Relecture indépendante de la PR #225 : les matériaux de l'échafaudage, rendus avec la vue (<see cref="Destroy"/>).</summary>
+        private void ReleaseRebuilds()
+        {
+            if (_scaffoldWood != null) Object.Destroy(_scaffoldWood);
+            if (_scaffoldPlank != null) Object.Destroy(_scaffoldPlank);
+            _scaffoldWood = _scaffoldPlank = null;
+        }
+    }
+}

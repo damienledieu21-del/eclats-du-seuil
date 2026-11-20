@@ -19,7 +19,7 @@ internal static class ScenarioTestData
     /// </summary>
     public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
         || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
-            or "falaise_crete"
+            or "falaise_crete" or "ravin_ronces_sud_est"   // V2.40 : le ravin des Ronces coupé par la passerelle
         || id.Contains("_ville", StringComparison.Ordinal)   // sous-lot V2.30 : le Bourg fortifié (palissade, tours, maisons de la ville)
         || id.StartsWith("panneau_", StringComparison.Ordinal)   // sous-lot V2.30.1 : panneaux des croisements du village au Bourg
         || LieuTags.Any(t => id.Contains(t, StringComparison.Ordinal));   // sous-lots V2.31 et suivants : les lieux de la grande carte
@@ -29,7 +29,7 @@ internal static class ScenarioTestData
     /// identifiant (« bloc_rocher_chute_1 », « maison_cabane_du_bucheron_foret », « loup_taniere_foret1 ») ; une étiquette n'apparaît dans
     /// aucun identifiant d'avant le V2.31 (« _cascade » aurait pris falaise_cascade).
     /// </summary>
-    public static readonly string[] LieuTags = { "_chute", "_foret" };
+    public static readonly string[] LieuTags = { "_chute", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu", "_passage" };
 
     /// <summary>
     /// Sous-lots V2.31 et suivants : l'aire des Vallons dépasse 256 obstacles avec les lieux de la grande carte ; elle ne se simule plus d'un
@@ -80,11 +80,17 @@ internal static class ScenarioTestData
         return target;
     });
 
-    /// <summary>Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non.</summary>
+    /// <summary>
+    /// Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non. Une zone sans région
+    /// (schéma d'avant le 13) perd les populations et passages des lieux (leurs créatures et obstacles ne sont pas dans le scénario d'un bloc)
+    /// et leurs lieux nommés (<see cref="LieuPlaces"/>) : elle en garde au plus 64.
+    /// </summary>
     public static string ScenariosFor(JsonObject zone)
     {
         if (zone["data"]?["region"] is not null) return Path.Combine(AppContext.BaseDirectory, "scenarios");
-        ZoneWithoutLieux(zone);   // ses populations et passages des lieux renvoient au scénario d'un bloc, sans eux
+        ZoneWithoutLieux(zone);
+        if (zone["data"]?["places"] is JsonArray places)
+            foreach (var p in places.Where(p => LieuPlaces.Contains((string?)p?["id"])).ToList()) places.Remove(p);
         return BlockScenariosDirectory;
     }
 
@@ -94,6 +100,17 @@ internal static class ScenarioTestData
         ScenariosFor(zone);
         return zone.ToJsonString();
     }
+
+    /// <summary>Sous-lots V2.31 et suivants : lieux nommés ajoutés avec les lieux de la grande carte.</summary>
+    public static readonly HashSet<string?> LieuPlaces = new(StringComparer.Ordinal)
+    {
+        "cascade", "moulin_a_foulon", "cabane_du_pecheur", "pont_suspendu", "arbre_millenaire", "taniere_de_la_meute", "cabane_du_bucheron",
+        "lisiere_de_la_foret", "domaine_du_chateau", "pressoir_du_chateau", "chai_du_chateau", "vignes_du_chateau", "bergerie_des_collines",
+        "cairns_de_la_crete", "tour_de_signal", "nef_de_l_abbaye", "cloitre_de_l_abbaye", "dortoir_de_l_abbaye", "jardin_de_l_abbaye",
+        "cabanes_sur_pilotis", "ile_des_saules_dormants", "village_des_mineurs", "carreau_de_la_mine", "gradins_de_la_carriere",
+        "enceinte_du_fort", "tour_des_bandits", "cercle_des_pierres_levees", "abords_de_la_porte_nord", "passerelle_des_ronces",
+        "pont_des_murmures", "col_des_cretes_de_fer", "poste_de_peage", "route_de_l_est", "pont_effondre",
+    };
 
     /// <summary>Sous-lots V2.31 et suivants : le scénario de la zone des Vallons, d'un bloc (<see cref="WithoutLieux"/>).</summary>
     public static ScenarioLoadResult ReadVallonsBlock(GameData? data = null) => ReadMutated(WithoutLieux, data, "zones/vallons");
@@ -170,8 +187,19 @@ internal static class ScenarioTestData
     /// Relecture indépendante de la PR #167 : la zone des Vallons d'avant la surface étendue (racine du fichier de zone), avec
     /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
     /// </summary>
+    /// <summary>V2.43.4 : les portes des intérieurs des lieux reconstruits (hors de l'aire d'avant, et au-delà de 16 portes sans région).</summary>
+    public static readonly string[] RebuildDoors = { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye" };
+
+    /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits.</summary>
+    public static void WithoutRebuildDoors(JsonObject zone)
+    {
+        if (zone["data"]?["doors"] is not JsonArray doors) return;
+        foreach (var d in doors.Where(d => RebuildDoors.Contains((string)d!["id"]!)).ToList()) doors.Remove(d);
+    }
+
     public static void ZoneBefore(JsonObject zone)
     {
+        WithoutRebuildDoors(zone);   // V2.43.4
         var passages = zone["data"]!["passages"]!.AsArray();
         foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
         ZoneWithoutLieux(zone);   // sous-lots V2.31 et suivants : populations des lieux
@@ -217,6 +245,18 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
+    /// Sous-lot V2.36 : les saisons d'avant l'île des saules dormants (dossier de données copié) : le verrou d'hiver sans point d'accroche,
+    /// pour une aire réduite au cœur (l'île, au milieu du grand lac, en est hors).
+    /// </summary>
+    public static void SeasonsBefore(string dataDirectory)
+    {
+        string path = Path.Combine(dataDirectory, "world", "seasons.json");
+        JsonNode seasons = JsonNode.Parse(File.ReadAllText(path))!;
+        foreach (var l in seasons["data"]!["locks"]!.AsArray()) l!.AsObject().Remove("anchor");
+        File.WriteAllText(path, seasons.ToJsonString());
+    }
+
+    /// <summary>
     /// Sous-lot V2.28c (4) : l'histoire des Vallons d'avant la surface étendue (racine du fichier d'histoire), pour une zone passée par
     /// <see cref="ZoneBefore"/> : sans la quête des passages de la vallée (ses passages n'y existent pas), ni ses répliques (<c>v228_</c>) ni
     /// les réponses qui y mènent.
@@ -228,8 +268,18 @@ internal static class ScenarioTestData
         int town = 0;
         foreach (var npc in data["npcs"]!.AsArray())
         {
+            // Lot C (relecture de la PR #212) : les voyageurs attendent aux portes de la ville, hors de l'aire d'avant ; là, au bourg.
+            if ((string?)npc!["id"] is "npc.voyageur_convoyeur" or "npc.voyageuse_pelerine")
+                foreach (var slot in npc["schedule"]!.AsArray().Where(x => (string?)x!["activity"] == "route"))
+                {
+                    var spot = (string?)npc["id"] == "npc.voyageur_convoyeur" ? (-1130.0, -40.0) : (-1060.0, -35.0);
+                    slot!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                    slot["rain"]!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                }
             // V2.30.5 : les marchands des boutiques de la route d'Ambre (et le notable), hors du cœur, attendent sur l'ancienne place du bourg.
-            if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal))
+            // V2.43.2b : les PNJ des lieux reconstruits hors du cœur (pont, moulin à foulon, tour de signal, abbaye) attendent là aussi.
+            if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal)
+                || (string?)npc["id"] is "npc.passeuse_du_pont" or "npc.foulonniere" or "npc.guetteuse" or "npc.frere_hospitalier")
             {
                 var at = new JsonArray(-62.0 + town++, -6.0);
                 npc["position"] = at.DeepClone();
@@ -244,6 +294,11 @@ internal static class ScenarioTestData
         var quests = data["quests"]!.AsArray();
         // Sous-lot V2.28d (3) : ni la quête du cheval (les rives du lac sont hors du cœur), ni ses répliques (v2283_).
         foreach (var q in quests.Where(q => (string?)q!["id"] is "quest.passages_de_la_vallee" or "quest.le_cheval_de_la_ferme").ToList()) quests.Remove(q);
+        // Sous-lot V2.40 (décision de Damien du 18 novembre 2026) : la fin du chapitre 1 ouvre la passerelle des Ronces, hors du cœur.
+        foreach (var q in quests)
+            foreach (var owner in new[] { q }.Concat(q!["steps"]?.AsArray() ?? new JsonArray()))
+                if (owner!["effects"] is JsonArray effects)
+                    foreach (var e in effects.Where(e => (string?)e!["do"] == "openPassage" && (string?)e["id"] == "passerelle_des_ronces").ToList()) effects.Remove(e);
         foreach (var d in data["dialogues"]!.AsArray())
         {
             var entries = d!["entries"]!.AsArray();

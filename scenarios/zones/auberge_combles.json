@@ -1,0 +1,111 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 23,
+  "kind": "scenario",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "seed": 270,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -4.3,
+          -2.6
+        ],
+        "max": [
+          4.3,
+          2.6
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "rayonnage_linge",
+          "points": [
+            [
+              -4.0,
+              -1.75
+            ],
+            [
+              -2.0,
+              -1.75
+            ],
+            [
+              -2.0,
+              -1.25
+            ],
+            [
+              -4.0,
+              -1.25
+            ]
+          ]
+        },
+        {
+          "id": "coffre_draps",
+          "points": [
+            [
+              -1.3,
+              -1.75
+            ],
+            [
+              -0.1,
+              -1.75
+            ],
+            [
+              -0.1,
+              -1.15
+            ],
+            [
+              -1.3,
+              -1.15
+            ]
+          ]
+        },
+        {
+          "id": "etagere_reserve",
+          "points": [
+            [
+              1.7,
+              -1.75
+            ],
+            [
+              3.7,
+              -1.75
+            ],
+            [
+              3.7,
+              -1.25
+            ],
+            [
+              1.7,
+              -1.25
+            ]
+          ]
+        },
+        {
+          "id": "caisses",
+          "points": [
+            [
+              -4.0,
+              1.45
+            ],
+            [
+              -2.0,
+              1.45
+            ],
+            [
+              -2.0,
+              2.15
+            ],
+            [
+              -4.0,
+              2.15
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

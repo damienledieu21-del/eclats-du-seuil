@@ -110,7 +110,7 @@ namespace EdS.Game
             float ambient = (float)light.AmbientLevel;
             // La clarté de la nuit se règle dans le catalogue (1 : la nuit prévue) ; elle ne touche pas le jour.
             ambient = Mathf.Min(1f, ambient * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night)) * (float)weather.Ambient;
-            Color ambientTint = Tint(light.AmbientTint) * Tint(weather.AmbientTint) * ambient;
+            Color ambientTint = Tint(light.AmbientTint) * Tint(weather.AmbientTint) * Tint(_feast.AmbientTint) * ambient;   // F6 : teinte de la fête
             // Sous-lot V2.6 : près d'une cicatrice du Seuil, la lumière tire vers le froid.
             ambientTint = Color.Lerp(ambientTint, ambientTint * ScarCold, _scarFade);
             HorizonLight = ambientTint;   // V2.29.2 : la lumière de l'heure teinte les panoramas peints de l'horizon
@@ -120,7 +120,7 @@ namespace EdS.Game
             RenderSettings.ambientGroundColor = catalog.AmbientGround * ambientTint;
             // Sous-lot V2.2 : sans brume au catalogue, la brume du matin et la pluie en posent une quand même (de 30 à 180 m par temps clair).
             bool catalogFog = catalog.FogEnd > catalog.FogStart;
-            bool weatherFog = weather.FogEnd < 0.95;
+            bool weatherFog = weather.FogEnd < 0.95 || _feast.FogEnd < 0.95;   // F6 : brume de la fête (Échos, Givre, semailles, moissons)
             float fogStart = catalogFog ? catalog.FogStart : 30f, fogEnd = catalogFog ? catalog.FogEnd : 180f;
             // Sous-lot V2.27 (plan de la grande carte, § 6.2) : dehors, avec le terrain de la région chargé par cases, la brume recule jusqu'à
             // la distance de vue de la machine (600 m sur téléphone, 900 m sur PC modeste) ; la brume du temps la rapproche toujours.
@@ -131,7 +131,7 @@ namespace EdS.Game
             }
             RenderSettings.fog = catalogFog || weatherFog;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = Color.Lerp(catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint), ScarCold * (0.4f + 0.6f * ambient), _scarFade * 0.7f);
+            RenderSettings.fogColor = Color.Lerp(catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint) * Tint(_feast.FogTint), ScarCold * (0.4f + 0.6f * ambient), _scarFade * 0.7f);
             if (_scarFade > 0.01f) RenderSettings.fog = true;
             if (_sky != null)
             {
@@ -139,11 +139,11 @@ namespace EdS.Game
                     _sky.SetFloat("_Exposure", _skyExposure * (float)light.SkyLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night) * (float)weather.Sky);
                 if (_sky.HasProperty("_Tint")) _sky.SetColor("_Tint", _skyTint * Tint(light.FogTint) * Tint(weather.FogTint));
             }
-            Lamps = Mathf.Max((float)light.Lamps, (float)weather.Lamps);
+            Lamps = Mathf.Max(Mathf.Max((float)light.Lamps, (float)weather.Lamps), (float)_feast.Lamps * (float)light.Night);   // F6 : lanternes de fête la nuit
             NightShare = (float)light.Night;
             // La brume du matin et la pluie rapprochent la brume du catalogue (jamais à moins de 9 m : on voit toujours autour de soi).
             RenderSettings.fogStartDistance = fogStart * (float)weather.FogStart;
-            RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd * Mathf.Lerp(1f, 0.3f, _scarFade));   // sous-lot V2.6 : brume froide plus proche
+            RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd * (float)_feast.FogEnd * Mathf.Lerp(1f, 0.3f, _scarFade));   // sous-lot V2.6 : brume froide plus proche
             if (_camera != null) _camera.farClipPlane = Mathf.Max(Mathf.Max(250f, catalog.FogEnd + 20f), ViewDistance > 0f ? ViewDistance + 20f : 0f);
             if (_sun != null)
             {
@@ -321,6 +321,11 @@ namespace EdS.Game
         /// clair (entraînement, réseau). Appelée avant <see cref="SetDayLight"/>, qui l'applique.
         /// </summary>
         public static void SetWeather(WeatherLook? look) => _weather = look ?? WeatherLook.Clear;
+
+        /// <summary>Sous-lot F6 : l'ambiance de la fête en cours (<see cref="FeastMood"/>), par-dessus l'heure et le temps ; aucune hors fête.</summary>
+        private static FeastMood _feast = FeastMood.None;
+
+        public static void SetFeast(FeastMood mood) => _feast = mood;
 
         /// <summary>
         /// Sous-lot V2.6 : à quel point les couleurs se fanent autour de la caméra (0 à 1 ; une cicatrice du Seuil) : moins de couleurs, une

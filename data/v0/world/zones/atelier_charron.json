@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.atelier_charron",
+    "name": "Atelier du charron",
+    "scenario": "zones/atelier_charron",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Atelier du charron",
+        "position": [
+          0,
+          -1.5
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "atelier_du_charron",
+        "name": "Atelier du charron",
+        "min": [
+          -3.0,
+          -2.5
+        ],
+        "max": [
+          3.0,
+          2.5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Atelier du charron",
+        "position": [
+          0,
+          -1.9
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_atelier_charron"
+      }
+    ]
+  }
+}

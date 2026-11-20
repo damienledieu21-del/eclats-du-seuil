@@ -34,7 +34,9 @@ public sealed class V1911RetrouvaillesTests
 
     private static WorldSession Near(string npc)
     {
-        GroundVector at = Book(Zone()).Npc("npc." + npc).Position;
+        Npc who = Book(Zone()).Npc("npc." + npc);
+        // 17 novembre 2026 : Achille vit chez lui (zone.chaumiere) ; au début du jeu (8 h), il est aux champs, dans les Vallons.
+        GroundVector at = who.Zone is null ? who.Position : who.SlotAt(8 * 60)!.Position;
         ZoneDefinition zone = Zone(Math.Round(at.X.Raw / 10000.0, 2), Math.Round(at.Z.Raw / 10000.0 - 1.5, 2));
         return new WorldSession(new WorldSave(Vallons, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(100)), zone, ShippedData, Progression,
             ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));

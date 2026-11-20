@@ -533,6 +533,8 @@ namespace EdS.Game
             SeasonView.Clear();
             _weatherFx = null;
             StyleWorld.SetWeather(null);
+            StyleWorld.SetFeast(FeastMood.None);   // relecture de la PR #220 : l'ambiance de fête ne survit pas à l'aventure
+            HumanBodies.Feast = 0;   // ni la tenue de fête des habitants
             _talentView?.Close();
             PaintedMap.Forget();
             _book?.ForgetFog();   // relecture de la PR #185 : la texture du brouillard ne survit pas à l'aventure
@@ -682,6 +684,11 @@ namespace EdS.Game
             // Sous-lot V1.7 : de même pour le tableau de la guilde (le bouton Parler le ferme pour le dialogue de la maîtresse).
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
+            // Sous-lot F4 : l'étal de fête s'ouvre depuis le dialogue du forain (demande prise une fois) ; ensuite il suit l'écran comme la
+            // boutique (Échap le ferme ; le bouton Parler le ferme pour le dialogue).
+            if (a.TakeFeastStallRequest()) _screens.Show(AdventureScreens.Panel.Feast);
+            if (_screens.Open == AdventureScreens.Panel.Feast && !a.FeastStallOpen) _screens.Close();
+            else if (_screens.Open != AdventureScreens.Panel.Feast && a.FeastStallOpen) a.CloseFeastStall();
             bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active || _title.Pending;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
@@ -696,7 +703,7 @@ namespace EdS.Game
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();
-            frozen = frozen || a.Dialogue != null || a.Shop != null || a.GuildOpen;   // un dialogue (ou une boutique, ou le tableau de la guilde) ouvert par F à cette image
+            frozen = frozen || a.Dialogue != null || a.Shop != null || a.GuildOpen || a.FeastStallOpen;   // un dialogue (ou une boutique, ou le tableau de la guilde) ouvert par F à cette image
             if (frozen)
             {
                 _combat.SetGuard(false);
@@ -748,6 +755,8 @@ namespace EdS.Game
             _seasonView.Sync(a, Time.deltaTime);   // saisons : l'hôte fournit la date, puis teinte, neige et glace pour le rendu
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
+            HumanBodies.Feast = a.FeastNumber;   // sous-lot F6 : aux teintes de la fête d'Orsédia en cours
+            StyleWorld.SetFeast(a.FeastMood);   // sous-lot F6 : l'ambiance de la fête (lumière, brume, lanternes), dehors
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
             // Sous-lot V2.14 : la foule du grand jour de marché ; ses places ne sont calculées qu'une fois montrée (le premier jour de marché vu).
             bool crowd = a.MarketCrowdShown;
@@ -767,6 +776,7 @@ namespace EdS.Game
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
+            _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
@@ -820,6 +830,8 @@ namespace EdS.Game
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
+            // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
+            if (a.DoorFirst && a.DoorInReach is EdS.Data.Zones.Door near) return string.Format(a.Text("text.ui.door_hint"), near.Name);
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
                 return string.Format(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);

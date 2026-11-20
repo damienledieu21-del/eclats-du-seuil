@@ -42,6 +42,7 @@ public class V228cObstaclesTests
             {
                 z["schemaVersion"] = 12;
                 z["data"]!.AsObject().Remove("region");
+                ScenarioTestData.WithoutRebuildDoors(z);   // V2.43.4 : sans les portes des lieux reconstruits (au plus 16 portes hors région)
             }
         }, scenario: s =>
         {
@@ -90,7 +91,7 @@ public class V228cObstaclesTests
     private static ZoneLoadResult With(IEnumerable<JsonObject> extra, Action<JsonObject>? scenario = null) =>
         V228b2cChefsTests.Read(scenario: s =>
         {
-            s["schemaVersion"] = 22;
+            s["schemaVersion"] = 23;
             JsonArray obstacles = s["data"]!["space"]!["obstacles"]!.AsArray();
             foreach (JsonObject o in extra) obstacles.Add(o);
             scenario?.Invoke(s);
@@ -153,7 +154,7 @@ public class V228cObstaclesTests
             },
             scenario: s =>
             {
-                s["schemaVersion"] = 22;
+                s["schemaVersion"] = 23;
                 Small(s);
                 JsonArray combatants = s["data"]!["combatants"]!.AsArray();
                 foreach (JsonNode? c in combatants.Where(c => (string)c!["id"]! == "loup_est").ToList()) combatants.Remove(c);
@@ -186,6 +187,7 @@ public class V228cObstaclesTests
         // comme une aire (jusqu'à 4 096).
         var root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         root["data"]!["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-4000, -4000), ["max"] = new JsonArray(4000, 4000) };
+        WithoutLieux(root);   // sous-lots V2.31 et suivants : l'aire d'avant les lieux (233 obstacles), complétée jusqu'à 300
         var obstacles = root["data"]!["space"]!["obstacles"]!.AsArray();
         for (int i = obstacles.Count; i < 300; i++) obstacles.Add(Square($"o{i}", -3900 + 10 * (i % 700), 3000 + 10 * (i / 700)));
         ScenarioLoadResult alone = ScenarioJsonReader.Read(root.ToJsonString(), ShippedData);
@@ -217,7 +219,7 @@ public class V228cObstaclesTests
         // Pré-alpha : une version antérieure est refusée entière (aucune migration) ; les scénarios livrés passent en schéma 19 (20 depuis l'esquive).
         ZoneLoadResult loaded = Read(21, 11, 21, 7, schema: 18);
         Assert.False(loaded.IsValid);
-        Assert.Contains("version de format 18 antérieure à la version 22", loaded.Report.ToString(), StringComparison.Ordinal);
+        Assert.Contains("version de format 18 antérieure à la version 23", loaded.Report.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -226,7 +228,7 @@ public class V228cObstaclesTests
         JsonObject Fight(int count, bool zone)
         {
             var root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
-            root["schemaVersion"] = 22;
+            root["schemaVersion"] = 23;
             if (!zone) root["data"]!["zone"] = false;
             root["data"]!["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-4000, -4000), ["max"] = new JsonArray(4000, 4000) };
             var obstacles = new JsonArray();

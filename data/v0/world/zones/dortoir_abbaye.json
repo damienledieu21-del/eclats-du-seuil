@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.dortoir_abbaye",
+    "name": "Dortoir de l'abbaye",
+    "scenario": "zones/dortoir_abbaye",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Dortoir de l'abbaye",
+        "position": [
+          0,
+          -2.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "dortoir_abbaye",
+        "name": "Dortoir de l'abbaye",
+        "min": [
+          -5.0,
+          -3.0
+        ],
+        "max": [
+          5.0,
+          3.0
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Dortoir de l'abbaye",
+        "position": [
+          0,
+          -2.4
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_dortoir_abbaye"
+      }
+    ]
+  }
+}

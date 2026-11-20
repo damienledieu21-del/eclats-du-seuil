@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.34.0-provisoire",
+  "contentVersion": "0.38.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -41,9 +41,10 @@
             "at": "13:30",
             "activity": "moulin",
             "position": [
-              -8,
-              3
-            ]
+              0.6,
+              -1.0
+            ],
+            "zone": "zone.moulin"
           },
           {
             "at": "21:00",
@@ -87,6 +88,15 @@
               -20,
               -4
             ]
+          },
+          {
+            "at": "16:00",
+            "activity": "forge",
+            "position": [
+              0.9,
+              -0.6
+            ],
+            "zone": "zone.forge"
           },
           {
             "at": "19:30",
@@ -315,6 +325,23 @@
             ]
           },
           {
+            "at": "11:30",
+            "activity": "cuisine",
+            "position": [
+              -1.15,
+              -0.35
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:30",
+            "activity": "comptoir",
+            "position": [
+              3.75,
+              3.55
+            ]
+          },
+          {
             "at": "14:00",
             "activity": "cave",
             "position": [
@@ -346,6 +373,15 @@
               3.75,
               3.55
             ]
+          },
+          {
+            "at": "17:30",
+            "activity": "cuisine",
+            "position": [
+              -1.15,
+              -0.35
+            ],
+            "zone": "zone.auberge_cuisine"
           },
           {
             "at": "18:00",
@@ -1128,10 +1164,11 @@
         "id": "npc.fermier",
         "name": "text.ch3.npc.fermier.name",
         "position": [
-          -66,
-          -36
+          1.2,
+          -0.5
         ],
         "dialogue": "dialogue.fermier",
+        "zone": "zone.chaumiere",
         "schedule": [
           {
             "at": "05:30",
@@ -1139,14 +1176,15 @@
             "position": [
               -66,
               -36
-            ]
+            ],
+            "zone": "zone.vallons"
           },
           {
             "at": "12:00",
             "activity": "repas",
             "position": [
-              -69,
-              -45
+              -0.35,
+              0.2
             ]
           },
           {
@@ -1155,7 +1193,8 @@
             "position": [
               -66,
               -36
-            ]
+            ],
+            "zone": "zone.vallons"
           },
           {
             "at": "19:00",
@@ -1170,8 +1209,8 @@
             "at": "21:30",
             "activity": "maison",
             "position": [
-              -69,
-              -45
+              1.2,
+              -0.5
             ]
           }
         ]
@@ -1849,6 +1888,293 @@
             ]
           }
         ]
+      },
+      {
+        "id": "npc.voyageur_convoyeur",
+        "name": "text.lotc.npc.voyageur_convoyeur.name",
+        "position": [
+          -2.2,
+          -0.8
+        ],
+        "dialogue": "dialogue.voyageur_convoyeur",
+        "zone": "zone.auberge_chambres",
+        "schedule": [
+          {
+            "at": "06:30",
+            "activity": "route",
+            "position": [
+              -1300,
+              -90
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1302,
+                -80
+              ]
+            },
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "18:30",
+            "activity": "taverne",
+            "position": [
+              0,
+              -0.3
+            ],
+            "zone": "zone.auberge"
+          },
+          {
+            "at": "21:30",
+            "activity": "chambre",
+            "position": [
+              -2.2,
+              -0.8
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.voyageuse_pelerine",
+        "name": "text.lotc.npc.voyageuse_pelerine.name",
+        "position": [
+          2.6,
+          -0.8
+        ],
+        "dialogue": "dialogue.voyageuse_pelerine",
+        "zone": "zone.auberge_chambres",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "route",
+            "position": [
+              -720,
+              -50.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -716,
+                -42
+              ]
+            },
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "19:00",
+            "activity": "taverne",
+            "position": [
+              0,
+              -3.2
+            ],
+            "zone": "zone.auberge"
+          },
+          {
+            "at": "21:00",
+            "activity": "chambre",
+            "position": [
+              2.6,
+              -0.8
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.serveuse",
+        "name": "text.lotc.npc.serveuse.name",
+        "position": [
+          1.6,
+          0.6
+        ],
+        "dialogue": "dialogue.serveuse",
+        "zone": "zone.auberge",
+        "schedule": [
+          {
+            "at": "06:30",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "11:30",
+            "activity": "cuisine",
+            "position": [
+              -0.2,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:30",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "17:30",
+            "activity": "cuisine",
+            "position": [
+              -0.2,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "18:00",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "22:30",
+            "activity": "rangement",
+            "position": [
+              1.6,
+              0.6
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.palefrenier",
+        "name": "text.lotc.npc.palefrenier.name",
+        "position": [
+          -5.5,
+          0
+        ],
+        "dialogue": "dialogue.palefrenier",
+        "zone": "zone.auberge",
+        "schedule": [
+          {
+            "at": "05:30",
+            "activity": "ecurie",
+            "position": [
+              -1093.5,
+              -24
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1096,
+                -30
+              ]
+            },
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "12:00",
+            "activity": "repas",
+            "position": [
+              -0.6,
+              -0.5
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:45",
+            "activity": "ecurie",
+            "position": [
+              -1093.5,
+              -24
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1096,
+                -30
+              ]
+            },
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "21:00",
+            "activity": "repos",
+            "position": [
+              -5.5,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.forain",
+        "name": "text.fetes.forain.name",
+        "position": [
+          -1088.0,
+          -37.0
+        ],
+        "dialogue": "dialogue.forain",
+        "faction": "villagers",
+        "festivals": [
+          "festival.lanternes",
+          "festival.liens",
+          "festival.carnaval",
+          "festival.foire",
+          "festival.artisans",
+          "festival.feux_du_seuil",
+          "festival.grand_tournoi",
+          "festival.etoiles_filantes",
+          "festival.moissons",
+          "festival.nuit_des_echos",
+          "festival.veillee",
+          "festival.givre"
+        ]
+      },
+      {
+        "id": "npc.charron_hameau",
+        "name": "text.v243.charron.name",
+        "position": [
+          68,
+          -34
+        ],
+        "dialogue": "dialogue.charron",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.passeuse_du_pont",
+        "name": "text.v243.passeuse.name",
+        "position": [
+          1980,
+          150
+        ],
+        "dialogue": "dialogue.passeuse",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.foulonniere",
+        "name": "text.v243.foulonniere.name",
+        "position": [
+          508,
+          852
+        ],
+        "dialogue": "dialogue.foulonniere",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.guetteuse",
+        "name": "text.v243.guetteuse.name",
+        "position": [
+          210,
+          1390
+        ],
+        "dialogue": "dialogue.guetteuse",
+        "faction": "villagers"
+      },
+      {
+        "id": "npc.frere_hospitalier",
+        "name": "text.v243.hospitalier.name",
+        "position": [
+          1645,
+          105
+        ],
+        "dialogue": "dialogue.hospitalier",
+        "faction": "villagers"
       }
     ],
     "dialogues": [
@@ -23368,6 +23694,460 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.voyageur_convoyeur",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.voyageur_convoyeur.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.voyageur_convoyeur",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageur_convoyeur"
+                  }
+                ],
+                "text": "text.lotc.voyageur_convoyeur.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageur_convoyeur"
+                  }
+                ],
+                "text": "text.lotc.voyageur_convoyeur.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.voyageur_convoyeur.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.voyageur_convoyeur.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.voyageuse_pelerine",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.voyageuse_pelerine.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.voyageuse_pelerine",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageuse_pelerine"
+                  }
+                ],
+                "text": "text.lotc.voyageuse_pelerine.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageuse_pelerine"
+                  }
+                ],
+                "text": "text.lotc.voyageuse_pelerine.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.voyageuse_pelerine.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.voyageuse_pelerine.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.serveuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.serveuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.serveuse"
+                  }
+                ],
+                "text": "text.lotc.serveuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.serveuse.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.serveuse.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.palefrenier",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.palefrenier.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.palefrenier",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.palefrenier"
+                  }
+                ],
+                "text": "text.lotc.palefrenier.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.palefrenier"
+                  }
+                ],
+                "text": "text.lotc.palefrenier.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.palefrenier.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.palefrenier.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.forain",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.fetes.forain.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.forain"
+                  }
+                ],
+                "text": "text.fetes.forain.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.charron",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.charron.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v243.charron.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.passeuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.passeuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v243.passeuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.foulonniere",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.foulonniere.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v243.foulonniere.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.guetteuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.guetteuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v243.guetteuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.hospitalier",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v243.hospitalier.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v243.hospitalier.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -23511,6 +24291,10 @@
               {
                 "do": "startQuest",
                 "id": "quest.bourg_d_aube"
+              },
+              {
+                "do": "openPassage",
+                "id": "passerelle_des_ronces"
               }
             ]
           }
@@ -26943,7 +27727,11 @@
         "day": 7,
         "from": "10:00",
         "to": "22:00",
-        "date": {"month": 9, "day": 15, "days": 14},
+        "date": {
+          "month": 9,
+          "day": 15,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.boulanger",
@@ -26994,7 +27782,11 @@
         "day": 21,
         "from": "18:00",
         "to": "23:59",
-        "date": {"month": 11, "day": 15, "days": 14},
+        "date": {
+          "month": 11,
+          "day": 15,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.pretre",
@@ -27037,7 +27829,11 @@
         "day": 14,
         "from": "08:00",
         "to": "20:00",
-        "date": {"month": 4, "day": 10, "days": 14},
+        "date": {
+          "month": 4,
+          "day": 10,
+          "days": 14
+        },
         "guests": [
           {
             "npc": "npc.archer_garde",
@@ -27143,56 +27939,353 @@
       {
         "id": "festival.lanternes",
         "name": "text.fete.lanternes",
-        "date": {"month": 1, "day": 1, "days": 7},
-        "calendarOnly": true
+        "season": "winter",
+        "day": 4,
+        "from": "17:00",
+        "to": "23:59",
+        "date": {
+          "month": 1,
+          "day": 1,
+          "days": 7
+        },
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1102.5,
+              -36.5
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.liens",
         "name": "text.fete.liens",
-        "date": {"month": 2, "day": 10, "days": 7},
-        "calendarOnly": true
+        "season": "winter",
+        "day": 13,
+        "from": "10:00",
+        "to": "20:00",
+        "date": {
+          "month": 2,
+          "day": 10,
+          "days": 7
+        },
+        "guests": [
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          }
+        ]
       },
       {
         "id": "festival.carnaval",
         "name": "text.fete.carnaval",
-        "date": {"month": 3, "day": 1, "days": 10},
-        "calendarOnly": true
+        "season": "spring",
+        "day": 13,
+        "from": "10:00",
+        "to": "22:00",
+        "date": {
+          "month": 3,
+          "day": 1,
+          "days": 10
+        },
+        "guests": [
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          }
+        ]
       },
       {
         "id": "festival.artisans",
         "name": "text.fete.artisans",
-        "date": {"month": 5, "day": 1, "days": 10},
-        "calendarOnly": true
+        "season": "spring",
+        "day": 24,
+        "from": "09:00",
+        "to": "19:00",
+        "date": {
+          "month": 5,
+          "day": 1,
+          "days": 10
+        },
+        "guests": [
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1087,
+              -32.5
+            ],
+            "activity": "fete_concours"
+          },
+          {
+            "npc": "npc.odile",
+            "position": [
+              -1085.5,
+              -35
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1089.5,
+              -40
+            ],
+            "activity": "fete"
+          }
+        ]
       },
       {
         "id": "festival.feux_du_seuil",
         "name": "text.fete.feux_du_seuil",
-        "date": {"month": 6, "day": 20, "days": 11},
-        "calendarOnly": true
+        "season": "summer",
+        "day": 4,
+        "from": "18:00",
+        "to": "23:59",
+        "date": {
+          "month": 6,
+          "day": 20,
+          "days": 11
+        },
+        "guests": [
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1090.5,
+              -31.8
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -1092,
+              -32
+            ],
+            "activity": "tonneau"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1089.5,
+              -40
+            ],
+            "activity": "fete"
+          }
+        ]
       },
       {
         "id": "festival.grand_tournoi",
         "name": "text.fete.grand_tournoi",
-        "date": {"month": 7, "day": 10, "days": 14},
-        "calendarOnly": true
+        "season": "summer",
+        "day": 14,
+        "from": "09:00",
+        "to": "19:00",
+        "date": {
+          "month": 7,
+          "day": 10,
+          "days": 14
+        },
+        "guests": [
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1090,
+              -43
+            ],
+            "activity": "cible"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1089,
+              -33.5
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1086.5,
+              -34
+            ],
+            "activity": "foire"
+          }
+        ]
       },
       {
         "id": "festival.etoiles_filantes",
         "name": "text.fete.etoiles_filantes",
-        "date": {"month": 8, "day": 8, "days": 10},
-        "calendarOnly": true
+        "season": "summer",
+        "day": 24,
+        "from": "20:00",
+        "to": "23:59",
+        "date": {
+          "month": 8,
+          "day": 8,
+          "days": 10
+        },
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.albe",
+            "position": [
+              -1101,
+              -38
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.nuit_des_echos",
         "name": "text.fete.nuit_des_echos",
-        "date": {"month": 10, "day": 25, "days": 10},
-        "calendarOnly": true
+        "season": "autumn",
+        "day": 20,
+        "from": "17:00",
+        "to": "23:59",
+        "date": {
+          "month": 10,
+          "day": 25,
+          "days": 10
+        },
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -1103,
+              -38.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1102.5,
+              -36.5
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -1100,
+              -39.5
+            ],
+            "activity": "veillee"
+          }
+        ]
       },
       {
         "id": "festival.givre",
         "name": "text.fete.givre",
-        "date": {"month": 12, "day": 18, "days": 14},
-        "calendarOnly": true
+        "season": "winter",
+        "day": 27,
+        "from": "10:00",
+        "to": "22:00",
+        "date": {
+          "month": 12,
+          "day": 18,
+          "days": 14
+        },
+        "guests": [
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -1086.5,
+              -34
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -1089,
+              -33.5
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -1090,
+              -43
+            ],
+            "activity": "cible"
+          }
+        ]
       }
     ]
   }

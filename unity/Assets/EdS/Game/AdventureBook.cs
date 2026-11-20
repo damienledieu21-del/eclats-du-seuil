@@ -173,6 +173,7 @@ namespace EdS.Game
             UiKit.Place(rule.rectTransform, new Vector2(40f, 132f), new Vector2(PanelWidth - 80f, 2f), Vector2.zero);
             BuildMerchant(Page(AdventureScreens.Panel.Merchant));   // sous-lot V1.1 : la boutique (AdventureBook.Merchant.cs)
             BuildGuild(Page(AdventureScreens.Panel.Guild));   // sous-lot V1.7 : le tableau de la guilde (AdventureBook.Guild.cs)
+            BuildFeast(Page(AdventureScreens.Panel.Feast));   // sous-lot F4 : l'étal de fête du forain (AdventureBook.Feast.cs)
 
             BuildCharacter(Page(AdventureScreens.Panel.Inventory));
             BuildJournal(Page(AdventureScreens.Panel.Journal));
@@ -398,7 +399,8 @@ namespace EdS.Game
                 bool used = i >= 0 && i < stacks.Count && i < w.Inventory.Catalog.InventorySize;
                 UiKit.Show(cell.Rect, c < w.Inventory.Catalog.InventorySize);
                 ItemDefinition item = used ? a.Item(stacks[i].Item) : null;
-                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, item.Icon) : null;
+                // Pâtisseries de Firmin : l'icône du niveau de réussite de la pièce (sa qualité et sa marque).
+                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, FirminPastries.Icon(item.Id, item.Icon, stacks[i].Quality, stacks[i].SignedBy != null)) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = used && stacks[i].Count > 1 ? stacks[i].Count.ToString() : "";
                 bool wearable = item != null && item.Type == ItemType.Equipment;
@@ -997,6 +999,7 @@ namespace EdS.Game
                 if (screens.Open != AdventureScreens.Panel.Inventory && screens.Open != AdventureScreens.Panel.Merchant) UiKit.Show(_tip, false);
                 if (screens.Open == AdventureScreens.Panel.Merchant) RefreshMerchant(a);   // sous-lot V1.1
                 if (screens.Open == AdventureScreens.Panel.Guild) RefreshGuild(a);   // sous-lot V1.7
+                if (screens.Open == AdventureScreens.Panel.Feast) RefreshFeast(a);   // sous-lot F4
                 switch (screens.Open)
                 {
                     case AdventureScreens.Panel.Inventory: RefreshCharacter(a); break;
