@@ -39,7 +39,7 @@ public class MaisonTouchesTests
     public void N_maison_H_aide_quitter_par_la_pause_et_combat_suspendu_pendant_la_pose()
     {
         string game = Source("EdsGame.cs");
-        Assert.Contains("(Input.GetKeyDown(KeyCode.N) || _touch.HomePressed) && !talking", game, StringComparison.Ordinal);
+        Assert.Contains("(Input.GetKeyDown(HomeKeyCode) || _touch.HomePressed) && !talking", game, StringComparison.Ordinal);
         Assert.DoesNotContain("Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed", game, StringComparison.Ordinal);   // N ne quitte plus l'aventure
         Assert.Contains("Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed", game, StringComparison.Ordinal);   // H reste l'aide
         Assert.Contains("if (_homeCarry == null) ReadCombatInput();", game, StringComparison.Ordinal);   // R ne lance pas l'ultime pendant la pose
@@ -70,5 +70,49 @@ public class MaisonTouchesTests
         Assert.Contains("_touch.HomeTurnPressed", game, StringComparison.Ordinal);
         Assert.Contains("_touch.HomeCancelPressed", game, StringComparison.Ordinal);
         Assert.Contains("_touch.HomeTap", game, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Relecture_de_la_PR_231_le_jeu_lit_la_table_des_touches_pagination_et_sortie()
+    {
+        string game = Source("EdsGame.cs"), book = Source("AdventureBook.Home.cs");
+        // Le jeu lit les touches de la maison dans la table (elle reflète donc le code) ; aucune autre lecture de N ou R pour la maison.
+        Assert.Contains("Enum.Parse(typeof(KeyCode), KeyBindings.HomeKey)", game, StringComparison.Ordinal);
+        Assert.Contains("Enum.Parse(typeof(KeyCode), KeyBindings.RotateKey)", game, StringComparison.Ordinal);
+        Assert.Contains("Input.GetKeyDown(HomeKeyCode) || _touch.HomePressed", game, StringComparison.Ordinal);
+        Assert.Contains("Input.GetKeyDown(RotateKeyCode) || _touch.HomeTurnPressed", game, StringComparison.Ordinal);
+        Assert.Equal(("N", "R"), (KeyBindings.HomeKey, KeyBindings.RotateKey));
+        // Pendant la pose : curseur libre, vue qui ne se tire pas ; à la sortie de l'aventure, plus de pose ; le bouton Pause reste la pause.
+        Assert.Contains("covered = covered || _homeCarry != null;", game, StringComparison.Ordinal);
+        int leave = game.IndexOf("private void LeaveAdventure()", StringComparison.Ordinal);
+        Assert.Contains("_homeCarry = null;", game.Substring(leave, 400), StringComparison.Ordinal);
+        Assert.Contains("_touch.HomeCarrying = false;", game.Substring(leave, 400), StringComparison.Ordinal);
+        Assert.Contains("Input.GetKeyDown(KeyCode.Escape) && !_touch.PausePressed) _homeCarry = null;", game, StringComparison.Ordinal);
+        // Chaque liste du panneau a sa pagination, coffre compris.
+        Assert.Contains("_homeChestOffset = KeyBindings.NextPage(", book, StringComparison.Ordinal);
+        Assert.Contains("ChestTake(_homeChestOffset + index)", book, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, 8, 5, 5)]
+    [InlineData(5, 8, 5, 0)]   // après la dernière page : retour au début
+    [InlineData(0, 5, 5, 0)]   // une seule page
+    [InlineData(0, 0, 5, 0)]
+    [InlineData(10, 32, 10, 20)]
+    [InlineData(30, 32, 10, 0)]
+    public void Pagination_des_listes_de_la_maison(int offset, int count, int size, int next)
+    {
+        Assert.Equal(next, KeyBindings.NextPage(offset, count, size));
+        // Chaque place est sur une page : en partant de 0, les pages couvrent toute la liste.
+        var seen = new System.Collections.Generic.HashSet<int>();
+        int page = 0;
+        do
+        {
+            for (int i = page; i < Math.Min(count, page + size); i++) seen.Add(i);
+            page = KeyBindings.NextPage(page, count, size);
+        }
+        while (page != 0);
+        Assert.Equal(count, seen.Count);
+        Assert.Throws<ArgumentOutOfRangeException>(() => KeyBindings.NextPage(0, 1, 0));
     }
 }

@@ -19,14 +19,13 @@ namespace EdS.Game
     /// <summary>
     /// Maison du joueur, sous-lot V2.53.3 : l'intérieur de la maison est dessiné d'après les meubles posés (<see cref="AdventureSession.HomePieces"/>) :
     /// modèle du lot C pour un meuble-objet, modèle de la fête pour une décoration, sinon une caisse à la taille de l'emprise. Tant que la
-    /// maison n'est pas agrandie au plus, des cloisons ferment le sol ouvert. L'état est relu deux fois par seconde et le dessin refait quand
-    /// il change ; l'aperçu du mode décoration (vert : la pose est possible, rouge : non) suit chaque image. Affichage seulement.
+    /// maison n'est pas agrandie au plus, des cloisons ferment le sol ouvert. L'état est relu à chaque image et le dessin refait dès qu'il
+    /// change ; l'aperçu du mode décoration (vert : la pose est possible, rouge : non) suit chaque image. Affichage seulement.
     /// </summary>
     public sealed partial class SpaceView
     {
         private GameObject _homeRoot, _homeGhost;
         private string _homeKey, _homeGhostPiece;
-        private float _homePoll;
         private Material _homeBox, _homeWall, _homeOk, _homeNo;
         private Renderer _homeGhostSlab;
 
@@ -34,9 +33,7 @@ namespace EdS.Game
         {
             if (adventure == null || _root == null || !_indoor) return;
             Ghost(ghost);
-            _homePoll -= deltaTime;
-            if (_homePoll > 0f && _homeKey != null) return;
-            _homePoll = 0.5f;
+            // Relecture de la PR #231 : la clé est relue à chaque image (une courte chaîne), le dessin refait dès qu'un meuble change.
             string key = adventure.HomeKey;
             if (key == _homeKey) return;
             _homeKey = key;

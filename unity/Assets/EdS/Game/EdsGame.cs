@@ -513,6 +513,8 @@ namespace EdS.Game
         private void LeaveAdventure()
         {
             if (_adventure == null) return;
+            _homeCarry = null;   // V2.53.3 (relecture de la PR #231) : aucune pose ne survit à l'aventure
+            _touch.HomeCarrying = false;
             SaveAdventure(false);
             _markers?.Destroy();
             _markers = null;
@@ -647,7 +649,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
             }
-            else if (_homeCarry != null && Input.GetKeyDown(KeyCode.Escape)) _homeCarry = null;   // V2.53.3 : Échap annule la pose
+            else if (_homeCarry != null && Input.GetKeyDown(KeyCode.Escape) && !_touch.PausePressed) _homeCarry = null;   // V2.53.3 : Échap annule la pose (le bouton Pause reste la pause)
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
             // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
             bool calm = !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None;   // un dialogue reste possible
@@ -662,7 +664,7 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.B)) _screens.Toggle(AdventureScreens.Panel.Skills);
                 // V2.53.3 (décision de Damien du 20 novembre 2026) : N (ou le bouton « Maison ») ouvre le panneau de la maison (chez soi),
                 // ou ramène chez soi depuis un point sûr (le point sûr à soi). H reste l'aide.
-                if ((Input.GetKeyDown(KeyCode.N) || _touch.HomePressed) && !talking)
+                if ((Input.GetKeyDown(HomeKeyCode) || _touch.HomePressed) && !talking)
                 {
                     if (a.AtHome) _screens.Toggle(AdventureScreens.Panel.Home);
                     else if (a.CanGoHome) a.GoHome();
@@ -973,6 +975,10 @@ namespace EdS.Game
 
         private string _homeCarry;
         private bool _quitAdventure;
+
+        /// <summary>V2.53.3 : touches de la maison, lues dans la table des touches (une touche, un seul usage par contexte).</summary>
+        private static readonly KeyCode HomeKeyCode = (KeyCode)Enum.Parse(typeof(KeyCode), KeyBindings.HomeKey),
+            RotateKeyCode = (KeyCode)Enum.Parse(typeof(KeyCode), KeyBindings.RotateKey);
         private int _homeTurn;
 
         /// <summary>
@@ -991,7 +997,7 @@ namespace EdS.Game
             _touch.HomeCarrying = _homeCarry != null;
             if (_homeCarry == null) return null;
             if (_screens.Open != AdventureScreens.Panel.None || _paused) return null;
-            if (Input.GetKeyDown(KeyCode.R) || _touch.HomeTurnPressed) _homeTurn = (_homeTurn + 1) & 3;
+            if (Input.GetKeyDown(RotateKeyCode) || _touch.HomeTurnPressed) _homeTurn = (_homeTurn + 1) & 3;
             float floorY = _arena.Feet(_combat.PlayerId) is Vector3 feet ? feet.y : 0f;
             // Au doigt : un toucher (Began) sur le sol pose le meuble là ; à la souris : il suit le pointeur, le clic gauche le pose.
             Vector2? tap = _touch.HomeTap;
@@ -1136,6 +1142,7 @@ namespace EdS.Game
             // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
             // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
             bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;
+            covered = covered || _homeCarry != null;   // V2.53.3 (relecture de la PR #231) : pendant la pose, le curseur est libre et la vue ne se tire pas
             covered = covered || _stage != null && _stage.WantsCursor(_adventure);   // sous-lot V1.9.8 : boutons du souvenir proposé
             if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;
             else if (_cursorReleased && !covered && Input.GetMouseButtonDown(0)) _cursorReleased = false;

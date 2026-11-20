@@ -21,9 +21,9 @@ namespace EdS.Game
         private readonly List<(RectTransform Row, UiText Name, UiButton Act)> _homeBag = new List<(RectTransform, UiText, UiButton)>();
         private IReadOnlyList<AdventureSession.HomePieceLine> _homeLines = new AdventureSession.HomePieceLine[0];
         private IReadOnlyList<HomePieceLook> _homeLooks = new HomePieceLook[0];
-        private int _homeOffset, _homePlacedOffset, _homeBagOffset;
+        private int _homeOffset, _homePlacedOffset, _homeBagOffset, _homeChestOffset;
         private UiText _homeToPlaceTitle, _homePlacedTitle, _homeChestTitle, _homeBagTitle;
-        private UiButton _homeMore, _homePlacedMore, _homeBagMore, _homeSleep;
+        private UiButton _homeMore, _homePlacedMore, _homeBagMore, _homeChestMore, _homeSleep;
 
         /// <summary>Le meuble choisi par Poser, pris une seule fois par le jeu (mode décoration) ; null sinon.</summary>
         public string TakeHomeCarry()
@@ -65,15 +65,19 @@ namespace EdS.Game
             for (int i = 0; i < 5; i++)
             {
                 int index = i;
-                _homeChest.Add(HomeRow(page, "Place du coffre", 1060f, 190f + i * 56f, 520f, () => _session?.ChestTake(index)));
+                _homeChest.Add(HomeRow(page, "Place du coffre", 1060f, 190f + i * 56f, 520f, () => _session?.ChestTake(_homeChestOffset + index)));
                 _homeBag.Add(HomeRow(page, "Place du sac", 1060f, 522f + i * 56f, 520f, () => _session?.ChestPut(_homeBagOffset + index)));
             }
-            _homeMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeOffset += HomeRows);
+            _homeMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeOffset = KeyBindings.NextPage(_homeOffset, _homeLines.Count, HomeRows));
             UiKit.Place(_homeMore.Rect, new Vector2(520f, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
-            _homePlacedMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homePlacedOffset += HomeRows);
+            _homePlacedMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homePlacedOffset = KeyBindings.NextPage(_homePlacedOffset, _homeLooks.Count, HomeRows));
             UiKit.Place(_homePlacedMore.Rect, new Vector2(1020f, 760f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
-            _homeBagMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeBagOffset += 5);
+            _homeBagMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink, () => _homeBagOffset = KeyBindings.NextPage(_homeBagOffset, _session != null ? _session.BagLines.Count : 0, 5));
             UiKit.Place(_homeBagMore.Rect, new Vector2(1580f, 810f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
+            // Relecture de la PR #231 : le coffre a 8 places ou plus : « Suivants » comme pour le sac (rien n'y reste hors d'atteinte).
+            _homeChestMore = UiKit.Button(page, "Suivants", "bouton_sobre", "", UiFace.Bold, 14f, UiKit.Ink,
+                () => _homeChestOffset = KeyBindings.NextPage(_homeChestOffset, _session != null ? _session.HomeChest.Count : 0, 5));
+            UiKit.Place(_homeChestMore.Rect, new Vector2(1580f, 478f), new Vector2(160f, 36f), new Vector2(1f, 0.5f));
             _homeSleep = UiKit.Button(page, "Dormir", "bouton", "", UiFace.Bold, 16f, new Color(0.1f, 0.05f, 0.02f), () => SleepAtHome());
             UiKit.Place(_homeSleep.Rect, new Vector2(1440f, 860f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
         }
@@ -147,12 +151,14 @@ namespace EdS.Game
 
             IReadOnlyList<(string Item, string Name, int Count)> chest = a.HomeChest;
             _homeChestTitle.Value = string.Format(a.Text("text.ui.home.chest"), chest.Count, a.HomeChestSize);
+            if (_homeChestOffset >= chest.Count) _homeChestOffset = 0;
             for (int i = 0; i < _homeChest.Count; i++)
             {
+                int k = _homeChestOffset + i;
                 var row = _homeChest[i];
-                UiKit.Show(row.Row, i < chest.Count);
-                if (i >= chest.Count) continue;
-                row.Name.Value = chest[i].Count > 1 ? chest[i].Name + " ×" + chest[i].Count : chest[i].Name;
+                UiKit.Show(row.Row, k < chest.Count);
+                if (k >= chest.Count) continue;
+                row.Name.Value = chest[k].Count > 1 ? chest[k].Name + " ×" + chest[k].Count : chest[k].Name;
                 row.Act.Text.Value = a.Text("text.ui.home.chest_take");
             }
             IReadOnlyList<(string Name, int Count)> bag = a.BagLines;
@@ -168,6 +174,8 @@ namespace EdS.Game
                 row.Act.Text.Value = a.Text("text.ui.home.chest_put");
             }
             UiKit.Show(_homeBagMore.Rect, bag.Count > _homeBag.Count);
+            UiKit.Show(_homeChestMore.Rect, chest.Count > _homeChest.Count);
+            _homeChestMore.Text.Value = a.Text("text.ui.home.more");
             _homeSleep.Text.Value = a.Text("text.ui.home.sleep");
         }
     }

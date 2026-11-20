@@ -28,6 +28,23 @@ namespace EdS.Runtime
     /// </summary>
     public static class KeyBindings
     {
+        /// <summary>Touche de la maison (panneau « Chez soi », rentrer chez soi), lue par le jeu.</summary>
+        public const string HomeKey = "N";
+
+        /// <summary>Touche qui tourne le meuble en mode décoration (l'ultime en combat), lue par le jeu.</summary>
+        public const string RotateKey = "R";
+
+        /// <summary>
+        /// Pagination des listes des panneaux (meubles, coffre, sac) : le début de la page suivante, ou 0 après la dernière (on revient au
+        /// début). Rien n'est jamais hors d'atteinte : chaque place d'une liste de <paramref name="count"/> lignes est sur une page.
+        /// </summary>
+        public static int NextPage(int offset, int count, int pageSize)
+        {
+            if (pageSize < 1) throw new ArgumentOutOfRangeException(nameof(pageSize));
+            int next = offset + pageSize;
+            return next >= count || next < 0 ? 0 : next;
+        }
+
         private static readonly (KeyContext Context, string Key, string Use)[] Table =
         {
             // Exploration : déplacement et vue (W A S D en QWERTY, Z Q S D en AZERTY : mêmes touches physiques), combat, écrans.
@@ -36,20 +53,20 @@ namespace EdS.Runtime
             (KeyContext.Exploration, "Space", "parade"), (KeyContext.Exploration, "LeftControl", "esquive"),
             (KeyContext.Exploration, "Alpha1", "compétence 1"), (KeyContext.Exploration, "Alpha2", "compétence 2"), (KeyContext.Exploration, "Alpha3", "compétence 3"),
             (KeyContext.Exploration, "Alpha4", "compétence 4"), (KeyContext.Exploration, "Alpha5", "compétence 5"), (KeyContext.Exploration, "Alpha6", "compétence 6"),
-            (KeyContext.Exploration, "R", "ultime"), (KeyContext.Exploration, "Tab", "cible suivante"),
+            (KeyContext.Exploration, RotateKey, "ultime"), (KeyContext.Exploration, "Tab", "cible suivante"),
             (KeyContext.Exploration, "O", "ordres au compagnon"), (KeyContext.Exploration, "Y", "attaque à deux"),
             (KeyContext.Exploration, "F", "agir"), (KeyContext.Exploration, "P", "potion"), (KeyContext.Exploration, "C", "vue derrière soi"),
             (KeyContext.Exploration, "U", "monture"), (KeyContext.Exploration, "I", "personnage"), (KeyContext.Exploration, "J", "journal"),
             (KeyContext.Exploration, "K", "atelier"), (KeyContext.Exploration, "L", "carte"), (KeyContext.Exploration, "B", "compétences"),
-            (KeyContext.Exploration, "T", "talents"), (KeyContext.Exploration, "N", "maison"), (KeyContext.Exploration, "H", "aide"),
+            (KeyContext.Exploration, "T", "talents"), (KeyContext.Exploration, HomeKey, "maison"), (KeyContext.Exploration, "H", "aide"),
             (KeyContext.Exploration, "M", "jeu en réseau"), (KeyContext.Exploration, "Return", "halte"), (KeyContext.Exploration, "F6", "sauvegarder"),
             (KeyContext.Exploration, "F8", "commandes tactiles"), (KeyContext.Exploration, "Escape", "pause et réglages"),
             // Mode décoration : le meuble suit le pointeur (clic gauche : poser).
-            (KeyContext.Decoration, "R", "tourner le meuble"), (KeyContext.Decoration, "Escape", "annuler la pose"),
-            (KeyContext.Decoration, "N", "maison"), (KeyContext.Decoration, "H", "aide"),
+            (KeyContext.Decoration, RotateKey, "tourner le meuble"), (KeyContext.Decoration, "Escape", "annuler la pose"),
+            (KeyContext.Decoration, HomeKey, "maison"), (KeyContext.Decoration, "H", "aide"),
             // Panneau ouvert.
             (KeyContext.Panel, "Escape", "fermer"), (KeyContext.Panel, "I", "personnage"), (KeyContext.Panel, "J", "journal"),
-            (KeyContext.Panel, "K", "atelier"), (KeyContext.Panel, "L", "carte"), (KeyContext.Panel, "B", "compétences"), (KeyContext.Panel, "N", "maison"),
+            (KeyContext.Panel, "K", "atelier"), (KeyContext.Panel, "L", "carte"), (KeyContext.Panel, "B", "compétences"), (KeyContext.Panel, HomeKey, "maison"),
             // Dialogue ouvert.
             (KeyContext.Dialogue, "Escape", "fermer le dialogue"),
         };
