@@ -643,6 +643,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
             }
+            else if (_homeCarry != null && Input.GetKeyDown(KeyCode.Escape)) _homeCarry = null;   // V2.53.3 : Échap annule la pose
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
             // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
             bool calm = !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None;   // un dialogue reste possible
@@ -655,6 +656,12 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.L) || _touch.MapPressed) _screens.Toggle(AdventureScreens.Panel.Map);   // sous-lot 12.9d
                 // Sous-lot V1.5 : B ouvre l'écran des compétences (K est l'atelier) ; elles se changent hors combat, effet à la halte.
                 if (Input.GetKeyDown(KeyCode.B)) _screens.Toggle(AdventureScreens.Panel.Skills);
+                // V2.53.3 : H ouvre le panneau de la maison (chez soi), ou ramène chez soi depuis un point sûr (le point sûr à soi).
+                if (Input.GetKeyDown(KeyCode.H) && !talking)
+                {
+                    if (a.AtHome) _screens.Toggle(AdventureScreens.Panel.Home);
+                    else if (a.CanGoHome) a.GoHome();
+                }
                 // Essai réaliste 6, étape 2 (essai de Damien du 27 octobre 2026 : « l'arbre des compétences […] je ne peux pas l'ouvrir ») :
                 // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
                 if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
@@ -777,6 +784,7 @@ namespace EdS.Game
             _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
+            _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
@@ -952,6 +960,51 @@ namespace EdS.Game
             _customBuild = build;
             _talents = null;
             Restart();
+        }
+
+        // --- V2.53.3 : mode décoration de la maison --------------------------------------------------------------------------------
+
+        private string _homeCarry;
+        private int _homeTurn;
+
+        /// <summary>
+        /// Le meuble que l'on pose (choisi par Poser dans le panneau de la maison) suit la souris sur la grille de 0,25 m : R le tourne d'un
+        /// quart de tour, clic gauche le pose (hors de l'interface), Échap annule. Rend l'aperçu à dessiner, ou null.
+        /// </summary>
+        private HomeGhost? HomeCarry(AdventureSession a)
+        {
+            if (_book != null && _book.TakeHomeCarry() is string chosen)
+            {
+                _homeCarry = chosen;
+                _homeTurn = 0;
+                Say(string.Format(a.Text("text.ui.home.carry_hint"), a.HomePieceNameOf(chosen)));
+            }
+            if (_homeCarry == null) return null;
+            if (!a.AtHome) { _homeCarry = null; return null; }
+            if (_screens.Open != AdventureScreens.Panel.None || _paused) return null;
+            if (Input.GetKeyDown(KeyCode.R)) _homeTurn = (_homeTurn + 1) & 3;
+            float floorY = _arena.Feet(_combat.PlayerId) is Vector3 feet ? feet.y : 0f;
+            Ray ray = _camera.Camera.ScreenPointToRay(Input.mousePosition);
+            if (Mathf.Abs(ray.direction.y) < 1e-4f) return null;
+            float t = (floorY - ray.origin.y) / ray.direction.y;
+            if (t <= 0f) return null;
+            Vector3 hit = ray.origin + ray.direction * t;
+            (int cx, int cz) = a.HomeCellAt(hit.x, hit.z);
+            if (!(a.HomePreview(_homeCarry, cx, cz, _homeTurn) is HomePieceLook look)) return null;
+            // Le meuble est centré sous la souris : la case visée est celle du centre de son emprise.
+            int ox = cx - (int)(look.Width / HomeLook.Cell) / 2, oz = cz - (int)(look.Depth / HomeLook.Cell) / 2;
+            look = a.HomePreview(_homeCarry, ox, oz, _homeTurn) ?? look;
+            bool ok = a.CanPlaceFurniture(_homeCarry, ox, oz, _homeTurn) == EdS.World.HomeRefusal.None;
+            bool overUi = UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+            if (Input.GetMouseButtonDown(0) && !overUi && a.PlaceFurniture(_homeCarry, ox, oz, _homeTurn))
+            {
+                string placed = _homeCarry;
+                bool more = false;
+                foreach (AdventureSession.HomePieceLine line in a.HomePiecesToPlace) more |= line.Piece == placed;
+                if (!more) _homeCarry = null;
+                return null;
+            }
+            return new HomeGhost(look, ok);
         }
 
         private void Say(string message)

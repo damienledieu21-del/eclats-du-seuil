@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.43.0-provisoire",
+  "contentVersion": "0.44.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -2444,7 +2444,23 @@
       "text.ui.home.why.inventoryfull": "l'inventaire est plein",
       "text.ui.home.why.notenough": "pas assez d'objets",
       "text.ui.home.why.notthere": "pas d'ici",
-      "text.ui.home.why.incombat": "pas en plein combat"
+      "text.ui.home.why.incombat": "pas en plein combat",
+      "text.ui.home.panel_title": "Chez soi",
+      "text.ui.home.panel_hint": "Poser, tourner et reprendre ses meubles ; ranger au coffre ; dormir.",
+      "text.ui.home.to_place": "Meubles à poser",
+      "text.ui.home.placed": "Meubles posés",
+      "text.ui.home.place": "Poser",
+      "text.ui.home.turn": "Tourner",
+      "text.ui.home.take_back": "Reprendre",
+      "text.ui.home.more": "Suivants",
+      "text.ui.home.chest": "Coffre ({0} / {1} places)",
+      "text.ui.home.chest_take": "Prendre",
+      "text.ui.home.bag": "Sac",
+      "text.ui.home.chest_put": "Ranger",
+      "text.ui.home.sleep": "Dormir",
+      "text.ui.home.carry_hint": "{0} : R pour tourner, clic gauche pour poser, Échap pour annuler",
+      "text.ui.home.open_hint": "H : votre maison",
+      "text.ui.home.go_home_hint": "H : rentrer chez soi"
     }
   }
 }

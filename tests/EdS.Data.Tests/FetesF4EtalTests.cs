@@ -395,7 +395,7 @@ public sealed class FetesF4EtalTests
     public void Unity_panneau_de_l_etal_etal_sur_la_place_et_modeles_prepares()
     {
         // Le panneau : une page du livre, ouverte une seule fois depuis le dialogue, fermée par Échap, jeu figé (pas de fuite d'entrées).
-        Assert.Contains("Merchant, Guild, Feast }", Source("Game/AdventureScreens.cs"));
+        Assert.Contains("Merchant, Guild, Feast, Home }", Source("Game/AdventureScreens.cs"));   // V2.53.3 : puis le panneau de la maison
         string book = Source("Game/AdventureBook.cs");
         Assert.Contains("BuildFeast(Page(AdventureScreens.Panel.Feast));", book);
         Assert.Contains("if (screens.Open == AdventureScreens.Panel.Feast) RefreshFeast(a);", book);

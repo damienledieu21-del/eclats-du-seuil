@@ -211,4 +211,66 @@ public class MaisonContenuTests : IDisposable
         Assert.True(a.GoHome());   // le retour à la maison non plus
         Assert.Equal(CraftRefusal.HomeTooSoon, a.World.CanCraft("recipe.planche"));
     }
+
+    // --- V2.53.3 : rendu et mode décoration ------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Dessin_des_meubles_poses_et_modeles()
+    {
+        HomeBook b = Shipped.Value;
+        ZoneDefinition home = Linked.Value.Zones.Single(z => z.Id == b.Interior);
+        Assert.Equal((-5.0, -4.0), HomeLook.Origin(home));
+        var saved = new SavedHome(0, placed: new[] { new SavedPiece("meuble_lit", 0, 0, 1), new SavedPiece("f01_d01", 17, 15, 0) });
+        IReadOnlyList<HomePieceLook> looks = HomeLook.Pieces(b, saved, home);
+        // Le lit (2 m × 1 m) tourné d'un quart : 1 m × 2 m depuis le coin (-5, -4), centre (-4,5 ; -3).
+        Assert.Equal(("meuble_lit", "C_IN1_B1_03", false, -4.5, -3.0, 90.0, 1.0, 2.0), (looks[0].Piece, looks[0].Model, looks[0].Feast, looks[0].X, looks[0].Z, looks[0].Yaw, looks[0].Width, looks[0].Depth));
+        Assert.Equal(("F01_D01", true), (looks[1].Model, looks[1].Feast));
+        Assert.Equal((-5.0, -4.0, -0.5, 0.0), HomeLook.Floor(b, saved, home));   // 4,5 m × 4 m
+        Assert.Equal((2, 3), HomeLook.CellAt(home, -4.4, -3.1));
+        Assert.Equal((-1, -1), HomeLook.CellAt(home, -5.1, -4.1));
+        Assert.Equal("0|meuble_lit@0,0,1;f01_d01@17,15,0", HomeLook.Key(saved));
+        Assert.Equal(string.Empty, HomeLook.Key(null));
+        // Chaque meuble-objet a son modèle du lot C ; chaque décoration, celui de sa fête.
+        Assert.All(b.Furniture, p => Assert.NotNull(p.FeastCode ?? LotCModels.ForItem(p.Item)));
+    }
+
+    [Fact]
+    public void Mode_decoration_et_coffre_dans_l_aventure()
+    {
+        string data = Data();
+        var feasts = new SavedFeasts(new[] { new SavedFeast("festival.lanternes", owned: new[] { "F01_D01" }) });
+        SavedCharacter hero = Player(0).WithItems(new[] { new ItemStack("item.meuble_table", 2), new ItemStack("item.planche", 20) }, new Dictionary<string, string>())
+            .WithFeasts(feasts).WithHome(SavedHome.Bought);
+        AdventureSession a = Load(data, hero);
+        Assert.Empty(a.HomePiecesToPlace);   // dehors : rien
+        Assert.True(a.UseDoor());
+        a.Advance(0.05);
+        Assert.True(a.AtHome);
+        Assert.Equal(new[] { ("meuble_table", 2), ("f01_d01", 1) }, a.HomePiecesToPlace.Select(l => (l.Piece, l.Available)));
+        Assert.Equal("Table", a.HomePiecesToPlace[0].Name);
+        Assert.Equal(EdS.World.HomeRefusal.None, a.CanPlaceFurniture("meuble_table", 0, 0, 0));
+        Assert.Equal(EdS.World.HomeRefusal.OutOfFloor, a.CanPlaceFurniture("meuble_table", 16, 0, 0));
+        Assert.Equal(-4.25, a.HomePreview("meuble_table", 0, 0, 0)!.Value.X);
+        Assert.True(a.PlaceFurniture("meuble_table", 0, 0, 0));
+        Assert.Equal(EdS.World.HomeRefusal.Overlap, a.CanPlaceFurniture("meuble_table", 1, 1, 0));
+        Assert.False(a.PlaceFurniture("meuble_table", 1, 1, 0));
+        Assert.Contains("Impossible pour la maison : un autre meuble est déjà là.", a.DrainMessages());
+        Assert.True(a.PlaceFurniture("f01_d01", 16, 14, 0));
+        Assert.Equal(new[] { ("meuble_table", 1) }, a.HomePiecesToPlace.Select(l => (l.Piece, l.Available)));
+        Assert.Equal(2, a.HomePieces.Count);
+        Assert.True(a.RotateFurniture(0, 0));
+        Assert.True(a.PickUpFurniture(16, 14));
+        Assert.Equal("0|meuble_table@0,0,1", a.HomeKey);
+
+        // Le coffre : ranger la pile de planches, puis la reprendre.
+        Assert.Equal(8, a.HomeChestSize);
+        int planks = a.World.Inventory.Stacks.ToList().FindIndex(st => st.Item == "item.planche");
+        Assert.True(a.ChestPut(planks));
+        Assert.Equal(new[] { ("item.planche", "Planche", 20) }, a.HomeChest);
+        Assert.Equal(0, a.World.Inventory.Count("item.planche"));
+        Assert.True(a.ChestTake(0));
+        Assert.Empty(a.HomeChest);
+        Assert.Equal(20, a.World.Inventory.Count("item.planche"));
+        Assert.False(a.ChestTake(0));
+    }
 }
