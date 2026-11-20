@@ -112,7 +112,7 @@ namespace EdS.Runtime
         /// <summary>Shaders du jeu (<c>unity/Assets/EdS/Game/*.shader</c>) cherchés par leur nom.</summary>
         public const string EchoShader = "EdS/Echo";
         public const string RiftShader = "EdS/Faille";
-        public static readonly IReadOnlyList<string> GameShaders = new[] { EchoShader, RiftShader, "EdS/Eau", "EdS/Herbe", "EdS/Feuillage", "EdS/Particule", "EdS/Annonce" };
+        public static readonly IReadOnlyList<string> GameShaders = new[] { EchoShader, RiftShader, "EdS/Eau", "EdS/Herbe", "EdS/Feuillage", "EdS/Particule", "EdS/Annonce", "EdS/Neige" };   // V2.44.3 : neige posée sur le décor
 
         private const string A1 = Root + "/Sketchfab/Animaux/";
         private const string A2 = Root + "/Sketchfab/Animaux2/";
