@@ -119,6 +119,9 @@ namespace EdS.Data.Saves
         /// <summary>Lieux reconstruits (version 28) : chantiers par lieu, dans l'ordre lu (facultatif).</summary>
         public List<KeyValuePair<string, SavedRebuildData?>>? Rebuilds { get; set; }
 
+        /// <summary>Maison du joueur (version 29) : paliers, apports, meubles posés, coffre (facultatif : absente tant qu'elle n'est pas achetée).</summary>
+        public SavedHomeData? Home { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -277,5 +280,23 @@ namespace EdS.Data.Saves
         public int? Stage { get; set; }
         public bool? Done { get; set; }
         public List<KeyValuePair<string, long?>>? Given { get; set; }
+    }
+
+    /// <summary>Maison du joueur (version 29) : la maison telle que lue.</summary>
+    public sealed class SavedHomeData
+    {
+        public int? Stage { get; set; }
+        public List<KeyValuePair<string, long?>>? Given { get; set; }
+        public List<SavedPieceData?>? Placed { get; set; }
+        public List<ItemStackData?>? Chest { get; set; }
+    }
+
+    /// <summary>Maison du joueur (version 29) : un meuble posé tel que lu.</summary>
+    public sealed class SavedPieceData
+    {
+        public string? Piece { get; set; }
+        public int? X { get; set; }
+        public int? Z { get; set; }
+        public int? Turn { get; set; }
     }
 }

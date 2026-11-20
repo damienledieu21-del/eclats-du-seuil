@@ -14,6 +14,7 @@ using EdS.Data.Json;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Feasts;
+using EdS.Data.Homes;
 using EdS.Data.Rebuilds;
 using EdS.Data.Validation;
 using EdS.Data.Seasons;
@@ -241,6 +242,7 @@ namespace EdS.Runtime
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
         private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
         private readonly RebuildBook? _rebuilds;   // lieux reconstruits (null : aucun)
+        private readonly HomeBook? _home;   // maison du joueur (null : aucune)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)
@@ -267,10 +269,12 @@ namespace EdS.Runtime
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
-            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null)
+            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null,
+            HomeBook? home = null)
         {
             _feasts = feasts;
             _rebuilds = rebuilds;
+            _home = home;
             _worldBosses = worldBosses;
             _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
@@ -321,6 +325,13 @@ namespace EdS.Runtime
                 var rebuildReport = new ValidationReport();
                 RebuildRules.Check(save.Character!.Rebuilds, _rebuilds, rebuildReport, "$.data.character.rebuilds");
                 if (!rebuildReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (lieux reconstruits) : {rebuildReport}");
+            }
+            // Maison du joueur (sous-lot V2.53.1) : de même, une maison gardée hors du catalogue est une erreur de chargement.
+            if (_home != null && save.Character?.Home is SavedHome savedHome)
+            {
+                var homeReport = new ValidationReport();
+                HomeRules.Check(savedHome, _home, items, homeReport, "$.data.character.home");
+                if (!homeReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (maison du joueur) : {homeReport}");
             }
             (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);
             Open(save, resumeAt, null, resumePlace);
@@ -387,12 +398,16 @@ namespace EdS.Runtime
             FeastLoadResult? feasts = File.Exists(feastsPath) ? FeastJsonReader.ReadFile(feastsPath, storyBook, catalogTexts) : null;
             // Lieux reconstruits (sous-lot V2.43.1) : facultatifs de même (données d'essai réduites) ; présents, ils doivent être valides.
             RebuildLoadResult? rebuilds = File.Exists(rebuildsPath) ? RebuildJsonReader.ReadFile(rebuildsPath, definition, catalog, storyBook) : null;
+            // Maison du joueur (sous-lot V2.53.1) : facultative de même ; présente, elle doit être valide (zones reliées, objets, fêtes).
+            string homePath = HomeJsonReader.PathIn(dataDirectory);
+            HomeLoadResult? home = File.Exists(homePath) ? HomeJsonReader.ReadFile(homePath, zones.Zones, catalog, feasts?.Book) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
                 feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
-                rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report));
+                rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report),
+                home is null ? null : Need(home.Book, "maison du joueur", () => home.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -414,6 +429,7 @@ namespace EdS.Runtime
             world.UseSeasons(_seasons);
             world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
             world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
+            world.UseHome(_home);   // maison du joueur (sauvegarde v29)
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
             // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
             // cours continue d'une session à l'autre de cette zone.

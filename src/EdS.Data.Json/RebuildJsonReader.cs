@@ -108,7 +108,7 @@ namespace EdS.Data.Json
             }) ? x : null;
         }
 
-        private static RebuildNeedData? ReadNeed(JsonInput input, JsonElement element, string path)
+        internal static RebuildNeedData? ReadNeed(JsonInput input, JsonElement element, string path)
         {
             var x = new RebuildNeedData();
             return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
