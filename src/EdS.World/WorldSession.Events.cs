@@ -157,7 +157,9 @@ namespace EdS.World
             bool first = outcome == EventOutcome.Won && entry.Won == 0;
             long won = outcome == EventOutcome.Won ? Math.Min(SavedEvent.MaxCount, checked(entry.Won + 1)) : entry.Won;
             long lost = outcome == EventOutcome.Lost ? Math.Min(SavedEvent.MaxCount, checked(entry.Lost + 1)) : entry.Lost;
-            if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, Math.Min(SavedEvent.MaxDay, o.Day), outcome, entry.Owed || first))) return;
+            // Revue Codex de la PR #240 (sauvegarde v30) : le jour du dernier échec est gardé à part (contrecoup d'un pillage sur ses jours).
+            long day = Math.Min(SavedEvent.MaxDay, o.Day);
+            if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, day, outcome, entry.Owed || first, outcome == EventOutcome.Lost ? day : entry.LostDay))) return;
             if (lostKind == WorldEventNoticeKind.Escaped) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Escaped, e.Id, o.Group.Id, o.Day));
             // Sous-lot V2.7 : la réputation suit l'issue (le hameau défendu, la faille refermée), une fois par occurrence réglée.
             if (outcome == EventOutcome.Won || outcome == EventOutcome.Lost) Narrative?.EventSettled(e.Id, outcome == EventOutcome.Won, lostKind == WorldEventNoticeKind.Missed);   // pendant l'absence : plus faible
@@ -205,7 +207,7 @@ namespace EdS.World
             long gained = xp - _character.Xp;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(money).WithXp(xp);
-            SetEventEntry(e, new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome));
+            SetEventEntry(e, new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome, lostDay: entry.LostDay));
             notices.Add(new WorldEventNotice(WorldEventNoticeKind.Rewarded, e.Id, string.Empty, entry.Last, 0, gained, r.Money, r.Items));
             return true;
         }

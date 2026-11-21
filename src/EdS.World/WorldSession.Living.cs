@@ -50,10 +50,16 @@ namespace EdS.World
             if (shock.Fact != null) return Narrative is Narrative n && n.Knows(shock.Fact);
             if (shock.NotFact != null) return Narrative is Narrative story && !story.Knows(shock.NotFact);
             SavedEvent? entry = _character.Events.FirstOrDefault(e => e.Id == shock.Event);
-            if (entry is null || entry.Last < 0 || entry.Outcome == EventOutcome.None) return false;
-            if (shock.Outcome == "won" && entry.Outcome != EventOutcome.Won) return false;
-            if (shock.Outcome == "lost" && entry.Outcome != EventOutcome.Lost) return false;
-            long since = Zone.Time.Day - entry.Last;
+            if (entry is null || entry.Last < 0) return false;
+            long day;
+            // Revue Codex de la PR #240 (sauvegarde v30) : un contrecoup d'échec part du dernier échec, même si une occurrence plus récente
+            // est réussie ou passée (caravane pillée à J, sauvée à J+1 : les étals restent vides jusqu'à J+3). Jour inconnu (sauvegarde v29
+            // ou antérieure) : la dernière issue, comme avant.
+            if (shock.Outcome == "lost") day = entry.LostDay >= 0 ? entry.LostDay : entry.Outcome == EventOutcome.Lost ? entry.Last : -1;
+            else if (shock.Outcome == "won") day = entry.Outcome == EventOutcome.Won ? entry.Last : -1;
+            else day = entry.Outcome == EventOutcome.None ? -1 : entry.Last;
+            if (day < 0) return false;
+            long since = Zone.Time.Day - day;
             return since >= 0 && since < shock.Days;
         }
 

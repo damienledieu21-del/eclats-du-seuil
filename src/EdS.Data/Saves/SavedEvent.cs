@@ -39,6 +39,13 @@ namespace EdS.Data.Saves
         /// <summary>La récompense de la première réussite attend une place dans le sac.</summary>
         public bool Owed { get; }
 
+        /// <summary>
+        /// Revue Codex de la PR #240 (sauvegarde v30) : jour du monde de la dernière occurrence <b>manquée</b> (pillage d'une caravane,
+        /// hameau pillé), -1 si inconnu. Gardé quand une occurrence plus récente est réussie ou passe, pour que le contrecoup des marchands
+        /// dure ses jours. Une ligne lue d'une sauvegarde antérieure n'en a pas (-1) : le contrecoup suit alors la dernière issue.
+        /// </summary>
+        public long LostDay { get; }
+
         /// <summary>Compteurs et jours, au plus (bornes techniques).</summary>
         public const long MaxCount = 1_000_000, MaxDay = 100_000_000;
 
@@ -53,7 +60,7 @@ namespace EdS.Data.Saves
 
         public static readonly IReadOnlyList<string> OutcomeNames = Array.AsReadOnly(new[] { "none", "won", "lost" });
 
-        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false)
+        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false, long lostDay = -1)
         {
             if (!SaveValidator.IsEventKey(id) || id.Length > MaxKeyLength) throw new ArgumentException($"Événement « {id} » hors du format des sauvegardes.", nameof(id));
             if (won < 0 || won > MaxCount) throw new ArgumentOutOfRangeException(nameof(won));
@@ -61,12 +68,15 @@ namespace EdS.Data.Saves
             if (last < -1 || last > MaxDay) throw new ArgumentOutOfRangeException(nameof(last));
             if (outcome != EventOutcome.None && last < 0) throw new ArgumentException("Une issue sans jour.", nameof(outcome));
             if (owed && won < 1) throw new ArgumentException("Une récompense due sans réussite.", nameof(owed));
+            if (lostDay < -1 || lostDay > last) throw new ArgumentOutOfRangeException(nameof(lostDay), "Jour d'un échec entre -1 et le dernier jour réglé.");
+            if (lostDay >= 0 && lost < 1) throw new ArgumentException("Un jour d'échec sans échec.", nameof(lostDay));
             Id = id;
             Won = won;
             Lost = lost;
             Last = last;
             Outcome = outcome;
             Owed = owed;
+            LostDay = lostDay;
         }
 
         /// <summary>Lignes rangées par identifiant (forme canonique), une seule par identifiant.</summary>
@@ -89,5 +99,8 @@ namespace EdS.Data.Saves
         public long? Last { get; set; }
         public string? Outcome { get; set; }
         public bool? Owed { get; set; }
+
+        /// <summary>Version 30 : jour de la dernière occurrence manquée (facultatif).</summary>
+        public long? LostDay { get; set; }
     }
 }

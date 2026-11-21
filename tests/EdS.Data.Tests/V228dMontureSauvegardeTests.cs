@@ -67,7 +67,7 @@ public class V228dMontureSauvegardeTests : IDisposable
     [Fact]
     public void Version_22_monture_ecrite_et_relue()
     {
-        Assert.Equal(29, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185)
+        Assert.Equal(30, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185)
         Assert.Equal(22, SaveValidator.MountSince);
         var save = new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithMount(PlayerCharacters.Horse));
         string text = SaveJsonReader.Write(save);

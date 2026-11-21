@@ -462,4 +462,61 @@ public class V241CaravanesTests
         SavedEvent saved = w.EventEntry(e);
         Assert.Equal((EventOutcome.None, 0L, o.Day), (saved.Outcome, saved.Lost, saved.Last));
     }
+
+    // ---- Revue Codex de la PR #240 (tour 2) : jour du dernier échec (sauvegarde v30) ----
+
+    /// <summary>Pillée au jour J, sauvée à J+1 : le registre garde le jour du pillage à part (le contrecoup en part).</summary>
+    [Fact]
+    public void Pillee_puis_sauvee_le_jour_du_pillage_est_garde()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "caravanes_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            AdventureSession a = Adventure(Path.Combine(dir, "save.json"));
+            WorldSession w = a.World;
+            WorldEventDefinition e = w.Definition!.EventOf(Attack)!;
+            var all = Enumerable.Range(0, 400).Select(k => WorldEventSchedule.InWindow(w.Definition.Id, w.Definition.Id, e, k)).OfType<EventOccurrence>().ToList();
+            EventOccurrence lost = all.First(o => all.Any(n => n.Day == o.Day + 1));
+            EventOccurrence won = all.Single(n => n.Day == lost.Day + 1);
+            var notices = new List<WorldEventNotice>();
+            w.SettleEvent(e, lost, EventOutcome.Lost, WorldEventNoticeKind.Lost, notices);
+            Assert.Equal(lost.Day, w.EventEntry(e).LostDay);
+            w.SettleEvent(e, won, EventOutcome.Won, null, notices);
+            SavedEvent entry = w.EventEntry(e);
+            Assert.Equal((EventOutcome.Won, won.Day, lost.Day, 1L, 1L), (entry.Outcome, entry.Last, entry.LostDay, entry.Won, entry.Lost));
+            // Écrit et relu (version 30) : le jour du pillage est gardé.
+            SaveLoadResult again = SaveJsonReader.Read(SaveJsonReader.Write(w.Save()));
+            Assert.True(again.IsValid, again.Report.ToString());
+            Assert.Equal(lost.Day, again.Save!.Character!.Events.Single(x => x.Id == entry.Id).LostDay);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Jour_du_dernier_echec_format_version_30()
+    {
+        Assert.Equal((30, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventLostDaySince));
+        string Line(string extra) => "{\"id\": \"zone.vallons/" + Attack + "\", \"won\": 1, \"lost\": 1, \"last\": 5, \"outcome\": \"won\"" + extra + "}";
+        string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
+            Hero().WithEvents(new[] { new SavedEvent("zone.vallons/" + Attack, 1, 1, 5, EventOutcome.Won, lostDay: 4) })));
+        Assert.Contains(Line(", \"lostDay\": 4"), json);
+        Assert.True(SaveJsonReader.Read(json).IsValid);
+        // Absent : inconnu (-1), le contrecoup suit la dernière issue.
+        SaveLoadResult none = SaveJsonReader.Read(json.Replace(", \"lostDay\": 4", ""));
+        Assert.Equal(-1, none.Save!.Character!.Events.Single().LostDay);
+        foreach ((string text, string code) in new[] { (", \"lostDay\": 6", "OutOfRange"), (", \"lostDay\": -1", "OutOfRange") })
+        {
+            SaveLoadResult bad = SaveJsonReader.Read(json.Replace(", \"lostDay\": 4", text));
+            Assert.Contains(bad.Report.Errors, x => x.Path.EndsWith(".lostDay", StringComparison.Ordinal) && x.Code.ToString() == code);
+        }
+        SaveLoadResult noLoss = SaveJsonReader.Read(json.Replace("\"lost\": 1", "\"lost\": 0"));
+        Assert.Contains(noLoss.Report.Errors, x => x.Path.EndsWith(".lostDay", StringComparison.Ordinal));
+        // Version 29 : champ inconnu.
+        SaveLoadResult old = SaveJsonReader.Read(json.Replace("\"schemaVersion\": 30", "\"schemaVersion\": 29"));
+        Assert.Contains(old.Report.Errors, x => x.Path.EndsWith(".lostDay", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
+        Assert.True(SaveJsonReader.Read(json.Replace("\"schemaVersion\": 30", "\"schemaVersion\": 29").Replace(", \"lostDay\": 4", "")).IsValid);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SavedEvent("zone.vallons/" + Attack, 1, 1, 5, EventOutcome.Won, lostDay: 6));
+        Assert.Throws<ArgumentException>(() => new SavedEvent("zone.vallons/" + Attack, 1, 0, 5, EventOutcome.Won, lostDay: 4));
+    }
 }
