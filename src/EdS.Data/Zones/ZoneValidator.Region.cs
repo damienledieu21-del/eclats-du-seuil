@@ -19,10 +19,15 @@ namespace EdS.Data.Zones
         /// par case de 128 m : lieux, portes et routes qui la touchent. Une zone sans région garde les bornes d'avant
         /// (<see cref="MaxPlaces"/>, <see cref="MaxDoors"/>, <see cref="MaxRoads"/>, <see cref="MaxRoadPoints"/>).
         /// </summary>
-        public const int MaxRegionPlaces = 2048, MaxRegionDoors = 256, MaxRegionRoads = 1024, MaxRegionRoadPoints = 128;
+        /// <remarks>Chantier V2.45.1 (schéma 15) : portes relevées de 256 à 512 au total et de 16 à 32 par case (intérieurs du Bourg, bouches
+        /// d'égout, entrées des dessous, failles) ; <see cref="MaxRegionDoorsBefore15"/> et <see cref="MaxDoorsPerCellBefore15"/> avant.</remarks>
+        public const int MaxRegionPlaces = 2048, MaxRegionDoors = 512, MaxRegionRoads = 1024, MaxRegionRoadPoints = 128;
 
         /// <inheritdoc cref="MaxRegionPlaces"/>
-        public const int MaxPlacesPerCell = 64, MaxDoorsPerCell = 16, MaxRoadsPerCell = 32;
+        public const int MaxPlacesPerCell = 64, MaxDoorsPerCell = 32, MaxRoadsPerCell = 32;
+
+        /// <summary>Chantier V2.45.1 : portes d'une zone à région, au total et par case, jusqu'au schéma 14.</summary>
+        public const int MaxRegionDoorsBefore15 = 256, MaxDoorsPerCellBefore15 = 16;
 
         /// <summary>
         /// Sous-lot V2.25.3 (schéma 13) : grille de la région. Coin sud-ouest en mètres entiers, à au plus

@@ -123,7 +123,7 @@ public class V261SuitesDuSeuilTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
+        Assert.Equal((15, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((14, "0.28.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((16, "0.39.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
@@ -178,7 +178,7 @@ public class V261SuitesDuSeuilTests
         ZoneLoadResult old = Mutated(root => root["schemaVersion"] = 11);
         AssertError(old.Report, $"$.data.events[{i}].scar.spreadStage", ValidationCode.InvalidValue);
         AssertError(old.Report, $"$.data.events[{i}].groups[0].spreadTo", ValidationCode.InvalidValue);
-        AssertError(Mutated(root => root["schemaVersion"] = 15).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(Mutated(root => root["schemaVersion"] = 16).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Theory]

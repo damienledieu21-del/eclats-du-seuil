@@ -266,6 +266,38 @@ namespace EdS.Data.Zones
         }
     }
 
+    /// <summary>Chantier V2.45.1 (schéma 15, plan de la grande carte § 3) : étage d'une zone.</summary>
+    public enum ZoneFloor
+    {
+        /// <summary>Surface (« surface ») : la région, ses intérieurs, les scènes ; par défaut.</summary>
+        Surface = 0,
+
+        /// <summary>
+        /// Dessous (« dessous ») : zone à part sous la surface (grotte, mine, crypte, égouts, galeries), reliée par des portes, avec ses
+        /// créatures ; jamais un intérieur ; le voyage rapide n'y mène pas ; ni pluie, ni neige, ni monture.
+        /// </summary>
+        Underground = 1,
+    }
+
+    /// <summary>Chantier V2.45.1 (schéma 15) : genre d'une porte ; les deux portes qui se répondent sont du même genre. Affichage seulement.</summary>
+    public enum DoorKind
+    {
+        /// <summary>Porte (« porte ») : par défaut.</summary>
+        Door = 0,
+
+        /// <summary>Escalier (« escalier ») : crypte, étages d'une mine.</summary>
+        Stairs = 1,
+
+        /// <summary>Puits (« puits ») : puits de mine, ascenseur.</summary>
+        Shaft = 2,
+
+        /// <summary>Trappe (« trappe ») : bouche d'égout, trappe de cave.</summary>
+        Hatch = 3,
+
+        /// <summary>Faille (« faille ») : fente des pierres du Seuil, passage de l'Envers.</summary>
+        Rift = 4,
+    }
+
     /// <summary>
     /// Intérieurs (schéma 4, choix de Damien du 28 octobre 2026 : « on fait la façon 1 ») : une porte vers une autre zone. Le personnage s'y
     /// tient pour passer (<see cref="Position"/>, à portée) et y arrive en venant de la porte <see cref="ToDoor"/> de la zone <see cref="To"/>,
@@ -282,8 +314,12 @@ namespace EdS.Data.Zones
         /// <summary>Bâtiment (obstacle du scénario) dont c'est la porte, ou null.</summary>
         public string? Building { get; }
 
-        internal Door(string id, string name, GroundVector position, string to, string toDoor, string? building)
+        /// <summary>Chantier V2.45.1 (schéma 15) : genre de passage (porte, escalier, puits, trappe, faille) ; une porte d'avant est une porte.</summary>
+        public DoorKind Kind { get; }
+
+        internal Door(string id, string name, GroundVector position, string to, string toDoor, string? building, DoorKind kind = DoorKind.Door)
         {
+            Kind = kind;
             Id = id;
             Name = name;
             Position = position;
@@ -356,6 +392,17 @@ namespace EdS.Data.Zones
         /// <summary>Intérieurs (schéma 4) : la zone est un intérieur (une pièce, sans ciel). Affichage seulement.</summary>
         public bool Indoor { get; }
 
+        /// <summary>Chantier V2.45.1 (schéma 15) : étage de la zone (surface par défaut).</summary>
+        public ZoneFloor Floor { get; }
+
+        /// <summary>Chantier V2.45.1 : la zone est un dessous (<see cref="ZoneFloor.Underground"/>).</summary>
+        public bool Underground => Floor == ZoneFloor.Underground;
+
+        /// <summary>
+        /// Chantier V2.45.2 : la zone est à l'abri du ciel (un intérieur ou un dessous) : ni pluie ni neige, et l'on n'y entre pas à cheval.
+        /// </summary>
+        public bool Sheltered => Indoor || Underground;
+
         /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones, dans l'ordre du fichier (vide sans porte).</summary>
         public IReadOnlyList<Door> Doors { get; }
 
@@ -368,8 +415,10 @@ namespace EdS.Data.Zones
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
-            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null, RegionGrid? region = null)
+            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null, RegionGrid? region = null,
+            ZoneFloor floor = ZoneFloor.Surface)
         {
+            Floor = floor;
             Region = region;
             Events = Frozen.List(events ?? Array.Empty<WorldEventDefinition>(), nameof(events));
             NightSpots = Frozen.List(nightSpots ?? Array.Empty<NightSpot>(), nameof(nightSpots));
@@ -462,7 +511,7 @@ namespace EdS.Data.Zones
             var populations = Populations.Select(p => !seasons.TryGetValue(p.Creature, out PopulationSeasons s) ? p
                 : new Population(p.Creature, p.Template, p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, s)).ToList();
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor);
         }
 
         public ZoneDefinition ForLevel(int playerLevel)
@@ -483,7 +532,7 @@ namespace EdS.Data.Zones
                 p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, p.Seasons)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region, Floor);
         }
     }
 
@@ -538,8 +587,14 @@ namespace EdS.Data.Zones
         /// (<see cref="MaxRegionPlaces"/>) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) :
         /// <c>territory</c> facultatif sur une population (rayon autour de sa place de départ, voir <see cref="Population.Territory"/>) ; dans une
         /// zone à région, chaque créature peuplée part d'au moins <see cref="MinSectorInset"/> du bord de son secteur ; la version 13 est encore
-        /// lue (sans eux).</remarks>
-        public const int CurrentSchemaVersion = 14;
+        /// lue (sans eux). Version 15 (chantier V2.45.1, étages) : <c>floor</c> facultatif (« surface » ou « dessous », voir
+        /// <see cref="ZoneFloor"/>), <c>kind</c> facultatif sur une porte (voir <see cref="DoorKind"/>) et bornes des portes relevées
+        /// (<see cref="MaxDoors"/>, <see cref="MaxRegionDoors"/>, <see cref="MaxDoorsPerCell"/>) ; la version 14 est encore lue (sans eux, avec les
+        /// bornes d'avant).</remarks>
+        public const int CurrentSchemaVersion = 15;
+
+        /// <summary>Chantier V2.45.1 : version du territoire des populations et des secteurs (V2.26), encore lue.</summary>
+        public const int TerritorySchemaVersion = 14;
 
         /// <summary>
         /// Sous-lot V2.26 : distance d'un point au plus proche bord de son secteur qui passe à l'intérieur de l'aire de la zone (au-delà, un
@@ -601,8 +656,21 @@ namespace EdS.Data.Zones
 
         public const int MaxSafePoints = 32, MaxPlaces = 64, MaxPopulations = 256, MaxPassages = 32, MaxRoads = 32, MaxRoadPoints = 32;
 
-        /// <summary>Intérieurs : portes d'une zone, au plus ; zones reliées par des portes, au plus (<see cref="CheckDoors"/>).</summary>
-        public const int MaxDoors = 16, MaxLinkedZones = 64;
+        /// <summary>
+        /// Intérieurs : portes d'une zone sans région, au plus ; zones reliées par des portes, au plus (<see cref="CheckDoors"/>). Chantier
+        /// V2.45.1 : relevées de 16 à 64 portes (schéma 15 ; <see cref="MaxDoorsBefore15"/> avant) et de 64 à 256 zones reliées (intérieurs du
+        /// Bourg, dessous et leurs niveaux, failles).
+        /// </summary>
+        public const int MaxDoors = 64, MaxLinkedZones = 256;
+
+        /// <summary>Chantier V2.45.1 : portes d'une zone sans région, au plus, jusqu'au schéma 14.</summary>
+        public const int MaxDoorsBefore15 = 16;
+
+        /// <summary>
+        /// Chantier V2.45.1 (décision par défaut, voir PLAN_GRANDE_CARTE.md § 3) : dans un dessous, une créature peuplée part à au moins 8 m de
+        /// chaque porte (on n'arrive pas au milieu d'une meute ; même distance que les anneaux d'arrivée d'un point sûr).
+        /// </summary>
+        public static readonly Fixed MinDoorClearance = Fixed.FromInt(8);
 
         /// <summary>Intérieurs : écart au plus entre une porte et la boîte de son bâtiment (provisoire).</summary>
         public static readonly Fixed MaxDoorGap = Fixed.FromInt(2);
@@ -649,6 +717,7 @@ namespace EdS.Data.Zones
                 || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion || document.SchemaVersion == ScarsSchemaVersion
                 || document.SchemaVersion == SpreadSchemaVersion   // sous-lot V2.25.3 : la version 12 aussi (sans région)
                 || document.SchemaVersion == RegionSchemaVersion   // sous-lot V2.26 : la version 13 aussi (sans territoire)
+                || document.SchemaVersion == TerritorySchemaVersion   // chantier V2.45.1 : la version 14 aussi (sans étage)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -658,7 +727,8 @@ namespace EdS.Data.Zones
             bool schema11 = document.SchemaVersion >= ScarsSchemaVersion;
             bool schema12 = document.SchemaVersion >= SpreadSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
             bool schema13 = document.SchemaVersion >= RegionSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
-            bool schema14 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
+            bool schema14 = document.SchemaVersion >= TerritorySchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
+            bool schema15 = document.SchemaVersion >= CurrentSchemaVersion;   // chantier V2.45.1 : étages, genres de porte, bornes relevées
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -682,7 +752,18 @@ namespace EdS.Data.Zones
                 if (!schema13) report.Add("$.data.region", ValidationCode.InvalidValue, $"région : schéma {RegionSchemaVersion} attendu.");
                 else region = CheckRegion(d.Region, space, report);
             }
-            int maxPlaces = regional ? MaxRegionPlaces : MaxPlaces, maxDoors = regional ? MaxRegionDoors : MaxDoors;
+            int maxPlaces = regional ? MaxRegionPlaces : MaxPlaces;
+            int maxDoors = regional ? (schema15 ? MaxRegionDoors : MaxRegionDoorsBefore15) : (schema15 ? MaxDoors : MaxDoorsBefore15);
+            // Chantier V2.45.1 (schéma 15) : étage de la zone ; un dessous n'est jamais un intérieur.
+            ZoneFloor floor = ZoneFloor.Surface;
+            if (d.Floor != null)
+            {
+                if (!schema15) report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage d'une zone : schéma {CurrentSchemaVersion} attendu.");
+                else if (d.Floor == "dessous") floor = ZoneFloor.Underground;
+                else if (d.Floor != "surface") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « {d.Floor} » inconnu : « surface » ou « dessous » attendu.");
+                if (floor == ZoneFloor.Underground && d.Indoor == true)
+                    report.Add("$.data.indoor", ValidationCode.InvalidValue, "un dessous n'est pas un intérieur (indoor: false attendu).");
+            }
             int maxRoads = regional ? MaxRegionRoads : MaxRoads, maxRoadPoints = regional ? MaxRegionRoadPoints : MaxRoadPoints;
             var placeIndices = new List<int>();
             var roadIndices = new List<int>();
@@ -938,9 +1019,17 @@ namespace EdS.Data.Zones
                         else if (building != null && placed && Gap(Point(door.Position!), building) > MaxDoorGap)
                         { report.Add(path + ".position", ValidationCode.OutOfRange, $"porte à plus de {MaxDoorGap} m de son bâtiment « {door.Building} »."); ok = false; }
                     }
+                    // Chantier V2.45.1 (schéma 15) : genre de passage.
+                    DoorKind kind = DoorKind.Door;
+                    if (door.Kind != null)
+                    {
+                        if (!schema15) { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre d'une porte : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        else if (ParseDoorKind(door.Kind) is DoorKind k) kind = k;
+                        else { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre de porte « {door.Kind} » inconnu : « porte », « escalier », « puits », « trappe » ou « faille » attendu."); ok = false; }
+                    }
                     if (ok)
                     {
-                        doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building));
+                        doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building, kind));
                         doorIndices.Add(i);
                     }
                 }
@@ -1024,11 +1113,24 @@ namespace EdS.Data.Zones
                     report.Add("$.data.scenario", ValidationCode.LimitExceeded,
                         $"{space.Obstacles.Count} obstacles dans l'aire d'une zone sans région (simulée d'un bloc), au plus {SpaceLimits.MaxObstacles}.");
             }
+            // Chantier V2.45.1 : dans un dessous, chaque créature peuplée part à au moins 8 m de chaque porte (on y arrive).
+            if (floor == ZoneFloor.Underground)
+                for (int i = 0; i < populations.Count; i++)
+                {
+                    if (!(populations[i].Template.Placement is CombatantPlacement start)) continue;
+                    foreach (Door door in doors)
+                        if (Closer(start.Position, door.Position, MinDoorClearance))
+                        {
+                            int index = d.Populations!.FindIndex(x => x?.Creature == populations[i].Creature);
+                            report.Add($"$.data.populations[{index}].creature", ValidationCode.OutOfRange,
+                                $"dans un dessous, « {populations[i].Creature} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                        }
+                }
             // Sous-lot V2.25.3 : bornes par case de la région (lieux, portes, routes qui touchent la case).
             if (region != null && space != null)   // éléments déjà dans l'aire, donc dans la région
             {
                 CheckPerCell("$.data.places", "lieux", MaxPlacesPerCell, places.Select((p, k) => (placeIndices[k], region.CellsCovering(p.Min, p.Max))), report);
-                CheckPerCell("$.data.doors", "portes", MaxDoorsPerCell, doors.Select((x, k) => (doorIndices[k], (IReadOnlyList<RegionCell>)new[] { region.CellOf(x.Position) })), report);
+                CheckPerCell("$.data.doors", "portes", schema15 ? MaxDoorsPerCell : MaxDoorsPerCellBefore15, doors.Select((x, k) => (doorIndices[k], (IReadOnlyList<RegionCell>)new[] { region.CellOf(x.Position) })), report);
                 CheckPerCell("$.data.roads", "routes", MaxRoadsPerCell, roads.Select((r, k) => (roadIndices[k], region.CellsAlong(r.Points))), report);
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
@@ -1036,7 +1138,7 @@ namespace EdS.Data.Zones
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region, floor));
         }
 
         /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>
@@ -1203,9 +1305,41 @@ namespace EdS.Data.Zones
                 else if (back.To != z.Id || back.ToDoor != door.Id)
                     report.Add(path + ".toDoor", ValidationCode.InvalidValue,
                         $"{z.Id}, porte « {door.Id} » : la porte « {back.Id} » de {target.Id} mène à « {back.To} », porte « {back.ToDoor} », et non ici.");
+                // Chantier V2.45.1 : un escalier répond à un escalier, un puits à un puits (on remonte par où l'on est descendu).
+                else if (back.Kind != door.Kind)
+                    report.Add(path + ".kind", ValidationCode.InvalidValue,
+                        $"{z.Id}, porte « {door.Id} » ({KindName(door.Kind)}) : la porte « {back.Id} » de {target.Id} qui lui répond est un autre genre ({KindName(back.Kind)}).");
             }
             return report;
         }
+
+        /// <summary>Chantier V2.45.1 : les deux points sont à moins de <paramref name="distance"/> l'un de l'autre (calcul exact sur les entiers).</summary>
+        public static bool Closer(GroundVector a, GroundVector b, Fixed distance)
+        {
+            long dx = checked(a.X.Raw - b.X.Raw), dz = checked(a.Z.Raw - b.Z.Raw);
+            return checked(dx * dx + dz * dz) < checked(distance.Raw * distance.Raw);
+        }
+
+        /// <summary>Chantier V2.45.1 : genre de porte écrit dans les données, ou null s'il est inconnu.</summary>
+        private static DoorKind? ParseDoorKind(string text) => text switch
+        {
+            "porte" => DoorKind.Door,
+            "escalier" => DoorKind.Stairs,
+            "puits" => DoorKind.Shaft,
+            "trappe" => DoorKind.Hatch,
+            "faille" => DoorKind.Rift,
+            _ => (DoorKind?)null,
+        };
+
+        /// <summary>Chantier V2.45.1 : nom d'un genre de porte dans les données.</summary>
+        public static string KindName(DoorKind kind) => kind switch
+        {
+            DoorKind.Stairs => "escalier",
+            DoorKind.Shaft => "puits",
+            DoorKind.Hatch => "trappe",
+            DoorKind.Rift => "faille",
+            _ => "porte",
+        };
 
         public const int MaxForms = 8, MaxRewards = 8;
         private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
