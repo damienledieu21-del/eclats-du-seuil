@@ -160,6 +160,81 @@ public class V2451EtagesTests
         AssertError(Validate(Dto(edit: d => d.Doors = Many(ZoneValidator.MaxDoorsBefore15 + 1), schema: 14)), "$.data.doors", ValidationCode.LimitExceeded);
     }
 
+    /// <summary>Relecture indépendante : la règle des 8 m vaut aussi pour la forme de départ du boss et des chefs.</summary>
+    [Theory]
+    [InlineData("boss", "zones/vallons_chef", "gardien_du_seuil", "$.data.boss.forms[0]")]
+    [InlineData("chef", "zones/vallons_bandits", "chef_des_bandits", "$.data.chiefs[0].forms[0]")]
+    public void Chef_et_boss_du_dessous_loin_des_portes(string kind, string scenarioPath, string form, string errorPath)
+    {
+        CombatSetup forms = ScenarioJsonReader.ReadFile(ScenarioPath(scenarioPath), ShippedData).Setup!;
+        GroundVector start = forms.Combatants.OfType<AssailantSetup>().Single(c => c.Id == form).Placement!.Position;
+        ZoneDocument Near(string dx, string floor) => Dto(edit: d =>
+        {
+            d.Floor = floor;
+            var data = new BossData { Id = "chef_d_essai", Scenario = scenarioPath, Forms = new List<string?> { form }, Fact = "fact.chef.vaincu", Rewards = new List<RewardData?>() };
+            if (kind == "boss") d.Boss = data; else d.Chiefs = new List<BossData?> { data };
+            // Porte du côté opposé au loup peuplé, à dx de la forme de départ du chef.
+            d.Doors = new List<DoorData?> { DoorTo("haut", "zone.vallons", "bas", new GroundVector(start.X + Fixed.Parse(dx), start.Z)) };
+        });
+        ZoneLoadResult Check(ZoneDocument doc) => ZoneValidator.Validate(doc, Block.Value, Items, null,
+            kind == "boss" ? forms : null, kind == "boss" ? null : new[] { (CombatSetup?)forms });
+        ZoneLoadResult exact = Check(Near("8", "dessous"));
+        Assert.True(exact.IsValid, exact.Report.ToString());
+        ZoneLoadResult close = Check(Near("7.9999", "dessous"));
+        AssertError(close, errorPath, ValidationCode.OutOfRange);
+        Assert.Null(close.Zone);
+        Assert.True(Check(Near("7.9999", "surface")).IsValid);   // à la surface, la règle d'avant ne change pas
+    }
+
+    /// <summary>Relecture indépendante : plafonds de portes d'une zone à région, au total puis par case, schéma 14 contre schéma 15.</summary>
+    [Theory]
+    [InlineData(ZoneValidator.MaxRegionDoorsBefore15, 14, true)]
+    [InlineData(ZoneValidator.MaxRegionDoorsBefore15 + 1, 14, false)]
+    [InlineData(ZoneValidator.MaxRegionDoors, 15, true)]
+    [InlineData(ZoneValidator.MaxRegionDoors + 1, 15, false)]
+    public void Bornes_des_portes_d_une_region_au_total(int count, int schema, bool valid)
+    {
+        // Portes réparties sur les cases, une par case (la borne par case ne gêne pas), en évitant les obstacles de la zone.
+        RegionData Region() => new() { Origin = new PointData { X = Fixed.FromInt(-1908), Z = Fixed.FromInt(-1614) }, Columns = 32, Rows = 24 };
+        GroundVector Centre(int cell) => new(Fixed.FromInt(-1908 + 64 + 128 * (cell % 32)), Fixed.FromInt(-1614 + 64 + 128 * (cell / 32)));
+        var free = new List<GroundVector>();
+        for (int first = 0; first < 32 * 24; first += 256)
+        {
+            int n = Math.Min(256, 32 * 24 - first);
+            ZoneLoadResult probe = Validate(Dto(edit: d =>
+            {
+                d.Region = Region();
+                d.Doors = Enumerable.Range(0, n).Select(i => (DoorData?)DoorTo("porte_" + i, "zone.cave_" + i, "haut", Centre(first + i))).ToList();
+            }));
+            var bad = probe.Report.Errors.Where(e => e.Path.StartsWith("$.data.doors[")).Select(e => e.Path).ToHashSet();
+            for (int i = 0; i < n; i++) if (!bad.Contains($"$.data.doors[{i}].position")) free.Add(Centre(first + i));
+        }
+        Assert.True(free.Count > ZoneValidator.MaxRegionDoors + 1, "assez de cases libres");
+        ZoneLoadResult r = Validate(Dto(edit: d =>
+        {
+            d.Region = Region();
+            d.Doors = Enumerable.Range(0, count).Select(i => (DoorData?)DoorTo("porte_" + i, "zone.cave_" + i, "haut", free[i])).ToList();
+        }, schema: schema));
+        if (valid) Assert.True(r.IsValid, r.Report.ToString());
+        else AssertError(r, "$.data.doors", ValidationCode.LimitExceeded);
+    }
+
+    [Theory]
+    [InlineData(ZoneValidator.MaxDoorsPerCellBefore15, 14, true)]
+    [InlineData(ZoneValidator.MaxDoorsPerCellBefore15 + 1, 14, false)]
+    [InlineData(ZoneValidator.MaxDoorsPerCell, 15, true)]
+    [InlineData(ZoneValidator.MaxDoorsPerCell + 1, 15, false)]
+    public void Bornes_des_portes_d_une_region_par_case(int count, int schema, bool valid)
+    {
+        ZoneLoadResult r = Validate(Dto(edit: d =>
+        {
+            d.Region = new RegionData { Origin = new PointData { X = Fixed.FromInt(-1908), Z = Fixed.FromInt(-1614) }, Columns = 32, Rows = 24 };
+            d.Doors = Enumerable.Range(0, count).Select(i => (DoorData?)DoorTo("porte_" + i, "zone.cave_" + i, "haut")).ToList();   // toutes dans la case de Place
+        }, schema: schema));
+        if (valid) Assert.True(r.IsValid, r.Report.ToString());
+        else Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.doors[{count - 1}]" && e.Code == ValidationCode.LimitExceeded);
+    }
+
     [Fact]
     public void Portes_qui_se_repondent_du_meme_genre()
     {

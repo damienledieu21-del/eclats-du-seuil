@@ -1113,8 +1113,18 @@ namespace EdS.Data.Zones
                     report.Add("$.data.scenario", ValidationCode.LimitExceeded,
                         $"{space.Obstacles.Count} obstacles dans l'aire d'une zone sans région (simulée d'un bloc), au plus {SpaceLimits.MaxObstacles}.");
             }
-            // Chantier V2.45.1 : dans un dessous, chaque créature peuplée part à au moins 8 m de chaque porte (on y arrive).
+            // Chantier V2.45.1 : dans un dessous, chaque créature part à au moins 8 m de chaque porte (on y arrive) : les populations, et les
+            // formes de départ du chef (« boss ») et des autres chefs (décision de Damien du 21 novembre 2026 : « créatures »).
             if (floor == ZoneFloor.Underground)
+            {
+                var bosses = new List<(Boss Boss, string Path)>();
+                if (boss != null) bosses.Add((boss, "$.data.boss"));
+                foreach (Boss chief in chiefs) bosses.Add((chief, $"$.data.chiefs[{d.Chiefs!.FindIndex(x => x?.Id == chief.Id)}]"));
+                foreach ((Boss each, string bossPath) in bosses)
+                    foreach (Door door in doors)
+                        if (Closer(each.Forms[0].Placement!.Position, door.Position, MinDoorClearance))
+                            report.Add(bossPath + ".forms[0]", ValidationCode.OutOfRange,
+                                $"dans un dessous, la forme « {each.Forms[0].Id} » du chef « {each.Id} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
                 for (int i = 0; i < populations.Count; i++)
                 {
                     if (!(populations[i].Template.Placement is CombatantPlacement start)) continue;
@@ -1126,6 +1136,7 @@ namespace EdS.Data.Zones
                                 $"dans un dessous, « {populations[i].Creature} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
                         }
                 }
+            }
             // Sous-lot V2.25.3 : bornes par case de la région (lieux, portes, routes qui touchent la case).
             if (region != null && space != null)   // éléments déjà dans l'aire, donc dans la région
             {
