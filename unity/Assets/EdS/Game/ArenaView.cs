@@ -72,6 +72,9 @@ namespace EdS.Game
 
         /// <summary>V2.44.3 : racine du décor de l'espace affiché (neige posée), ou null.</summary>
         public Transform DecorRoot => _space?.Root;
+
+        /// <summary>V2.44.4 : état de la vigne des coteaux (rangs, grappes, objets de vendange).</summary>
+        public void Vines(EdS.Data.Seasons.VineState? state, int season) => _space?.Vines(state, season);
         private IReadOnlyList<ConvexPolygon> _obstacles;
         private GameObject _defaultGround;
         private readonly Dictionary<string, Vector3> _from = new Dictionary<string, Vector3>();
