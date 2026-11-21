@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 7,
   "kind": "merchants",
-  "contentVersion": "0.21.0-provisoire",
+  "contentVersion": "0.22.0-provisoire",
   "data": {
     "values": [
       {
@@ -2070,6 +2070,15 @@
         ],
         "stockPercent": 0,
         "pricePercent": 100
+      },
+      {
+        "id": "caravane_pillee",
+        "event": "zone.vallons/attaque_caravane_d_ambre",
+        "outcome": "lost",
+        "days": 3,
+        "items": ["item.epices_du_sud", "item.orange_du_sud", "item.tomate_du_sud", "item.pasteque_du_sud", "item.citrouille_du_sud", "item.bobine_de_fil", "item.cape_de_laine", "item.braies_de_toile"],
+        "stockPercent": 40,
+        "pricePercent": 125
       }
     ],
     "market": {

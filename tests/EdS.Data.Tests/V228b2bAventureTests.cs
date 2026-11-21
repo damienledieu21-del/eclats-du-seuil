@@ -499,6 +499,7 @@ public class V228b2bAventureTests : IDisposable
         foreach (var n in nodes.Where(n => !Within(n!["position"]!)).ToList()) nodes.Remove(n);
         File.WriteAllText(craftingPath, crafting.ToJsonString());
         // Sous-lot V2.43.2b : sans les chantiers (la plupart de leurs lieux sont hors de l'aire d'avant).
+        File.Delete(Path.Combine(data, "world", "caravans.json"));   // V2.41.1 : sans les caravanes (leur route sort de l'aire d'avant)
         File.Delete(Path.Combine(data, "world", "rebuilds.json"));
         File.Delete(Path.Combine(data, "world", "home.json"));   // V2.53.2 : sans la maison du joueur (sa porte est hors de l'aire d'avant)
         // Chefs et événements du monde restent liés à leur session jusqu'au V2.28b (2c) : ils sont retirés de la zone, et de l'histoire et de la
