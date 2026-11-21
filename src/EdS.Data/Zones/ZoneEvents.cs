@@ -38,6 +38,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Sous-lot V2.6 (schéma 11) : cicatrice laissée par une faille restée ouverte (faille seulement, facultatif).</summary>
         public WorldEventScarData? Scar { get; set; }
+
+        /// <summary>Sous-lot V2.41.1 : attaque d'une caravane (<c>caravans.json</c> seulement) : la caravane attaquée (remplie par le validateur des caravanes).</summary>
+        public string? Caravan { get; set; }
+
+        /// <summary>Sous-lot V2.41.1 : attaque d'une caravane : chance, en pour cent, que ses gardes repoussent seuls les bandits (sans le joueur).</summary>
+        public int? GuardsPercent { get; set; }
     }
 
     /// <summary>Sous-lot V2.6 (schéma 11) : la cicatrice d'une faille, telle que lue, avant validation.</summary>
@@ -94,6 +100,9 @@ namespace EdS.Data.Zones
         public long? Money { get; set; }
         public List<RewardData?>? Items { get; set; }
         public string? Fact { get; set; }
+
+        /// <summary>Sous-lot V2.41.1 : prime en cuivre de chaque réussite après la première (attaque d'une caravane seulement).</summary>
+        public long? Bounty { get; set; }
     }
 
     /// <summary>Sous-lot V2.5 : sorte d'événement du monde.</summary>
@@ -107,6 +116,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Chasse de bêtes entre elles (la meute qui attaque les sangliers à l'aube) : ni récompense ni registre.</summary>
         Hunt = 2,
+
+        /// <summary>
+        /// Sous-lot V2.41.1 : attaque d'une caravane sur la route (données des caravanes, jamais d'un fichier de zone) : la caravane s'arrête à sa
+        /// halte ; à défendre en venant à bout des bandits avant la fin ; sans le joueur, l'issue est tirée (gardes, <see cref="WorldEventDefinition.GuardsPercent"/>).
+        /// </summary>
+        Caravan = 3,
     }
 
     /// <summary>Sous-lot V2.5 : une créature d'un événement, sur le modèle d'une population de la zone.</summary>
@@ -167,8 +182,12 @@ namespace EdS.Data.Zones
         /// <summary>Fait appris à la première réussite (remerciements des PNJ), ou null.</summary>
         public string? Fact { get; }
 
-        internal WorldEventReward(long xp, long money, IEnumerable<(string, int)> items, string? fact)
+        /// <summary>Sous-lot V2.41.1 : prime en cuivre de chaque réussite après la première (0 : aucune ; attaque d'une caravane seulement).</summary>
+        public long Bounty { get; }
+
+        internal WorldEventReward(long xp, long money, IEnumerable<(string, int)> items, string? fact, long bounty = 0)
         {
+            Bounty = bounty;
             Xp = xp;
             Money = money;
             Items = Frozen.List(items, nameof(items));
@@ -242,12 +261,21 @@ namespace EdS.Data.Zones
         /// <summary>L'événement a une issue gardée au registre du personnage (attaque, faille ; pas une chasse).</summary>
         public bool Settles => Kind != WorldEventKind.Hunt;
 
+        /// <summary>Sous-lot V2.41.1 : caravane attaquée (attaque d'une caravane), ou null.</summary>
+        public string? Caravan { get; }
+
+        /// <summary>Sous-lot V2.41.1 : chance, en pour cent, que les gardes de la caravane repoussent seuls les bandits (0 sauf pour une caravane).</summary>
+        public int GuardsPercent { get; }
+
         public int TotalWeight { get; }
 
         internal WorldEventDefinition(string id, WorldEventKind kind, int everyDays, int chancePercent, int firstDay, int startMinute, int spreadMinutes,
             int announceMinutes, int durationMinutes, int aftermathMinutes, PopulationWeather? weather, string? place, GroundVector? refuge,
-            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1, WorldEventScar? scar = null)
+            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1, WorldEventScar? scar = null,
+            string? caravan = null, int guardsPercent = 0)
         {
+            Caravan = caravan;
+            GuardsPercent = guardsPercent;
             MinLevel = minLevel;
             Scar = scar;
             Id = id;
@@ -275,6 +303,9 @@ namespace EdS.Data.Zones
         }
 
         public static readonly IReadOnlyList<string> KindNames = Array.AsReadOnly(new[] { "raid", "rift", "hunt" });
+
+        /// <summary>Sous-lot V2.41.1 : nom de la sorte « attaque d'une caravane » (lue des données des caravanes seulement).</summary>
+        public const string CaravanKindName = "caravan";
     }
 
     /// <summary>

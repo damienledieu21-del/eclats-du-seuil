@@ -9,6 +9,7 @@ using EdS.Data.Classes;
 using EdS.Data.Crafting;
 using EdS.Data.Fishing;
 using EdS.Data.Guild;
+using EdS.Data.Caravans;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
@@ -242,6 +243,7 @@ namespace EdS.Runtime
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
         private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
         private readonly RebuildBook? _rebuilds;   // lieux reconstruits (null : aucun)
+        private readonly CaravanBook? _caravans;   // sous-lot V2.41.1 : caravanes (null : aucune)
         private readonly HomeBook? _home;   // maison du joueur (null : aucune)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
@@ -270,10 +272,11 @@ namespace EdS.Runtime
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
             WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null,
-            HomeBook? home = null)
+            HomeBook? home = null, CaravanBook? caravans = null)
         {
             _feasts = feasts;
             _rebuilds = rebuilds;
+            _caravans = caravans;
             _home = home;
             _worldBosses = worldBosses;
             _fishingBook = fishing;
@@ -409,13 +412,25 @@ namespace EdS.Runtime
                 list[0] = seasonBook.ApplyTo(list[0]);
                 played = list;
             }
+            // Sous-lot V2.41.1 : caravanes et attaques des bandits (fichier absent, données d'essai réduites : aucune ; présent, il doit être
+            // valide). Leurs attaques deviennent des événements du monde de la zone de départ.
+            string caravansPath = CaravanJsonReader.PathIn(dataDirectory);
+            CaravanBook? caravanBook = null;
+            if (File.Exists(caravansPath))
+            {
+                CaravanLoadResult caravans = CaravanJsonReader.ReadFile(caravansPath, definition, catalog);
+                caravanBook = Need(caravans.Book, "caravanes", () => caravans.Report);
+                var list = played.ToList();
+                list[0] = caravanBook.ApplyTo(list[0]);
+                played = list;
+            }
             return new AdventureSession(data, progression, catalog, played, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
                 feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
                 rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report),
-                home is null ? null : Need(home.Book, "maison du joueur", () => home.Report));
+                home is null ? null : Need(home.Book, "maison du joueur", () => home.Report), caravanBook);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -436,6 +451,7 @@ namespace EdS.Runtime
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
             world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
+            world.UseCaravans(_caravans);   // sous-lot V2.41.1 : caravanes (leurs attaques sont déjà des événements de la zone de départ)
             world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
             world.UseHome(_home);   // maison du joueur (sauvegarde v29)
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)

@@ -145,17 +145,34 @@ namespace EdS.World
             // Relecture de la PR #107 : réglée une seule fois, et seulement si le registre peut la garder : sinon rien (ni annonce, ni fait,
             // ni récompense), refus atomique.
             if (o.Day <= entry.Last || !HasEventRoom(e)) return;
+            // Sous-lot V2.41.1 : une caravane que le joueur n'a pas sauvée (absent, ou bandits encore debout à la fin) passe quand même si ses
+            // gardes l'emportent (tirage fixe par occurrence) : réglée sans issue, ni pillage ni contrecoup.
+            if (outcome == EventOutcome.Lost && e.Kind == WorldEventKind.Caravan && CaravanSchedule.GuardsHold(Definition!.Id, e, o))
+            {
+                outcome = EventOutcome.None;
+                lostKind = WorldEventNoticeKind.Escaped;
+            }
             bool first = outcome == EventOutcome.Won && entry.Won == 0;
             long won = outcome == EventOutcome.Won ? Math.Min(SavedEvent.MaxCount, checked(entry.Won + 1)) : entry.Won;
             long lost = outcome == EventOutcome.Lost ? Math.Min(SavedEvent.MaxCount, checked(entry.Lost + 1)) : entry.Lost;
             if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, Math.Min(SavedEvent.MaxDay, o.Day), outcome, entry.Owed || first))) return;
+            if (lostKind == WorldEventNoticeKind.Escaped) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Escaped, e.Id, o.Group.Id, o.Day));
             // Sous-lot V2.7 : la réputation suit l'issue (le hameau défendu, la faille refermée), une fois par occurrence réglée.
             if (outcome == EventOutcome.Won || outcome == EventOutcome.Lost) Narrative?.EventSettled(e.Id, outcome == EventOutcome.Won, lostKind == WorldEventNoticeKind.Missed);   // pendant l'absence : plus faible
             if (outcome == EventOutcome.Won)
             {
                 notices.Add(new WorldEventNotice(WorldEventNoticeKind.Won, e.Id, o.Group.Id, o.Day));
                 if (e.Reward?.Fact is string fact) _eventFacts.Add(fact);
-                if (!first) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Thanks, e.Id, o.Group.Id, o.Day));
+                if (!first)
+                {
+                    notices.Add(new WorldEventNotice(WorldEventNoticeKind.Thanks, e.Id, o.Group.Id, o.Day));
+                    // Sous-lot V2.41.1 : la prime d'une caravane sauvée, à chaque fois (si elle tient dans la bourse ; sinon rien).
+                    if (e.Reward is { Bounty: > 0 } b && Coins.TryAdd(_character.Money, b.Bounty, out long purse))
+                    {
+                        _character = _character.WithMoney(purse);
+                        notices.Add(new WorldEventNotice(WorldEventNoticeKind.Rewarded, e.Id, string.Empty, o.Day, 0, 0, b.Bounty, Array.Empty<(string, int)>()));
+                    }
+                }
                 // La première récompense est donnée tout de suite si elle tient ; sinon elle reste due (owed) jusqu'à ce qu'elle tienne.
                 else GiveEventReward(e, notices);   // sac plein : due, annoncée par le tick (WorldEvents.Step)
                 // Sous-lot V2.6 : une faille refermée fait reculer la cicatrice qui est à sa place, et arrête les autres de grandir.

@@ -41,6 +41,7 @@ namespace EdS.Runtime
             WorldEventNoticeKind.ScarPurified => "cicatrice_purifiee",
             WorldEventNoticeKind.ScarStirs => "cicatrice_rode",
             WorldEventNoticeKind.ScarSpread => "cicatrice_propagee",   // sous-lot V2.6.1
+            WorldEventNoticeKind.Escaped => "passee",   // sous-lot V2.41.1 : la caravane est passée sans le joueur
             _ => "fin",
         };
 
@@ -159,6 +160,8 @@ namespace EdS.Runtime
             SaveStore.Write(path, DayTrial.Advanced(save, tick));
             string where = o.Event.Kind == WorldEventKind.Rift && o.Group.Position is GroundVector r
                 ? $"La faille s'ouvre {Place(o.Group.Id)} (x {r.X}, z {r.Z}) : viens à bout des échos, puis approche-toi et appuie sur F pour la refermer."
+                : o.Event.Kind == WorldEventKind.Caravan && o.Group.Position is GroundVector halt
+                    ? $"Les bandits attendent la caravane sur la route d'Ambre (x {halt.X}, z {halt.Z}), sous leur fort : sois-y pour la défendre (point sûr « pied du fort »)."
                 : o.Event.Kind == WorldEventKind.Raid
                     ? $"La cloche du hameau de la carrière va sonner ({(o.Group.Id == "loups" ? "des loups" : "des bandits")}) : fais halte au hameau de la carrière, ou voyage jusque-là."
                     : "Les loups vont sortir du bois près des sangliers des champs du sud.";

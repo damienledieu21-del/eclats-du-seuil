@@ -456,6 +456,14 @@ namespace EdS.Data.Zones
         /// Sous-lot V2.44.2 : la même zone, dont les populations nommées dans <paramref name="seasons"/> ne sont là qu'en leurs saisons (contenu
         /// saisonnier validé contre cette zone). Les autres populations, la simulation et tout le reste sont repris tels quels.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.41.1 : la même zone, avec en plus les attaques de caravanes <paramref name="attacks"/> (données des caravanes validées
+        /// contre cette zone) parmi ses événements du monde. Tout le reste est repris tel quel.
+        /// </summary>
+        internal ZoneDefinition WithCaravanAttacks(IEnumerable<WorldEventDefinition> attacks) =>
+            new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, Populations, Passages,
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region);
+
         internal ZoneDefinition WithSeasons(IReadOnlyDictionary<string, PopulationSeasons> seasons)
         {
             if (seasons is null) throw new ArgumentNullException(nameof(seasons));
@@ -1251,12 +1259,12 @@ namespace EdS.Data.Zones
                 }
         }
 
-        private static void CheckEventSector(WorldEventDefinition e, int index, RegionGrid region, CombatSpace space, ValidationReport report)
+        internal static void CheckEventSector(WorldEventDefinition e, int index, RegionGrid region, CombatSpace space, ValidationReport report, string? at = null)
         {
             GroundVector lieu = e.Groups[0].Position ?? e.Groups[0].Creatures[0].Position;
             if (!region.Contains(lieu)) return;
             string sector = region.CellOf(lieu).SectorName;
-            string path = $"$.data.events[{index}]";
+            string path = at ?? $"$.data.events[{index}]";   // sous-lot V2.41.1 : ou l'attaque d'une caravane
             void Check(string at, GroundVector p, string what)
             {
                 if (!region.Contains(p) || region.CellOf(p).SectorName != sector)
