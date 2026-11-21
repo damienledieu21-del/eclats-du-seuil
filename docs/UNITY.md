@@ -1170,6 +1170,15 @@ Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSessi
 - **Décisions de Damien du 19 novembre 2026** : réconfort à rendre réel hors combat (60 minutes de jeu, +10 % proposé, sans statistique de combat ; demande un changement du moteur) ; accessoire par fête plus tard, avec les costumes en 3D.
 - Textes **0.39.0**. Tests : `FetesF6CostumesPlatsTests`. Pas vu dans Unity.
 
+
+### Accessoires de fête des habitants (V2.56.3, 21 novembre 2026)
+
+Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : « un accessoire par fête, plus tard, avec les costumes en 3D »). Affichage seulement.
+
+- **Quel accessoire** (`FeastAccessories`, sans Unity, testé) : aucun modèle d'accessoire propre n'existe (les costumes C01 ne sont pas modélisés). **Choix par défaut, question posée dans la PR** : la **récompense de la fête** (R01, déjà générée) : masque de l'Autre Rôle **sur le visage** (Carnaval), médaillon des compagnons et rosette du maître artisan **sur la poitrine**, les neuf autres **en main droite** (lanterne, œuf, clochette, coupes, cloche, clé, livre, boule à neige).
+- **Qui** : les mêmes habitants que ceux qui prennent les teintes de la fête (`HumanWardrobe.FeastTints`) : ni gardes, ni bandits, ni le héros ; posé à l'habillage (`StyleLook.Dress` → `FeastAccessoryLook.Attach`), attaché à l'os (`Head`, `spine_03`/`Spine2`, `hand_r`/`RightHand`), il suit l'animation. Comme la tenue, un habitant déjà là quand la fête commence garde son aspect jusqu'à sa réapparition.
+- **Modèles** : `Modeles/Fetes/F01_R01` … `F12_R01` (même chaîne que les décorations : maillage réduit à 2 500 faces, couleur JPEG 512, normale PNG 512 ; 5,5 Mo pour les 12), rangés par le menu avec les autres (`StyleCatalog.Feasts`).
+- Essais : `V2563AccessoiresDeFeteTests`, `FetesF4EtalTests` (72 dossiers : 60 décorations, 12 récompenses). Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; décalages (visage, poitrine, main) fixés à la main ; plusieurs récompenses sont plus petites que leurs cotes du dossier (échelle Tripo : masque 0,125 m de large pour 0,22, médaillon 0,053 pour 0,075) ; la main droite ne se ferme pas sur l'objet.
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

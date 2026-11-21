@@ -435,7 +435,7 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Décor du mois (F5) | En plus de la place du village et de la place du marché du Bourg : **devant l'auberge**, au **parvis de la chapelle** et aux **portes du Bourg**, mêmes règles de placement. | Retenu (Damien, 19 novembre 2026) |
 | Maison du joueur | **Oui**, en **chantier à part**, après les lieux reconstruits ; les décorations de fête achetées y seront posées. Chantier V2.53 ouvert le 20 novembre 2026 (§ 7 quaterdecies). | Retenu (Damien, 19 novembre 2026), en cours |
 | Réconfort d'un plat de fête (F6) | Un **vrai petit confort hors combat pendant 60 minutes de jeu** (marche un peu plus rapide hors combat, ou endurance qui revient plus vite hors combat), **aucune statistique de combat** ; déterministe et testé côté cœur ; hors sauvegarde si le format devait changer (perdu au rechargement). Valeur : **+10 % de vitesse de marche hors combat**, avec le changement du moteur (moteur 0.35.0, journal 29, instantané 10, nouvelle référence figée ; journaux historiques jamais modifiés), fait au sous-lot F7. | Retenu (Damien, 19 novembre 2026) |
-| Accessoire de fête des habitants | **Un accessoire par fête** (masque, couronne…) : **oui, plus tard**, dans un chantier à part avec les costumes en 3D. | Retenu (Damien, 19 novembre 2026), à venir |
+| Accessoire de fête des habitants | **Un accessoire par fête** (masque, couronne…) : **oui, plus tard**, dans un chantier à part avec les costumes en 3D. V2.56.3 (en PR) : la récompense R01 de chaque fête sert d'accessoire (**recommandation de Claude**, à valider). | Retenu (Damien, 19 novembre 2026) ; V2.56.3 en PR |
 
 ## 7 duodecies. Pâtisseries de Firmin (Retenu)
 
