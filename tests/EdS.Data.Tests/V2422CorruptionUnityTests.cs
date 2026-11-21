@@ -103,10 +103,27 @@ public class V2422CorruptionUnityTests
         Assert.Throws<ArgumentException>(() => CorruptionLooks.Size("autre"));
         Assert.Equal(CorruptionLooks.Seed("pierres_ouest"), CorruptionLooks.Seed("pierres_ouest"));
         Assert.NotEqual(CorruptionLooks.Seed("pierres_ouest"), CorruptionLooks.Seed("faille_du_nord"));
-        // Aucun modèle versé pour l'instant (aucune dépense) : le dossier est absent ou ne contient que des modèles prévus.
-        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", CorruptionLooks.Folder);
-        if (Directory.Exists(folder))
-            Assert.All(Directory.GetFiles(folder, "*.fbx", SearchOption.AllDirectories), f => Assert.NotNull(CorruptionLooks.NameOf(f)));
+    }
+
+    /// <summary>
+    /// Modèles Tripo de la corruption (dépense de 240 crédits au plus validée par Damien le 21 novembre 2026) versés à l'endroit où le menu
+    /// les cherche : chacun a son FBX reconnu par son nom, sa couleur et sa normale à côté, allégé ; les formes de remplacement restent en repli.
+    /// </summary>
+    [Fact]
+    public void Modeles_Tripo_verses_et_reconnus()
+    {
+        string root = Path.Combine(Lot93UnityPackageTests.Root, "unity");
+        foreach (string name in CorruptionLooks.Models)
+        {
+            string fbx = CorruptionLooks.Folder + "/" + name + "/" + name + ".fbx";
+            Assert.True(File.Exists(Path.Combine(root, fbx)), fbx);
+            Assert.Equal(name, CorruptionLooks.NameOf(fbx));
+            Assert.True(File.Exists(Path.Combine(root, CorruptionLooks.Folder, name, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(root, CorruptionLooks.Folder, name, name + "_normale.png")), name);
+            Assert.True(new FileInfo(Path.Combine(root, fbx)).Length < 2_000_000, name);   // allégé pour le mobile
+        }
+        string[] all = Directory.GetFiles(Path.Combine(root, CorruptionLooks.Folder), "*.fbx", SearchOption.AllDirectories);
+        Assert.Equal(CorruptionLooks.Models.Count, all.Length);
     }
 
     [Fact]
