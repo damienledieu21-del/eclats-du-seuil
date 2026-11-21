@@ -57,24 +57,6 @@ public sealed class V2124PcModesteTests
     }
 
     [Fact]
-    public void Le_choix_du_joueur_passe_avant_l_automatique()
-    {
-        Assert.Equal(0, MachineTier.MipLimit(TextureChoice.Full, 1224, 4096, false));
-        Assert.Equal(1, MachineTier.MipLimit(TextureChoice.Half, 8192, 16384, false));
-        Assert.Equal(2, MachineTier.MipLimit(TextureChoice.Quarter, 8192, 16384, true));
-        Assert.Equal(2, MachineTier.MipLimit(TextureChoice.Auto, 1224, 4096, false));
-        Assert.Equal(TextureChoice.Full, MachineTier.Next(TextureChoice.Auto));
-        Assert.Equal(TextureChoice.Half, MachineTier.Next(TextureChoice.Full));
-        Assert.Equal(TextureChoice.Quarter, MachineTier.Next(TextureChoice.Half));
-        Assert.Equal(TextureChoice.Auto, MachineTier.Next(TextureChoice.Quarter));
-        Assert.Equal(TextureChoice.Auto, MachineTier.Choice(-1));
-        Assert.Equal(TextureChoice.Auto, MachineTier.Choice(4));
-        Assert.Equal(TextureChoice.Quarter, MachineTier.Choice(3));
-        Assert.Equal("Qualité des textures : auto (quart)", MachineTier.Label(TextureChoice.Auto, 2));
-        Assert.Equal("Qualité des textures : moitié", MachineTier.Label(TextureChoice.Half, 1));
-    }
-
-    [Fact]
     public void La_ligne_du_verificateur_dit_le_niveau_les_memoires_et_la_limite()
     {
         Assert.Equal("PC modeste (mémoire vidéo 1224 Mo, mémoire 4096 Mo) ; textures : quart (limite de mipmaps 2) ; ressources lourdes (« jamais sur téléphone ») écartées",

@@ -183,7 +183,7 @@ namespace EdS.Runtime
                 case TitleAction.Quit: return "Quitter";
                 case TitleAction.ConfirmNew: return "Oui, effacer et recommencer";
                 case TitleAction.Back: return "Retour";
-                case TitleAction.Textures: return "Textures";
+                case TitleAction.Textures: return "Qualité";
                 case TitleAction.Brightness: return "Luminosité";
                 default: return "";
             }
