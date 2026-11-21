@@ -319,7 +319,7 @@ namespace EdS.Data.Json
                     }
                     c.Rebuilds = list;
                 },
-                ["corruption"] = (v, p) =>   // sous-lot V2.42.1 : autels purifiés (version 31), facultatif
+                ["corruption"] = (v, p) =>   // sous-lot V2.42.1 : autels purifiés (version 32), facultatif
                 {
                     c.Present.Add("corruption");
                     if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « terre : jour »")) return;
@@ -857,7 +857,7 @@ namespace EdS.Data.Json
                     .Append(", \"chest\": [").Append(string.Join(", ", home.Chest.Select(st => "{\"item\": " + Quoted(st.Item) + ", \"count\": " + N(st.Count)
                         + InstanceFields(st) + "}"))).Append("]},\n");
             }
-            if (!c.Corruption.IsEmpty)   // sous-lot V2.42.1 (version 31) : état déjà validé à la construction (terres au format)
+            if (!c.Corruption.IsEmpty)   // sous-lot V2.42.1 (version 32) : état déjà validé à la construction (terres au format)
                 b.Append("      \"corruption\": {").Append(string.Join(", ", c.Corruption.Purified.Select(e => "\"" + e.Key + "\": "
                     + e.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.

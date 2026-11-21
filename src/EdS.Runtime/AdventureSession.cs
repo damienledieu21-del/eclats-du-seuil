@@ -474,7 +474,7 @@ namespace EdS.Runtime
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
             world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
-            world.UseCorruption(_corruption);   // sous-lot V2.42.1 : corruption (sauvegarde v31 ; le catalogue ne vaut que dans sa zone)
+            world.UseCorruption(_corruption);   // sous-lot V2.42.1 : corruption (sauvegarde v32 ; le catalogue ne vaut que dans sa zone)
             world.UseCaravans(_caravans);   // sous-lot V2.41.1 : caravanes (leurs attaques sont déjà des événements de la zone de départ)
             world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
             world.UseHome(_home);   // maison du joueur (sauvegarde v29)

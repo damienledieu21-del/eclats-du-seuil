@@ -5,7 +5,7 @@ using System.Linq;
 namespace EdS.Data.Saves
 {
     /// <summary>
-    /// Sous-lot V2.42.1 (sauvegarde v31) : autels purifiés du personnage, par terre (<c>corruption.json</c>) : le jour du monde de la dernière
+    /// Sous-lot V2.42.1 (sauvegarde v32) : autels purifiés du personnage, par terre (<c>corruption.json</c>) : le jour du monde de la dernière
     /// purification de chacun. Rien d'autre n'est gardé : où en est la corruption se recalcule de ces jours et du temps du monde. Une terre
     /// que le catalogue n'a plus est gardée telle quelle, sans effet ; l'accord avec le catalogue n'est pas exigé (comme les cicatrices).
     /// </summary>

@@ -23,7 +23,7 @@ namespace EdS.Data.Tests;
 /// Sous-lot V2.42.1 : corruption qui s'étend et recule (cœur). Données <c>corruption.json</c> (version 1) et leur validateur à chemin
 /// précis ; règles recalculées du temps du monde et des autels purifiés (terre gagnée 2 jours après son origine, un palier tous les 2 jours
 /// jusqu'au 3, répit de 4 jours, corruption tenue par la source) ; purification d'un autel (refus atomiques, éclat, expérience, fait) ;
-/// sauvegarde v31 (<c>character.corruption</c>) ; annonces ; marque à l'écran.
+/// sauvegarde v32 (<c>character.corruption</c>) ; annonces ; marque à l'écran.
 /// </summary>
 [Trait("Category", "World")]
 public class V242CorruptionTests
@@ -79,7 +79,7 @@ public class V242CorruptionTests
     {
         CorruptionLoadResult r = Read();
         Assert.True(r.IsValid, r.Report.ToString());
-        Assert.Equal((1, 31, 31), (CorruptionValidator.CurrentSchemaVersion, SaveValidator.CurrentSchemaVersion, SaveValidator.CorruptionSince));
+        Assert.Equal((1, 32, 32), (CorruptionValidator.CurrentSchemaVersion, SaveValidator.CurrentSchemaVersion, SaveValidator.CorruptionSince));
         Assert.Equal(("cercle_des_pierres", 2, 2, 3, 4, 150L, 10), (Book.Source.Id, Book.SpreadDays, Book.GrowDays, Book.MaxStage, Book.RespiteDays, Book.PurifyXp, Book.StrengthPercent));
         Assert.Equal(Shard, Book.PurifyItem);
         Assert.Equal(8, Book.Areas.Count);
@@ -284,7 +284,7 @@ public class V242CorruptionTests
             CorruptionRules.Strengthen(Vallons, Book, SavedCorruption.Empty, 9).Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().Select(a => a.Health));
     }
 
-    // --- Sauvegarde v31 ------------------------------------------------------------------------------------------------------------
+    // --- Sauvegarde v32 ------------------------------------------------------------------------------------------------------------
 
     private static string SaveWith(string corruption, int? version = null)
     {
@@ -296,7 +296,7 @@ public class V242CorruptionTests
     }
 
     [Fact]
-    public void Sauvegarde_v31_aller_retour_et_v30_encore_lue()
+    public void Sauvegarde_v32_aller_retour_et_v31_v30_encore_lues()
     {
         string json = SaveWith("\"corruption\": {\"landes_grises\": 7, \"pierres_ouest\": 3}");
         Assert.Contains("\"corruption\": {\"landes_grises\": 7, \"pierres_ouest\": 3}", json);
@@ -307,10 +307,13 @@ public class V242CorruptionTests
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(json).RootElement));
         // Sans autel purifié : pas de champ.
         Assert.DoesNotContain("\"corruption\"", SaveWith(string.Empty));
-        // Version 30 : lue telle quelle sans le champ ; avec, refusée au chemin précis.
-        Assert.True(SaveJsonReader.Read(SaveWith(string.Empty, 30)).IsValid);
-        SaveLoadResult old = SaveJsonReader.Read(SaveWith("\"corruption\": {\"landes_grises\": 7, \"pierres_ouest\": 3}", 30));
-        Assert.Contains(old.Report.Errors, e => e.Path == "$.data.character.corruption" && e.Code == ValidationCode.UnknownField);
+        // Versions 31 (quête de reprise des caravanes, PR #243) et 30 : lues telles quelles sans le champ ; avec, refusées au chemin précis.
+        foreach (int version in new[] { 31, 30 })
+        {
+            Assert.True(SaveJsonReader.Read(SaveWith(string.Empty, version)).IsValid, $"v{version}");
+            SaveLoadResult old = SaveJsonReader.Read(SaveWith("\"corruption\": {\"landes_grises\": 7, \"pierres_ouest\": 3}", version));
+            Assert.Contains(old.Report.Errors, e => e.Path == "$.data.character.corruption" && e.Code == ValidationCode.UnknownField);
+        }
     }
 
     [Theory]
