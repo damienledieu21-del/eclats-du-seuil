@@ -20,7 +20,10 @@ namespace EdS.Game
         private readonly List<Renderer> _sword = new List<Renderer>();
         private readonly List<Renderer> _shield = new List<Renderer>();
         private readonly Transform _hand;
+        private readonly Transform _leftHand;
         private readonly Transform _back;
+        private GameObject _held;
+        private HeldPastry _heldShown;
         private VisibleGear _shown;
 
         /// <summary>
@@ -54,6 +57,8 @@ namespace EdS.Game
                 // Sous-lot V2.11 : aussi les squelettes de Quaternius (« hand.r », « Hand_R »), pour l'arme en main des corps humains.
                 string low = n.ToLowerInvariant();
                 if (_hand == null && (n.EndsWith("RightHand") || low == "hand.r" || low == "hand_r" || low.EndsWith(":hand_r"))) _hand = t;
+                // V2.56.1 : la main gauche, pour la pâtisserie tenue (HeldPastries).
+                if (_leftHand == null && (n.EndsWith("LeftHand") || low == "hand.l" || low == "hand_l" || low.EndsWith(":hand_l"))) _leftHand = t;
                 if (_back == null && (n.EndsWith("Spine2") || low == "chest" || low == "spine_02" || low == "spine.002")) _back = t;
             }
         }
@@ -260,9 +265,47 @@ namespace EdS.Game
             else Shape("Cape", PrimitiveType.Cube, _body, new Vector3(0f, -0.05f, -0.42f), new Vector3(-6f, 0f, 0f), new Vector3(0.7f, 1.3f, 0.04f), cloth);
         }
 
+        /// <summary>
+        /// V2.56.1 : la pâtisserie tenue dans la main gauche (<see cref="HeldPastries"/>), son modèle de Firmin à l'échelle réelle, centré
+        /// dans la paume ; rien avec null, sans catalogue ou sans ce modèle (rien ne se refait si rien n'a changé). Sans main gauche (corps
+        /// simple), devant le flanc gauche.
+        /// </summary>
+        public void ShowHeld(HeldPastry held)
+        {
+            if (held == null ? _heldShown == null : held.Equals(_heldShown)) return;
+            _heldShown = held;
+            if (_held != null) Object.Destroy(_held);
+            _held = null;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            GameObject prefab = held != null && catalog != null ? catalog.LotCModel(held.Model) : null;
+            if (prefab == null) return;
+            var holder = new GameObject("Pâtisserie en main (V2.56.1)");
+            GameObject model = Object.Instantiate(prefab, holder.transform, false);
+            foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            if (!StyleLook.VisibleBounds(holder, out Bounds b))
+            {
+                Object.Destroy(holder);
+                return;
+            }
+            // Mesurée à l'origine du monde : le centre de ses rendus ramené sur la paume.
+            model.transform.localPosition = -b.center;
+            bool inHand = _styled && _leftHand != null;
+            Transform parent = inHand ? _leftHand : _body;
+            float parentScale = Mathf.Max(0.01f, parent.lossyScale.y);
+            holder.transform.SetParent(parent, false);
+            holder.transform.localScale = Vector3.one / parentScale;
+            // Dans la paume (un peu au-delà de l'os du poignet), sinon devant le flanc gauche du corps simple (capsule de 2 m centrée à 1 m).
+            holder.transform.localPosition = inHand ? new Vector3(0f, 0.09f, 0.03f) / parentScale : new Vector3(-0.5f, -0.05f, 0.25f);
+            holder.transform.localRotation = Quaternion.identity;
+            _held = holder;
+        }
+
         /// <summary>Retire les formes ajoutées (le corps est détruit avec elles sinon).</summary>
         public void Clear()
         {
+            if (_held != null) Object.Destroy(_held);
+            _held = null;
+            _heldShown = null;
             foreach (GameObject shape in _shapes) Object.Destroy(shape);
             _shapes.Clear();
             _shown = null;
