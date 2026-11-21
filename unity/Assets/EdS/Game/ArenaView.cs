@@ -98,6 +98,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V1.2 : montre l'arme, le bouclier et la cape portés par le joueur (rien ne se refait s'ils n'ont pas changé).</summary>
         public void ShowGear(VisibleGear gear) => _gear?.Show(gear);
 
+        /// <summary>V2.56.1 : la pâtisserie tenue dans la main gauche du héros (null : rien).</summary>
+        public void ShowHeld(HeldPastry held) => _gear?.ShowHeld(held);
+
         /// <summary>
         /// Sous-lot 12.8 : couleur d'un combattant choisie par le jeu (le chef d'une zone, par exemple) ; null : couleur ordinaire (ennemi
         /// rouge, allié vert, mannequin brun).

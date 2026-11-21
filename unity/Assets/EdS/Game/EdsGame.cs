@@ -588,6 +588,10 @@ namespace EdS.Game
         /// <summary>Relecture de la PR #75 : dernier équipement visible calculé (rendu tel quel tant qu'il ne change pas).</summary>
         private VisibleGear _visibleGear;
 
+        /// <summary>V2.56.1 : prises d'objets de soin déjà vues (<see cref="AdventureSession.Meals"/>) et fin du moment où la dernière reste en main.</summary>
+        private int _mealsSeen;
+        private float _eatUntil;
+
         /// <summary>
         /// Sous-lot V2.2 : pluie, éclairs et tonnerre de l'aventure. Revue Codex de la PR #101 : appelée aussi quand l'écran des talents ou le
         /// menu couvre l'aventure (<paramref name="covered"/>, sons plus bas), sans faire avancer le monde : un éclair s'éteint, la pluie suit
@@ -763,6 +767,14 @@ namespace EdS.Game
             // à chaque image).
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
             _arena.ShowGear(a.InScene ? NoGear : _visibleGear);
+            // V2.56.1 : la pâtisserie tenue dans la main gauche : celle qu'on mange un moment, sinon la sienne hors combat (HeldPastries).
+            if (a.Meals != _mealsSeen)
+            {
+                _mealsSeen = a.Meals;
+                _eatUntil = Time.time + HeldPastries.EatSeconds;
+            }
+            _arena.ShowHeld(HeldPastries.For(a.World.Inventory, a.World.SignerId, Time.time < _eatUntil ? a.Eaten : null, _mood.Fighting,
+                a.Combat != null && a.Combat.Mounted, a.InScene));
             // Sous-lot V1.9.8 : réveil, souvenir, Croc-Gris, silhouette, collier ; la fin du souvenir (retour au pré).
             _stage?.AfterSync(a, _combat, _arena, _effects, _camera, Time.deltaTime,
                 !_paused && !TalentsOpen && _screens.Open == AdventureScreens.Panel.None && a.Dialogue == null);
