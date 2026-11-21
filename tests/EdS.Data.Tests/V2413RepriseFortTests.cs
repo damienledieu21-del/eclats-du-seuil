@@ -402,6 +402,48 @@ public class V2413RepriseFortTests
         Assert.Equal(ChestRefusal.Taken, third.TakeCaravanChest(Ambre, 0));
     }
 
+    private static void CopyTree(string from, string to)
+    {
+        foreach (string dir in Directory.GetDirectories(from, "*", SearchOption.AllDirectories)) Directory.CreateDirectory(dir.Replace(from, to));
+        Directory.CreateDirectory(to);
+        foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories)) File.Copy(file, file.Replace(from, to));
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #243 (P1) : dans l'aventure, la touche d'action (Interact, touche F et action tactile) reprend le coffre à portée,
+    /// et l'indice « F : reprendre le coffre » existe. Le premier point sûr est déplacé sur le premier coffre, les bandits du fort éloignés.
+    /// </summary>
+    [Fact]
+    public void Touche_d_action_reprend_le_coffre()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "reprise_" + Guid.NewGuid().ToString("N"));
+        string data = Path.Combine(root, "data"), scenarios = Path.Combine(root, "scenarios");
+        try
+        {
+            CopyTree(DataDirectory, data);
+            CopyTree(ScenariosDirectory, scenarios);
+            string zonePath = ZoneJsonReader.PathIn(data, "zone.vallons");
+            JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
+            zone["data"]!["safePoints"]![0]!["position"] = new JsonArray(Chests[0].X, Chests[0].Z);
+            File.WriteAllText(zonePath, zone.ToJsonString());
+            string scenarioPath = Path.Combine(scenarios, "zones", "vallons.json");
+            JsonObject scenario = JsonNode.Parse(File.ReadAllText(scenarioPath))!.AsObject();
+            BanditsAway(scenario);
+            File.WriteAllText(scenarioPath, scenario.ToJsonString());
+            string save = Path.Combine(root, "save.json");
+            SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(J, 9 * 60) - 1, 0, Array.Empty<string>(), Pillaged(),
+                resume: new SavedResume(zone["data"]!["safePoints"]![0]!["id"]!.GetValue<string>())));
+            EdS.Runtime.AdventureSession a = EdS.Runtime.AdventureSession.Load(data, scenarios, save);
+            a.Advance(0.05);
+            Assert.Equal((Ambre, 0), a.ChestInReach);
+            Assert.True(a.Interact());
+            Assert.Equal(1, Entry(a.World).Recovered);
+            Assert.Null(a.ChestInReach);
+            Assert.True(Texts.Has("text.ui.caravan.chest.take"));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
     [Fact]
     public void Textes_des_annonces_de_la_reprise()
     {

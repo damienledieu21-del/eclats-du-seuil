@@ -1531,6 +1531,7 @@
       "text.ui.event.reward": "Récompense : {0} points d'expérience, {1}.",
       "text.ui.event.rift.close": "F : refermer la faille",
       "text.ui.event.rift.too_far": "Approche-toi de la faille pour la refermer.",
+      "text.ui.caravan.chest.take": "F : reprendre le coffre",
       "text.ui.caravan.chest.too_far": "Approche-toi du coffre pour le reprendre.",
       "text.ui.caravan.chest.guarded": "Des bandits gardent encore ce coffre : bats-les d'abord.",
       "text.ui.event.rift.echoes": "Des échos sont encore debout : impossible de refermer la faille.",

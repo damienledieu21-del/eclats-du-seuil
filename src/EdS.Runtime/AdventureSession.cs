@@ -886,6 +886,8 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
+            // Revue Codex de la PR #243 (P1) : puis un coffre de la quête de reprise au fort (avant portes et PNJ ; la touche d'action).
+            if (ChestInReach != null) return TakeChest();
             // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
             // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
             if (DoorFirst) return UseDoor();
