@@ -289,6 +289,7 @@ namespace EdS.Runtime
             ("foin", InteriorFurniture.Fixture), ("echelle", InteriorFurniture.Fixture), ("sacs", InteriorFurniture.Fixture),
             ("pupitre", InteriorFurniture.Fixture), ("meule", InteriorFurniture.Fixture), ("meules", InteriorFurniture.Fixture),
             ("bureau", InteriorFurniture.Fixture), ("chaise", InteriorFurniture.Fixture), ("ballot", InteriorFurniture.Fixture),
+            ("cloche", InteriorFurniture.Fixture), ("tableau", InteriorFurniture.Fixture),   // V2.56.2 : cloche de la tour de signal, tableau des équipes (avant « table »)
         };
 
         /// <summary>L'identifiant <paramref name="id"/> est-il le mot <paramref name="word"/>, seul ou suivi d'un séparateur ou d'un chiffre ?</summary>

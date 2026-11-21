@@ -747,36 +747,36 @@ namespace EdS.Runtime
 
         private static IEnumerable<LotCModel> NewPlaces()
         {
-            const string none = "intérieur d'un nouveau lieu (fiches I01 à I21) : ni la pièce ni le lieu ne sont encore dans les données (V2.43.4 : sept meubles reliés aux intérieurs des lieux reconstruits ; les 22 autres attendent leur lieu)";
-            yield return Waiting("C_IN3_I01a_05", "05_Nouveaux_Lieux_1", "Buste sur socle", none);
+            const string none = "intérieur d'un nouveau lieu (fiches I01 à I21) : ni la pièce ni le lieu ne sont encore dans les données (V2.43.4 et V2.56.2 : dix-neuf meubles reliés aux intérieurs des lieux reconstruits ; les 10 autres, trop grands ou sans place qui leur convienne, attendent leur lieu)";
+            yield return Linked("C_IN3_I01a_05", "05_Nouveaux_Lieux_1", "Buste sur socle", "room:dortoir_abbaye/statue_buste");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Waiting("C_IN3_I02a_05", "05_Nouveaux_Lieux_1", "Forge maçonnée", none);
             yield return Waiting("C_IN3_I03a_02", "05_Nouveaux_Lieux_1", "Chevalet à écharner", none);
-            yield return Waiting("C_IN3_I03a_05", "05_Nouveaux_Lieux_1", "Peaux pliées sur claie", none);
-            yield return Waiting("C_IN3_I04a_04", "05_Nouveaux_Lieux_1", "Étagère à bocaux", none);
+            yield return Linked("C_IN3_I03a_05", "05_Nouveaux_Lieux_1", "Peaux pliées sur claie", "room:foulon/ratelier_peaux");   // V2.56.2 : meuble posé dans un lieu reconstruit
+            yield return Linked("C_IN3_I04a_04", "05_Nouveaux_Lieux_1", "Étagère à bocaux", "room:atelier_du_charron/etagere_bocaux");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Linked("C_IN3_I05a_06", "05_Nouveaux_Lieux_1", "Étagère à étoffes", "room:foulon/etagere_etoffes");   // V2.43.4 : intérieur du lieu reconstruit
             yield return Waiting("C_IN3_I06b_02", "05_Nouveaux_Lieux_1", "Foyer de cuisson", none);
             yield return Waiting("C_IN3_I06b_04", "05_Nouveaux_Lieux_1", "Dressoir", none);
-            yield return Waiting("C_IN3_I06b_05", "05_Nouveaux_Lieux_1", "Évier de pierre", none);
-            yield return Waiting("C_IN3_I07d_03", "05_Nouveaux_Lieux_1", "Armoire à vêtements", none);
-            yield return Waiting("C_IN3_I09c_01", "05_Nouveaux_Lieux_1", "Cloche suspendue / projection", none);
+            yield return Linked("C_IN3_I06b_05", "05_Nouveaux_Lieux_1", "Évier de pierre", "room:relais_du_pont_interieur/bac_evier");   // V2.56.2 : meuble posé dans un lieu reconstruit
+            yield return Linked("C_IN3_I07d_03", "05_Nouveaux_Lieux_1", "Armoire à vêtements", "room:dortoir_abbaye/armoire_vetements");   // V2.56.2 : meuble posé dans un lieu reconstruit
+            yield return Linked("C_IN3_I09c_01", "05_Nouveaux_Lieux_1", "Cloche suspendue / projection", "room:garde_du_signal/cloche_signal");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Linked("C_IN3_I10b_02", "05_Nouveaux_Lieux_1", "Seau couvert", "room:foulon/bac_eau");   // V2.43.4 : intérieur du lieu reconstruit
             yield return Linked("C_IN3_I11a_03", "06_Nouveaux_Lieux_2", "Bois sur tasseaux", "room:atelier_du_charron/ratelier_bois");   // V2.43.4 : intérieur du lieu reconstruit
-            yield return Waiting("C_IN3_I12b_02", "06_Nouveaux_Lieux_2", "Dressoir", none);
-            yield return Waiting("C_IN3_I12d_04", "06_Nouveaux_Lieux_2", "Garde-robe", none);
+            yield return Linked("C_IN3_I12b_02", "06_Nouveaux_Lieux_2", "Dressoir", "room:relais_du_pont_interieur/etagere_dressoir");   // V2.56.2 : meuble posé dans un lieu reconstruit
+            yield return Linked("C_IN3_I12d_04", "06_Nouveaux_Lieux_2", "Garde-robe", "room:dortoir_abbaye/armoire_garde_robe");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Waiting("C_IN3_I13a_05", "06_Nouveaux_Lieux_2", "Âtre du logis", none);
             yield return Waiting("C_IN3_I13c_04", "06_Nouveaux_Lieux_2", "Garde-robe", none);
             yield return Waiting("C_IN3_I14a_01", "06_Nouveaux_Lieux_2", "Table et deux bancs", none);
             yield return Waiting("C_IN3_I15b_01", "06_Nouveaux_Lieux_2", "Claie à fromages", none);
-            yield return Waiting("C_IN3_I15b_02", "06_Nouveaux_Lieux_2", "Table d'égouttage", none);
-            yield return Waiting("C_IN3_I16a_01", "06_Nouveaux_Lieux_2", "Banc de sas", none);
+            yield return Linked("C_IN3_I15b_02", "06_Nouveaux_Lieux_2", "Table d'égouttage", "room:foulon/table_egouttage");   // V2.56.2 : meuble posé dans un lieu reconstruit
+            yield return Linked("C_IN3_I16a_01", "06_Nouveaux_Lieux_2", "Banc de sas", "room:garde_du_signal/banc_sas");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Linked("C_IN3_I16b_05", "06_Nouveaux_Lieux_2", "Foyer protégé", "room:garde_du_signal/cheminee");   // V2.43.4 : intérieur du lieu reconstruit
             yield return Linked("C_IN3_I16b_07", "06_Nouveaux_Lieux_2", "Réserve de couvertures", "room:dortoir_abbaye/etagere_couvertures");   // V2.43.4 : intérieur du lieu reconstruit
             yield return Linked("C_IN3_I17a_01", "06_Nouveaux_Lieux_2", "Comptoir bas", "room:relais_du_pont_interieur/comptoir");   // V2.43.4 : intérieur du lieu reconstruit
             yield return Linked("C_IN3_I17a_04", "06_Nouveaux_Lieux_2", "Âtre", "room:relais_du_pont_interieur/cheminee");   // V2.43.4 : intérieur du lieu reconstruit
-            yield return Waiting("C_IN3_I18a_04", "06_Nouveaux_Lieux_2", "Râtelier de haches", none);
+            yield return Linked("C_IN3_I18a_04", "06_Nouveaux_Lieux_2", "Râtelier de haches", "room:atelier_du_charron/ratelier_haches");   // V2.56.2 : meuble posé dans un lieu reconstruit
             yield return Waiting("C_IN3_I19a_04", "06_Nouveaux_Lieux_2", "Filet sur traverse", none);
             yield return Waiting("C_IN3_I20a_03", "06_Nouveaux_Lieux_2", "Étagère de bocaux", none);
-            yield return Waiting("C_IN3_I21a_04", "06_Nouveaux_Lieux_2", "Tableau des équipes", none);
+            yield return Linked("C_IN3_I21a_04", "06_Nouveaux_Lieux_2", "Tableau des équipes", "room:garde_du_signal/tableau_equipes");   // V2.56.2 : meuble posé dans un lieu reconstruit
         }
     }
 }
