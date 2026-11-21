@@ -94,7 +94,11 @@ namespace EdS.Game
             return s;
         }
 
-        /// <summary>Le modèle à la taille demandée à l'atelier (sa plus grande dimension au sol), posé sur le sol, rangé sous <paramref name="parent"/>.</summary>
+        /// <summary>
+        /// Le modèle à la <b>hauteur</b> demandée à l'atelier (relecture de la PR #244 : la finition, finir_corruption.py, met déjà chaque modèle
+        /// Tripo à la hauteur de sa fiche ; leur emprise au sol s'en écarte, une mise à l'échelle sur la plus grande dimension les tasserait),
+        /// posé sur le sol, rangé sous <paramref name="parent"/>.
+        /// </summary>
         private static void Fit(GameObject g, Transform parent, (double Length, double Width, double Height) size)
         {
             Quaternion own = g.transform.localRotation;
