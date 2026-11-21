@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 24,
   "kind": "scenario",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "seed": 243,
     "durationMs": 3600000,
@@ -142,6 +142,69 @@
             [
               3.6,
               -1.8
+            ]
+          ]
+        },
+        {
+          "id": "armoire_vetements",
+          "points": [
+            [
+              -4.95,
+              -1.6
+            ],
+            [
+              -4.4,
+              -1.6
+            ],
+            [
+              -4.4,
+              0.8
+            ],
+            [
+              -4.95,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "armoire_garde_robe",
+          "points": [
+            [
+              4.4,
+              -1.6
+            ],
+            [
+              4.95,
+              -1.6
+            ],
+            [
+              4.95,
+              1.0
+            ],
+            [
+              4.4,
+              1.0
+            ]
+          ]
+        },
+        {
+          "id": "statue_buste",
+          "points": [
+            [
+              -0.3,
+              2.3
+            ],
+            [
+              0.3,
+              2.3
+            ],
+            [
+              0.3,
+              2.9
+            ],
+            [
+              -0.3,
+              2.9
             ]
           ]
         }

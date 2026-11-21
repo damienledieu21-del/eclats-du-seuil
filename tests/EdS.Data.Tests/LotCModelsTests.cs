@@ -29,8 +29,8 @@ public class LotCModelsTests
         Assert.Equal(LotCModels.All.Count, fbx.Length);
         Assert.Equal(340, LotCModels.All.Count);   // le lot C entier (PLAN.csv de l'atelier) et les 16 pâtisseries de Firmin (09_Firmin)
         Assert.Equal(new[] { 5, 75, 70, 93, 12, 17, 26, 26, 16 }, LotCModels.All.GroupBy(m => m.Category).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => g.Count()));
-        // V2.43.4 : sept meubles des nouveaux lieux reliés aux intérieurs des lieux reconstruits ; les 22 autres attendent leur lieu.
-        Assert.Equal((7, 22), (LotCModels.All.Count(m => m.Code.StartsWith("C_IN3_I", StringComparison.Ordinal) && m.Linked),
+        // V2.43.4 puis V2.56.2 : dix-neuf meubles des nouveaux lieux reliés aux intérieurs des lieux reconstruits ; les 10 autres attendent leur lieu.
+        Assert.Equal((19, 10), (LotCModels.All.Count(m => m.Code.StartsWith("C_IN3_I", StringComparison.Ordinal) && m.Linked),
             LotCModels.All.Count(m => m.Code.StartsWith("C_IN3_I", StringComparison.Ordinal) && !m.Linked)));
         foreach (LotCModel m in LotCModels.All)
         {

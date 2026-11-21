@@ -145,9 +145,11 @@ namespace EdS.World
             // Relecture de la PR #107 : réglée une seule fois, et seulement si le registre peut la garder : sinon rien (ni annonce, ni fait,
             // ni récompense), refus atomique.
             if (o.Day <= entry.Last || !HasEventRoom(e)) return;
-            // Sous-lot V2.41.1 : une caravane que le joueur n'a pas sauvée (absent, ou bandits encore debout à la fin) passe quand même si ses
-            // gardes l'emportent (tirage fixe par occurrence) : réglée sans issue, ni pillage ni contrecoup.
-            if (outcome == EventOutcome.Lost && e.Kind == WorldEventKind.Caravan && CaravanSchedule.GuardsHold(Definition!.Id, e, o))
+            // Sous-lot V2.41.1 : une caravane attaquée pendant l'absence du joueur passe quand même si ses gardes l'emportent (tirage fixe par
+            // occurrence) : réglée sans issue, ni pillage ni contrecoup. Décision de Damien du 21 novembre 2026 : le joueur présent qui perd
+            // (bandits encore debout à la fin) la laisse piller, sans tirage.
+            if (outcome == EventOutcome.Lost && lostKind == WorldEventNoticeKind.Missed && e.Kind == WorldEventKind.Caravan
+                && CaravanSchedule.GuardsHold(Definition!.Id, e, o))
             {
                 outcome = EventOutcome.None;
                 lostKind = WorldEventNoticeKind.Escaped;

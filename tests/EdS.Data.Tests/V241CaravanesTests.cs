@@ -287,4 +287,131 @@ public class V241CaravanesTests
         Assert.True(s.Touches("merchant.mercerie", "item.bobine_de_fil"));
         Assert.False(s.Touches("merchant.mercerie", "item.cape_de_voyageur"));
     }
+
+    // ---- Relecture indépendante de la PR #240 ----
+
+    /// <summary>Le registre borne les événements à issue de toutes les zones reliées, attaques des caravanes comprises : refus au chargement.</summary>
+    [Fact]
+    public void Registre_des_zones_reliees_borne_avec_les_caravanes()
+    {
+        int own = Zone.Events.Count(e => e.Settles);
+        Assert.Equal(2, own);
+        // Zones reliées faites d'attaques du hameau sans cicatrice : 16 au plus par zone : la zone de départ (2 + 1 attaque), 16, 16, 16 et 13
+        // font 64, tient ; 16, 16, 16 et 14 font 65, refusé.
+        IReadOnlyList<ZoneDefinition> fits = AdventureSession.WithCaravans(new[] { Zone, Raids(16), Raids(16), Raids(16), Raids(13) }, Caravans);
+        Assert.Equal(SavedEvent.MaxEntries, fits.Sum(z => z.Events.Count(e => e.Settles)));
+        Assert.Same(Ambre.Attack, fits[0].EventOf(Attack));
+        InvalidDataException x = Assert.Throws<InvalidDataException>(() => AdventureSession.WithCaravans(new[] { Zone, Raids(16), Raids(16), Raids(16), Raids(14) }, Caravans));
+        Assert.Contains("caravanes", x.Message);
+        Assert.Contains("65 événements à issue", x.Message);
+    }
+
+    /// <summary>La zone des Vallons avec <paramref name="n"/> copies de l'attaque du hameau pour seuls événements.</summary>
+    private static ZoneDefinition Raids(int n)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        JsonArray events = root["data"]!["events"]!.AsArray();
+        JsonNode raid = events.Single(e => (string?)e!["id"] == "attaque_hameau")!.DeepClone();
+        events.Clear();
+        for (int i = 0; i < n; i++)
+        {
+            JsonNode copy = raid.DeepClone();
+            copy["id"] = $"attaque_hameau_{i:00}";
+            events.Add(copy);
+        }
+        ZoneLoadResult r = ZoneJsonReader.Read(root.ToJsonString(), Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, ItemsCatalog);
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Zone!;
+    }
+
+    /// <summary>Décision de Damien du 21 novembre 2026 : le joueur présent qui perd laisse piller la caravane, même un jour où les gardes tiendraient.</summary>
+    [Fact]
+    public void Joueur_present_qui_perd_caravane_pillee()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "caravanes_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            WorldSession w = Adventure(Path.Combine(dir, "save.json")).World;
+            WorldEventDefinition e = w.Definition!.EventOf(Attack)!;
+            EventOccurrence hold = Enumerable.Range(0, 400).Select(k => WorldEventSchedule.InWindow(w.Definition.Id, w.Definition.Id, e, k))
+                .OfType<EventOccurrence>().First(o => CaravanSchedule.GuardsHold(w.Definition.Id, e, o));
+            var notices = new List<WorldEventNotice>();
+            w.SettleEvent(e, hold, EventOutcome.Lost, WorldEventNoticeKind.Lost, notices);
+            Assert.Equal((EventOutcome.Lost, 1L), (w.EventEntry(e).Outcome, w.EventEntry(e).Lost));
+            Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.Lost);
+            Assert.DoesNotContain(notices, n => n.Kind == WorldEventNoticeKind.Escaped);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Une_caravane_tous_les_deux_jours()
+    {
+        CaravanLoadResult r = Read(c => c["everyDays"] = 2);
+        Assert.True(r.IsValid, r.Report.ToString());
+        Caravan c2 = r.Book!.Caravans[0];
+        Assert.Equal(2, c2.Attack.EveryDays);
+        Assert.True(c2.Runs(2));
+        Assert.False(c2.Runs(3));
+        Assert.False(c2.Runs(0));   // avant le premier jour
+        for (long w = 0; w < 200; w++)
+            if (WorldEventSchedule.InWindow(Zone.Id, Zone.Id, c2.Attack, w) is EventOccurrence o) Assert.True(c2.Runs(o.Day), $"jour {o.Day}");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(ZoneValidator.MaxEventBounty)]
+    public void Prime_aux_bornes(int bounty)
+    {
+        CaravanLoadResult r = Read(c => c["attack"]!["reward"]!["bounty"] = bounty);
+        Assert.True(r.IsValid, r.Report.ToString());
+        Assert.Equal(bounty, r.Book!.Caravans[0].Attack.Reward!.Bounty);
+    }
+
+    [Fact]
+    public void Prime_refusee_quand_la_bourse_est_pleine()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "caravanes_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            WorldSession w = Adventure(Path.Combine(dir, "save.json")).World;
+            WorldEventDefinition e = w.Definition!.EventOf(Attack)!;
+            EventOccurrence[] days = Enumerable.Range(0, 400).Select(k => WorldEventSchedule.InWindow(w.Definition.Id, w.Definition.Id, e, k))
+                .OfType<EventOccurrence>().Take(2).ToArray();
+            var notices = new List<WorldEventNotice>();
+            w.SettleEvent(e, days[0], EventOutcome.Won, null, notices);   // récompense entière
+            // La bourse ne tient plus la prime (200 cuivre) : rien n'est payé, l'issue est gardée.
+            Assert.True(((INarrativeWorld)w).GiveMoney(Coins.Max - 100 - w.Money));
+            long money = w.Money;
+            notices.Clear();
+            w.SettleEvent(e, days[1], EventOutcome.Won, null, notices);
+            Assert.Equal(money, w.Money);
+            Assert.DoesNotContain(notices, n => n.Kind == WorldEventNoticeKind.Rewarded && n.Money == 200);
+            Assert.Equal((EventOutcome.Won, 2L), (w.EventEntry(e).Outcome, w.EventEntry(e).Won));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    /// <summary>Halte atteinte à la minute 1439 : acceptée ; à 1440 : refusée. Voyage (attaque comprise) de 1439 minutes : accepté ; 1440 : refusé.</summary>
+    [Theory]
+    [InlineData(1439, true)]
+    [InlineData(1440, false)]
+    public void Halte_et_voyage_avant_minuit(int minute, bool valid)
+    {
+        long reach = CaravanValidator.MinutesFor(Ambre.HaltDistance, Ambre.MetersPerMinute);
+        long start = minute - reach;
+        CaravanLoadResult halt = Read(c => c["start"] = $"{start / 60:00}:{start % 60:00}");
+        Assert.Equal(valid, halt.IsValid);
+        if (!valid) Assert.Contains(halt.Report.Errors, x => x.Path == "$.data.caravans[0].start");
+        // Vitesse telle que la route entière dure minute − 90 (durée de l'attaque) minutes.
+        long travel = minute - Ambre.Attack.DurationMinutes;
+        long raw = (Ambre.Length.Raw + travel - 1) / travel;
+        Fixed speed = Fixed.Parse((raw / 10000m).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(travel, CaravanValidator.MinutesFor(Ambre.Length, speed));
+        CaravanLoadResult trip = Read(c => { c["start"] = "00:00"; c["metersPerMinute"] = raw / 10000m; });
+        Assert.Equal(valid, trip.IsValid);
+        if (!valid) Assert.Contains(trip.Report.Errors, x => x.Path == "$.data.caravans[0].metersPerMinute");
+    }
 }

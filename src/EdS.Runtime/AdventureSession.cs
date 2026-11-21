@@ -420,9 +420,7 @@ namespace EdS.Runtime
             {
                 CaravanLoadResult caravans = CaravanJsonReader.ReadFile(caravansPath, definition, catalog);
                 caravanBook = Need(caravans.Book, "caravanes", () => caravans.Report);
-                var list = played.ToList();
-                list[0] = caravanBook.ApplyTo(list[0]);
-                played = list;
+                played = WithCaravans(played, caravanBook);
             }
             return new AdventureSession(data, progression, catalog, played, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
@@ -431,6 +429,24 @@ namespace EdS.Runtime
                 feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
                 rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report),
                 home is null ? null : Need(home.Book, "maison du joueur", () => home.Report), caravanBook);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.41.1 : les zones reliées <paramref name="zones"/>, les attaques des caravanes ajoutées aux événements de la zone de
+        /// départ (la première). Relecture de la PR #240 : le registre d'un personnage borne les événements à issue de <b>toutes</b> les
+        /// zones reliées, attaques comprises (le validateur des caravanes ne compte que la zone de départ) : un dépassement est refusé
+        /// (<see cref="InvalidDataException"/>).
+        /// </summary>
+        public static IReadOnlyList<ZoneDefinition> WithCaravans(IReadOnlyList<ZoneDefinition> zones, CaravanBook book)
+        {
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            if (book is null) throw new ArgumentNullException(nameof(book));
+            if (zones.Count == 0) throw new ArgumentException("Aucune zone.", nameof(zones));
+            var list = zones.ToList();
+            list[0] = book.ApplyTo(list[0]);
+            ValidationReport registry = ZoneValidator.CheckEventRegistry(list);
+            Need(registry.IsValid ? book : null, "caravanes", () => registry);
+            return list;
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
