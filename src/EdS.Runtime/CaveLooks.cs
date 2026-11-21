@@ -33,10 +33,10 @@ namespace EdS.Runtime
         /// Dossier des modèles dans le projet Unity : <c>&lt;nom&gt;.fbx</c>, <c>&lt;nom&gt;_couleur.jpg</c> et <c>&lt;nom&gt;_normale.png</c> à plat
         /// (finition Blender de l'atelier, <c>Grotte/finir_grotte.py</c>), chargés par <c>Resources.Load(Folder + nom)</c>.
         /// </summary>
-        public const string AssetFolder = "Assets/Resources/Grotte";
+        public const string AssetFolder = "Assets/EdS/Modeles/Resources/Grotte";
 
         /// <summary>
-        /// Nom du modèle du kit (<see cref="Models"/>) du fichier <paramref name="path"/> (« Assets/Resources/Grotte/paroi_grotte.fbx »), ou null :
+        /// Nom du modèle du kit (<see cref="Models"/>) du fichier <paramref name="path"/> (« Assets/EdS/Modeles/Resources/Grotte/paroi_grotte.fbx »), ou null :
         /// autre dossier, sous-dossier, autre extension que .fbx (casse ignorée) ou nom inconnu.
         /// </summary>
         public static string? NameOf(string path)

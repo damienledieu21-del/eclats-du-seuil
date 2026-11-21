@@ -245,11 +245,11 @@ public class V246GrotteTests
     }
 
     [Theory]
-    [InlineData("Assets/Resources/Grotte/paroi_grotte.fbx", "paroi_grotte")]
-    [InlineData("Assets\\Resources\\Grotte\\coffre_grotte.FBX", "coffre_grotte")]
-    [InlineData("Assets/Resources/Grotte/sous/paroi_grotte.fbx", null)]
-    [InlineData("Assets/Resources/Grotte/paroi_grotte.glb", null)]
-    [InlineData("Assets/Resources/Grotte/paroi.fbx", null)]
+    [InlineData("Assets/EdS/Modeles/Resources/Grotte/paroi_grotte.fbx", "paroi_grotte")]
+    [InlineData("Assets\\EdS\\Modeles\\Resources\\Grotte\\coffre_grotte.FBX", "coffre_grotte")]
+    [InlineData("Assets/EdS/Modeles/Resources/Grotte/sous/paroi_grotte.fbx", null)]
+    [InlineData("Assets/EdS/Modeles/Resources/Grotte/paroi_grotte.glb", null)]
+    [InlineData("Assets/EdS/Modeles/Resources/Grotte/paroi.fbx", null)]
     [InlineData("Assets/EdS/Modeles/Caravanes/paroi_grotte.fbx", null)]
     [InlineData("", null)]
     [InlineData(null, null)]

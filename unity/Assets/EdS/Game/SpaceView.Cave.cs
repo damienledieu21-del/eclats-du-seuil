@@ -10,7 +10,7 @@ namespace EdS.Game
     /// Chantier V2.46 (grotte derrière la cascade) : décor d'un dessous. Sol de roche, parois, stalagmites, pilier, bassin, cristaux,
     /// éboulis et coffre d'après les obstacles (<see cref="CaveLooks.PieceFor"/>), rideau d'eau sur la porte qui mène dehors ; pénombre
     /// (<see cref="StyleWorld.SetCave"/>) : ni ciel, ni soleil, ni pluie, ni neige, ni glace. Les modèles du kit de grotte sont pris dans
-    /// <c>Resources/Grotte/&lt;nom&gt;</c> (<see cref="CaveLooks.Models"/>) ; tant qu'ils n'y sont pas (aucune dépense Tripo engagée), des
+    /// <c>Resources/Grotte/&lt;nom&gt;</c> (<see cref="CaveLooks.Models"/>) ; en repli (modèle absent), des
     /// formes simples les remplacent.
     /// </summary>
     public sealed partial class SpaceView
