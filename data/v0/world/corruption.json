@@ -11,6 +11,7 @@
     "respiteDays": 4,
     "purifyItem": "item.eclat_de_seuil",
     "purifyXp": 150,
+    "strengthPercent": 10,
     "purifiedFact": "fact.corruption.autel_purifie",
     "areas": [
       { "id": "pierres_ouest", "place": "terres_corrompues", "position": [1420, -630], "radius": 70, "altar": [1420, -670], "from": ["cercle_des_pierres"] },

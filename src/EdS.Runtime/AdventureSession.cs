@@ -467,7 +467,7 @@ namespace EdS.Runtime
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
         private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door, GroundVector? place = null) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild, place);
+            new WorldSession(save, Corrupted(zone, save), _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild, place);
 
         private void Commit(WorldSession world)
         {

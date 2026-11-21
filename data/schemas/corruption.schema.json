@@ -14,7 +14,7 @@
     "data": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["zone", "source", "spreadDays", "growDays", "maxStage", "respiteDays", "purifyItem", "purifyXp", "areas"],
+      "required": ["zone", "source", "spreadDays", "growDays", "maxStage", "respiteDays", "purifyItem", "purifyXp", "strengthPercent", "areas"],
       "properties": {
         "zone": { "type": "string", "pattern": "^zone(\\.[a-z0-9_]+)+$" },
         "source": {
@@ -35,6 +35,7 @@
         "respiteDays": { "type": "integer", "minimum": 1, "maximum": 30, "description": "Jours du monde où un autel purifié tient sa terre propre." },
         "purifyItem": { "type": "string", "pattern": "^item(\\.[a-z0-9_]+)+$" },
         "purifyXp": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "strengthPercent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Créatures plus fortes dans une terre corrompue : pourcentage de PV et de dégâts en plus par palier (décision de Damien du 21 novembre 2026 : 10)." },
         "purifiedFact": { "type": "string", "pattern": "^fact(\\.[a-z0-9_]+)+$" },
         "areas": {
           "type": "array",

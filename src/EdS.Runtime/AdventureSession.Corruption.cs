@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using EdS.Data.Corruption;
+using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.World;
@@ -11,6 +13,14 @@ namespace EdS.Runtime
     {
         /// <summary>Sous-lot V2.42.1 : la source puis les terres que la corruption peut gagner, avec leur palier d'aujourd'hui (vide : aucune).</summary>
         public IReadOnlyList<CorruptionView> Corruption => World.Corruption;
+
+        /// <summary>
+        /// Décision de Damien du 21 novembre 2026 : la zone d'une partie qui s'ouvre, ses créatures plus fortes de 10 % par palier de leur terre
+        /// corrompue (jour du monde de la sauvegarde, même horloge que la session).
+        /// </summary>
+        private ZoneDefinition Corrupted(ZoneDefinition zone, WorldSave save) =>
+            _corruption is null || !(save.Character is SavedCharacter c) ? zone
+                : CorruptionRules.Strengthen(zone, _corruption, c.Corruption, new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick).Day);
 
         /// <summary>Portée de la touche d'action pour un autel (un peu plus que la portée du monde, qui fait foi).</summary>
         public static readonly Fixed AltarReach = Fixed.FromInt(4);
