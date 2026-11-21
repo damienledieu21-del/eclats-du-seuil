@@ -171,6 +171,21 @@ namespace EdS.Game
         /// </summary>
         public static bool Indoors { get; private set; }
 
+        /// <summary>
+        /// Chantier V2.46 : rendu d'un dessous (grotte) : comme une pièce (ni ciel, ni soleil, ni pluie, ni neige), mais dans la pénombre
+        /// froide de <see cref="CaveLooks"/>, avec une brume noire qui cache le fond.
+        /// </summary>
+        public static bool Cave { get; private set; }
+
+        /// <summary>Entre dans un dessous ou en sort (voir <see cref="Cave"/>) ; passe aussi à l'abri (<see cref="SetIndoors"/>).</summary>
+        public static void SetCave(bool cave)
+        {
+            if (Cave == cave) return;
+            Cave = cave;
+            if (Indoors != cave) SetIndoors(cave);
+            else Refresh();
+        }
+
         /// <summary>Entre dans une pièce ou en sort (voir <see cref="Indoors"/>).</summary>
         public static void SetIndoors(bool indoors)
         {
@@ -348,6 +363,11 @@ namespace EdS.Game
 
         private static void IndoorLight(StyleCatalog catalog)
         {
+            if (Cave)
+            {
+                CaveLight(catalog);
+                return;
+            }
             Color ambient = catalog != null ? catalog.IndoorAmbient : new Color(0.2f, 0.16f, 0.13f);
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = ambient;
@@ -373,6 +393,45 @@ namespace EdS.Game
                 _vignette.intensity.value = Mathf.Min(0.5f, catalog.Vignette + 0.12f);
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
                 _bloom.intensity.value = catalog.Bloom * 1.4f;
+            }
+        }
+
+        /// <summary>
+        /// Chantier V2.46 : pénombre d'un dessous : lumière ambiante froide et faible, sans soleil, brume presque noire de
+        /// <see cref="CaveLooks.FogStart"/> à <see cref="CaveLooks.FogEnd"/> m, fond de la même couleur (aucun ciel).
+        /// </summary>
+        private static void CaveLight(StyleCatalog catalog)
+        {
+            Color ambient = new Color((float)CaveLooks.Ambient.R, (float)CaveLooks.Ambient.G, (float)CaveLooks.Ambient.B);
+            Color fog = new Color((float)CaveLooks.Fog.R, (float)CaveLooks.Fog.G, (float)CaveLooks.Fog.B);
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = ambient;
+            RenderSettings.ambientEquatorColor = ambient * new Color(0.8f, 0.8f, 0.8f);
+            RenderSettings.ambientGroundColor = ambient * new Color(0.45f, 0.45f, 0.45f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = fog;
+            RenderSettings.fogStartDistance = (float)CaveLooks.FogStart;
+            RenderSettings.fogEndDistance = (float)CaveLooks.FogEnd;
+            if (_sun != null)
+            {
+                if (_outdoorSun <= 0f && _sun.intensity > 0f) _outdoorSun = _sun.intensity;
+                _sun.intensity = 0f;
+            }
+            Camera camera = _camera != null ? _camera : Camera.main;
+            if (camera != null)
+            {
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = fog;
+            }
+            if (_colors != null && catalog != null)
+            {
+                _colors.postExposure.value = catalog.Exposure + catalog.IndoorExposure + BrightnessSetting.ExposureOffset;
+                _colors.contrast.value = catalog.Contrast;
+                _colors.saturation.value = catalog.Saturation * 0.85f;
+                _vignette.intensity.value = Mathf.Min(0.55f, catalog.Vignette + 0.2f);
+                _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
+                _bloom.intensity.value = catalog.Bloom * 1.6f;
             }
         }
 

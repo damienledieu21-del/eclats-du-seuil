@@ -1199,6 +1199,15 @@ namespace EdS.Runtime
         /// <summary>Intérieurs : la zone en cours est un intérieur.</summary>
         public bool Indoors => _zone.Indoor;
 
+        /// <summary>Chantier V2.46 : la zone en cours est un dessous (grotte, mine…), jamais un intérieur.</summary>
+        public bool Underground => _zone.Underground;
+
+        /// <summary>
+        /// Chantier V2.46 : la zone en cours est à l'abri (intérieur ou dessous) : ni pluie, ni neige, ni glace à l'affichage (la pluie restait
+        /// affichée dans un dessous, noté au V2.45.2).
+        /// </summary>
+        public bool Sheltered => _zone.Sheltered;
+
         /// <summary>Sous-lot V2.53 : l'écran de chargement peint du lieu où est le personnage (le village à défaut). Affichage seulement.</summary>
         public LoadingScreen LoadingHere() =>
             // Sous-lot F6 : pendant une fête d'Orsédia (dehors, dans la zone de l'histoire), l'image d'ambiance de la fête et son accroche.
@@ -1972,14 +1981,17 @@ namespace EdS.Runtime
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
-                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
+                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z),
+                            _zones.Any(z => z.Id == d.To && !z.Sheltered))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
                         _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
                         // V2.25.2 : la porte du moulin, fermée ou ouverte (sa barrière reste dans le décor).
                         _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!,
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
-                        _zone.Indoor ? null : _zone.Region);
+                        _zone.Indoor ? null : _zone.Region,
+                        // Chantier V2.46 : un dessous (la grotte de la cascade) est dessiné en grotte, à l'abri.
+                        _zone.Underground);
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
 
@@ -2241,7 +2253,9 @@ namespace EdS.Runtime
             if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
             if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
             // V2.45.2 : un dessous est à l'abri comme une pièce (l'affichage n'y montre ni pluie ni ciel), sans être habité comme le village.
-            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+            // V2.46 (relecture) : sous terre, la pluie ne s'entend pas non plus (l'ambiance n'a pas de vent à couper).
+            double rain = _zone.Underground ? 0 : Weather().Rain / (double)WorldWeather.Scale;
+            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), rain,
                 places, minute, forge);
         }
 

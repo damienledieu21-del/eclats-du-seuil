@@ -3445,6 +3445,16 @@
         "toDoor": "sortie"
       },
       {
+        "id": "porte_grotte_cascade",
+        "name": "Grotte de la cascade",
+        "position": [
+          600,
+          1076
+        ],
+        "to": "zone.grotte_cascade",
+        "toDoor": "sortie"
+      },
+      {
         "id": "porte_tour_de_signal",
         "name": "Salle de garde de la tour de signal",
         "position": [
