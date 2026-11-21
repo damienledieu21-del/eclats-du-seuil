@@ -46,6 +46,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public long LostDay { get; }
 
+        /// <summary>
+        /// Sous-lot V2.41.3 (sauvegarde v31) : coffres repris au fort après le pillage du jour <see cref="LostDay"/> (masque : bit k pour le
+        /// coffre k de la quête de reprise), 0 si aucun. Remis à 0 à chaque nouveau pillage. Chaque coffre repris enlève un jour au contrecoup.
+        /// </summary>
+        public int Recovered { get; }
+
+        /// <summary>Masque des coffres repris, au plus (huit coffres).</summary>
+        public const int MaxRecovered = 255;
+
         /// <summary>Compteurs et jours, au plus (bornes techniques).</summary>
         public const long MaxCount = 1_000_000, MaxDay = 100_000_000;
 
@@ -60,7 +69,7 @@ namespace EdS.Data.Saves
 
         public static readonly IReadOnlyList<string> OutcomeNames = Array.AsReadOnly(new[] { "none", "won", "lost" });
 
-        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false, long lostDay = -1)
+        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false, long lostDay = -1, int recovered = 0)
         {
             if (!SaveValidator.IsEventKey(id) || id.Length > MaxKeyLength) throw new ArgumentException($"Événement « {id} » hors du format des sauvegardes.", nameof(id));
             if (won < 0 || won > MaxCount) throw new ArgumentOutOfRangeException(nameof(won));
@@ -70,6 +79,9 @@ namespace EdS.Data.Saves
             if (owed && won < 1) throw new ArgumentException("Une récompense due sans réussite.", nameof(owed));
             if (lostDay < -1 || lostDay > last) throw new ArgumentOutOfRangeException(nameof(lostDay), "Jour d'un échec entre -1 et le dernier jour réglé.");
             if (lostDay >= 0 && lost < 1) throw new ArgumentException("Un jour d'échec sans échec.", nameof(lostDay));
+            if (recovered < 0 || recovered > MaxRecovered) throw new ArgumentOutOfRangeException(nameof(recovered));
+            if (recovered > 0 && lostDay < 0) throw new ArgumentException("Des coffres repris sans jour de pillage.", nameof(recovered));
+            Recovered = recovered;
             Id = id;
             Won = won;
             Lost = lost;
@@ -102,5 +114,8 @@ namespace EdS.Data.Saves
 
         /// <summary>Version 30 : jour de la dernière occurrence manquée (facultatif).</summary>
         public long? LostDay { get; set; }
+
+        /// <summary>Version 31 : coffres repris après le dernier pillage (facultatif, masque de 1 à 255).</summary>
+        public long? Recovered { get; set; }
     }
 }

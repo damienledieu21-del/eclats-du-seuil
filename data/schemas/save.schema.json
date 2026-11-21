@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 30
+      "const": 31
     },
     "kind": {
       "const": "save"
@@ -718,6 +718,12 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
+                      },
+                      "recovered": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 255,
+                        "description": "Version 31 (sous-lot V2.41.3) : coffres repris au fort après le dernier pillage (bit k : coffre k), seulement avec lostDay."
                       }
                     }
                   },
