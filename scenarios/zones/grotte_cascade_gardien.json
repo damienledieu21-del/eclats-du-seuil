@@ -339,7 +339,7 @@
     },
     "combatants": [
       {
-        "id": "gardien_de_la_grotte",
+        "id": "ours_gardien_grotte",
         "type": "assailant",
         "team": "meute",
         "initiative": 0,
@@ -393,7 +393,7 @@
         }
       },
       {
-        "id": "gardien_de_la_grotte_furieux",
+        "id": "ours_gardien_grotte_furieux",
         "type": "assailant",
         "team": "meute",
         "initiative": 0,

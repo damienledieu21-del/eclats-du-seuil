@@ -7,6 +7,12 @@
     "seed": 461,
     "durationMs": 3600000,
     "zone": true,
+    "truces": [
+      [
+        "echos",
+        "meute"
+      ]
+    ],
     "space": {
       "bounds": {
         "min": [
@@ -339,7 +345,7 @@
     },
     "combatants": [
       {
-        "id": "echo_grotte1",
+        "id": "loup_echo_grotte1",
         "type": "assailant",
         "team": "echos",
         "initiative": 0,
@@ -378,7 +384,7 @@
         }
       },
       {
-        "id": "echo_grotte2",
+        "id": "loup_echo_grotte2",
         "type": "assailant",
         "team": "echos",
         "initiative": 0,

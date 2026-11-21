@@ -56,14 +56,14 @@
     ],
     "populations": [
       {
-        "creature": "echo_grotte1",
+        "creature": "loup_echo_grotte1",
         "respawnMs": 120000,
         "leashRange": 14,
         "loot": "loot.echo",
         "family": "echo"
       },
       {
-        "creature": "echo_grotte2",
+        "creature": "loup_echo_grotte2",
         "respawnMs": 120000,
         "leashRange": 14,
         "loot": "loot.echo",
@@ -83,8 +83,8 @@
         "id": "gardien_de_la_grotte",
         "scenario": "zones/grotte_cascade_gardien",
         "forms": [
-          "gardien_de_la_grotte",
-          "gardien_de_la_grotte_furieux"
+          "ours_gardien_grotte",
+          "ours_gardien_grotte_furieux"
         ],
         "fact": "fact.gardien_de_la_grotte.vaincu",
         "rewards": [

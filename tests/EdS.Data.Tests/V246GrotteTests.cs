@@ -58,7 +58,7 @@ public class V246GrotteTests
         ZoneDefinition grotte = Grotte.Value;
         Assert.Equal(15, grotte.SchemaVersion);
         Assert.True(grotte.Underground && grotte.Sheltered && !grotte.Indoor);
-        Assert.Equal(new[] { "echo_grotte1", "echo_grotte2", "ours_grotte1" }, grotte.Populations.Select(p => p.Creature));
+        Assert.Equal(new[] { "loup_echo_grotte1", "loup_echo_grotte2", "ours_grotte1" }, grotte.Populations.Select(p => p.Creature));
         Assert.Equal(new[] { (10, "salle_du_rideau"), (12, "salle_du_bassin") }, grotte.Places.Select(p => (p.MinLevel, p.Id)));
         Door sortie = Assert.Single(grotte.Doors);
         Assert.Equal(("zone.vallons", "porte_grotte_cascade", DoorKind.Door), (sortie.To, sortie.ToDoor, sortie.Kind));
@@ -98,7 +98,7 @@ public class V246GrotteTests
     {
         Boss gardien = Assert.Single(Grotte.Value.Chiefs);
         Assert.Equal(("gardien_de_la_grotte", "fact.gardien_de_la_grotte.vaincu", "loot.ours"), (gardien.Id, gardien.Fact, gardien.Loot));
-        Assert.Equal(new[] { "gardien_de_la_grotte", "gardien_de_la_grotte_furieux" }, gardien.Forms.Select(f => f.Id));
+        Assert.Equal(new[] { "ours_gardien_grotte", "ours_gardien_grotte_furieux" }, gardien.Forms.Select(f => f.Id));
         Assert.Equal(("item.anneau_de_la_cascade", 1), Assert.Single(gardien.Rewards));
         ItemDefinition anneau = Items.Item("item.anneau_de_la_cascade");
         Assert.Equal((ItemType.Equipment, "ring", 12, ItemRarity.Rare, true), (anneau.Type, anneau.Slot, anneau.RequiredLevel, anneau.Rarity, anneau.Named));
@@ -140,7 +140,7 @@ public class V246GrotteTests
             JsonObject zone = ZoneJson();
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/grotte_cascade")))!.AsObject();
             // La porte est en (0, −2,5) : un écho en (0, 5,5) est à 8 m pile (passe), en (0, 5,4999) à moins (refusé).
-            JsonObject echo = s["data"]!["combatants"]!.AsArray().Single(n => (string)n!["id"]! == "echo_grotte1")!.AsObject();
+            JsonObject echo = s["data"]!["combatants"]!.AsArray().Single(n => (string)n!["id"]! == "loup_echo_grotte1")!.AsObject();
             File.Copy(ScenarioPath("zones/grotte_cascade_gardien"), Path.Combine(dir, "zones", "grotte_cascade_gardien.json"));
             echo["position"] = new JsonArray(0.0, 5.5);
             File.WriteAllText(Path.Combine(dir, "zones", "grotte_cascade.json"), s.ToJsonString());
@@ -234,7 +234,7 @@ public class V246GrotteTests
         var steps = new List<SessionStep>();
         for (int i = 0; i < max && !steps.Any(s => s.Boss.Any(b => b.Kind == BossEventKind.Defeated)); i++)
         {
-            string? form = w.BossForms.FirstOrDefault(f => f.StartsWith("gardien_de_la_grotte", StringComparison.Ordinal));
+            string? form = w.BossForms.FirstOrDefault(f => f.StartsWith("ours_gardien_grotte", StringComparison.Ordinal));
             if (i % 20 == 0 && form != null && w.Zone.Engine.CombatantIds.Contains(form))
                 try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", form)); }
                 catch (ArgumentException) { }
@@ -242,6 +242,42 @@ public class V246GrotteTests
         }
         for (int i = 0; i < 5; i++) steps.Add(w.Step());   // la récompense arrive au tick suivant la défaite
         return steps;
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #245 (tour 2) : chaque créature de la grotte prend l'apparence voulue dans Unity (par le début de son
+    /// identifiant) : les échos sont des loups-échos de la nuit, l'ours et le gardien (ses deux formes) des ours ; aucun personnage.
+    /// </summary>
+    [Fact]
+    public void Apparence_de_chaque_creature_de_la_grotte()
+    {
+        ZoneDefinition grotte = Grotte.Value;
+        var all = grotte.Setup.Combatants.Select(c => c.Id).Concat(grotte.Chiefs.SelectMany(b => b.Forms).Select(f => f.Id)).ToList();
+        Assert.Equal(5, all.Count);
+        foreach (string id in all)
+        {
+            StyleSlot slot = StyleRules.ForCombatant(id, false);
+            if (id.StartsWith("loup_echo", StringComparison.Ordinal))
+            {
+                Assert.Equal(StyleSlot.Wolf, slot);
+                Assert.Equal(EchoKind.Night, EchoLooks.Of(id));
+            }
+            else
+            {
+                Assert.Equal(StyleSlot.Bear, slot);
+                Assert.Equal(EchoKind.None, EchoLooks.Of(id));
+                Assert.Equal(0, StyleRules.Cubs(id));   // pas d'oursons autour du gardien
+            }
+        }
+    }
+
+    /// <summary>Revue Codex de la PR #245 (tour 2) : trêve entre les échos et la meute, comme dans les Vallons : un écho ne se bat pas avec l'ours.</summary>
+    [Fact]
+    public void Treve_entre_echos_et_meute()
+    {
+        ZoneDefinition grotte = Grotte.Value;
+        Assert.Contains(grotte.Setup.Truces, t => (t.A, t.B) is ("echos", "meute") or ("meute", "echos"));
+        Assert.Equal(new[] { "echos", "meute" }, grotte.Setup.Combatants.Select(c => c.Team).Distinct().OrderBy(t => t, StringComparer.Ordinal));
     }
 
     [Fact]
