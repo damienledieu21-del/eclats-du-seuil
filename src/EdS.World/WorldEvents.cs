@@ -80,7 +80,8 @@ namespace EdS.World
             uint spread = random.NextBounded(checked((uint)e.SpreadMinutes + 1));
             uint pick = random.NextBounded((uint)e.TotalWeight);
             if (roll >= (uint)e.ChancePercent) return null;
-            long day = checked(window * e.EveryDays + offset);
+            // Sous-lot V2.41.1 : l'attaque d'une caravane a lieu le jour de la caravane, le premier de sa fenêtre (les tirages restent les mêmes).
+            long day = checked(window * e.EveryDays + (e.Kind == WorldEventKind.Caravan ? 0 : offset));
             if (day < e.FirstDay) return null;
             int minute = checked(e.StartMinute + (int)spread);
             // Un départ après minuit (une faille à 1 h) se juge au temps de ce jour-là ; l'occurrence garde le jour de sa fenêtre.
@@ -235,6 +236,12 @@ namespace EdS.World
         /// propagation).
         /// </summary>
         ScarSpread = 16,
+
+        /// <summary>
+        /// Sous-lot V2.41.1 : la caravane attaquée est passée sans le joueur (ses gardes ont repoussé les bandits, tirage de
+        /// <see cref="WorldEventDefinition.GuardsPercent"/>) : réglée sans issue.
+        /// </summary>
+        Escaped = 17,
     }
 
     public sealed class WorldEventNotice
@@ -345,6 +352,9 @@ namespace EdS.World
             public bool Gone;
             public bool Hurt;
             public bool Leashing;
+
+            /// <summary>Revue Codex de la PR #240 : a combattu un personnage (engagée contre lui, ou blessée par lui) au moins une fois.</summary>
+            public bool Fought;
 
             /// <summary>Partie d'elle-même à la fin de l'événement (pas une victoire).</summary>
             public bool Withdrawn;
@@ -681,7 +691,8 @@ namespace EdS.World
             }
             foreach (Slot s in run.Slots) StepSlot(live, zone, sector, s, nowTick, tickMs, reserved, run.Ending);
             // Attaque : plus aucun assaillant debout (vaincus, ou enfuis faute de place pour revenir), même après la fin si le combat a continué.
-            if (e.Kind == WorldEventKind.Raid && run.Slots.All(s => s.Dead || (s.Gone && !s.Withdrawn)) && (!run.Ending || run.Slots.Any(s => s.Dead && s.Hurt)))
+            // Sous-lot V2.41.1 : l'attaque d'une caravane se défend de même.
+            if ((e.Kind == WorldEventKind.Raid || e.Kind == WorldEventKind.Caravan) && run.Slots.All(s => s.Dead || (s.Gone && !s.Withdrawn)) && (!run.Ending || run.Slots.Any(s => s.Dead && s.Hurt)))
             {
                 run.Closed = true;
                 if (run.Slots.Any(s => s.Hurt)) world.SettleEvent(e, o, EventOutcome.Won, null, notices);
@@ -750,6 +761,7 @@ namespace EdS.World
             if (s.Current is string id)
             {
                 CombatantView v = engine.View(id);
+                if (v.HurtByCharacter || HeldByPlayer(engine, v)) s.Fought = true;
                 // Sous-lot V2.28b (2c) : arrivée effective (fait du moteur) : l'état emporté est consommé, même si elle est déjà morte.
                 if (s.CarryPlace != null && v.ArrivedTick != null)
                 {
@@ -1162,8 +1174,16 @@ namespace EdS.World
             };
         }
 
-        private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices) =>
-            world.SettleEvent(run.Occurrence.Event, run.Occurrence, EventOutcome.Lost, WorldEventNoticeKind.Lost, notices);
+        /// <summary>
+        /// Règle en échec une occurrence finie. Revue Codex de la PR #240 : une attaque de caravane où le joueur n'a combattu aucun bandit
+        /// (resté ailleurs, secteur fermé ou non) est réglée comme une absence (<see cref="WorldEventNoticeKind.Missed"/>) : les gardes tirent
+        /// leur issue ; s'il les a combattus et perdu, la caravane est pillée (décision de Damien du 21 novembre 2026).
+        /// </summary>
+        private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices)
+        {
+            bool absent = run.Occurrence.Event.Kind == WorldEventKind.Caravan && !run.Slots.Any(s => s.Fought || s.Hurt);
+            world.SettleEvent(run.Occurrence.Event, run.Occurrence, EventOutcome.Lost, absent ? WorldEventNoticeKind.Missed : WorldEventNoticeKind.Lost, notices);
+        }
 
         /// <summary>
         /// Referme la faille de l'événement <paramref name="eventId"/> : le personnage est à <see cref="CloseRange"/> de son centre, et aucun

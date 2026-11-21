@@ -1,0 +1,67 @@
+{
+  "$schema": "../../schemas/caravans.schema.json",
+  "schemaVersion": 1,
+  "kind": "caravans",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "caravans": [
+      {
+        "id": "caravane_d_ambre",
+        "start": "08:00",
+        "everyDays": 1,
+        "firstDay": 1,
+        "metersPerMinute": 11.25,
+        "wagons": 2,
+        "guards": 2,
+        "route": [
+          [-1600, -170], [-1325, -90], [-1310, -90], [-1010, -70], [-710, -50], [-697, -50], [-500, -40], [-300, -20], [-99, -1],
+          [-50, -1], [-24, -1], [-16, 1], [-8, 1], [1.8, -0.2], [7.5, 0.5], [20.5, 0.5], [22, -4], [26, -12], [40, -22], [60, -26],
+          [76, -36], [100, -46], [126, -40], [300, -10], [600, 60], [1000, 145], [1080, 500], [1120, 800], [1170, 880], [1310, 870],
+          [1450, 860], [1600, 849.7]
+        ],
+        "attack": {
+          "id": "attaque_caravane_d_ambre",
+          "chancePercent": 35,
+          "announceMinutes": 30,
+          "durationMinutes": 90,
+          "aftermathMinutes": 720,
+          "place": "route_du_fort",
+          "guardsPercent": 50,
+          "minLevel": 18,
+          "groups": [
+            {
+              "id": "embuscade",
+              "weight": 2,
+              "position": [1310, 870],
+              "creatures": [
+                { "like": "bandit_fort1", "position": [1318, 878] },
+                { "like": "bandit_fort2", "position": [1302, 879] },
+                { "like": "bandit_fort3", "position": [1322, 863] },
+                { "like": "bandit_arc_fort1", "position": [1300, 858] }
+              ]
+            },
+            {
+              "id": "archers",
+              "weight": 1,
+              "position": [1310, 870],
+              "creatures": [
+                { "like": "bandit_arc_fort1", "position": [1316, 882] },
+                { "like": "bandit_arc_fort2", "position": [1304, 882] },
+                { "like": "bandit_fort1", "position": [1322, 866] },
+                { "like": "bandit_fort2", "position": [1298, 864] }
+              ]
+            }
+          ],
+          "reward": {
+            "xp": 1200,
+            "money": 800,
+            "items": [{ "item": "item.potion_de_soin", "count": 2 }],
+            "fact": "fact.event.attaque_caravane_d_ambre.sauvee",
+            "bounty": 200
+          },
+          "lostFact": "fact.event.attaque_caravane_d_ambre.pillee"
+        }
+      }
+    ]
+  }
+}

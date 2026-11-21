@@ -259,11 +259,15 @@ namespace EdS.Data.Json
             return ok ? place : null;
         }
 
-        /// <summary>Sous-lot V2.5 (schéma 10) : un événement du monde.</summary>
-        private static WorldEventData? ReadEvent(JsonInput input, JsonElement element, string path)
+        /// <summary>
+        /// Sous-lot V2.5 (schéma 10) : un événement du monde. Sous-lot V2.41.1 : <paramref name="caravan"/>, l'attaque d'une caravane
+        /// (<c>caravans.json</c>) : ni sorte, ni fenêtre, ni heure (celles de la caravane), ni refuge, vagues ou cicatrice ; <c>guardsPercent</c>
+        /// et la prime <c>reward.bounty</c> en plus.
+        /// </summary>
+        internal static WorldEventData? ReadEvent(JsonInput input, JsonElement element, string path, bool caravan = false)
         {
             var e = new WorldEventData();
-            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            var fields = new Dictionary<string, Action<JsonElement, string>>
             {
                 ["id"] = (v, p) => e.Id = input.Text(v, p),
                 ["kind"] = (v, p) => e.Kind = input.Text(v, p),
@@ -288,7 +292,15 @@ namespace EdS.Data.Json
                 ["lostFact"] = (v, p) => e.LostFact = input.Text(v, p),
                 ["minLevel"] = (v, p) => e.MinLevel = input.Int32(v, p),   // choix de Damien du 7 novembre 2026
                 ["scar"] = (v, p) => e.Scar = ReadScar(input, v, p),   // sous-lot V2.6 (schéma 11)
-            });
+            };
+            if (caravan)
+            {
+                foreach (string own in new[] { "kind", "everyDays", "firstDay", "start", "spreadMinutes", "refuge", "villagers", "waves", "waveMs", "scar" })
+                    fields.Remove(own);
+                fields["guardsPercent"] = (v, p) => e.GuardsPercent = input.Int32(v, p);
+                fields["reward"] = (v, p) => e.Reward = ReadEventReward(input, v, p, true);
+            }
+            bool ok = input.ReadFields(element, path, fields);
             return ok ? e : null;
         }
 
@@ -346,10 +358,10 @@ namespace EdS.Data.Json
             return ok ? g : null;
         }
 
-        private static WorldEventRewardData? ReadEventReward(JsonInput input, JsonElement element, string path)
+        private static WorldEventRewardData? ReadEventReward(JsonInput input, JsonElement element, string path, bool caravan = false)
         {
             var r = new WorldEventRewardData();
-            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            var fields = new Dictionary<string, Action<JsonElement, string>>
             {
                 ["xp"] = (v, p) => r.Xp = input.Int64(v, p),
                 ["money"] = (v, p) => r.Money = input.Int64(v, p),
@@ -365,7 +377,9 @@ namespace EdS.Data.Json
                         return iok ? item : null;
                     }),
                 ["fact"] = (v, p) => r.Fact = input.Text(v, p),
-            });
+            };
+            if (caravan) fields["bounty"] = (v, p) => r.Bounty = input.Int64(v, p);   // sous-lot V2.41.1 : prime d'une caravane sauvée
+            bool ok = input.ReadFields(element, path, fields);
             return ok ? r : null;
         }
 

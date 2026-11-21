@@ -31,6 +31,9 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot V2.5 : expérience d'une récompense d'événement, au plus.</summary>
         public const long MaxEventXp = 100_000;
 
+        /// <summary>Sous-lot V2.41.1 : prime d'une caravane sauvée au plus (cuivre : 100 or).</summary>
+        public const long MaxEventBounty = 10_000;
+
         /// <summary>
         /// Sous-lot V2.5 (schéma 10) : <c>events</c>, de 1 à <see cref="MaxEvents"/> événements : <c>id</c> (local, unique), <c>kind</c>
         /// (« raid » : attaque d'un lieu ; « rift » : faille du Seuil ; « hunt » : chasse de bêtes entre elles), <c>everyDays</c> (fenêtre de 1 à
@@ -47,11 +50,14 @@ namespace EdS.Data.Zones
         /// </summary>
         /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
         /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
-        private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
-            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true, string? zoneId = null, bool schema12 = true)
+        /// <param name="caravanPath">Sous-lot V2.41.1 : chemin de l'attaque d'une caravane (<c>caravans.json</c>, une à la fois) : sorte
+        /// « caravan » seulement, place de halte et <c>guardsPercent</c> obligatoires, prime <c>reward.bounty</c> permise ; null pour une zone.</param>
+        internal static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
+            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true, string? zoneId = null, bool schema12 = true,
+            string? caravanPath = null)
         {
             const string root = "$.data.events";
-            if (data.Count < 1 || data.Count > MaxEvents)
+            if (caravanPath is null && (data.Count < 1 || data.Count > MaxEvents))
             {
                 report.Add(root, data.Count < 1 ? ValidationCode.OutOfRange : ValidationCode.LimitExceeded, $"de 1 à {MaxEvents} événements (absent quand il n'y en a aucun).");
                 return;
@@ -59,13 +65,14 @@ namespace EdS.Data.Zones
             var ids = new List<string>();
             for (int i = 0; i < data.Count; i++)
             {
-                string path = $"{root}[{i}]";
+                string path = caravanPath ?? $"{root}[{i}]";
                 if (data[i] is not WorldEventData e) { Missing(report, path, "événement du monde"); continue; }
                 bool ok = CheckId(e.Id, path + ".id", ids, report);
                 if (ok) ids.Add(e.Id!);
                 WorldEventKind kind = WorldEventKind.Raid;
                 bool known = false;
-                if (e.Kind is null) { Missing(report, path + ".kind", "« raid », « rift » ou « hunt »"); ok = false; }
+                if (caravanPath != null) { known = e.Kind == WorldEventDefinition.CaravanKindName; kind = WorldEventKind.Caravan; if (!known) ok = false; }
+                else if (e.Kind is null) { Missing(report, path + ".kind", "« raid », « rift » ou « hunt »"); ok = false; }
                 else if (WorldEventDefinition.KindNames.ToList().IndexOf(e.Kind) is int k && k >= 0) { kind = (WorldEventKind)k; known = true; }
                 else { report.Add(path + ".kind", ValidationCode.InvalidValue, $"sorte d'événement « {e.Kind} » inconnue : « raid », « rift » ou « hunt »."); ok = false; }
                 int? Range(int? value, string field, string what, int min, int max)
@@ -166,6 +173,14 @@ namespace EdS.Data.Zones
                     if (ml < 1 || ml > maxLevel) { report.Add(path + ".minLevel", ValidationCode.OutOfRange, $"niveau minimum hors de [1, {maxLevel}]."); ok = false; }
                     else minLevel = ml;
                 }
+                // Sous-lot V2.41.1 : chance que les gardes d'une caravane repoussent seuls les bandits.
+                int guards = 0;
+                if (caravanPath != null)
+                {
+                    if (Range(e.GuardsPercent, "guardsPercent", "chance que les gardes repoussent seuls les bandits, en pour cent", 0, 100) is int gp) guards = gp;
+                }
+                else if (e.GuardsPercent != null || e.Caravan != null) { report.Add(path + ".guardsPercent", ValidationCode.InvalidValue, "seule l'attaque d'une caravane a des gardes (caravans.json)."); ok = false; }
+                if (reward != null && reward.Bounty > 0 && caravanPath is null) { report.Add(path + ".reward.bounty", ValidationCode.InvalidValue, "une prime seulement pour l'attaque d'une caravane."); ok = false; }
                 // Revue Codex de la PR #110 (tour 3) : les clés composées que la partie écrira dans la sauvegarde (registre, cicatrices)
                 // tiennent dans sa borne, avec la même formule que le cœur.
                 if (zoneId != null && known && kind != WorldEventKind.Hunt && e.Id != null && EventRegistryKey(zoneId, e.Id).Length > SavedEvent.MaxKeyLength)
@@ -176,7 +191,8 @@ namespace EdS.Data.Zones
                         { report.Add($"{path}.groups[{g}].id", ValidationCode.LimitExceeded, $"clé de cicatrice « {ScarKey(zoneId, e.Id, gid)} » au-delà de {SavedEvent.MaxKeyLength} caractères (sauvegarde)."); ok = false; }
                 if (ok)
                     events.Add(new WorldEventDefinition(e.Id!, kind, every!.Value, chance!.Value, first!.Value, start!.Value, spread!.Value, announce!.Value,
-                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel, scar));
+                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel, scar,
+                        caravanPath is null ? null : e.Caravan, guards));
             }
         }
 
@@ -188,7 +204,12 @@ namespace EdS.Data.Zones
             if (g.Weight is null) { Missing(report, path + ".weight", "poids de la variante (1 à 100)"); ok = false; }
             else if (g.Weight < 1 || g.Weight > 100) { report.Add(path + ".weight", ValidationCode.OutOfRange, "poids hors de [1, 100]."); ok = false; }
             GroundVector? position = null;
-            if (kind == WorldEventKind.Rift)
+            if (kind == WorldEventKind.Caravan)   // sous-lot V2.41.1 : halte de la caravane (un point de sa route, vérifié par le validateur des caravanes)
+            {
+                if (!CheckPoint(g.Position, path + ".position", "halte de la caravane [x, z]", report)) ok = false;
+                else position = Point(g.Position!);
+            }
+            else if (kind == WorldEventKind.Rift)
             {
                 if (!CheckPoint(g.Position, path + ".position", "place de la faille [x, z]", report)) ok = false;
                 else if (space != null && Clear(Point(g.Position!), CharacterRadius, space, "de la faille") is string why) { report.Add(path + ".position", ValidationCode.InvalidValue, why); ok = false; }
@@ -365,7 +386,9 @@ namespace EdS.Data.Zones
                     }
             }
             if (r.Fact != null && !CheckDeclaredFact(r.Fact, path + ".fact", report)) ok = false;   // revue Codex de la PR #107 : « fact.met.… » réservé
-            return ok ? new WorldEventReward(r.Xp!.Value, r.Money!.Value, given, r.Fact) : null;
+            // Sous-lot V2.41.1 : prime d'une caravane sauvée, de 0 à MaxEventBounty cuivre.
+            if (r.Bounty is long b && (b < 0 || b > MaxEventBounty)) { report.Add(path + ".bounty", ValidationCode.OutOfRange, $"prime hors de [0, {MaxEventBounty}] cuivre."); ok = false; }
+            return ok ? new WorldEventReward(r.Xp!.Value, r.Money!.Value, given, r.Fact, r.Bounty ?? 0) : null;
         }
 
         /// <summary>Sous-lot V2.5 : clé du registre d'un personnage pour un événement (<c>zone.vallons/attaque_hameau</c>) ; la seule formule (cœur et validateur).</summary>

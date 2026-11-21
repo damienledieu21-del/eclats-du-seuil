@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 29
+      "const": 30
     },
     "kind": {
       "const": "save"
@@ -713,6 +713,11 @@
                       },
                       "owed": {
                         "const": true
+                      },
+                      "lostDay": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
                       }
                     }
                   },
