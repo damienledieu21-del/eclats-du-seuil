@@ -40,7 +40,7 @@ namespace EdS.Game
                     at += forward * (0.13f + b.size.z / 2f) + up * 0.05f;   // sur le haut de la poitrine
                     break;
                 default:
-                    at -= up * (b.size.y / 2f);   // tenu par le haut, pendu sous la main
+                    at -= up * (b.size.y / 2f + 0.02f);   // le plat porté à plat, sous la main comme un plateau
                     break;
             }
             holder.transform.position = at;

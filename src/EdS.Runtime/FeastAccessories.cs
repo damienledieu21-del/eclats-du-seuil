@@ -12,7 +12,7 @@ namespace EdS.Runtime
         /// <summary>Sur le visage (masque).</summary>
         Face = 1,
 
-        /// <summary>Sur la poitrine (médaillon, rosette).</summary>
+        /// <summary>Sur la poitrine (réservé : aucun accessoire ne s'y porte depuis la décision du 21 novembre 2026).</summary>
         Chest = 2,
     }
 
@@ -40,29 +40,29 @@ namespace EdS.Runtime
     }
 
     /// <summary>
-    /// V2.56.3 (décision de Damien du 19 novembre 2026 : « un accessoire par fête des habitants, plus tard, avec les costumes en 3D ») :
+    /// V2.56.3 (décisions de Damien du 19 novembre 2026 : « un accessoire par fête des habitants », et du 21 novembre 2026, option B) :
     /// un jour de fête d'Orsédia, les habitants qui portent la tenue de la fête (<see cref="HumanWardrobe.FeastTints"/> : ni gardes, ni
-    /// bandits, ni le héros) portent aussi son accessoire. Faute de modèle d'accessoire propre (les costumes C01 ne sont pas modélisés), le
-    /// choix par défaut (question posée dans la PR) est la <b>récompense de la fête</b> (R01, déjà modélisée) : le masque sur le visage, le
-    /// médaillon et la rosette sur la poitrine, les autres en main. Affichage seulement. Sans Unity.
+    /// bandits, ni le héros) tiennent en main <b>le plat de la fête</b> (P01) ; la récompense n'est pas portée, pour qu'elle reste rare.
+    /// Exception : au Carnaval, le <b>masque de l'Autre Rôle</b> (R01), vrai accessoire de costume, se porte sur le visage. Affichage
+    /// seulement. Sans Unity.
     /// </summary>
     public static class FeastAccessories
     {
         /// <summary>Les douze accessoires, dans l'ordre des fêtes.</summary>
         public static IReadOnlyList<FeastAccessory> All { get; } = new[]
         {
-            new FeastAccessory(1, "F01_R01", "Lanterne du premier vœu", FeastAccessoryPlace.Hand),
-            new FeastAccessory(2, "F02_R01", "Médaillon des compagnons", FeastAccessoryPlace.Chest),
-            new FeastAccessory(3, "F03_R01", "Masque de l'Autre Rôle", FeastAccessoryPlace.Face),
-            new FeastAccessory(4, "F04_R01", "Œuf souvenir des Semailles", FeastAccessoryPlace.Hand),
-            new FeastAccessory(5, "F05_R01", "Rosette du maître artisan", FeastAccessoryPlace.Chest),
-            new FeastAccessory(6, "F06_R01", "Clochette de la Ronde", FeastAccessoryPlace.Hand),
-            new FeastAccessory(7, "F07_R01", "Coupe des Vallons", FeastAccessoryPlace.Hand),
-            new FeastAccessory(8, "F08_R01", "Cloche d'un éclat de lune", FeastAccessoryPlace.Hand),
-            new FeastAccessory(9, "F09_R01", "Coupe de la dernière gerbe", FeastAccessoryPlace.Hand),
-            new FeastAccessory(10, "F10_R01", "Clé des Échos", FeastAccessoryPlace.Hand),
-            new FeastAccessory(11, "F11_R01", "Livre miniature des veillées", FeastAccessoryPlace.Hand),
-            new FeastAccessory(12, "F12_R01", "Boule à neige des Vallons", FeastAccessoryPlace.Hand),
+            new FeastAccessory(1, "F01_P01", "Tourte des vœux", FeastAccessoryPlace.Hand),
+            new FeastAccessory(2, "F02_P01", "Pain des compagnons", FeastAccessoryPlace.Hand),
+            new FeastAccessory(3, "F03_R01", "Masque de l'Autre Rôle", FeastAccessoryPlace.Face),   // exception : vrai accessoire de costume
+            new FeastAccessory(4, "F04_P01", "Brioche du griffon", FeastAccessoryPlace.Hand),
+            new FeastAccessory(5, "F05_P01", "Tourte des sept ateliers", FeastAccessoryPlace.Hand),
+            new FeastAccessory(6, "F06_P01", "Galette des braises", FeastAccessoryPlace.Hand),
+            new FeastAccessory(7, "F07_P01", "Pâté du Grand Tournoi", FeastAccessoryPlace.Hand),
+            new FeastAccessory(8, "F08_P01", "Tartelettes de lune", FeastAccessoryPlace.Hand),
+            new FeastAccessory(9, "F09_P01", "Galette des vendanges", FeastAccessoryPlace.Hand),
+            new FeastAccessory(10, "F10_P01", "Tourte des Échos", FeastAccessoryPlace.Hand),
+            new FeastAccessory(11, "F11_P01", "Poires de la veillée", FeastAccessoryPlace.Hand),
+            new FeastAccessory(12, "F12_P01", "Bûche du Givre", FeastAccessoryPlace.Hand),
         };
 
         /// <summary>L'accessoire de la fête n° <paramref name="feast"/> (1 à 12), ou null.</summary>
