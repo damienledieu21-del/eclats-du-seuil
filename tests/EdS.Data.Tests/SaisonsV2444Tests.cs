@@ -113,6 +113,14 @@ public class SaisonsV2444Tests
         }
         Assert.Throws<ArgumentException>(() => VineLook.ModuleScale("rang_inconnu", 5));
         Assert.Throws<ArgumentOutOfRangeException>(() => VineLook.ModuleScale("rang_vigne_vert", 0));
+        // Relecture de la PR #233 : matériaux libérés avec le décor, un seul appel aux objets de vendange, grappes au premier besoin,
+        // repli sur les formes du code quand la pièce demandée manque.
+        string game = Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game");
+        string vines = File.ReadAllText(Path.Combine(game, "SpaceView.Vines.cs")), space = File.ReadAllText(Path.Combine(game, "SpaceView.cs"));
+        Assert.Contains("ReleaseVines();", space);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(vines, @"Vintage\(VineLook\.PropsShown"));
+        Assert.Contains("if (look.Grapes && row.Grapes == null) BuildGrapes(row, grapeCode);", vines);
+        Assert.Contains("bool modeled = prefab != null ||", vines);
         // 8 modules par rang de 40 m.
         Assert.Equal(9, VineLook.Along(-1455, -700.4, -1415, -699.6, VineLook.ModuleLength).Count);
     }

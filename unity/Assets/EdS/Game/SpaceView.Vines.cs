@@ -21,6 +21,8 @@ namespace EdS.Game
             public GameObject Grapes;
             public GameObject Trellis;   // piquets et fil (seuls l'hiver quand les modèles sont là)
             public GameObject Models;    // modules du modèle de l'état montré
+            public GameObject Row;
+            public string Id;
             public float X0, Z0, X1, Z1;
         }
 
@@ -68,27 +70,44 @@ namespace EdS.Game
             leaves.transform.rotation = Quaternion.Euler(0f, 0f, alongX ? 90f : 0f) * (alongX ? Quaternion.identity : Quaternion.Euler(90f, 0f, 0f));
             Vector3 scale = new Vector3(0.75f, length / 2f, 0.6f);
             leaves.transform.localScale = scale;
-            // Grappes tous les 2,5 m, de chaque côté en quinconce.
+            // Grappes : construites au premier besoin (Grapes), jamais quand les modèles Tripo sont là.
+            var models = new GameObject("Modules");
+            models.transform.SetParent(row.transform, false);
+            _vineRows.Add(new VineRow { Leaves = leaves, LeafScale = scale, Trellis = trellis, Models = models, Row = row, Id = id, X0 = x0, Z0 = z0, X1 = x1, Z1 = z1 });
+        }
+
+        /// <summary>Grappes du rang tous les 2,5 m, de chaque côté en quinconce (relecture de la PR #233 : faites au premier besoin).</summary>
+        private void BuildGrapes(VineRow row, string code)
+        {
             var grapes = new GameObject("Grappes");
-            grapes.transform.SetParent(row.transform, false);
+            grapes.transform.SetParent(row.Row.transform, false);
+            bool alongX = row.X1 - row.X0 >= row.Z1 - row.Z0;
             int i = 0;
-            foreach ((double x, double z) in VineLook.Along(x0, z0, x1, z1, VineLook.GrapeSpacing))
+            foreach ((double x, double z) in VineLook.Along(row.X0, row.Z0, row.X1, row.Z1, VineLook.GrapeSpacing))
             {
                 float side = (i++ % 2 == 0 ? 0.32f : -0.32f);
                 Vector3 at = new Vector3((float)x + (alongX ? 0f : side), 0f, (float)z + (alongX ? side : 0f));
                 at.y = StyleWorld.StandHeight(at.x, at.z) + 0.7f;
-                string code = LotCModels.ForNode("raisin_vignes_ouest");
-                if (code == null || LotCLook.Place(grapes.transform, code, id + "/grappe" + i, at, 0f, 1.2f) == null)
+                if (code == null || LotCLook.Place(grapes.transform, code, row.Id + "/grappe" + i, at, 0f, 1.2f) == null)
                 {
                     GameObject berry = Primitive(PrimitiveType.Sphere, grapes.transform, _vineGrape);
                     berry.transform.position = at;
                     berry.transform.localScale = new Vector3(0.14f, 0.2f, 0.14f);
                 }
             }
-            grapes.SetActive(false);
-            var models = new GameObject("Modules");
-            models.transform.SetParent(row.transform, false);
-            _vineRows.Add(new VineRow { Leaves = leaves, LeafScale = scale, Grapes = grapes, Trellis = trellis, Models = models, X0 = x0, Z0 = z0, X1 = x1, Z1 = z1 });
+            row.Grapes = grapes;
+        }
+
+        /// <summary>Relecture de la PR #233 : matériaux de la vigne détruits avec le décor, état remis à zéro.</summary>
+        private void ReleaseVines()
+        {
+            if (_vineWood != null) Object.Destroy(_vineWood);
+            if (_vineLeaves != null) Object.Destroy(_vineLeaves);
+            if (_vineGrape != null) Object.Destroy(_vineGrape);
+            _vineWood = _vineLeaves = _vineGrape = null;
+            _vineRows.Clear();
+            _vineShown = null;
+            _vintage = null;
         }
 
         private static GameObject Primitive(PrimitiveType type, Transform parent, Material material)
@@ -110,30 +129,32 @@ namespace EdS.Game
             var color = new Color(look.R, look.G, look.B);
             _vineLeaves.SetColor("_BaseColor", color);
             _vineLeaves.SetColor("_Color", color);
-            // Modèles Tripo des rangs (Decor/vendanges) : modules de l'état montré ; sans eux, formes faites par le code.
+            // Modèles Tripo des rangs (Decor/vendanges) : modules de l'état montré ; relecture de la PR #233 : sans le modèle de la pièce
+            // demandée, retour aux formes faites par le code (l'hiver, cep nu : aucune pièce, piquets et fil seuls si les modèles sont là).
             StyleCatalog catalog = StyleCatalog.Loaded;
-            bool modeled = catalog != null && catalog.OwnDecorPiece("rang_vigne_vert") != null;
             string piece = VineLook.ModelPiece(state, season);
-            GameObject prefab = modeled && piece != null ? catalog.OwnDecorPiece(piece) : null;
+            GameObject prefab = catalog != null && piece != null ? catalog.OwnDecorPiece(piece) : null;
+            bool modeled = prefab != null || (piece == null && catalog != null && catalog.OwnDecorPiece("rang_vigne_vert") != null);
+            string grapeCode = look.Grapes && !modeled ? LotCModels.ForNode("raisin_vignes_ouest") : null;
             foreach (VineRow row in _vineRows)
             {
                 if (row.Models == null) continue;
                 for (int c = row.Models.transform.childCount - 1; c >= 0; c--) Object.Destroy(row.Models.transform.GetChild(c).gameObject);
-                if (!modeled) continue;
-                row.Leaves.SetActive(false);
-                row.Grapes.SetActive(false);
-                row.Trellis.SetActive(prefab == null);   // l'hiver, cep nu : piquets et fil seuls
-                if (prefab != null) Modules(row, prefab, piece);
-            }
-            Vintage(VineLook.PropsShown(state));
-            if (modeled) return;
-            foreach (VineRow row in _vineRows)
-            {
+                if (modeled)
+                {
+                    row.Leaves.SetActive(false);
+                    if (row.Grapes != null) row.Grapes.SetActive(false);
+                    row.Trellis.SetActive(prefab == null);
+                    if (prefab != null) Modules(row, prefab, piece);
+                    continue;
+                }
+                row.Trellis.SetActive(true);
                 if (row.Leaves != null)
                 {
                     row.Leaves.SetActive(look.Leaves > 0f);
                     row.Leaves.transform.localScale = new Vector3(row.LeafScale.x * Mathf.Max(0.3f, look.Leaves), row.LeafScale.y, row.LeafScale.z * Mathf.Max(0.3f, look.Leaves));
                 }
+                if (look.Grapes && row.Grapes == null) BuildGrapes(row, grapeCode);
                 if (row.Grapes != null) row.Grapes.SetActive(look.Grapes);
             }
             Vintage(VineLook.PropsShown(state));

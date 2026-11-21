@@ -2200,6 +2200,7 @@ namespace EdS.Game
             ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
             ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
             ReleaseHome();   // V2.53.3 : matériaux de la maison du joueur
+            ReleaseVines();   // V2.44.4 : matériaux des rangs de vigne
             if (_ice != null && _ice != _water) Object.Destroy(_ice);   // V2.44.3 (revue Codex de la PR #232) : copie de l'eau qui gèle
             Object.Destroy(_root);
         }

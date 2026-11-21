@@ -53,8 +53,9 @@ namespace EdS.Runtime
     /// château, appliquées par Unity (<c>SpaceView.Vines</c>) : les 24 rangs (obstacles « haie_vigne_vignes_… », jusqu'ici habillés en murets
     /// de pierres sèches) deviennent des rangs de vigne (piquets, fil, feuillage) en trois états : vert (feuillage plein), mûr (feuillage
     /// sombre et grappes, septembre), vendangé (feuillage d'automne clairsemé en octobre et novembre, cep nu l'hiver et jusqu'au vert
-    /// d'avril). Pendant les vendanges, la hotte et le panier du lot C attendent au bout des rangs. Modèles des rangs en trois états : à
-    /// générer (Tripo, dépense à valider par Damien) ; en attendant, formes faites par le code. Affichage seulement.
+    /// d'avril). Pendant les vendanges, la hotte et le panier du lot C attendent au bout des rangs. Modèles Tripo des rangs en trois états
+    /// (90 crédits, dépense validée par Damien le 20 novembre 2026, <see cref="Models"/>) ; sans eux, formes faites par le code. Affichage
+    /// seulement.
     /// </summary>
     public static class VineLook
     {
