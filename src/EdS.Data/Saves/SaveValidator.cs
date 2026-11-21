@@ -296,7 +296,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 : même personnage avec un autre registre des événements.</summary>
         public SavedCharacter WithEvents(IEnumerable<SavedEvent> events) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.</summary>
         public IReadOnlyList<SavedScar> Scars { get; }
@@ -304,7 +304,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.6 : même personnage avec d'autres cicatrices.</summary>
         public SavedCharacter WithScars(IEnumerable<SavedScar> scars) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (lignes non vides, rangées par identifiant).</summary>
         public IReadOnlyList<SavedStock> Stock { get; }
@@ -312,7 +312,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 : même personnage avec un autre stock des marchands.</summary>
         public SavedCharacter WithStock(IEnumerable<SavedStock> stock) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V2.16 (version 17) : aspect choisi pour le héros dans le créateur de personnage ; null tant que rien n'est choisi.</summary>
         public SavedLook? Look { get; }
@@ -322,7 +322,7 @@ namespace EdS.Data.Saves
 
         public SavedCharacter WithCompanions(SavedCompanions companions) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, companions ?? throw new ArgumentNullException(nameof(companions)), Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, companions ?? throw new ArgumentNullException(nameof(companions)), Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Sous-lot V2.28d (2b) (version 22) : monture du personnage (<see cref="SaveValidator.Mounts"/> : « mount.cheval », le cheval des
@@ -333,7 +333,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.28d (2b) : même personnage avec une autre monture (null : aucune).</summary>
         public SavedCharacter WithMount(string? mount) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises ; jamais null (vide tant que le personnage n'a pas pêché).</summary>
         public SavedFishing Fishing { get; }
@@ -341,7 +341,7 @@ namespace EdS.Data.Saves
         /// <summary>Pêche et carnet : même personnage avec une autre pêche.</summary>
         public SavedCharacter WithFishing(SavedFishing fishing) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, fishing ?? throw new ArgumentNullException(nameof(fishing)), Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, Companions, fishing ?? throw new ArgumentNullException(nameof(fishing)), Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Sous-lot V2.29 (2) (version 23) : cases explorées de la carte (brouillard dissipé), par zone à région : une chaîne hexadécimale
@@ -353,7 +353,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.29 (2) : même personnage avec d'autres cases explorées.</summary>
         public SavedCharacter WithExplored(IReadOnlyDictionary<string, string> explored) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, explored ?? throw new ArgumentNullException(nameof(explored)), Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, explored ?? throw new ArgumentNullException(nameof(explored)), Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Cartes à la taverne (version 25, décisions de Damien du 16 novembre 2026) : graine secrète des donnes, victoires, jeu rare remis,
@@ -364,7 +364,7 @@ namespace EdS.Data.Saves
         /// <summary>Cartes à la taverne : même personnage avec un autre état des cartes.</summary>
         public SavedCharacter WithCards(SavedCards? cards) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Les 12 fêtes d'Orsédia (version 27, décisions de Damien du 17 novembre 2026) : portefeuille de chaque fête, activités de l'édition en
@@ -375,7 +375,7 @@ namespace EdS.Data.Saves
         /// <summary>Les 12 fêtes d'Orsédia : même personnage avec d'autres fêtes.</summary>
         public SavedCharacter WithFeasts(SavedFeasts feasts) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, feasts ?? throw new ArgumentNullException(nameof(feasts)), Rebuilds, Home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, feasts ?? throw new ArgumentNullException(nameof(feasts)), Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Lieux reconstruits (version 28, décisions de Damien du 19 novembre 2026) : chantiers du personnage, par lieu ; vide tant qu'il n'a
@@ -386,7 +386,7 @@ namespace EdS.Data.Saves
         /// <summary>Lieux reconstruits : même personnage avec d'autres chantiers.</summary>
         public SavedCharacter WithRebuilds(SavedRebuilds rebuilds) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, rebuilds ?? throw new ArgumentNullException(nameof(rebuilds)), Home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, rebuilds ?? throw new ArgumentNullException(nameof(rebuilds)), Home, Corruption);
 
         /// <summary>Maison du joueur (version 29) : la maison achetée, ou null (pas encore de maison).</summary>
         public SavedHome? Home { get; }
@@ -394,17 +394,25 @@ namespace EdS.Data.Saves
         /// <summary>Maison du joueur : même personnage avec une autre maison (null : aucune).</summary>
         public SavedCharacter WithHome(SavedHome? home) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, home);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, home, Corruption);
+
+        /// <summary>Sous-lot V2.42.1 (version 31) : autels purifiés du personnage (jour de la dernière purification par terre) ; vide : aucun.</summary>
+        public SavedCorruption Corruption { get; }
+
+        /// <summary>Sous-lot V2.42.1 : même personnage avec d'autres autels purifiés.</summary>
+        public SavedCharacter WithCorruption(SavedCorruption corruption) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, corruption ?? throw new ArgumentNullException(nameof(corruption)));
 
         /// <summary>Sous-lot V2.16 : même personnage avec un autre aspect (null : l'aspect par défaut du jeu).</summary>
         public SavedCharacter WithLook(SavedLook? look) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Boons, Events, Scars, Stock, look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
         public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
@@ -420,8 +428,9 @@ namespace EdS.Data.Saves
             IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null,
             IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null, IEnumerable<SavedStock>? stock = null, SavedLook? look = null,
             SavedCompanions? companions = null, SavedFishing? fishing = null, string? mount = null, IReadOnlyDictionary<string, string>? explored = null,
-            SavedCards? cards = null, SavedFeasts? feasts = null, SavedRebuilds? rebuilds = null, SavedHome? home = null)
+            SavedCards? cards = null, SavedFeasts? feasts = null, SavedRebuilds? rebuilds = null, SavedHome? home = null, SavedCorruption? corruption = null)
         {
+            Corruption = corruption ?? SavedCorruption.Empty;
             Cards = cards;
             Feasts = feasts ?? SavedFeasts.Empty;
             Rebuilds = rebuilds ?? SavedRebuilds.Empty;
@@ -484,7 +493,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -493,7 +502,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                null, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -502,15 +511,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                null, worn, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -518,15 +527,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -534,7 +543,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, Home, Corruption);
     }
 
     /// <summary>
@@ -765,7 +774,14 @@ namespace EdS.Data.Saves
         /// entre 0 et <c>last</c>, avec au moins un échec ; écrit seulement s'il est connu. Le contrecoup d'un pillage dure ainsi ses jours
         /// même si une occurrence plus récente est réussie. Une sauvegarde de version 29 ou antérieure est lue telle quelle (jour inconnu : le
         /// contrecoup suit la dernière issue, comme avant) et mise à jour ; elle n'a pas de <c>lostDay</c>.</remarks>
-        public const int CurrentSchemaVersion = 30;
+        /// <remarks>Version 31 (corruption qui s'étend et recule, <see cref="CorruptionSince"/>, sous-lot V2.42.1) : <c>corruption</c>
+        /// facultatif dans le personnage (absent tant qu'aucun autel n'est purifié) : par terre (<c>corruption.json</c>, ordre ordinal), le jour
+        /// du monde de la dernière purification de son autel. Une sauvegarde de version 30 ou antérieure est lue telle quelle (aucun autel
+        /// purifié) et mise à jour ; elle n'a pas de <c>corruption</c>.</remarks>
+        public const int CurrentSchemaVersion = 31;
+
+        /// <summary>Corruption : version où les autels purifiés (<c>corruption</c>) entrent dans la sauvegarde.</summary>
+        public const int CorruptionSince = 31;
 
         /// <summary>Jour du dernier échec : version où <c>lostDay</c> entre dans le registre des événements.</summary>
         public const int EventLostDaySince = 30;
@@ -1333,6 +1349,14 @@ namespace EdS.Data.Saves
             }
             else if (c.Home != null) CheckHome(c.Home, path + ".home", version, report);
             else if (c.Present.Contains("home")) Missing(report, path + ".home", "maison");
+            // Sous-lot V2.42.1 (version 31) : autels purifiés, facultatif ; une sauvegarde antérieure n'en a pas.
+            if (version < CorruptionSince)
+            {
+                if (c.Present.Contains("corruption") || c.Corruption != null)
+                    report.Add(path + ".corruption", ValidationCode.UnknownField, $"champ inconnu en version {version} (corruption : version {CorruptionSince}).");
+            }
+            else if (c.Corruption != null) CheckCorruption(c.Corruption, path + ".corruption", report);
+            else if (c.Present.Contains("corruption")) Missing(report, path + ".corruption", "autels purifiés");
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -1357,7 +1381,8 @@ namespace EdS.Data.Saves
                 c.Mount, c.Explored?.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), Cards(c.Cards), Feasts(c.Feasts), Rebuilds(c.Rebuilds),
                 c.Home is null ? null : new SavedHome(c.Home.Stage!.Value, c.Home.Given!.Select(g => new KeyValuePair<string, long>(g.Key, g.Value!.Value)),
                     c.Home.Placed!.Select(x => new SavedPiece(x!.Piece!, x.X!.Value, x.Z!.Value, x.Turn!.Value)),
-                    c.Home.Chest!.Select(st => Instance(st!.Item!, st.Count!.Value, st, version))));
+                    c.Home.Chest!.Select(st => Instance(st!.Item!, st.Count!.Value, st, version))),
+                c.Corruption is null ? null : new SavedCorruption(c.Corruption.Select(e => new KeyValuePair<string, long>(e.Key, e.Value!.Value))));
         }
 
         /// <summary>
@@ -1404,6 +1429,24 @@ namespace EdS.Data.Saves
             if (h.Chest is null) Missing(report, p + ".chest", "places du coffre, éventuellement vide");
             else if (h.Chest.Count > SavedHome.MaxChest) report.Add(p + ".chest", ValidationCode.LimitExceeded, $"au plus {SavedHome.MaxChest} places.");
             else for (int i = 0; i < h.Chest.Count; i++) CheckStack(h.Chest[i], $"{p}.chest[{i}]", version, report);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.42.1 (version 31) : autels purifiés : au moins un, au plus <see cref="SavedCorruption.MaxEntries"/>, terres bien formées en
+        /// ordre ordinal sans doublon, jour de la dernière purification dans [0, <see cref="SavedEvent.MaxDay"/>].
+        /// </summary>
+        private static void CheckCorruption(List<KeyValuePair<string, long?>> x, string path, ValidationReport report)
+        {
+            if (x.Count == 0) { report.Add(path, ValidationCode.InvalidValue, "autels vides : « corruption » est absent quand il n'y a rien."); return; }
+            if (x.Count > SavedCorruption.MaxEntries) { report.Add(path, ValidationCode.LimitExceeded, $"{x.Count} autels, au plus {SavedCorruption.MaxEntries}."); return; }
+            for (int i = 0; i < x.Count; i++)
+            {
+                string p = path + "." + x[i].Key;
+                if (!SavedRebuild.IsLocalId(x[i].Key)) { report.Add(p, ValidationCode.InvalidValue, "terre mal formée."); continue; }
+                if (i > 0 && string.CompareOrdinal(x[i - 1].Key, x[i].Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "terres en ordre ordinal, sans doublon.");
+                if (x[i].Value is null) report.Add(p, ValidationCode.MissingField, "champ obligatoire absent (jour de la purification).");
+                else if (x[i].Value < 0 || x[i].Value > SavedEvent.MaxDay) report.Add(p, ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
+            }
         }
 
         private static SavedRebuilds? Rebuilds(List<KeyValuePair<string, SavedRebuildData?>>? x) => x is null ? null

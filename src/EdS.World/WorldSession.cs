@@ -1507,6 +1507,8 @@ namespace EdS.World
             Explore(story);
             // Lieux reconstruits (sous-lot V2.43.1) : découvertes faites et paliers complets, avant les quêtes (un fait de chantier peut servir de condition).
             StepRebuilds(story);
+            // Sous-lot V2.42.1 : corruption qui s'étend et recule (annonces des terres gagnées, plus fortes, reculées ou purifiées).
+            StepCorruption();
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null

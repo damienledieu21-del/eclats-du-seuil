@@ -10,6 +10,7 @@ using EdS.Data.Crafting;
 using EdS.Data.Fishing;
 using EdS.Data.Guild;
 using EdS.Data.Caravans;
+using EdS.Data.Corruption;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
@@ -244,6 +245,7 @@ namespace EdS.Runtime
         private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
         private readonly RebuildBook? _rebuilds;   // lieux reconstruits (null : aucun)
         private readonly CaravanBook? _caravans;   // sous-lot V2.41.1 : caravanes (null : aucune)
+        private readonly CorruptionBook? _corruption;   // sous-lot V2.42.1 : corruption (null : aucune)
         private readonly HomeBook? _home;   // maison du joueur (null : aucune)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
@@ -272,8 +274,9 @@ namespace EdS.Runtime
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
             WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null,
-            HomeBook? home = null, CaravanBook? caravans = null)
+            HomeBook? home = null, CaravanBook? caravans = null, CorruptionBook? corruption = null)
         {
+            _corruption = corruption;
             _feasts = feasts;
             _rebuilds = rebuilds;
             _caravans = caravans;
@@ -422,13 +425,17 @@ namespace EdS.Runtime
                 caravanBook = Need(caravans.Book, "caravanes", () => caravans.Report);
                 played = WithCaravans(played, caravanBook);
             }
+            // Sous-lot V2.42.1 : corruption qui s'étend et recule (fichier absent, données d'essai réduites : aucune ; présent, il doit être valide).
+            string corruptionPath = CorruptionJsonReader.PathIn(dataDirectory);
+            CorruptionLoadResult? corruption = File.Exists(corruptionPath) ? CorruptionJsonReader.ReadFile(corruptionPath, definition, catalog) : null;
             return new AdventureSession(data, progression, catalog, played, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
                 feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
                 rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report),
-                home is null ? null : Need(home.Book, "maison du joueur", () => home.Report), caravanBook);
+                home is null ? null : Need(home.Book, "maison du joueur", () => home.Report), caravanBook,
+                corruption is null ? null : Need(corruption.Book, "corruption", () => corruption.Report));
         }
 
         /// <summary>
@@ -467,6 +474,7 @@ namespace EdS.Runtime
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
             world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
+            world.UseCorruption(_corruption);   // sous-lot V2.42.1 : corruption (sauvegarde v31 ; le catalogue ne vaut que dans sa zone)
             world.UseCaravans(_caravans);   // sous-lot V2.41.1 : caravanes (leurs attaques sont déjà des événements de la zone de départ)
             world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
             world.UseHome(_home);   // maison du joueur (sauvegarde v29)
@@ -680,6 +688,7 @@ namespace EdS.Runtime
             if (!ReferenceEquals(world, World)) return;
             DrinkMessages();
             AnnounceStranded();
+            foreach (CorruptionNotice n in world.CorruptionNotices) CorruptionNoticeSaid(n);   // sous-lot V2.42.1 (même sans autre nouvelle)
             if (step.IsEmpty) return;
             _dirty = true;
             foreach (ExperienceGained g in step.Experience)
@@ -886,6 +895,7 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
+            if (AltarInReach != null) return PurifyAltar();   // sous-lot V2.42.1 : puis l'autel d'une terre corrompue
             // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
             // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
             if (DoorFirst) return UseDoor();

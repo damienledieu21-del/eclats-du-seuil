@@ -319,6 +319,18 @@ namespace EdS.Data.Json
                     }
                     c.Rebuilds = list;
                 },
+                ["corruption"] = (v, p) =>   // sous-lot V2.42.1 : autels purifiés (version 31), facultatif
+                {
+                    c.Present.Add("corruption");
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « terre : jour »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedCorruption.MaxEntries) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedCorruption.MaxEntries} autels."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    c.Corruption = list;
+                },
                 ["home"] = (v, p) =>   // maison du joueur (version 29), facultative
                 {
                     c.Present.Add("home");
@@ -845,6 +857,9 @@ namespace EdS.Data.Json
                     .Append(", \"chest\": [").Append(string.Join(", ", home.Chest.Select(st => "{\"item\": " + Quoted(st.Item) + ", \"count\": " + N(st.Count)
                         + InstanceFields(st) + "}"))).Append("]},\n");
             }
+            if (!c.Corruption.IsEmpty)   // sous-lot V2.42.1 (version 31) : état déjà validé à la construction (terres au format)
+                b.Append("      \"corruption\": {").Append(string.Join(", ", c.Corruption.Purified.Select(e => "\"" + e.Key + "\": "
+                    + e.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
             b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append(",\n");
