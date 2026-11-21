@@ -42,6 +42,9 @@ namespace EdS.Runtime
             WorldEventNoticeKind.ScarStirs => "cicatrice_rode",
             WorldEventNoticeKind.ScarSpread => "cicatrice_propagee",   // sous-lot V2.6.1
             WorldEventNoticeKind.Escaped => "passee",   // sous-lot V2.41.1 : la caravane est passée sans le joueur
+            WorldEventNoticeKind.RecoveryOpened => "reprise_ouverte",   // sous-lot V2.41.3 : quête de reprise au fort
+            WorldEventNoticeKind.ChestRecovered => "coffre",
+            WorldEventNoticeKind.Recovered => "reprise",
             _ => "fin",
         };
 
@@ -70,10 +73,34 @@ namespace EdS.Runtime
                 _dirty = true;
                 if (n.Xp > 0) Say("text.ui.scar.purified", n.Xp);
             }
-            if (n.Kind != WorldEventNoticeKind.Rewarded) return;
+            if (n.Kind == WorldEventNoticeKind.ChestRecovered) _dirty = true;   // sous-lot V2.41.3 : coffre repris au fort
+            if (n.Kind != WorldEventNoticeKind.Rewarded && n.Kind != WorldEventNoticeKind.Recovered) return;
             _dirty = true;
             Say("text.ui.event.reward", n.Xp, MoneyText(n.Money));
             foreach ((string item, int count) in n.Items) Say("text.ui.reward", ItemName(item), count);
+        }
+
+        /// <summary>Sous-lot V2.41.3 : coffre d'une quête de reprise ouverte, pas encore repris, à portée (caravane, rang), ou null.</summary>
+        public (string Caravan, int Chest)? ChestInReach
+        {
+            get
+            {
+                if (!(Me is GroundVector p) || World.IsDefeated) return null;
+                foreach (CaravanRecoveryView v in World.CaravanRecoveries)
+                    for (int k = 0; k < v.Recovery.Chests.Count; k++)
+                        if (!v.IsTaken(k) && Within(p, v.Recovery.Chests[k], RiftReach)) return (v.Caravan.Id, k);
+                return null;
+            }
+        }
+
+        /// <summary>Sous-lot V2.41.3 : reprend le coffre à portée ; un message dit pourquoi si c'est refusé.</summary>
+        public bool TakeChest()
+        {
+            if (!(ChestInReach is (string caravan, int chest))) return false;
+            ChestRefusal refusal = World.TakeCaravanChest(caravan, chest);
+            if (refusal == ChestRefusal.Guarded) Say("text.ui.caravan.chest.guarded");
+            else if (refusal == ChestRefusal.NotHere) Say("text.ui.caravan.chest.too_far");
+            return refusal == ChestRefusal.None;
         }
 
         /// <summary>Sous-lot V2.5 : faille ouverte à portée (pour la refermer), ou null.</summary>
