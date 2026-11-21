@@ -34,7 +34,7 @@ namespace EdS.Runtime
 
     /// <summary>
     /// V2.56.1 (décision de Damien du 19 novembre 2026 : « la pâtisserie tenue en main, avec les objets portés du héros ») : quelle
-    /// pâtisserie le héros tient dans la main gauche. Règle retenue par défaut (proposition à valider, question de la PR) :
+    /// pâtisserie le héros tient dans la main gauche. Règle retenue par Damien le 21 novembre 2026 (option A) :
     /// <list type="bullet">
     /// <item>en la mangeant (objet de soin bu en combat ou dehors) : celle qu'il mange, pendant <see cref="EatSeconds"/> secondes, même en
     /// combat ou à cheval ;</item>
