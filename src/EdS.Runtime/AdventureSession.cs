@@ -793,6 +793,10 @@ namespace EdS.Runtime
                 {
                     Say("text.ui.drunk", ItemName(id), _items.Item(id).Heal);
                     _dirty = true;
+                    // V2.56.1 (revue Codex de la PR #234) : la pâtisserie passe dans la main du héros (HeldPastries) seulement quand le
+                    // moteur a vraiment retiré une charge, pas quand la commande est soumise (PV pleins, étourdi, à cheval, recharge).
+                    Eaten = id;
+                    Meals = unchecked(Meals + 1);
                 }
                 _drunk[id] = left;
             }
@@ -1218,10 +1222,10 @@ namespace EdS.Runtime
 
         public void CloseDialogue() => World.Narrative?.Close();
 
-        /// <summary>V2.56.1 : dernier objet de soin bu ou mangé (<see cref="Drink"/>), null avant le premier ; affichage seulement.</summary>
+        /// <summary>V2.56.1 : dernier objet de soin bu ou mangé, confirmé par le moteur (charge retirée), null avant le premier ; affichage seulement.</summary>
         public string? Eaten { get; private set; }
 
-        /// <summary>V2.56.1 : nombre d'objets de soin pris depuis l'ouverture de la session (un de plus à chaque prise : l'affichage repère la suivante).</summary>
+        /// <summary>V2.56.1 : nombre d'objets de soin pris depuis l'ouverture de la session (un de plus à chaque charge retirée par le moteur : l'affichage repère la suivante).</summary>
         public int Meals { get; private set; }
 
         /// <summary>
@@ -1239,10 +1243,7 @@ namespace EdS.Runtime
             }
             try
             {
-                World.Drink(best);
-                // V2.56.1 : la pâtisserie mangée passe un moment dans la main du héros (HeldPastries).
-                Eaten = best;
-                Meals = unchecked(Meals + 1);
+                World.Drink(best);   // Eaten et Meals suivent la consommation confirmée par le moteur (DrinkMessages)
                 return true;
             }
             catch (Exception e) when (e is InvalidOperationException || e is ArgumentException)

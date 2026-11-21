@@ -1,4 +1,7 @@
+using System.Linq;
 using EdS.Data.Saves;
+using EdS.Domain.Space;
+using EdS.Simulation.Engine;
 using EdS.Runtime;
 using EdS.World;
 using Xunit;
@@ -84,5 +87,62 @@ public class V2561PatisserieEnMainTests
         Assert.Throws<System.ArgumentNullException>(() => HeldPastries.For(null!, Me, null, false, false, false));
         Assert.NotEqual(new HeldPastry(Croissant, "FIR08", true), new HeldPastry(Croissant, "FIR08", false));
         Assert.Equal(new HeldPastry(Croissant, "FIR08", true).GetHashCode(), new HeldPastry(Croissant, "FIR08", true).GetHashCode());
+    }
+
+    [Fact]
+    public void Repas_compte_seulement_quand_le_moteur_retire_une_charge()
+    {
+        // Revue Codex de la PR #234 : Eaten et Meals suivent la consommation confirmée par le moteur, pas la commande soumise.
+        string folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "eds_v2561_" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            AdventureSession a = AdventureSession.Load(ScenarioTestData.DataDirectory, ScenariosDirectory, System.IO.Path.Combine(folder, "sauvegarde.json"));
+            a.Advance(0.05);   // nouvelle partie : deux potions emportées (l'ouverture), PV pleins
+            const string Potion = "item.potion_de_soin";
+            CombatantView Me() => a.World.Zone.Engine.View(a.World.CombatantId);
+            Assert.Equal(2, Me().ConsumableCharges[Potion]);
+            // PV pleins : la commande part, le moteur refuse ; rien n'est mangé, même après plusieurs appuis.
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.True(a.Drink());
+                a.Advance(0.05);
+                a.Advance(0.05);
+            }
+            Assert.Equal((null, 0, 2), (a.Eaten, a.Meals, Me().ConsumableCharges[Potion]));
+            // Le loup le plus proche blesse le héros ; la potion bue est comptée une fois.
+            for (int i = 0; i < 4000 && Me().Health == Me().MaxHealth; i++)
+            {
+                GroundVector me = Me().Position!.Value;
+                CombatantView? wolf = null;
+                foreach (CombatantView v in a.World.Zone.Engine.CombatantIds.Select(a.World.Zone.Engine.View))
+                    if (v.Id != a.World.CombatantId && v.IsPresent && !v.IsDead && v.Id.Contains("loup") && v.Position is GroundVector p
+                        && (wolf is null || Dist2(me, p) < Dist2(me, wolf.Position!.Value))) wolf = v;
+                Assert.NotNull(wolf);
+                GroundVector w = wolf!.Position!.Value;
+                a.Combat.SetMove((w.X.Raw - me.X.Raw) / 1e4, (w.Z.Raw - me.Z.Raw) / 1e4);
+                a.Advance(0.05);
+            }
+            a.Combat.SetMove(0, 0);
+            Assert.True(Me().Health < Me().MaxHealth);
+            Assert.True(a.Drink());
+            a.Advance(0.05);
+            a.Advance(0.05);
+            Assert.Equal((Potion, 1, 1), (a.Eaten, a.Meals, Me().ConsumableCharges[Potion]));
+            // Aussitôt après : recharge (ou PV pleins) : refusé, le repas n'est pas prolongé.
+            Assert.True(a.Drink());
+            a.Advance(0.05);
+            a.Advance(0.05);
+            Assert.Equal((Potion, 1, 1), (a.Eaten, a.Meals, Me().ConsumableCharges[Potion]));
+        }
+        finally
+        {
+            if (System.IO.Directory.Exists(folder)) System.IO.Directory.Delete(folder, true);
+        }
+    }
+
+    private static long Dist2(GroundVector a, GroundVector b)
+    {
+        long dx = b.X.Raw - a.X.Raw, dz = b.Z.Raw - a.Z.Raw;
+        return dx * dx + dz * dz;
     }
 }
