@@ -157,6 +157,8 @@ public class LotCModelsTests
             _ => LotCModels.VillageSpots.Contains(key) && (markers.Contains("\"" + key + "\"")
                 || (LotCModels.ForgeYard.Any(p => p.Key == key) && markers.Contains("LotCModels.ForgeYard"))
                 || (key == LotCModels.ForgeTools && markers.Contains("LotCModels.ForgeToolCodes"))
+                // V2.44.4 : hotte et panier de vendange posés par SpaceView.Vines d'après VineLook.Props.
+                || (VineLook.Props.Any(p => p.Key == key) && File.ReadAllText(Path.Combine(Game, "SpaceView.Vines.cs")).Contains("foreach (VintageProp prop in VineLook.Props)"))
                 || (key == LotCModels.ForgeAwning.Key && markers.Contains("LotCModels.ForgeAwning"))),
         };
     }
