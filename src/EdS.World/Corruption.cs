@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EdS.Data.Corruption;
 using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 
@@ -46,6 +47,34 @@ namespace EdS.World
             if (book is null) throw new ArgumentNullException(nameof(book));
             if (day < since) return 0;
             return (int)Math.Min(book.MaxStage, checked(1 + (day - since) / book.GrowDays));
+        }
+
+        /// <summary>
+        /// Décision de Damien du 21 novembre 2026 : force des créatures au point <paramref name="point"/> le jour <paramref name="day"/>, en
+        /// pourcentage : <c>100 + strengthPercent × palier</c> de la terre la plus corrompue qui le contient (la source comprise ; bord du
+        /// disque compris) ; 100 hors de toute terre corrompue. Calcul vérifié.
+        /// </summary>
+        public static long StrengthAt(CorruptionBook book, long[] since, long day, GroundVector point)
+        {
+            if (book is null) throw new ArgumentNullException(nameof(book));
+            if (since is null || since.Length != book.Areas.Count) throw new ArgumentException("Un jour par terre attendu.", nameof(since));
+            int stage = CorruptionValidator.Beyond(point, book.Source.Position, book.Source.Radius) ? 0 : book.MaxStage;
+            for (int i = 0; i < book.Areas.Count && stage < book.MaxStage; i++)
+                if (!CorruptionValidator.Beyond(point, book.Areas[i].Position, book.Areas[i].Radius)) stage = Math.Max(stage, StageAt(since[i], book, day));
+            return checked(100 + (long)book.StrengthPercent * stage);
+        }
+
+        /// <summary>
+        /// Décision de Damien du 21 novembre 2026 : <paramref name="zone"/> (la zone de la corruption) avec ses créatures renforcées selon le
+        /// palier de leur terre au jour <paramref name="day"/> (<see cref="ZoneDefinition.Strengthened"/>) ; une autre zone telle quelle. Pris
+        /// à l'ouverture d'une partie : une créature garde la force du début de la partie jusqu'à la suivante.
+        /// </summary>
+        public static ZoneDefinition Strengthen(ZoneDefinition zone, CorruptionBook? book, SavedCorruption saved, long day)
+        {
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (book is null || zone.Id != book.ZoneId || book.StrengthPercent == 0) return zone;
+            long[] since = CorruptedSince(book, saved);
+            return zone.Strengthened(p => StrengthAt(book, since, day, p));
         }
 
         /// <summary>Jour du monde où la terre change de palier après <paramref name="day"/> (gagnée ou plus forte), ou null au palier maximal.</summary>

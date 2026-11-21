@@ -45,6 +45,7 @@ namespace EdS.Data.Json
                     ["respiteDays"] = (v, p) => d.RespiteDays = input.Int32(v, p),
                     ["purifyItem"] = (v, p) => d.PurifyItem = input.Text(v, p),
                     ["purifyXp"] = (v, p) => d.PurifyXp = input.Int64(v, p),
+                    ["strengthPercent"] = (v, p) => d.StrengthPercent = input.Int32(v, p),
                     ["purifiedFact"] = (v, p) => d.PurifiedFact = input.Text(v, p),
                     ["areas"] = (v, p) => d.Areas = input.ReadLimitedList(v, p, CorruptionValidator.MaxAreas,
                         n => $"{n} terres, au plus {CorruptionValidator.MaxAreas}.", (e, ip) => ReadArea(input, e, ip)),

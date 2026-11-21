@@ -35,6 +35,7 @@ namespace EdS.Data.Corruption
         public int? RespiteDays { get; set; }
         public string? PurifyItem { get; set; }
         public long? PurifyXp { get; set; }
+        public int? StrengthPercent { get; set; }
         public string? PurifiedFact { get; set; }
         public List<CorruptionAreaData?>? Areas { get; set; }
     }
@@ -102,12 +103,16 @@ namespace EdS.Data.Corruption
         public long PurifyXp { get; }
         public string? PurifiedFact { get; }
 
+        /// <summary>Créatures plus fortes dans une terre corrompue : ce pourcentage de PV et de dégâts en plus par palier (décision de Damien du 21 novembre 2026 : 10).</summary>
+        public int StrengthPercent { get; }
+
         /// <summary>Terres que la corruption peut gagner, dans l'ordre du fichier (chacune après ses terres d'origine).</summary>
         public IReadOnlyList<CorruptionArea> Areas { get; }
 
         internal CorruptionBook(int schemaVersion, string contentVersion, string zoneId, CorruptionArea source, int spreadDays, int growDays, int maxStage,
-            int respiteDays, string purifyItem, long purifyXp, string? purifiedFact, IEnumerable<CorruptionArea> areas)
+            int respiteDays, string purifyItem, long purifyXp, string? purifiedFact, int strengthPercent, IEnumerable<CorruptionArea> areas)
         {
+            StrengthPercent = strengthPercent;
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             ZoneId = zoneId;
@@ -146,7 +151,7 @@ namespace EdS.Data.Corruption
     /// <see cref="MaxFrom"/> terres d'origine (<c>from</c>) : la source ou des terres données avant elle (jamais de boucle), sans doublon ;
     /// la source n'a ni <c>from</c> ni <c>altar</c>. Règles : <c>spreadDays</c>, <c>growDays</c> et <c>respiteDays</c> de 1 à
     /// <see cref="MaxDays"/>, <c>maxStage</c> de 1 à <see cref="MaxStages"/>, <c>purifyItem</c> (objet du catalogue), <c>purifyXp</c> de 0 à
-    /// <see cref="MaxXp"/>, <c>purifiedFact</c> facultatif (« fact.… »).
+    /// <see cref="MaxXp"/>, <c>purifiedFact</c> facultatif (« fact.… »), <c>strengthPercent</c> de 0 à <see cref="MaxStrengthPercent"/> (force des créatures par palier).
     /// </summary>
     public static class CorruptionValidator
     {
@@ -157,6 +162,9 @@ namespace EdS.Data.Corruption
 
         public const int MaxAreas = SavedCorruption.MaxEntries, MaxFrom = 4, MaxDays = 30, MaxStages = 8;
         public const long MaxXp = 100_000;
+
+        /// <summary>Force des créatures par palier, au plus (au palier 8 : 900 %, sous la borne de <see cref="ZoneScaling.Strengthen"/>).</summary>
+        public const int MaxStrengthPercent = 100;
 
         public static readonly Fixed MinRadius = Fixed.FromInt(10), MaxRadius = Fixed.FromInt(400);
 
@@ -184,6 +192,7 @@ namespace EdS.Data.Corruption
             int? grow = Range(d.GrowDays, "growDays", "jours par palier", 1, MaxDays);
             int? maxStage = Range(d.MaxStage, "maxStage", "palier maximal", 1, MaxStages);
             int? respite = Range(d.RespiteDays, "respiteDays", "jours de répit d'un autel purifié", 1, MaxDays);
+            int? strength = Range(d.StrengthPercent, "strengthPercent", "pourcentage de force des créatures par palier", 0, MaxStrengthPercent);
             if (d.PurifyItem is null) { Missing(r, "$.data.purifyItem", "objet de purification"); ok = false; }
             else if (!items.TryGetItem(d.PurifyItem, out _)) { r.Add("$.data.purifyItem", ValidationCode.UnknownReference, $"objet « {d.PurifyItem} » absent du catalogue."); ok = false; }
             if (d.PurifyXp is null) { Missing(r, "$.data.purifyXp", "expérience d'une purification"); ok = false; }
@@ -266,7 +275,7 @@ namespace EdS.Data.Corruption
                 }
             if (!ok || !r.IsValid) return new CorruptionLoadResult(r, null);
             return new CorruptionLoadResult(r, new CorruptionBook(document.SchemaVersion!.Value, document.ContentVersion!, zone.Id, sourceArea!, spread!.Value,
-                grow!.Value, maxStage!.Value, respite!.Value, d.PurifyItem!, d.PurifyXp!.Value, d.PurifiedFact, areas));
+                grow!.Value, maxStage!.Value, respite!.Value, d.PurifyItem!, d.PurifyXp!.Value, d.PurifiedFact, strength!.Value, areas));
         }
 
         /// <summary>Le point <paramref name="p"/> est-il à plus de <paramref name="radius"/> de <paramref name="center"/> (calcul vérifié) ?</summary>

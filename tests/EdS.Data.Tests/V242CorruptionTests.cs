@@ -80,7 +80,7 @@ public class V242CorruptionTests
         CorruptionLoadResult r = Read();
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Equal((1, 31, 31), (CorruptionValidator.CurrentSchemaVersion, SaveValidator.CurrentSchemaVersion, SaveValidator.CorruptionSince));
-        Assert.Equal(("cercle_des_pierres", 2, 2, 3, 4, 150L), (Book.Source.Id, Book.SpreadDays, Book.GrowDays, Book.MaxStage, Book.RespiteDays, Book.PurifyXp));
+        Assert.Equal(("cercle_des_pierres", 2, 2, 3, 4, 150L, 10), (Book.Source.Id, Book.SpreadDays, Book.GrowDays, Book.MaxStage, Book.RespiteDays, Book.PurifyXp, Book.StrengthPercent));
         Assert.Equal(Shard, Book.PurifyItem);
         Assert.Equal(8, Book.Areas.Count);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "corruption.schema.json"))
@@ -114,6 +114,9 @@ public class V242CorruptionTests
         R("repit_absent", d => d.Remove("respiteDays"), "$.data.respiteDays"),
         R("objet_inconnu", d => d["purifyItem"] = "item.inconnu", "$.data.purifyItem"),
         R("xp_negative", d => d["purifyXp"] = -1, "$.data.purifyXp"),
+        R("force_negative", d => d["strengthPercent"] = -1, "$.data.strengthPercent"),
+        R("force_101", d => d["strengthPercent"] = 101, "$.data.strengthPercent"),
+        R("force_absente", d => d.Remove("strengthPercent"), "$.data.strengthPercent"),
         R("fait_mal_forme", d => d["purifiedFact"] = "corruption", "$.data.purifiedFact"),
         R("source_autel", d => d["source"]!["altar"] = new JsonArray(1565, -625), "$.data.source.altar"),
         R("source_origine", d => d["source"]!["from"] = new JsonArray("pierres_ouest"), "$.data.source.from"),
@@ -214,6 +217,69 @@ public class V242CorruptionTests
         SavedCorruption s = Purified(("b", 2), ("a", 1)).With("b", 5).With("c", 0);
         Assert.Equal(new[] { "a:1", "b:5", "c:0" }, s.Purified.Select(e => $"{e.Key}:{e.Value}"));
         Assert.Equal((5L, (long?)null), (s.DayOf("b")!.Value, s.DayOf("z")));
+    }
+
+    // --- Créatures plus fortes (décision de Damien du 21 novembre 2026) ------------------------------------------------------------
+
+    private static GroundVector At(string x, string z) => new(Fixed.Parse(x), Fixed.Parse(z));
+
+    [Fact]
+    public void Force_des_creatures_dix_pour_cent_par_palier_frontieres_comprises()
+    {
+        long[] since = CorruptionRules.CorruptedSince(Book, SavedCorruption.Empty);
+        GroundVector ouest = At("1420", "-630");
+        // Paliers 0 à 3 au centre du versant ouest (gagné le jour 2) : 100, 110, 120, 130 %.
+        Assert.Equal(new long[] { 100, 110, 110, 120, 120, 130, 130 }, Enumerable.Range(1, 7).Select(d => CorruptionRules.StrengthAt(Book, since, d, ouest)).ToArray());
+        // La source : toujours au palier maximal, même le jour 0.
+        Assert.Equal(130, CorruptionRules.StrengthAt(Book, since, 0, At("1565", "-625")));
+        Assert.Equal(100, CorruptionRules.StrengthAt(Book, since, 0, ouest));
+        // Bord du disque compris ; un dix-millième de mètre au-delà, plus rien (aucune autre terre là).
+        Assert.Equal(130, CorruptionRules.StrengthAt(Book, since, 6, At("1490", "-630")));
+        Assert.Equal(100, CorruptionRules.StrengthAt(Book, since, 6, At("1490.0001", "-630")));
+        Assert.Equal(100, CorruptionRules.StrengthAt(Book, since, 6, At("0", "0")));
+        // Autel purifié : plus de force pendant le répit.
+        long[] purified = CorruptionRules.CorruptedSince(Book, Purified(("pierres_ouest", 6)));
+        Assert.Equal(100, CorruptionRules.StrengthAt(Book, purified, 6, ouest));
+        Assert.Equal(100, CorruptionRules.StrengthAt(Book, purified, 6, At("1150", "-560")));   // les landes, coupées, reculent aussi
+        // Bornes : 100 % par palier au palier 8, sans débordement.
+        CorruptionBook strongest = Read(d => { d["strengthPercent"] = 100; d["maxStage"] = 8; }).Book!;
+        Assert.Equal(900, CorruptionRules.StrengthAt(strongest, CorruptionRules.CorruptedSince(strongest, SavedCorruption.Empty), SavedEvent.MaxDay, ouest));
+        Assert.Throws<ArgumentException>(() => CorruptionRules.StrengthAt(Book, new long[1], 6, ouest));
+    }
+
+    [Fact]
+    public void Creatures_de_la_zone_renforcees_selon_leur_terre()
+    {
+        // Les échos des terres corrompues : chacun renforcé au pourcentage de sa place, le jour 9 ; le modèle de sa population aussi.
+        long[] since = CorruptionRules.CorruptedSince(Book, SavedCorruption.Empty);
+        ZoneDefinition strong = CorruptionRules.Strengthen(Vallons, Book, SavedCorruption.Empty, 9);
+        Assert.NotSame(Vallons, strong);
+        var before = Vallons.Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().ToDictionary(a => a.Id);
+        int changed = 0;
+        foreach (EdS.Domain.Combat.AssailantSetup a in strong.Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>())
+        {
+            EdS.Domain.Combat.AssailantSetup old = before[a.Id];
+            bool boss = Vallons.Bosses.Any(b => b.Forms.Any(f => f.Id == a.Id));
+            long percent = old.Placement is CombatantPlacement at && !boss ? CorruptionRules.StrengthAt(Book, since, 9, at.Position) : 100;
+            Assert.Equal(percent == 100 ? old.Health : ZoneScaling.Strengthen(old, percent).Health, a.Health);
+            Assert.Equal(old.Attacks.Select(x => percent == 100 ? x.RawDamage : x.RawDamage * percent / 100), a.Attacks.Select(x => x.RawDamage));
+            if (percent > 100) changed++;
+        }
+        Assert.True(changed >= 2, $"{changed} créatures renforcées");
+        Population echo = strong.Populations.Single(p => p.Creature == "echo_corrompu1");
+        Population plain = Vallons.Populations.Single(p => p.Creature == "echo_corrompu1");
+        long echoPercent = CorruptionRules.StrengthAt(Book, since, 9, plain.Template.Placement!.Position);
+        Assert.Equal(130, echoPercent);
+        Assert.Equal(ZoneScaling.Strengthen(plain.Template, 130).Health, echo.Template.Health);
+        Assert.Same(echo.Template, strong.Setup.Combatants.Single(c => c.Id == echo.Template.Id));
+        // Les créatures loin de toute terre ne changent pas ; sans corruption, à 0 %, ou pour une autre zone : la même zone.
+        Population wolf = strong.Populations.First(p => CorruptionRules.StrengthAt(Book, since, 9, p.Template.Placement!.Position) == 100);
+        Assert.Same(Vallons.Populations.Single(p => p.Creature == wolf.Creature).Template, wolf.Template);
+        Assert.Same(Vallons, CorruptionRules.Strengthen(Vallons, null, SavedCorruption.Empty, 9));
+        Assert.Same(Vallons, CorruptionRules.Strengthen(Vallons, Read(d => d["strengthPercent"] = 0).Book, SavedCorruption.Empty, 9));
+        // Déterministe : mêmes données, même jour, mêmes créatures.
+        Assert.Equal(strong.Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().Select(a => a.Health),
+            CorruptionRules.Strengthen(Vallons, Book, SavedCorruption.Empty, 9).Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().Select(a => a.Health));
     }
 
     // --- Sauvegarde v31 ------------------------------------------------------------------------------------------------------------
