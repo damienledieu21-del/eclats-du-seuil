@@ -28,7 +28,7 @@ public sealed class FetesF4EtalTests
     private const string Carnaval = "festival.carnaval";
     private const long CarnavalDay = 13;
     private static readonly Lazy<StoryBook> Story = new(() => Book(Zone()));
-    private static readonly Lazy<FeastBook> Feasts = new(() => FeastJsonReader.ReadFile(FeastJsonReader.PathIn(DataDirectory), Story.Value, Texts).Book!);
+    internal static readonly Lazy<FeastBook> Feasts = new(() => FeastJsonReader.ReadFile(FeastJsonReader.PathIn(DataDirectory), Story.Value, Texts).Book!);
     private static string Root => Lot93UnityPackageTests.Root;
     private static string Unity(string relative) => Path.Combine(Root, "unity", "Assets", "EdS", relative);
     private static string Source(string relative) => File.ReadAllText(Unity(relative));
@@ -347,10 +347,13 @@ public sealed class FetesF4EtalTests
     public void Modeles_des_decorations_seulement_textures_au_budget()
     {
         string folder = Unity("Modeles/Fetes");
-        // Sous-lot F5 : les 60 décorations (40 de l'étal en F4, les 20 autres pour le décor du mois) ; ni plats, ni monnaies, ni récompenses.
-        string[] stall = Feasts.Value.Refs.Where(r => r.Category == FeastCategory.Decoration).Select(r => r.Code).ToArray();
-        Assert.Equal(60, stall.Length);
-        // N'ajoute que ce qui sert : un dossier par décoration, rien d'autre.
+        // Sous-lot F5 : les 60 décorations (40 de l'étal en F4, les 20 autres pour le décor du mois) ; V2.56.3 : 11 plats et 1 masque,
+        // accessoires des habitants (FeastAccessories) ; ni monnaies, ni autres récompenses.
+        string[] decorations = Feasts.Value.Refs.Where(r => r.Category == FeastCategory.Decoration).Select(r => r.Code).ToArray();
+        Assert.Equal(60, decorations.Length);
+        string[] stall = decorations.Concat(FeastAccessories.All.Select(a => a.Code)).ToArray();
+        Assert.Equal(72, stall.Length);
+        // N'ajoute que ce qui sert : un dossier par décoration ou accessoire, rien d'autre.
         Assert.Equal(stall.OrderBy(c => c, StringComparer.Ordinal), Directory.GetDirectories(folder).Select(Path.GetFileName).OrderBy(c => c, StringComparer.Ordinal));
         long bytes = 0;
         foreach (string code in stall)
