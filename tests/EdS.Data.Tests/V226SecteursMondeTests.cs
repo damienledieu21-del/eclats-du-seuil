@@ -343,7 +343,7 @@ public class V226SecteursMondeTests
     [Fact]
     public void Territoire_valide_seulement_en_schema_14_et_dans_la_marge()
     {
-        Assert.Equal((14, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.RegionSchemaVersion));
+        Assert.Equal((15, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.RegionSchemaVersion));
         ZoneLoadResult plain = Vallons14();
         Assert.True(plain.IsValid, plain.Report.ToString());   // les Vallons tiennent dans leur secteur, chaque créature à 8 m au moins du bord
         ZoneLoadResult ok = Vallons14(r => Population(r, "loup1")["territory"] = 30);
