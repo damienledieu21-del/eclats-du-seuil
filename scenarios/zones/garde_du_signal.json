@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 24,
   "kind": "scenario",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "seed": 243,
     "durationMs": 3600000,
@@ -142,6 +142,69 @@
             [
               -3.3,
               3.0
+            ]
+          ]
+        },
+        {
+          "id": "tableau_equipes",
+          "points": [
+            [
+              -3.45,
+              -2.9
+            ],
+            [
+              -3.25,
+              -2.9
+            ],
+            [
+              -3.25,
+              -1.4
+            ],
+            [
+              -3.45,
+              -1.4
+            ]
+          ]
+        },
+        {
+          "id": "banc_sas",
+          "points": [
+            [
+              -2.6,
+              -3.45
+            ],
+            [
+              -1.4,
+              -3.45
+            ],
+            [
+              -1.4,
+              -3.13
+            ],
+            [
+              -2.6,
+              -3.13
+            ]
+          ]
+        },
+        {
+          "id": "cloche_signal",
+          "points": [
+            [
+              2.25,
+              0.2
+            ],
+            [
+              3.35,
+              0.2
+            ],
+            [
+              3.35,
+              1.25
+            ],
+            [
+              2.25,
+              1.25
             ]
           ]
         }
