@@ -46,8 +46,8 @@ Shader "EdS/Neige"
 
             half EdsSnowAt(float y)
             {
-                half pass = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
-                return max(_EdsSnow, pass);
+                half colSnow = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
+                return max(_EdsSnow, colSnow);
             }
 
             float Hash(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
