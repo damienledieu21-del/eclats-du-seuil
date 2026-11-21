@@ -173,11 +173,13 @@ public class V242CorruptionTests
     public void La_corruption_s_etend_de_proche_en_proche()
     {
         long[] since = CorruptionRules.CorruptedSince(Book, SavedCorruption.Empty);
-        Assert.Equal(2, since[Index("pierres_ouest")]);
-        Assert.Equal(2, since[Index("faille_du_sud")]);
-        Assert.Equal(4, since[Index("landes_grises")]);
-        Assert.Equal(4, since[Index("confins_du_sud")]);   // la plus tôt de ses deux origines
-        Assert.Equal(6, since[Index("plaine_grise")]);
+        // Décision de Damien (revue de la PR #242) : une seule terre de plus tous les 2 jours, dans l'ordre du fichier.
+        Assert.Equal(new long[] { 2, 4, 6, 8, 10, 12, 14, 16 }, since);
+        Assert.Equal(new[] { "pierres_ouest", "faille_du_nord", "faille_de_l_est", "faille_du_sud", "landes_grises", "marches_de_l_abbaye", "confins_du_sud", "plaine_grise" },
+            Book.Areas.Select(a => a.Id));
+        // Jour 1 : aucune terre ; jour 2 : 1 ; jour 4 : 2 ; … ; jour 16 : 8 (et jamais deux le même jour).
+        for (long day = 0; day <= 18; day++)
+            Assert.Equal((int)Math.Min(8, day / 2), since.Count(c => CorruptionRules.StageAt(c, Book, day) > 0));
         // Paliers : propre la veille, 1 le jour même, un de plus tous les 2 jours, au plus 3.
         Assert.Equal(new[] { 0, 1, 1, 2, 2, 3, 3 }, Enumerable.Range(1, 7).Select(d => CorruptionRules.StageAt(2, Book, d)).ToArray());
         Assert.Equal(3, CorruptionRules.StageAt(2, Book, SavedEvent.MaxDay));
@@ -192,12 +194,12 @@ public class V242CorruptionTests
         Assert.Equal(14, since[Index("pierres_ouest")]);   // répit de 4 jours
         Assert.Equal(16, since[Index("landes_grises")]);   // coupée de la source : elle recule, et revient 2 jours après
         Assert.Equal(18, since[Index("plaine_grise")]);
-        Assert.Equal(2, since[Index("faille_du_nord")]);   // les autres terres ne bougent pas
+        Assert.Equal(4, since[Index("faille_du_nord")]);   // les autres terres ne bougent pas
         // Une terre à deux origines garde la plus tôt : purifier l'une ne la coupe pas.
-        since = CorruptionRules.CorruptedSince(Book, Purified(("faille_du_sud", 10)));
-        Assert.Equal(4, since[Index("confins_du_sud")]);
-        since = CorruptionRules.CorruptedSince(Book, Purified(("faille_du_sud", 10), ("faille_de_l_est", 11)));
-        Assert.Equal(16, since[Index("confins_du_sud")]);
+        since = CorruptionRules.CorruptedSince(Book, Purified(("faille_du_sud", 20)));
+        Assert.Equal(14, since[Index("confins_du_sud")]);
+        since = CorruptionRules.CorruptedSince(Book, Purified(("faille_du_sud", 20), ("faille_de_l_est", 21)));
+        Assert.Equal(26, since[Index("confins_du_sud")]);
         // Une terre inconnue du catalogue est sans effet.
         Assert.Equal(CorruptionRules.CorruptedSince(Book, SavedCorruption.Empty), CorruptionRules.CorruptedSince(Book, Purified(("terre_disparue", 50))));
         // Bornes : le jour le plus grand de la sauvegarde, sans débordement.
@@ -349,19 +351,19 @@ public class V242CorruptionTests
         Assert.Equal(0, early.Corruption.Single(v => v.Area.Id == "pierres_ouest").Stage);
         Assert.Equal(CorruptionRefusal.NotCorrupted, early.PurifyAltar("pierres_ouest"));
         Assert.Equal(1, early.Inventory.Count(Shard));
-        // Jour 6 : purifiée ; l'éclat est pris, l'expérience donnée, le fait appris tout de suite ; les landes et la plaine reculent.
-        WorldSession w = Session(1421, -670, Noon(6), Hero(0, new ItemStack(Shard, 2)));
+        // Jour 18 : purifiée ; l'éclat est pris, l'expérience donnée, le fait appris tout de suite ; les landes et la plaine reculent.
+        WorldSession w = Session(1421, -670, Noon(18), Hero(0, new ItemStack(Shard, 2)));
         Run(w, 2);
-        Assert.Equal((3, 2, 1), (w.Corruption.Single(v => v.Area.Id == "pierres_ouest").Stage, w.Corruption.Single(v => v.Area.Id == "landes_grises").Stage,
+        Assert.Equal((3, 3, 2), (w.Corruption.Single(v => v.Area.Id == "pierres_ouest").Stage, w.Corruption.Single(v => v.Area.Id == "landes_grises").Stage,
             w.Corruption.Single(v => v.Area.Id == "plaine_grise").Stage));
         long xp = w.Character.Xp;
         Assert.Equal(CorruptionRefusal.None, w.PurifyAltar("pierres_ouest"));
         Assert.Equal(1, w.Inventory.Count(Shard));
         Assert.Equal(xp + 150, w.Character.Xp);
         Assert.Contains("fact.corruption.autel_purifie", w.Save().Character!.Story.Facts);
-        Assert.Equal(6L, w.Save().Character!.Corruption.DayOf("pierres_ouest"));
+        Assert.Equal(18L, w.Save().Character!.Corruption.DayOf("pierres_ouest"));
         Assert.All(w.Corruption.Where(v => v.Area.Id is "pierres_ouest" or "landes_grises" or "plaine_grise"), v => Assert.False(v.IsCorrupted, v.Area.Id));
-        Assert.Equal(10L, w.Corruption.Single(v => v.Area.Id == "pierres_ouest").Since);
+        Assert.Equal(22L, w.Corruption.Single(v => v.Area.Id == "pierres_ouest").Since);
         List<CorruptionNotice> said = Run(w, 1);
         Assert.Equal(new[] { "Purified:pierres_ouest:3:150", "Receded:landes_grises:0:0", "Receded:plaine_grise:0:0" },
             said.Select(n => $"{n.Kind}:{n.Area}:{n.Stage}:{n.Xp}"));
@@ -376,15 +378,70 @@ public class V242CorruptionTests
     }
 
     [Fact]
+    public void Fin_du_repit_et_repurification()
+    {
+        // Purifié le jour 18 : propre les jours 19 à 21 (P+3), de nouveau corrompu au palier 1 le jour 22 (P+4), et purifiable encore.
+        WorldSession w = Session(1421, -670, Noon(18), Hero(0, new ItemStack(Shard, 2)));
+        Run(w, 2);
+        Assert.Equal(CorruptionRefusal.None, w.PurifyAltar("pierres_ouest"));
+        WorldSave saved = w.Save();
+        WorldSession At(long day)
+        {
+            var s = new WorldSession(new WorldSave("zone.vallons", Noon(day), saved.Sessions, saved.Consumed, saved.Character!), Zone(1421, -670), ShippedData,
+                Progression, ItemsCatalog, V11TestData.Book(Vallons), safePoint: "place_du_village");
+            s.UseCorruption(Book);
+            Run(s, 2);
+            return s;
+        }
+        WorldSession p3 = At(21);
+        Assert.Equal(0, p3.Corruption.Single(v => v.Area.Id == "pierres_ouest").Stage);
+        Assert.Equal(CorruptionRefusal.NotCorrupted, p3.PurifyAltar("pierres_ouest"));
+        WorldSession p4 = At(22);
+        Assert.Equal(1, p4.Corruption.Single(v => v.Area.Id == "pierres_ouest").Stage);
+        Assert.Equal(0, p4.Corruption.Single(v => v.Area.Id == "landes_grises").Stage);   // revient 2 jours après son origine
+        long xp = p4.Character.Xp;
+        Assert.Equal(CorruptionRefusal.None, p4.PurifyAltar("pierres_ouest"));
+        Assert.Equal((0, xp + 150, 22L), (p4.Inventory.Count(Shard), p4.Character.Xp, p4.Save().Character!.Corruption.DayOf("pierres_ouest")!.Value));
+    }
+
+    [Fact]
+    public void Plafond_d_experience_et_personnage_tombe()
+    {
+        // Au plafond d'expérience : purifiée, rien de gagné (annoncé à 0).
+        WorldSession top = Session(1421, -670, Noon(18), Hero(0, new ItemStack(Shard, 1)).WithXp(SaveValidator.MaxXp));
+        Run(top, 2);
+        Assert.Equal(CorruptionRefusal.None, top.PurifyAltar("pierres_ouest"));
+        Assert.Equal(SaveValidator.MaxXp, top.Character.Xp);
+        Assert.Equal(0L, Assert.Single(Run(top, 1), n => n.Kind == CorruptionNoticeKind.Purified).Xp);
+        // Tombé (un sanglier mortel à côté de l'autel) : refusé, rien ne change.
+        ZoneDefinition deadly = Zone(1421, -670, scenario: root =>
+        {
+            JsonObject boar = root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
+            boar["position"] = new JsonArray(1428.5, -670);   // à 8 m au moins du bord de son secteur (x = 1 420)
+            foreach (JsonNode? attack in boar["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+        });
+        var w = new WorldSession(new WorldSave("zone.vallons", Noon(18), 0, new[] { PlayerCharacters.PlacesKey }, Hero(0, new ItemStack(Shard, 1))), deadly, ShippedData,
+            Progression, ItemsCatalog, V11TestData.Book(deadly), safePoint: "place_du_village");
+        w.UseCorruption(Book);
+        for (int i = 0; i < 2400 && !w.IsDefeated; i++) w.Step();
+        Assert.True(w.IsDefeated);
+        string before = Snapshot(w) + w.Character.Xp + w.CorruptionState.Purified.Count;
+        Assert.Equal(CorruptionRefusal.Defeated, w.PurifyAltar("pierres_ouest"));
+        Assert.Equal(before, Snapshot(w) + w.Character.Xp + w.CorruptionState.Purified.Count);
+    }
+
+    [Fact]
     public void La_corruption_gagne_une_terre_a_minuit_annoncee_une_fois()
     {
-        // Juste avant le jour 2 : les quatre terres autour des pierres sont propres ; au passage de minuit, elles sont gagnées.
+        // Juste avant le jour 2 : aucune terre ; au passage de minuit, une seule est gagnée (la première du fichier).
         long tick = WorldEventSchedule.TickAt(Clock, 2 * 1440) - 3;
         WorldSession w = Session(1421, -670, tick, Hero());
         List<CorruptionNotice> said = Run(w, 8);
-        Assert.Equal(new[] { "pierres_ouest", "faille_du_nord", "faille_de_l_est", "faille_du_sud" },
-            said.Where(n => n.Kind == CorruptionNoticeKind.Spread).Select(n => n.Area));
-        Assert.All(said, n => Assert.Equal((CorruptionNoticeKind.Spread, 1, 2L), (n.Kind, n.Stage, n.Day)));
+        CorruptionNotice n0 = Assert.Single(said);
+        Assert.Equal((CorruptionNoticeKind.Spread, "pierres_ouest", 1, 2L), (n0.Kind, n0.Area, n0.Stage, n0.Day));
+        // Au jour 4, la deuxième, et le versant ouest prend son palier 2.
+        said = Run(Session(1421, -670, WorldEventSchedule.TickAt(Clock, 4 * 1440) - 3, Hero()), 8);
+        Assert.Equal(new[] { "Grew:pierres_ouest:2", "Spread:faille_du_nord:1" }, said.Select(n => $"{n.Kind}:{n.Area}:{n.Stage}"));
         // Au premier tick d'une session, rien n'est annoncé (les paliers sont seulement notés).
         Assert.Empty(Run(Session(1421, -670, Noon(9), Hero()), 2));
     }
@@ -417,7 +474,8 @@ public class V242CorruptionTests
         Assert.Equal(0, AdventureSession.CorruptionFadeAt(all, P(0, 0)));
         Assert.InRange(AdventureSession.CorruptionFadeAt(all, P(1420, -590)), 1, 999);
         Assert.Equal("cercle_des_pierres", w.CorruptionAt(P(1565, -625))!.Area.Id);
-        Assert.Equal("plaine_grise", w.CorruptionAt(P(880, -420))!.Area.Id);
+        Assert.Equal("faille_du_nord", w.CorruptionAt(P(1680, -450))!.Area.Id);
+        Assert.Null(w.CorruptionAt(P(880, -420)));   // la plaine n'est gagnée que le jour 16
         Assert.Null(w.CorruptionAt(P(0, 0)));
     }
 }

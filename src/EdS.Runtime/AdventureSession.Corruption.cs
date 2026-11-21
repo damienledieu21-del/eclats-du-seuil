@@ -22,8 +22,11 @@ namespace EdS.Runtime
             _corruption is null || !(save.Character is SavedCharacter c) ? zone
                 : CorruptionRules.Strengthen(zone, _corruption, c.Corruption, new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick).Day);
 
-        /// <summary>Portée de la touche d'action pour un autel (un peu plus que la portée du monde, qui fait foi).</summary>
-        public static readonly Fixed AltarReach = Fixed.FromInt(4);
+        /// <summary>
+        /// Revue de la PR #242 : portée de la touche d'action pour un autel, celle du monde qui fait foi (<see cref="WorldSession.PurifyRange"/>
+        /// depuis le bord de l'emprise du personnage) : l'indication « F : purifier l'autel » n'apparaît que là où la purification est possible.
+        /// </summary>
+        public Fixed AltarReach => World.Zone.Engine.View(World.CombatantId).Radius is Fixed r ? checked(WorldSession.PurifyRange + r) : WorldSession.PurifyRange;
 
         /// <summary>Sous-lot V2.42.1 : terre corrompue dont l'autel est à portée (pour le purifier), ou null.</summary>
         public CorruptionView? AltarInReach
@@ -32,8 +35,9 @@ namespace EdS.Runtime
             {
                 IReadOnlyList<CorruptionView> all = Corruption;
                 if (all.Count == 0 || World.IsDefeated || !(Me is GroundVector p)) return null;
+                Fixed reach = AltarReach;
                 for (int i = 0; i < all.Count; i++)
-                    if (!all[i].IsSource && all[i].IsCorrupted && Within(p, all[i].Altar, AltarReach)) return all[i];
+                    if (!all[i].IsSource && all[i].IsCorrupted && Within(p, all[i].Altar, reach)) return all[i];
                 return null;
             }
         }

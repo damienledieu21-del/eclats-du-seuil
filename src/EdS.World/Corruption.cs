@@ -11,7 +11,7 @@ namespace EdS.World
     /// <summary>
     /// Sous-lot V2.42.1 : règles de la corruption qui s'étend et recule, recalculées du temps du monde (jours) et des autels purifiés, sans
     /// horloge réelle ni autre état. La source est corrompue depuis le jour 0 ; une terre l'est <see cref="CorruptionBook.SpreadDays"/> jours
-    /// après la plus tôt corrompue de ses terres d'origine, mais jamais avant la fin du répit de son autel (jour de sa dernière purification
+    /// après la plus tôt corrompue de ses terres d'origine, et pas avant son tour (la n-ième terre du fichier : jour n × spreadDays), mais jamais avant la fin du répit de son autel (jour de sa dernière purification
     /// plus <see cref="CorruptionBook.RespiteDays"/>). La corruption est <b>tenue par la source</b> : une terre coupée de toutes ses
     /// origines par des autels purifiés recule elle aussi, et revient quand le froid la rejoint de nouveau (recommandation de Claude,
     /// question posée à Damien dans la PR).
@@ -33,7 +33,10 @@ namespace EdS.World
                 CorruptionArea a = book.Areas[i];
                 long feed = long.MaxValue;
                 foreach (string f in a.From) feed = Math.Min(feed, since[f]);
-                long c = checked(feed + book.SpreadDays);
+                // Revue de la PR #242 (décision de Damien : « une terre gagnée tous les 2 jours ») : la n-ième terre du fichier (n ≥ 1)
+                // n'est jamais gagnée avant le jour n × spreadDays : sans purification, une seule terre de plus tous les spreadDays jours,
+                // dans l'ordre du fichier.
+                long c = Math.Max(checked(feed + book.SpreadDays), checked((long)(i + 1) * book.SpreadDays));
                 if (saved.DayOf(a.Id) is long purified) c = Math.Max(c, checked(purified + book.RespiteDays));
                 result[i] = c;
                 since[a.Id] = c;
