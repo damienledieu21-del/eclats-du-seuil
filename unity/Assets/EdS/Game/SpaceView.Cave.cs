@@ -78,17 +78,22 @@ namespace EdS.Game
                 }
             }
 
-            // Le rideau d'eau, vu de dedans, sur chaque porte ; le jour du dehors passe à travers (CurtainLight).
+            // Le rideau d'eau, vu de dedans, sur les portes qui mènent dehors, tourné vers la grotte ; le jour du dehors passe à travers.
             foreach (MapDoor door in map.Doors)
             {
+                if (!door.Outside) continue;
+                var facing = CaveLooks.CurtainFacing(door.X, door.Z, minX, minZ, maxX, maxZ);
                 Vector3 at = new Vector3((float)door.X, 0f, (float)door.Z);
+                Vector3 outward = new Vector3((float)facing.OutX, 0f, (float)facing.OutZ);
+                Quaternion turn = Quaternion.Euler(0f, (float)facing.Yaw, 0f);
                 GameObject model = CaveModel(CaveLooks.CurtainModel);
                 if (model != null)
                 {
                     GameObject copy = Object.Instantiate(model, _root.transform, false);
                     copy.name = "Rideau d'eau (" + door.Id + ")";
                     foreach (Collider c in copy.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-                    copy.transform.position = at + new Vector3(0f, 0f, -0.8f);
+                    copy.transform.rotation = turn;
+                    copy.transform.position = at + outward * 0.8f;
                 }
                 else
                 {
@@ -96,12 +101,14 @@ namespace EdS.Game
                     sheet.name = "Rideau d'eau (" + door.Id + ")";
                     Object.Destroy(sheet.GetComponent<Collider>());
                     sheet.transform.SetParent(_root.transform, false);
-                    sheet.transform.position = at + new Vector3(0f, h / 2f, -0.9f);
+                    sheet.transform.rotation = turn;
+                    sheet.transform.position = at + outward * 0.9f + new Vector3(0f, h / 2f, 0f);
                     sheet.transform.localScale = new Vector3(5f, h, 0.15f);
                     sheet.GetComponent<Renderer>().sharedMaterial = _water;
                     _waters.Add(sheet);
                 }
-                _curtains.Add(CaveGlow("Jour du rideau (" + door.Id + ")", at.x, at.z + 1.5f, new Color(0.75f, 0.85f, 1f), 0f, (float)CaveLooks.CurtainReach));
+                Vector3 glow = at - outward * 1.5f;
+                _curtains.Add(CaveGlow("Jour du rideau (" + door.Id + ")", glow.x, glow.z, new Color(0.75f, 0.85f, 1f), 0f, (float)CaveLooks.CurtainReach));
             }
         }
 

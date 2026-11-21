@@ -19,8 +19,8 @@ namespace EdS.Runtime
 
     /// <summary>
     /// Chantier V2.46 (grotte derrière la cascade, PLAN_GRANDE_CARTE.md) : rendu d'un dessous, sans Unity. Les obstacles de la grotte
-    /// prennent un modèle du kit de grotte par le début de leur identifiant (« paroi_grotte_ouest » : une paroi) ; tant que le modèle
-    /// n'est pas là (kit préparé dans l'atelier, aucune dépense Tripo engagée), Unity pose une forme de remplacement. La pénombre est
+    /// prennent un modèle du kit de grotte par le début de leur identifiant (« paroi_grotte_ouest » : une paroi) ; si le modèle
+    /// manque (kit Tripo fait le 21 novembre 2026, rangé dans <see cref="AssetFolder"/>), Unity pose une forme de remplacement. La pénombre est
     /// réglée ici : un dessous n'a ni ciel, ni soleil, ni pluie, ni neige, ni glace ; le jour qui passe par le rideau d'eau éclaire
     /// l'entrée et s'éteint vers le fond.
     /// </summary>
@@ -97,6 +97,22 @@ namespace EdS.Runtime
             CavePiece.Chest => Models[7],
             _ => null,
         };
+
+        /// <summary>
+        /// Orientation (degrés autour de la verticale) du rideau d'eau d'une porte en (<paramref name="x"/>, <paramref name="z"/>) dans l'aire
+        /// [<paramref name="minX"/>, <paramref name="maxX"/>] × [<paramref name="minZ"/>, <paramref name="maxZ"/>] : posé sur le bord le plus
+        /// proche, sa face (+Z du modèle) tournée vers l'intérieur : 0 au bord sud, 180 au nord, 90 à l'ouest, 270 à l'est (à égalité, dans
+        /// cet ordre). Rend aussi le pas (m, une unité) vers l'extérieur, où reculer le rideau.
+        /// </summary>
+        public static (double Yaw, double OutX, double OutZ) CurtainFacing(double x, double z, double minX, double minZ, double maxX, double maxZ)
+        {
+            double south = z - minZ, north = maxZ - z, west = x - minX, east = maxX - x;
+            double best = Math.Min(Math.Min(south, north), Math.Min(west, east));
+            if (south == best) return (0, 0, -1);
+            if (north == best) return (180, 0, 1);
+            if (west == best) return (90, -1, 0);
+            return (270, 1, 0);
+        }
 
         /// <summary>Hauteur des parois et des piliers (m) : la caméra voit par-dessus, la grotte n'a pas de voûte affichée.</summary>
         public const double WallHeight = 6.0;

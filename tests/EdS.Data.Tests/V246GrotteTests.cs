@@ -5,6 +5,7 @@ using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
 using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.World;
@@ -62,8 +63,8 @@ public class V246GrotteTests
         Door sortie = Assert.Single(grotte.Doors);
         Assert.Equal(("zone.vallons", "porte_grotte_cascade", DoorKind.Door), (sortie.To, sortie.ToDoor, sortie.Kind));
 
-        // Côté surface : la porte est au pied de la falaise de la cascade, dans le lieu « cascade », hors de tout obstacle, à quelques
-        // mètres du point sûr du pied de la cascade.
+        // Côté surface : la porte est au pied de la falaise de la cascade, dans le lieu « cascade », hors de tout obstacle, à environ
+        // 27 m du point sûr du pied de la cascade (joignable à pied).
         ZoneDefinition vallons = Vallons.Value;
         Door entree = vallons.DoorOf("porte_grotte_cascade")!;
         Assert.Equal(("zone.grotte_cascade", "sortie", DoorKind.Door), (entree.To, entree.ToDoor, entree.Kind));
@@ -151,6 +152,98 @@ public class V246GrotteTests
         finally { Directory.Delete(dir, true); }
     }
 
+    /// <summary>Zone de la grotte lue d'un dossier de scénarios d'essai, le gardien retouché (<paramref name="gardien"/>).</summary>
+    private static ZoneLoadResult WithGardien(string dir, Action<JsonObject> gardien, Action<JsonObject>? zone = null)
+    {
+        Directory.CreateDirectory(Path.Combine(dir, "zones"));
+        File.Copy(ScenarioPath("zones/grotte_cascade"), Path.Combine(dir, "zones", "grotte_cascade.json"), true);
+        JsonObject g = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/grotte_cascade_gardien")))!.AsObject();
+        gardien(g);
+        File.WriteAllText(Path.Combine(dir, "zones", "grotte_cascade_gardien.json"), g.ToJsonString());
+        JsonObject root = ZoneJson();
+        zone?.Invoke(root);
+        return ZoneJsonReader.Read(root.ToJsonString(), dir, ShippedData, Items);
+    }
+
+    private static JsonObject Form(JsonObject scenario, int i) => scenario["data"]!["combatants"]![i]!.AsObject();
+
+    [Theory]
+    [InlineData(0, 5.5, true)]       // la forme 1 du gardien à 8 m pile de la porte (0 ; −2,5) : acceptée
+    [InlineData(0, 5.4999, false)]   // juste en deçà : refusée
+    public void Gardien_trop_pres_de_la_porte_refuse_frontiere_8_m(int form, double z, bool valid)
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v246_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            ZoneLoadResult r = WithGardien(dir, g =>
+            {
+                Form(g, form)["position"] = new JsonArray(0.0, z);
+                if (form == 0) Form(g, 1)["position"] = new JsonArray(-3.0, 24.0);
+            });
+            Assert.Equal(valid, r.IsValid);
+            if (!valid) Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.chiefs[0].forms[{form}]" && e.Message.Contains("porte « sortie »", StringComparison.Ordinal));
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Gardien_vaincu_anneau_et_fait_une_fois_puis_rien()
+    {
+        // Le gardien affaibli (1 dégât par minute, peu de PV) attend près de l'entrée ; la grotte sans ses autres créatures. Première victoire :
+        // l'anneau, le fait et la clé de victoire ; partie reprise, seconde victoire : rien de plus.
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v246_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            ZoneLoadResult loaded = WithGardien(dir, g =>
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    Form(g, i)["health"] = 10;
+                    Form(g, i)["intervalMs"] = 60_000;   // il frappe à peine : le personnage tient
+                    foreach (JsonNode? a in Form(g, i)["attacks"]!.AsArray()) a!["rawDamage"] = 1;
+                }
+                Form(g, 0)["position"] = new JsonArray(0.0, 7.0);
+                Form(g, 1)["position"] = new JsonArray(3.0, 7.5);
+            }, z => z["data"]!["populations"] = new JsonArray());
+            Assert.True(loaded.IsValid, loaded.Report.ToString());
+            ZoneDefinition zone = loaded.Zone!;
+            SavedCharacter hero = V11TestData.Hero().WithXp(Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 20));
+            var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, Items);
+            List<SessionStep> first = Fight(w);
+            Assert.Contains(first.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated);
+            Assert.Equal(new[] { ("item.anneau_de_la_cascade", 1) }, first.SelectMany(s => s.Rewards));
+            Assert.Equal(1, w.Inventory.Count("item.anneau_de_la_cascade"));
+            string key = zone.VictoryKeyOf(zone.Chiefs[0]);
+            Assert.Equal("zone.grotte_cascade/boss/gardien_de_la_grotte", key);
+            Assert.True(w.Registered(key));
+            WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
+            Assert.Contains(key, saved.Consumed);
+            Assert.Contains("fact.gardien_de_la_grotte.vaincu", SaveJsonReader.Write(w.Save()), StringComparison.Ordinal);   // le fait appris
+
+            var again = new WorldSession(saved, zone, ShippedData, Progression, Items);
+            List<SessionStep> second = Fight(again);
+            Assert.Contains(second.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated);   // il revient et se bat
+            Assert.Empty(second.SelectMany(s => s.Rewards));                                         // mais ne redonne rien
+            Assert.Equal(1, again.Inventory.Count("item.anneau_de_la_cascade"));
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    private static List<SessionStep> Fight(WorldSession w, int max = 4000)
+    {
+        var steps = new List<SessionStep>();
+        for (int i = 0; i < max && !steps.Any(s => s.Boss.Any(b => b.Kind == BossEventKind.Defeated)); i++)
+        {
+            string? form = w.BossForms.FirstOrDefault(f => f.StartsWith("gardien_de_la_grotte", StringComparison.Ordinal));
+            if (i % 20 == 0 && form != null && w.Zone.Engine.CombatantIds.Contains(form))
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", form)); }
+                catch (ArgumentException) { }
+            steps.Add(w.Step());
+        }
+        for (int i = 0; i < 5; i++) steps.Add(w.Step());   // la récompense arrive au tick suivant la défaite
+        return steps;
+    }
+
     [Fact]
     public void Grotte_marquee_interieur_refusee()
     {
@@ -198,7 +291,9 @@ public class V246GrotteTests
             AdventureSession a = V11TestData.Adventure(save);
             Assert.True(a.Underground && a.Sheltered && !a.Indoors);   // à l'abri : ni pluie, ni neige, ni glace à l'affichage
             Assert.True(a.Map.Underground && !a.Map.Indoor);
+            Assert.True(Assert.Single(a.Map.Doors).Outside);              // la sortie mène dehors : le rideau d'eau y est posé
             Assert.True(a.Mood().Indoors);                                // ambiance sonore à l'abri
+            Assert.Equal(0, a.Mood().Rain);                               // la pluie ne s'entend pas sous terre
             Assert.DoesNotContain(a.TravelDestinations(), d => d.Zone == "zone.grotte_cascade");
             Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "pied_de_la_cascade"));   // on en part par le voyage rapide
             Assert.False(a.Underground || a.Sheltered);
@@ -299,6 +394,26 @@ public class V246GrotteTests
     public void Jour_du_rideau_d_eau(double distance, double daylight, double expected)
     {
         Assert.Equal(expected, CaveLooks.CurtainLight(distance, daylight), 6);
+    }
+
+    [Theory]
+    [InlineData(0.0, -2.5, 0.0, 0.0, -1.0)]     // la porte de la grotte, au bord sud : face au nord (+Z)
+    [InlineData(0.0, 31.0, 180.0, 0.0, 1.0)]
+    [InlineData(-19.0, 10.0, 90.0, -1.0, 0.0)]
+    [InlineData(19.5, 10.0, 270.0, 1.0, 0.0)]
+    [InlineData(-20.0, -4.0, 0.0, 0.0, -1.0)]   // coin : le sud passe d'abord
+    public void Rideau_d_eau_tourne_vers_la_grotte(double x, double z, double yaw, double ox, double oz)
+    {
+        Assert.Equal((yaw, ox, oz), CaveLooks.CurtainFacing(x, z, -20, -4, 20, 32));
+    }
+
+    [Fact]
+    public void Rideau_d_eau_seulement_vers_dehors()
+    {
+        Assert.False(new MapDoor("escalier", "Escalier", null, 0, 0).Outside);   // par défaut : pas de rideau
+        string cave = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Cave.cs"));
+        Assert.Contains("if (!door.Outside) continue;", cave);
+        Assert.Contains("CaveLooks.CurtainFacing(door.X, door.Z, minX, minZ, maxX, maxZ)", cave);
     }
 
     [Fact]

@@ -1979,7 +1979,8 @@ namespace EdS.Runtime
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
-                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
+                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z),
+                            _zones.Any(z => z.Id == d.To && !z.Sheltered))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
                         _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
@@ -2250,7 +2251,9 @@ namespace EdS.Runtime
             if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
             if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
             // V2.45.2 : un dessous est à l'abri comme une pièce (l'affichage n'y montre ni pluie ni ciel), sans être habité comme le village.
-            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+            // V2.46 (relecture) : sous terre, la pluie ne s'entend pas non plus (l'ambiance n'a pas de vent à couper).
+            double rain = _zone.Underground ? 0 : Weather().Rain / (double)WorldWeather.Scale;
+            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), rain,
                 places, minute, forge);
         }
 

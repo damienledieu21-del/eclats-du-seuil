@@ -34,8 +34,14 @@ namespace EdS.Runtime
         public double X { get; }
         public double Z { get; }
 
-        public MapDoor(string id, string name, string? building, double x, double z)
+        /// <summary>
+        /// Chantier V2.46 : la porte mène dehors (une zone ni intérieure ni dessous) : dans une grotte, le rideau d'eau y est posé.
+        /// </summary>
+        public bool Outside { get; }
+
+        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false)
         {
+            Outside = outside;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Building = building;
