@@ -239,6 +239,14 @@ public class V2413RepriseFortTests
         Assert.True(Shock(Open(-1097.2, -40.4, J, Pillaged(recovered: 6))));
         Assert.False(Shock(Open(-1097.2, -40.4, J + 1, Pillaged(recovered: 6))));
         Assert.False(Shock(Open(-1097.2, -40.4, J, Pillaged(recovered: 7))));
+        // Revue Codex de la PR #243 : des bits en trop (24 : ni le coffre 0, ni le 1, ni le 2) ne raccourcissent pas le contrecoup ; reprendre
+        // ensuite un vrai coffre l'écourte d'un jour, sans le réactiver.
+        Assert.True(Shock(Open(-1097.2, -40.4, J + 2, Pillaged(recovered: 24))));
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J + 1, Pillaged(recovered: 24));
+        Assert.True(Shock(w));
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        Assert.True(Shock(w));
+        Assert.False(Shock(Open(-1097.2, -40.4, J + 2, Pillaged(recovered: 24 | 1))));
     }
 
     [Fact]

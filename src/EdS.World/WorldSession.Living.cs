@@ -61,7 +61,7 @@ namespace EdS.World
             if (day < 0) return false;
             long since = Zone.Time.Day - day;
             // Sous-lot V2.41.3 : chaque coffre repris au fort après ce pillage enlève un jour au contrecoup (tous repris : annulé).
-            long days = shock.Outcome == "lost" ? shock.Days - ChestCount(entry.Recovered) : shock.Days;
+            long days = shock.Outcome == "lost" ? shock.Days - RecoveredChests(entry) : shock.Days;
             return since >= 0 && since < days;
         }
 

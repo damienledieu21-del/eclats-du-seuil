@@ -72,6 +72,21 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Revue Codex de la PR #243 : coffres repris comptés pour le contrecoup de la ligne <paramref name="entry"/>, seulement ceux de sa
+        /// quête (<see cref="CaravanRecovery.AllChests"/>) : des bits en trop ne le raccourcissent pas. Une attaque de caravane sans quête :
+        /// aucun. Sans caravanes dans la session (une autre zone que la leur), le masque tel quel : la reprise n'écrit jamais de bit en trop.
+        /// </summary>
+        internal int RecoveredChests(SavedEvent entry)
+        {
+            if (entry.Recovered == 0) return 0;
+            if (_caravans is null) return ChestCount(entry.Recovered);
+            foreach (Caravan c in _caravans.Caravans)
+                if (WorldEventSchedule.RegistryKey(_caravans.ZoneId, c.Attack.Id) == entry.Id)
+                    return c.Recovery is CaravanRecovery rec ? ChestCount(entry.Recovered & rec.AllChests) : 0;
+            return ChestCount(entry.Recovered);
+        }
+
+        /// <summary>
         /// Jour du dernier pillage gardé au registre (<see cref="SavedEvent.LostDay"/> ; inconnu, sauvegarde v29 ou antérieure : la dernière
         /// issue si elle est un pillage), -1 sinon.
         /// </summary>
