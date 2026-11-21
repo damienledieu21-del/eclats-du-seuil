@@ -59,9 +59,10 @@ public class V2413RepriseFortTests
     }
 
     /// <summary>Partie au jour <paramref name="day"/> (9 h), le personnage au point (x, z), caravanes en jeu et marchands.</summary>
-    private static WorldSession Open(double x, double z, long day, SavedCharacter hero, bool banditsAway = true)
+    private static WorldSession Open(double x, double z, long day, SavedCharacter hero, bool banditsAway = true, Action<JsonObject>? more = null)
     {
-        ZoneDefinition zone = Zone(x, z, banditsAway ? BanditsAway : null);
+        Action<JsonObject>? scenario = banditsAway || more != null ? root => { if (banditsAway) BanditsAway(root); more?.Invoke(root); } : null;
+        ZoneDefinition zone = Zone(x, z, scenario);
         CaravanBook book = CaravanJsonReader.ReadFile(CaravanJsonReader.PathIn(DataDirectory), zone, ItemsCatalog).Book!;
         zone = book.ApplyTo(zone);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 9 * 60) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
@@ -71,8 +72,15 @@ public class V2413RepriseFortTests
         return session;
     }
 
-    private static SavedCharacter Pillaged(long money = 0, int recovered = 0, long lostDay = J) =>
-        Hero(money).WithEvents(new[] { new SavedEvent(Key, 0, 1, lostDay, EventOutcome.Lost, lostDay: lostDay, recovered: recovered) });
+    private static SavedCharacter Pillaged(long money = 0, int recovered = 0, long lostDay = J, bool once = false) =>
+        Hero(money).WithEvents(new[] { new SavedEvent(Key, 0, 1, lostDay, EventOutcome.Lost, lostDay: lostDay, recovered: recovered, recoveredOnce: once) });
+
+    /// <summary>Place le combattant <paramref name="id"/> du scénario au point (x, z).</summary>
+    private static Action<JsonObject> Put(string id, double x, double z) => root =>
+    {
+        foreach (JsonNode? c in root["data"]!["combatants"]!.AsArray())
+            if (c!["id"]!.GetValue<string>() == id) c["position"] = new JsonArray(x, z);
+    };
 
     private static SavedEvent Entry(WorldSession w) => w.Save().Character!.Events.Single(e => e.Id == Key);
 
@@ -164,6 +172,14 @@ public class V2413RepriseFortTests
         string v30 = json.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 30");
         Assert.Contains(SaveJsonReader.Read(v30).Report.Errors, x => x.Path.EndsWith(".recovered", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
         Assert.True(SaveJsonReader.Read(v30.Replace(", \"recovered\": 5", "")).IsValid);
+        // Reprise déjà faite (décision de Damien du 21 novembre 2026) : écrit seulement vrai, avec un pillage.
+        string once = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Pillaged(recovered: 5, once: true)));
+        Assert.Contains("\"recovered\": 5, \"recoveredOnce\": true}", once);
+        Assert.True(SaveJsonReader.Read(once).Save!.Character!.Events.Single().RecoveredOnce);
+        Assert.Contains(SaveJsonReader.Read(once.Replace("\"recoveredOnce\": true", "\"recoveredOnce\": false")).Report.Errors, x => x.Path.EndsWith(".recoveredOnce", StringComparison.Ordinal));
+        Assert.Contains(SaveJsonReader.Read(once.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 30")).Report.Errors,
+            x => x.Path.EndsWith(".recoveredOnce", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
+        Assert.Throws<ArgumentException>(() => new SavedEvent(Key, 1, 0, J, EventOutcome.Won, recoveredOnce: true));
         Assert.Throws<ArgumentOutOfRangeException>(() => new SavedEvent(Key, 0, 1, J, EventOutcome.Lost, lostDay: J, recovered: 256));
         Assert.Throws<ArgumentException>(() => new SavedEvent(Key, 0, 1, J, EventOutcome.Lost, recovered: 1));
     }
@@ -232,7 +248,7 @@ public class V2413RepriseFortTests
         long xp = w.Save().Character!.Xp;
         Assert.True(Shock(w));
         Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 2));
-        Assert.Equal((7, 1200L, xp + 400), (Entry(w).Recovered, w.Money, w.Save().Character!.Xp));
+        Assert.Equal((7, 1200L, xp + 400, true), (Entry(w).Recovered, w.Money, w.Save().Character!.Xp, Entry(w).RecoveredOnce));
         Assert.False(Shock(w));
         Assert.Empty(w.CaravanRecoveries);
         Assert.Equal(ChestRefusal.Closed, w.TakeCaravanChest(Ambre, 0));
@@ -266,6 +282,7 @@ public class V2413RepriseFortTests
         at.SettleEvent(e, second, EventOutcome.Lost, WorldEventNoticeKind.Lost, notices);   // joueur présent qui perd : pas de tirage des gardes
         SavedEvent entry = Entry(at);
         Assert.Equal((second.Day, 0, 2L), (entry.LostDay, entry.Recovered, entry.Lost));
+        Assert.False(entry.RecoveredOnce);
         Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.RecoveryOpened);
         CaravanRecoveryView v = Assert.Single(at.CaravanRecoveries);
         Assert.Equal((second.Day, second.Day + 2), (v.PillageDay, v.LastDay));
@@ -277,9 +294,110 @@ public class V2413RepriseFortTests
         Assert.Equal((third.Day, second.Day, 2), (Entry(later).Last, Entry(later).LostDay, Entry(later).Recovered));
     }
 
+    // ---- Relecture indépendante de la PR #243 ----
+
+    /// <summary>Décision de Damien du 21 novembre 2026 (anti-triche) : la deuxième reprise complète donne l'or seul (2 or, sans expérience).</summary>
+    [Fact]
+    public void Deuxieme_reprise_complete_l_or_seul()
+    {
+        WorldSession w = Open(Chests[2].X, Chests[2].Z, J, Pillaged(money: 1000, recovered: 3, once: true));
+        long xp = w.Save().Character!.Xp;
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 2));
+        Assert.Equal((1200L, xp, true), (w.Money, w.Save().Character!.Xp, Entry(w).RecoveredOnce));
+        Assert.Contains(w.Step().Events, n => n.Kind == WorldEventNoticeKind.Recovered && n.Xp == 0 && n.Money == 200);
+        Assert.False(Shock(w));
+    }
+
+    /// <summary>Des bits en trop dans le masque (au-delà des coffres de la quête) ne la bloquent pas et sont effacés à la reprise suivante.</summary>
+    [Fact]
+    public void Bits_en_trop_du_masque_ignores()
+    {
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J, Pillaged(recovered: 8 | 16));
+        Assert.Equal(0, Assert.Single(w.CaravanRecoveries).Taken);
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        Assert.Equal(1, Entry(w).Recovered);
+        Assert.Empty(Open(-18, -12, J, Pillaged(recovered: 255)).CaravanRecoveries);   // les trois coffres repris (bits en trop compris)
+    }
+
+    [Fact]
+    public void Portee_a_trois_metres_pile_et_au_dela()
+    {
+        Assert.Equal(ChestRefusal.None, Open(Chests[0].X + 3, Chests[0].Z, J, Pillaged()).TakeCaravanChest(Ambre, 0));
+        Assert.Equal(ChestRefusal.NotHere, Open(Chests[0].X + 3.01, Chests[0].Z, J, Pillaged()).TakeCaravanChest(Ambre, 0));
+    }
+
+    [Fact]
+    public void Garde_a_douze_metres_pile_et_au_dela_ennemi_qui_fuit_ignore()
+    {
+        WorldSession at12 = Open(Chests[0].X, Chests[0].Z, J, Pillaged(), more: Put("bandit_fort1", Chests[0].X, Chests[0].Z - 12));
+        Assert.Equal(Fixed.FromInt(-12), at12.Zone.Engine.View("bandit_fort1").Position!.Value.Z - Fixed.FromInt(1016));
+        Assert.Equal(ChestRefusal.Guarded, at12.TakeCaravanChest(Ambre, 0));
+        Assert.Equal(ChestRefusal.None, Open(Chests[0].X, Chests[0].Z, J, Pillaged(), more: Put("bandit_fort1", Chests[0].X, Chests[0].Z - 12.01))
+            .TakeCaravanChest(Ambre, 0));
+        // Un cerf (bête qui fuit) à 5 m du coffre ne le garde pas.
+        WorldSession deer = Open(Chests[0].X, Chests[0].Z, J, Pillaged(), more: Put("cerf1", Chests[0].X, Chests[0].Z - 5));
+        Assert.True(deer.Zone.Engine.View("cerf1").Flees);
+        Assert.Equal(ChestRefusal.None, deer.TakeCaravanChest(Ambre, 0));
+    }
+
+    [Fact]
+    public void Personnage_tombe_refuse()
+    {
+        // Les bandits du fort, restés à leur place, ont raison du héros débutant.
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J, Pillaged(), banditsAway: false);
+        for (int i = 0; i < 20_000 && !w.IsDefeated; i++) w.Step();
+        Assert.True(w.IsDefeated);
+        Assert.Equal(ChestRefusal.NotHere, w.TakeCaravanChest(Ambre, 0));
+        Assert.Equal(0, Entry(w).Recovered);
+    }
+
+    /// <summary>
+    /// Registre plein : la ligne du pillage existe toujours quand la quête est ouverte, la reprise n'en ajoute pas (le refus Full reste une
+    /// défense) ; sans ligne de pillage, la quête est fermée, rien ne change.
+    /// </summary>
+    [Fact]
+    public void Registre_plein()
+    {
+        IEnumerable<SavedEvent> Others(int n) => Enumerable.Range(0, n).Select(k => new SavedEvent($"zone.vallons/autre_{k:00}", 0, 0, -1, EventOutcome.None));
+        SavedCharacter full = Hero().WithEvents(Others(SavedEvent.MaxEntries - 1).Concat(new[] { new SavedEvent(Key, 0, 1, J, EventOutcome.Lost, lostDay: J) }));
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J, full);
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        Assert.Equal((SavedEvent.MaxEntries, 1), (w.Save().Character!.Events.Count, Entry(w).Recovered));
+        WorldSession none = Open(Chests[0].X, Chests[0].Z, J, Hero().WithEvents(Others(SavedEvent.MaxEntries)));
+        string before = SaveJsonReader.Write(none.Save());
+        Assert.Equal(ChestRefusal.Closed, none.TakeCaravanChest(Ambre, 0));
+        Assert.Equal(before, SaveJsonReader.Write(none.Save()));
+    }
+
+    /// <summary>Sauvegarde v29 (jour du pillage inconnu, lostDay -1) : la quête part de la dernière issue pillée ; la reprise écrit le jour.</summary>
+    [Fact]
+    public void Sauvegarde_v29_sans_jour_de_pillage()
+    {
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J + 1, Hero().WithEvents(new[] { new SavedEvent(Key, 0, 1, J, EventOutcome.Lost) }));
+        Assert.Equal(J, Assert.Single(w.CaravanRecoveries).PillageDay);
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        Assert.Equal((J, 1), (Entry(w).LostDay, Entry(w).Recovered));
+    }
+
+    [Fact]
+    public void Sauvegarde_et_rechargement_avec_un_puis_deux_coffres()
+    {
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J, Pillaged());
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        SavedCharacter one = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!.Character!;
+        WorldSession again = Open(Chests[1].X, Chests[1].Z, J, one);
+        Assert.Equal(1, Assert.Single(again.CaravanRecoveries).Taken);
+        Assert.Equal(ChestRefusal.None, again.TakeCaravanChest(Ambre, 1));
+        SavedCharacter two = SaveJsonReader.Read(SaveJsonReader.Write(again.Save())).Save!.Character!;
+        WorldSession third = Open(Chests[0].X, Chests[0].Z, J, two);
+        Assert.Equal(3, Assert.Single(third.CaravanRecoveries).Taken);
+        Assert.Equal(ChestRefusal.Taken, third.TakeCaravanChest(Ambre, 0));
+    }
+
     [Fact]
     public void Textes_des_annonces_de_la_reprise()
     {
+        Assert.True(Texts.Has($"text.event.{Attack}.reprise_sans_or"));
         foreach (string moment in new[] { "reprise_ouverte", "coffre", "reprise" })
             Assert.True(Texts.Has($"text.event.{Attack}.{moment}"), moment);
         Assert.True(Texts.Has("text.ui.caravan.chest.guarded") && Texts.Has("text.ui.caravan.chest.too_far"));
