@@ -447,7 +447,7 @@ Décisions de Damien du 19 novembre 2026, rapportées par la session principale,
 | Pièce achetée à Firmin | Montrée **maîtrisée** (N3). | Retenu (Damien, 19 novembre 2026) |
 | Recettes | **On suit le dossier** : la tarte renversée se fait sur **pâte brisée** (objet et recette nouveaux), le levain chef est un **levain de blé** ; la pâte feuilletée reste pour les chaussons. | Retenu (Damien, 19 novembre 2026) |
 | Calendrier de l'étal | Celui proposé par Claude : levain, pâtes brisée et feuilletée tous les jours ; tarte renversée le **dimanche** ; fouace les **samedis et dimanches de printemps** ; couronne les **samedis et dimanches d'automne**. | Retenu (Damien, 19 novembre 2026) |
-| Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. | Retenu (Damien, 19 novembre 2026) |
+| Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. Fait en V2.56.1 : celle qu'on mange (2,5 s), sinon la sienne hors combat (**recommandation de Claude**, à valider). | Retenu (Damien, 19 novembre 2026) ; V2.56.1 en PR |
 
 ## 7 terdecies. Lieux reconstruits, V2.43 (Retenu)
 
