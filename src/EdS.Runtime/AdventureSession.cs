@@ -2100,7 +2100,7 @@ namespace EdS.Runtime
             get
             {
                 SeasonLook look = World.CivilSeason is SeasonState s ? SeasonLook.Of(s).WithSnow(World.Seasons?.Snow, World.CivilDay) : SeasonLook.Steady(World.SeasonIndex);
-                return World.Definition?.Indoor == true ? look.Indoors() : look;   // V2.44.3 : ni neige ni glace dans une pièce
+                return World.Definition?.Sheltered == true ? look.Indoors() : look;   // V2.44.3 : ni neige ni glace dans une pièce ; V2.45.2 : ni dans un dessous
             }
         }
 
@@ -2196,7 +2196,8 @@ namespace EdS.Runtime
             double minute = WorldMinute();
             if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
             if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
-            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+            // V2.45.2 : un dessous est à l'abri comme une pièce (l'affichage n'y montre ni pluie ni ciel), sans être habité comme le village.
+            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
                 places, minute, forge);
         }
 

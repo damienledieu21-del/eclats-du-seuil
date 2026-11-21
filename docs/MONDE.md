@@ -1380,6 +1380,15 @@ Limites du contenu : les meubles posés ne sont pas encore des obstacles du comb
 
 Limites du cœur : pas encore de contenu (zone, porte, paliers, meubles, recettes, PNJ vendeur : V2.53.2) ni de rendu (V2.53.3) ; le coffre s'ouvre partout dans la maison (le meuble « coffre » le dessine seulement) ; la pose au mur et l'empilement viendront plus tard.
 
+## Étages : le dessous (chantier V2.45)
+
+Recommandation du [plan de la grande carte](PLAN_GRANDE_CARTE.md#3-les-trois-étages-recommandation-sur-la-base-du-retenu) (§ 3), format dans [DONNEES.md](DONNEES.md#étages-dessous-et-genres-de-porte-chantier-v245). Aucun dessous livré pour l'instant : ils viennent avec la grotte de la cascade (V2.46), la mine (V2.47), les cryptes (V2.48), les égouts (V2.49), les galeries du Seuil (V2.50) et les grottes noyées (V2.50.1).
+
+- **Un dessous** est une zone à part (`floor: "dessous"`) reliée à la surface, à un intérieur ou à un autre dessous par des portes : porte, escalier, puits, trappe ou faille (les deux côtés du même genre). On y passe comme dans un intérieur : chargement court, sauvegarde à la porte d'en face, pas de passage en plein combat.
+- **Ses créatures** y vivent comme dehors (populations, laisse, réapparition, chefs) et partent à 8 m au moins de chaque porte (V2.45.1, recommandation prise par défaut).
+- **Ses points sûrs** (camp de mineurs…) se découvrent et servent à la reprise (V2.28) ; **le voyage rapide n'y mène pas** (V2.45.2) ; on peut en partir par le voyage rapide, comme d'un intérieur (recommandation prise par défaut).
+- **À l'abri** (V2.45.2) : on n'y entre pas à cheval, et l'affichage n'y met ni pluie, ni neige, ni glace (comme dans une pièce).
+
 ## Sauvegarde
 
 Version **29** depuis la maison du joueur (sous-lot V2.53.1, décisions de Damien du 20 novembre 2026) : `character.home`, facultatif (absent tant que la maison n'est pas achetée) : `{"stage": 1, "given": {"pierre": 1}, "placed": [{"piece": "table", "x": 4, "z": 2, "turn": 1}], "chest": [{"item": "item.planche", "count": 12}]}` ; une sauvegarde v28 se lit sans maison. Version 28 depuis les lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : `character.rebuilds`, facultatif (absent tant que rien n'est apporté) : `{"hameau": {"stage": 0, "given": {"bandits": 1, "or": 1200}}, "moulin": {"stage": 1, "given": {}, "done": true}}` (paliers finis, apports au palier en cours ; `done` : reconstruit pour toujours, même si le catalogue ajoute un palier plus tard, revue Codex de la PR #221). La version 27 et les antérieures sont lues telles quelles (tous les lieux en ruine).
