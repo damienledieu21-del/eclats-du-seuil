@@ -305,6 +305,8 @@ namespace EdS.Game
             {
                 _adventure = AdventureSession.Load(Path.Combine(_repoRoot, "data", "v0"), Path.Combine(_repoRoot, "scenarios"), SavePath);
                 _ownedMountKnown = false;   // relecture de la PR #184 : pas d'annonce du cheval au chargement
+                _mealsSeen = 0;   // V2.56.1 (relecture indépendante) : une session neuve part de zéro repas, sans faux repas
+                _eatUntil = 0f;
             }
             catch (Exception e)
             {
