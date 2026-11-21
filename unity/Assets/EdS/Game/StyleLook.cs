@@ -540,7 +540,7 @@ namespace EdS.Game
         /// animations Humanoid des bibliothèques (retargeting : les mêmes que les corps de Quaternius). Null (le corps ne change pas) si
         /// l'avatar n'est pas Humanoid ou s'il n'y a aucune animation.
         /// </summary>
-        private static StyleBody DressMade(GameObject body, MadeHumanLook made, StyleCatalog catalog)
+        private static StyleBody DressMade(GameObject body, MadeHumanLook made, StyleCatalog catalog, StyleSlot slot)
         {
             if (catalog.Humans == null || catalog.Humans.Clips == null || catalog.Humans.Clips.Length == 0) return null;
             float height = made.Height > 0.5f ? made.Height : 1.75f;
@@ -551,6 +551,9 @@ namespace EdS.Game
                 Object.Destroy(look);
                 return null;
             }
+            // V2.56.3 (relecture indépendante) : les PNJ faits dans MakeHuman portent aussi le plat ou le masque de la fête (avant le
+            // rattachement au corps, dans la pose où ils sont habillés), si les vrais vêtements sont en service.
+            FeastAccessoryLook.Attach(model, FeastAccessories.Worn(HumanBodies.Feast, HumanOutfit.Peasant, slot == StyleSlot.Hero, catalog.HumanClothes, HumanBodies.Festival));
             Vector3 hs = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
             float hk = look.transform.localScale.y;
@@ -581,7 +584,7 @@ namespace EdS.Game
             // les corps de Quaternius et les personnages de Mixamo ; sans animations Humanoid ou sans avatar valable, il laisse la place.
             if (made && humans && HumanBodies.MadeWanted(catalog, slot, id, lookId) is MadeHumanLook madeLook)
             {
-                StyleBody madeBody = DressMade(body, madeLook, catalog);
+                StyleBody madeBody = DressMade(body, madeLook, catalog, slot);
                 if (madeBody != null) return madeBody;
                 return Dress(body, slot, id, height, lookId, humans, false);
             }
@@ -597,7 +600,8 @@ namespace EdS.Game
             if (human is HumanLook person)
             {
                 // Sous-lot V2.9.4 : les vrais vêtements (le rôle choisit la tenue, l'identifiant ses variantes), sinon la tenue peinte.
-                IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person, HumanBodies.Clothing(catalog, slot, id, lookId, person));
+                WardrobePlan clothes = HumanBodies.Clothing(catalog, slot, id, lookId, person);
+                IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person, clothes);
                 // Relecture de la PR #117 : sans animations (graphe impossible), pas de corps figé en pose en T : le modèle d'avant (ou la
                 // forme simple).
                 if (player == null)
@@ -605,6 +609,9 @@ namespace EdS.Game
                     Object.Destroy(look);
                     return Dress(body, slot, id, height, lookId, false, false);
                 }
+                // V2.56.3 : un jour de fête d'Orsédia, les habitants en tenue de fête portent son accessoire (pas le héros).
+                // Relecture indépendante : seulement à qui reçoit vraiment la tenue de fête (vrais vêtements en service : pas de plan sans eux).
+                FeastAccessoryLook.Attach(model, FeastAccessories.Worn(HumanBodies.Feast, person.Outfit, slot == StyleSlot.Hero, clothes != null && clothes.Festive, HumanBodies.Festival));
                 Vector3 hs = body.transform.localScale;
                 look.transform.SetParent(body.transform, false);
                 float hk = look.transform.localScale.y;
