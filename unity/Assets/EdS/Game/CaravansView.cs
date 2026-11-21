@@ -106,22 +106,37 @@ namespace EdS.Game
                 // Couché sur le flanc : la moitié de la largeur au-dessus du sol au lieu de rien.
                 body.transform.localPosition = new Vector3(0f, p.Roll != 0 ? (float)size.Width * 0.5f : 0f, 0f);
                 GameObject model = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.CaravanModel(p.Model) : null;
-                if (model != null) Fit(Object.Instantiate(model, body.transform, false), size);
+                if (model != null) Fit(Object.Instantiate(model), body.transform, size);
                 else Stand(p.Model, body.transform, size);
             }
             return s;
         }
 
-        /// <summary>Le modèle à la taille demandée à l'atelier (sa longueur), posé sur le sol.</summary>
-        private static void Fit(GameObject g, (double Length, double Width, double Height) size)
+        /// <summary>
+        /// Le modèle à la taille demandée à l'atelier (sa longueur), posé sur le sol, puis rangé sous <paramref name="parent"/>. Relecture
+        /// indépendante de la PR #241 : les bornes sont mesurées à l'identité, avant le rangement sous une pièce tournée (chariot couché,
+        /// coffres de travers), sinon l'échelle et la hauteur seraient fausses.
+        /// </summary>
+        private static void Fit(GameObject g, Transform parent, (double Length, double Width, double Height) size)
         {
+            // Sans parent, à l'origine ; la rotation et l'échelle propres du modèle (celles de son import) sont gardées.
+            Quaternion own = g.transform.localRotation;
+            Vector3 ownScale = g.transform.localScale;
+            g.transform.position = Vector3.zero;
             Renderer[] renderers = g.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return;
-            Bounds b = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
-            float longest = Mathf.Max(b.size.x, b.size.z);
-            if (longest > 0.01f) g.transform.localScale *= (float)size.Length / longest;
-            g.transform.localPosition = new Vector3(0f, -b.min.y * g.transform.localScale.y, 0f);
+            float scale = 1f, lift = 0f;
+            if (renderers.Length > 0)
+            {
+                Bounds b = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+                float longest = Mathf.Max(b.size.x, b.size.z);
+                if (longest > 0.01f) scale = (float)size.Length / longest;
+                lift = -b.min.y * scale;
+            }
+            g.transform.SetParent(parent, false);
+            g.transform.localRotation = own;
+            g.transform.localScale = ownScale * scale;
+            g.transform.localPosition = new Vector3(0f, lift, 0f);
         }
 
         /// <summary>Formes de remplacement de la taille du modèle prévu.</summary>
