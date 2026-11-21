@@ -97,8 +97,8 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Niveau retenu pour un réglage sur cette machine. Automatique : la détection (classe, ressources lourdes, limite automatique).
-        /// Basse : comme un PC modeste aux textures au quart (un téléphone reste téléphone). Moyenne : chargement et brume d'un PC complet,
-        /// textures à moitié, ressources lourdes écartées. Haute : tout, textures pleines.
+        /// Basse : comme un PC modeste aux textures au quart (un téléphone reste téléphone). Moyenne : chargement et brume d'un PC complet
+        /// (un téléphone reste téléphone), textures à moitié, ressources lourdes écartées. Haute : tout, textures pleines.
         /// </summary>
         public static QualityLevel Level(QualityChoice choice, int vramMb, int ramMb, bool phone)
         {
@@ -106,15 +106,15 @@ namespace EdS.Runtime
             return choice switch
             {
                 QualityChoice.Low => new QualityLevel(detected == DeviceTier.Phone ? DeviceTier.Phone : DeviceTier.Modest, true, 2),
-                QualityChoice.Medium => new QualityLevel(DeviceTier.Full, true, 1),
+                QualityChoice.Medium => new QualityLevel(detected == DeviceTier.Phone ? DeviceTier.Phone : DeviceTier.Full, true, 1),
                 QualityChoice.High => new QualityLevel(DeviceTier.Full, false, 0),
                 _ => new QualityLevel(detected, Light(detected), AutoMipLimit(vramMb, ramMb, phone)),
             };
         }
 
-        /// <summary>Haute forcée sur un téléphone ou un PC modeste : avertir que le jeu peut ralentir.</summary>
+        /// <summary>Moyenne ou Haute forcée sur un téléphone ou un PC modeste : avertir que le jeu peut ralentir.</summary>
         public static bool Risky(QualityChoice choice, int vramMb, int ramMb, bool phone) =>
-            choice == QualityChoice.High && Detect(vramMb, ramMb, phone) != DeviceTier.Full;
+            choice >= QualityChoice.Medium && Detect(vramMb, ramMb, phone) != DeviceTier.Full;
 
         /// <summary>Réglage suivant au bouton : automatique, basse, moyenne, haute, puis automatique.</summary>
         public static QualityChoice Next(QualityChoice choice) => choice switch
@@ -144,20 +144,20 @@ namespace EdS.Runtime
         /// <summary>« textures pleines », « textures à moitié », « textures au quart ».</summary>
         public static string TexturesPhrase(int limit) => limit <= 0 ? "textures pleines" : limit == 1 ? "textures à moitié" : "textures au quart";
 
-        /// <summary>Avertissement court en Haute sur une petite machine.</summary>
+        /// <summary>Avertissement court en Moyenne ou Haute sur une petite machine.</summary>
         public const string SlowWarning = "peut ralentir sur cette machine";
 
         /// <summary>
-        /// Texte du bouton des réglages, par exemple « Qualité : automatique (textures au quart) » ou « Qualité : haute », puis à la ligne
-        /// « au prochain lancement · peut ralentir sur cette machine ». Les textures changent tout de suite ; la classe et les ressources lourdes,
-        /// lues une fois au lancement (<paramref name="session"/>), changent au prochain lancement si elles diffèrent.
+        /// Texte du bouton des réglages, par exemple « Qualité : automatique (textures au quart) » ou « Qualité : haute · relancer le jeu · peut
+        /// ralentir sur cette machine » (une seule ligne : rangée de l'écran titre). Les textures changent tout de suite ; la classe et les ressources lourdes,
+        /// lues une fois au lancement (<paramref name="session"/>), ne changent qu'en relançant le jeu.
         /// </summary>
         public static string Label(QualityChoice choice, QualityLevel wanted, QualityLevel session, bool risky)
         {
             string text = "Qualité : " + ChoiceName(choice) + (choice == QualityChoice.Auto ? " (" + TexturesPhrase(wanted.MipLimit) + ")" : "");
-            string notes = !wanted.SameSession(session) ? "au prochain lancement" : "";
+            string notes = !wanted.SameSession(session) ? "relancer le jeu" : "";
             if (risky) notes += (notes.Length > 0 ? " · " : "") + SlowWarning;
-            return notes.Length > 0 ? text + "\n" + notes : text;
+            return notes.Length > 0 ? text + " · " + notes : text;
         }
 
         /// <summary>Nom d'une classe de machine.</summary>

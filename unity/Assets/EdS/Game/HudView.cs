@@ -415,7 +415,7 @@ namespace EdS.Game
             _faster = UiKit.Button(_settings, "Plus sensible", "bouton", "", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => _stepSensitivity?.Invoke(0.25f));
             At(_faster.Rect, 440f, 196f, 52f, 44f, 0.5f, 0.5f);
             // Demande de Damien du 21 novembre 2026 : qualité forcée (automatique, basse, moyenne, haute), sauvegardée ; textures tout de suite,
-            // le reste au prochain lancement (le bouton le dit), avertissement en haute sur une petite machine. Texte plus petit : il peut être long.
+            // le reste en relançant le jeu (le bouton le dit), avertissement en moyenne et haute sur une petite machine. Texte plus petit : il peut être long.
             _textures = UiKit.Button(_settings, "Qualité", "bouton_sobre", "", UiFace.Bold, 15f, UiKit.Ink, DeviceQuality.Cycle);
             At(_textures.Rect, 280f, 250f, 440f, 44f, 0.5f, 0.5f);
             // Sous-lot V2.13 (« le jeu est trop sombre ») : luminosité de 50 % à 200 %, par pas de 10, sauvegardée et appliquée en direct.

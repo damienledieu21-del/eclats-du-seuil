@@ -941,14 +941,14 @@ Demande de Damien : graphismes trop bas sur son PC (1 224 Mo de mémoire vidéo,
   |---|---|---|---|
   | Automatique | détectée | selon la détection | selon la détection |
   | Basse | PC modeste (un téléphone reste téléphone) : 1 case de détail, brume 900 m | écartées | quart (limite 2) |
-  | Moyenne | PC complet : 2 cases de détail, brume sur toute la région | écartées | moitié (limite 1) |
+  | Moyenne | PC complet (un téléphone reste téléphone) : 2 cases de détail, brume sur toute la région | écartées | moitié (limite 1) |
   | Haute | PC complet | montrées | pleines (limite 0) |
 
-- **Quand** : les textures changent **tout de suite** ; la classe et les ressources lourdes sont lues une fois au lancement (`DeviceQuality.Session`) et changent **au prochain lancement**. Le bouton le dit à la ligne (« au prochain lancement ») tant que le niveau de la partie diffère du réglage.
-- **Avertissement** : en Haute sur un téléphone ou un PC modeste, le bouton ajoute « peut ralentir sur cette machine ».
+- **Quand** : les textures changent **tout de suite** ; la classe et les ressources lourdes sont lues une fois au lancement (`DeviceQuality.Session`) et ne changent qu'en **relançant le jeu** (le fermer et le rouvrir). Le bouton le dit sur la même ligne (« Qualité : haute · relancer le jeu ») tant que le niveau de la partie diffère du réglage.
+- **Avertissement** : en Moyenne ou Haute sur un téléphone ou un PC modeste (dont le PC de Damien), le bouton ajoute « · peut ralentir sur cette machine ».
 - **Retenu** : `PlayerPrefs` `eds.qualite` (0 automatique, 1 basse, 2 moyenne, 3 haute ; autre valeur : automatique), comme la luminosité. L'ancienne clé `eds.textures` n'est plus lue : le réglage repart sur Automatique.
 - **Vérifier l'essai** : la ligne « Machine et textures » dit le niveau forcé (« qualité forcée : haute (réglages d'un PC complet), peut ralentir sur cette machine ») ; « Chargement par cases » suit le réglage.
-- **Limite** : aucun format ne change (préférence locale seulement). Haute sur un PC à 1 224 Mo peut redonner le « System out of memory » du 9 novembre : revenir en Automatique ou Basse depuis l'écran titre.
+- **Limite** : aucun format ne change (préférence locale seulement). Moyenne ou Haute sur un PC à 1 224 Mo peut redonner le « System out of memory » du 9 novembre : revenir en Automatique ou Basse depuis l'écran titre.
 
 ### L'atelier : nos propres bâtiments (sous-lot V2.17)
 

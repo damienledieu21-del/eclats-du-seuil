@@ -9,7 +9,7 @@ namespace EdS.Game
     /// ressources « jamais sur téléphone » sont écartées comme sur téléphone (<see cref="Light"/>). Affichage seulement.
     /// Demande de Damien du 21 novembre 2026 : réglage « Qualité » (Automatique, Basse, Moyenne, Haute ; Automatique par défaut,
     /// <c>PlayerPrefs</c> <c>eds.qualite</c>) qui force le niveau à la place de la détection. Les textures changent tout de suite ; la
-    /// classe (chargement par cases, brume, images) et les ressources lourdes sont lues une fois au lancement et changent au prochain.
+    /// classe (chargement par cases, brume, images) et les ressources lourdes sont lues une fois au lancement et changent en relançant le jeu.
     /// </summary>
     public static class DeviceQuality
     {
@@ -32,7 +32,7 @@ namespace EdS.Game
         /// <summary>Niveau qui correspond au réglage actuel sur cette machine.</summary>
         public static QualityLevel Wanted => MachineTier.Level(Choice, Vram, Ram, Application.isMobilePlatform);
 
-        /// <summary>Niveau de cette partie : figé à la première lecture (au lancement) ; un changement de réglage compte au prochain lancement.</summary>
+        /// <summary>Niveau de cette partie : figé à la première lecture (au lancement) ; un changement de réglage compte en relançant le jeu.</summary>
         public static QualityLevel Session
         {
             get
@@ -55,7 +55,7 @@ namespace EdS.Game
         /// <summary>Limite de mipmaps du réglage actuel (appliquée tout de suite).</summary>
         public static int Limit => Wanted.MipLimit;
 
-        /// <summary>Haute forcée sur un téléphone ou un PC modeste.</summary>
+        /// <summary>Moyenne ou Haute forcée sur un téléphone ou un PC modeste.</summary>
         public static bool Risky => MachineTier.Risky(Choice, Vram, Ram, Application.isMobilePlatform);
 
         /// <summary>Applique la limite des textures (au démarrage et à chaque changement de réglage).</summary>
@@ -74,7 +74,7 @@ namespace EdS.Game
             Apply();
         }
 
-        /// <summary>Texte du bouton des réglages (dit « au prochain lancement » et l'avertissement quand il le faut).</summary>
+        /// <summary>Texte du bouton des réglages (dit « relancer le jeu » et l'avertissement quand il le faut).</summary>
         public static string Label => MachineTier.Label(Choice, Wanted, Session, Risky);
     }
 }

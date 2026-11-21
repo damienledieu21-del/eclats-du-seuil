@@ -8,7 +8,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Demande de Damien du 21 novembre 2026 (« graphismes bas » sur son PC : 1 224 Mo de mémoire vidéo, 4 Go de RAM) : réglage « Qualité »
 /// (Automatique, Basse, Moyenne, Haute) qui force le niveau à la place de la détection (<see cref="MachineTier.Level"/>), retenu dans les
-/// préférences, appliqué tout de suite pour les textures et au prochain lancement pour le reste, avec un avertissement en Haute sur une
+/// préférences, appliqué tout de suite pour les textures et en relançant le jeu pour le reste, avec un avertissement en Moyenne et Haute sur une
 /// petite machine. Remplace le choix des textures du sous-lot V2.12.4.
 /// </summary>
 [Trait("Category", "Runtime")]
@@ -56,6 +56,10 @@ public sealed class QualiteForceeTests
         Assert.Equal(2, high.DetailRadius);
         Assert.True(high.ViewMeters > 900);
         Assert.Equal(DeviceTier.Phone, MachineTier.Level(QualityChoice.Low, 512, 2048, true).Tier);   // basse ne relève pas un téléphone
+        QualityLevel phoneMedium = MachineTier.Level(QualityChoice.Medium, 512, 2048, true);        // moyenne non plus
+        Assert.Equal(DeviceTier.Phone, phoneMedium.Tier);
+        Assert.True(phoneMedium.Light);
+        Assert.Equal(1, phoneMedium.MipLimit);
     }
 
     [Fact]
@@ -64,7 +68,10 @@ public sealed class QualiteForceeTests
         Assert.True(MachineTier.Risky(QualityChoice.High, 1224, 4096, false));
         Assert.True(MachineTier.Risky(QualityChoice.High, 512, 2048, true));
         Assert.False(MachineTier.Risky(QualityChoice.High, 8192, 16384, false));
-        Assert.False(MachineTier.Risky(QualityChoice.Medium, 1224, 4096, false));
+        Assert.True(MachineTier.Risky(QualityChoice.Medium, 1224, 4096, false));   // le PC de Damien (erreur de mémoire du 9 novembre)
+        Assert.True(MachineTier.Risky(QualityChoice.Medium, 512, 2048, true));
+        Assert.False(MachineTier.Risky(QualityChoice.Medium, 8192, 16384, false));
+        Assert.False(MachineTier.Risky(QualityChoice.Low, 1224, 4096, false));
         Assert.False(MachineTier.Risky(QualityChoice.Auto, 1224, 4096, false));
         Assert.Equal("peut ralentir sur cette machine", MachineTier.SlowWarning);
     }
@@ -89,12 +96,15 @@ public sealed class QualiteForceeTests
         Assert.Equal("Qualité : automatique (textures au quart)", MachineTier.Label(QualityChoice.Auto, auto, auto, false));
         // Basse sur le PC de Damien : même classe que l'automatique, seules les textures comptent : tout de suite.
         Assert.Equal("Qualité : basse", MachineTier.Label(QualityChoice.Low, Damien(QualityChoice.Low), auto, false));
-        Assert.Equal("Qualité : moyenne\nau prochain lancement", MachineTier.Label(QualityChoice.Medium, Damien(QualityChoice.Medium), auto, false));
-        Assert.Equal("Qualité : haute\nau prochain lancement · peut ralentir sur cette machine",
+        Assert.Equal("Qualité : moyenne · relancer le jeu · peut ralentir sur cette machine",
+            MachineTier.Label(QualityChoice.Medium, Damien(QualityChoice.Medium), auto, MachineTier.Risky(QualityChoice.Medium, 1224, 4096, false)));
+        Assert.Equal("Qualité : moyenne · relancer le jeu", MachineTier.Label(QualityChoice.Medium, Damien(QualityChoice.Medium), auto, false));
+        Assert.Equal("Qualité : haute · relancer le jeu · peut ralentir sur cette machine",
             MachineTier.Label(QualityChoice.High, Damien(QualityChoice.High), auto, true));
-        // Après relance en haute : plus de « prochain lancement », l'avertissement reste.
+        // Après relance en haute : plus de « relancer le jeu », l'avertissement reste ; jamais de saut de ligne (rangée de l'écran titre).
         QualityLevel high = Damien(QualityChoice.High);
-        Assert.Equal("Qualité : haute\npeut ralentir sur cette machine", MachineTier.Label(QualityChoice.High, high, high, true));
+        Assert.Equal("Qualité : haute · peut ralentir sur cette machine", MachineTier.Label(QualityChoice.High, high, high, true));
+        Assert.DoesNotContain("\n", MachineTier.Label(QualityChoice.High, high, Damien(QualityChoice.Auto), true));
         QualityLevel full = MachineTier.Level(QualityChoice.Auto, 8192, 16384, false);
         Assert.Equal("Qualité : automatique (textures pleines)", MachineTier.Label(QualityChoice.Auto, full, full, false));
     }
@@ -105,6 +115,8 @@ public sealed class QualiteForceeTests
         Assert.Equal(MachineTier.Describe(1224, 4096, false, 2), MachineTier.Describe(1224, 4096, false, 2, QualityChoice.Auto));
         Assert.Equal("PC modeste (mémoire vidéo 1224 Mo, mémoire 4096 Mo) ; qualité forcée : haute (réglages d'un PC complet), peut ralentir sur cette machine ; textures : pleine (limite de mipmaps 0)",
             MachineTier.Describe(1224, 4096, false, 0, QualityChoice.High));
+        Assert.Equal("PC modeste (mémoire vidéo 1224 Mo, mémoire 4096 Mo) ; qualité forcée : moyenne (réglages d'un PC complet), peut ralentir sur cette machine ; textures : moitié (limite de mipmaps 1) ; ressources lourdes (« jamais sur téléphone ») écartées",
+            MachineTier.Describe(1224, 4096, false, 1, QualityChoice.Medium));
         Assert.Equal("PC complet (mémoire vidéo 8192 Mo, mémoire 16384 Mo) ; qualité forcée : basse (réglages d'un PC modeste) ; textures : quart (limite de mipmaps 2) ; ressources lourdes (« jamais sur téléphone ») écartées",
             MachineTier.Describe(8192, 16384, false, 2, QualityChoice.Low));
     }
