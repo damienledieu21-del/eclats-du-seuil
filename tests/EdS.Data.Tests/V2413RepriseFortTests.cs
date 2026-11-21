@@ -444,6 +444,19 @@ public class V2413RepriseFortTests
         finally { Directory.Delete(root, true); }
     }
 
+    /// <summary>Revue Codex de la PR #243 : les coffres à reprendre au fort, à afficher ; un coffre repris ou la quête fermée les retire.</summary>
+    [Fact]
+    public void Coffres_a_afficher_au_fort()
+    {
+        WorldSession w = Open(Chests[0].X, Chests[0].Z, J, Pillaged());
+        IReadOnlyList<EdS.Runtime.FortChest> shown = EdS.Runtime.CaravanLooks.RecoveryChests(w.CaravanRecoveries);
+        Assert.Equal(new[] { "caravane_d_ambre/10/0", "caravane_d_ambre/10/1", "caravane_d_ambre/10/2" }, shown.Select(c => c.Key));
+        Assert.Equal((1180.0, 1016.0), (shown[0].X, shown[0].Z));
+        Assert.Equal(ChestRefusal.None, w.TakeCaravanChest(Ambre, 0));
+        Assert.Equal(new[] { "caravane_d_ambre/10/1", "caravane_d_ambre/10/2" }, EdS.Runtime.CaravanLooks.RecoveryChests(w.CaravanRecoveries).Select(c => c.Key));
+        Assert.Empty(EdS.Runtime.CaravanLooks.RecoveryChests(Open(-18, -12, J + 3, Pillaged()).CaravanRecoveries));   // quête fermée
+    }
+
     [Fact]
     public void Textes_des_annonces_de_la_reprise()
     {
