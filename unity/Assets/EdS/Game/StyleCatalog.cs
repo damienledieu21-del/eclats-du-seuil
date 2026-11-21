@@ -560,6 +560,8 @@ namespace EdS.Game
         public GameObject[] LotC = new GameObject[0];
         [Tooltip("Sous-lot F4 : modèles Tripo des fêtes d'Orsédia (« Assets/EdS/Modeles/Fetes/<code>/ », remplis par le menu) : décorations de l'étal du forain.")]
         public GameObject[] Feasts = new GameObject[0];
+        [Tooltip("Sous-lot V2.41.2 : modèles des caravanes (« Assets/EdS/Modeles/Caravanes/<nom>/<nom>.fbx », remplis par le menu) : chariot bâché, attelage, coffres de marchandises ; sans eux, des formes simples.")]
+        public GameObject[] Caravans = new GameObject[0];
         [Tooltip("V2.25.4 : arbres de l'atelier (« Assets/EdS/Modeles/Arbres/<essence>/ », remplis par le menu) ; ils remplacent les arbres téléchargés partout où le jeu pose des arbres.")]
         public TreeLook[] AtelierTrees = new TreeLook[0];
         [Tooltip("V2.25.4 : l'arbre millénaire de l'atelier, livré mais pas posé (il ira avec la grande carte, V2.32).")]
@@ -847,6 +849,15 @@ namespace EdS.Game
             }
             GameObject found;
             return _feastIndex.TryGetValue(code, out found) && found != null ? found : null;
+        }
+
+        /// <summary>Sous-lot V2.41.2 : le modèle de caravane nommé <paramref name="name"/> (<see cref="CaravanLooks.Models"/>) ; null sans lui.</summary>
+        public GameObject CaravanModel(string name)
+        {
+            if (Caravans == null || string.IsNullOrEmpty(name)) return null;
+            foreach (GameObject g in Caravans)
+                if (g != null && g.name == name) return g;
+            return null;
         }
 
         [System.NonSerialized] private Dictionary<string, GameObject> _feastIndex;
