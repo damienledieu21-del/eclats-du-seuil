@@ -126,6 +126,7 @@ namespace EdS.Data.Json
                 ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRegionRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRegionRoads}.",
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
                 ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
+                ["floor"] = (v, p) => d.Floor = input.Text(v, p),   // chantier V2.45.1 (schéma 15) : étage
                 ["scaling"] = (v, p) =>   // sous-lot V1.8 (schéma 7) : zones en mélange
                 {
                     var s = new ZoneScalingData();
@@ -169,6 +170,7 @@ namespace EdS.Data.Json
                 ["to"] = (v, p) => door.To = input.Text(v, p),
                 ["toDoor"] = (v, p) => door.ToDoor = input.Text(v, p),
                 ["building"] = (v, p) => door.Building = input.NullableText(v, p),
+                ["kind"] = (v, p) => door.Kind = input.Text(v, p),   // chantier V2.45.1 (schéma 15) : genre de passage
             });
             return ok ? door : null;
         }

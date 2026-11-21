@@ -353,6 +353,9 @@ namespace EdS.World
             public bool Hurt;
             public bool Leashing;
 
+            /// <summary>Revue Codex de la PR #240 : a combattu un personnage (engagée contre lui, ou blessée par lui) au moins une fois.</summary>
+            public bool Fought;
+
             /// <summary>Partie d'elle-même à la fin de l'événement (pas une victoire).</summary>
             public bool Withdrawn;
 
@@ -758,6 +761,7 @@ namespace EdS.World
             if (s.Current is string id)
             {
                 CombatantView v = engine.View(id);
+                if (v.HurtByCharacter || HeldByPlayer(engine, v)) s.Fought = true;
                 // Sous-lot V2.28b (2c) : arrivée effective (fait du moteur) : l'état emporté est consommé, même si elle est déjà morte.
                 if (s.CarryPlace != null && v.ArrivedTick != null)
                 {
@@ -1170,8 +1174,16 @@ namespace EdS.World
             };
         }
 
-        private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices) =>
-            world.SettleEvent(run.Occurrence.Event, run.Occurrence, EventOutcome.Lost, WorldEventNoticeKind.Lost, notices);
+        /// <summary>
+        /// Règle en échec une occurrence finie. Revue Codex de la PR #240 : une attaque de caravane où le joueur n'a combattu aucun bandit
+        /// (resté ailleurs, secteur fermé ou non) est réglée comme une absence (<see cref="WorldEventNoticeKind.Missed"/>) : les gardes tirent
+        /// leur issue ; s'il les a combattus et perdu, la caravane est pillée (décision de Damien du 21 novembre 2026).
+        /// </summary>
+        private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices)
+        {
+            bool absent = run.Occurrence.Event.Kind == WorldEventKind.Caravan && !run.Slots.Any(s => s.Fought || s.Hurt);
+            world.SettleEvent(run.Occurrence.Event, run.Occurrence, EventOutcome.Lost, absent ? WorldEventNoticeKind.Missed : WorldEventNoticeKind.Lost, notices);
+        }
 
         /// <summary>
         /// Referme la faille de l'événement <paramref name="eventId"/> : le personnage est à <see cref="CloseRange"/> de son centre, et aucun

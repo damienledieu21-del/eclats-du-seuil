@@ -414,4 +414,52 @@ public class V241CaravanesTests
         Assert.Equal(valid, trip.IsValid);
         if (!valid) Assert.Contains(trip.Report.Errors, x => x.Path == "$.data.caravans[0].metersPerMinute");
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #240 : dans une même session, le joueur resté ailleurs (secteur de la halte fermé, aucun bandit combattu) ;
+    /// l'attaque suit son cours et finit sans lui : elle est réglée comme une absence, et les gardes tirent leur issue (ici, ils tiennent :
+    /// la caravane passe, sans pillage).
+    /// </summary>
+    [Fact]
+    public void Session_continue_joueur_ailleurs_tirage_des_gardes()
+    {
+        ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z => z["data"]!.AsObject().Remove("events"));
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        ZoneDefinition essai = loaded.Zone!;
+        JsonObject root = JsonNode.Parse(Shipped)!.AsObject();
+        JsonObject c = root["data"]!["caravans"]![0]!.AsObject();
+        c["firstDay"] = 0;
+        c["start"] = "06:00";
+        c["route"] = new JsonArray(new JsonArray(20, 90), new JsonArray(380, 90), new JsonArray(500, 90));
+        JsonObject a = c["attack"]!.AsObject();
+        a.Remove("place");
+        a["chancePercent"] = 100;
+        a["minLevel"] = 1;
+        a["announceMinutes"] = 0;
+        a["durationMinutes"] = 10;
+        a["groups"] = new JsonArray(new JsonObject
+        {
+            ["id"] = "loups", ["weight"] = 1, ["position"] = new JsonArray(380, 90),
+            ["creatures"] = new JsonArray(new JsonObject { ["like"] = "loup_est", ["position"] = new JsonArray(384, 92) }),
+        });
+        CaravanLoadResult r = CaravanJsonReader.Read(root.ToJsonString(), essai, ItemsCatalog);
+        Assert.True(r.IsValid, r.Report.ToString());
+        ZoneDefinition zone = r.Book!.ApplyTo(essai);
+        WorldEventDefinition e = zone.EventOf(Attack)!;
+        var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
+        // Première occurrence où les gardes tiennent (avant la correction : toujours pillée).
+        EventOccurrence o = Enumerable.Range(1, 60).Select(d => WorldEventSchedule.InWindow(zone.Id, zone.Id, e, d)).OfType<EventOccurrence>()
+            .First(x => CaravanSchedule.GuardsHold(zone.Id, e, x));
+        long start = WorldEventSchedule.TickAt(clock, o.StartAt);
+        WorldSession w = V228b2cEvenementsTests.Open(zone, start - 40, "camp_ouest");
+        var notices = new List<WorldEventNotice>();
+        for (int i = 0; i < 80; i++) notices.AddRange(w.Step().Events);
+        Assert.True(w.EventsRuntime!.Running(Attack), "l'attaque n'a pas commencé");
+        for (int i = 0; i < 3000 && w.EventsRuntime.Running(Attack); i++) notices.AddRange(w.Step().Events);
+        Assert.False(w.EventsRuntime.Running(Attack));
+        Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.Escaped && n.Event == Attack);
+        Assert.DoesNotContain(notices, n => n.Kind == WorldEventNoticeKind.Lost && n.Event == Attack);
+        SavedEvent saved = w.EventEntry(e);
+        Assert.Equal((EventOutcome.None, 0L, o.Day), (saved.Outcome, saved.Lost, saved.Last));
+    }
 }
