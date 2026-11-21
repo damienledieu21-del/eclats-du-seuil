@@ -90,4 +90,26 @@ public class V2412CaravanesUnityTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    /// <summary>
+    /// Modèles Tripo des caravanes (dépense validée par Damien le 21 novembre 2026) versés à l'endroit où le menu les cherche : chacun a son
+    /// FBX reconnu par son nom, sa couleur et sa normale à côté ; les formes de remplacement restent pour un modèle absent.
+    /// </summary>
+    [Fact]
+    public void Modeles_Tripo_verses_et_reconnus()
+    {
+        string root = Path.Combine(Lot93UnityPackageTests.Root, "unity");
+        foreach (string name in CaravanLooks.Models)
+        {
+            string fbx = CaravanLooks.Folder + "/" + name + "/" + name + ".fbx";
+            Assert.True(File.Exists(Path.Combine(root, fbx)), fbx);
+            Assert.Equal(name, CaravanLooks.NameOf(fbx));
+            Assert.True(File.Exists(Path.Combine(root, CaravanLooks.Folder, name, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(root, CaravanLooks.Folder, name, name + "_normale.png")), name);
+            Assert.True(new FileInfo(Path.Combine(root, fbx)).Length < 2_000_000, name);   // allégé pour le mobile
+        }
+        // Aucun autre modèle dans le dossier (un nom inconnu ne serait pas branché).
+        string[] all = Directory.GetFiles(Path.Combine(root, CaravanLooks.Folder), "*.fbx", SearchOption.AllDirectories);
+        Assert.Equal(CaravanLooks.Models.Count, all.Length);
+    }
 }
