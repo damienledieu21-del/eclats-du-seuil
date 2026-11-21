@@ -477,6 +477,7 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.6 : cicatrices du Seuil (couleurs fanées, brume froide, pointes sombres).</summary>
         private ScarsView _scars;
         private CaravansView _caravans;   // sous-lot V2.41.2
+        private CorruptionDecorView _corruption;   // sous-lot V2.42.2
 
         /// <summary>Saisons : date fournie au cœur et saison exposée au rendu (teinte, neige, glace).</summary>
         private SeasonView _seasonView;
@@ -538,6 +539,8 @@ namespace EdS.Game
             _scars = null;
             _caravans?.Destroy();   // sous-lot V2.41.2
             _caravans = null;
+            _corruption?.Destroy();   // sous-lot V2.42.2
+            _corruption = null;
             _seasonView = null;   // saisons
             SeasonView.Clear();
             _snowCover?.Clear();   // V2.44.3
@@ -815,6 +818,8 @@ namespace EdS.Game
             _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             if (_caravans == null) _caravans = new CaravansView();   // sous-lot V2.41.2 : caravanes sur les routes
             _caravans.Sync(a, _camera.Camera.transform.position);
+            if (_corruption == null) _corruption = new CorruptionDecorView();   // sous-lot V2.42.2 : décor des terres corrompues et autels
+            _corruption.Sync(a, _camera.Camera.transform.position);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
@@ -872,6 +877,7 @@ namespace EdS.Game
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
+            if (a.AltarInReach != null) return a.Text("text.ui.corruption.purify");   // sous-lot V2.42.2 : purifier l'autel d'une terre corrompue
             // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
             if (a.DoorFirst && a.DoorInReach != null) return a.DoorHint;   // V2.43.4 : « fermée » devant la porte d'un lieu pas encore reconstruit
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
@@ -2000,7 +2006,7 @@ namespace EdS.Game
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
                 _hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity, true);
-                _hud.Clock(a.EventBanner ?? a.ScarLabel);   // V2.5 : « En cours : … » ; V2.6 : « Cicatrice du Seuil · palier 2 sur 4 »
+                _hud.Clock(a.EventBanner ?? a.ScarLabel ?? a.CorruptionLabel);   // V2.5 : « En cours : … » ; V2.6 : « Cicatrice du Seuil · palier 2 sur 4 »
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
             }
