@@ -314,6 +314,12 @@ public class V246GrotteTests
         Assert.Contains("Resources.Load<GameObject>(CaveLooks.Folder + name)", cave);           // modèles par leur nom
         Assert.Contains("CaveModel(CaveLooks.CurtainModel)", cave);
         Assert.Contains("RenderSettings.fogEndDistance = (float)CaveLooks.FogEnd;", style);
+        // Revue Codex de la PR #245 : les murs du pourtour, les parois et les piliers (formes ou modèles) cachent le personnage : occulteurs.
+        foreach (string side in new[] { "ouest", "est", "nord", "sud" }) Assert.Contains("RockWall(\"Roche " + side + "\"", cave);
+        Assert.DoesNotContain("Box(\"Roche ", cave);
+        Assert.Contains("return Prism(name, points, size.y, material, true, tile);", cave);
+        Assert.Contains("if (piece == CavePiece.Wall || piece == CavePiece.Pillar) AddModelOccluders(look);", cave);
+        Assert.Contains("piece == CavePiece.Wall || piece == CavePiece.Pillar, rockTile);", cave);
     }
 
     /// <summary>

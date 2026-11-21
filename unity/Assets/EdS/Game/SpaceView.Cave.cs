@@ -44,10 +44,10 @@ namespace EdS.Game
             // Sol de roche, un peu plus grand que l'aire ; tout autour, la roche monte (on ne voit jamais le vide).
             Box("Sol de la grotte", new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f), new Vector3(maxX - minX + 4f, 0.1f, maxZ - minZ + 4f), dark, rockTile);
             float h = (float)CaveLooks.WallHeight;
-            Box("Roche ouest", new Vector3(minX - 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);
-            Box("Roche est", new Vector3(maxX + 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);
-            Box("Roche nord", new Vector3((minX + maxX) / 2f, h / 2f, maxZ + 1f), new Vector3(maxX - minX + 4f, h, 2f), rock, rockTile);
-            Box("Roche sud", new Vector3((minX + maxX) / 2f, h / 2f, minZ - 1f), new Vector3(maxX - minX + 4f, h, 2f), rock, rockTile);
+            RockWall("Roche ouest", new Vector3(minX - 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);
+            RockWall("Roche est", new Vector3(maxX + 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);
+            RockWall("Roche nord", new Vector3((minX + maxX) / 2f, h / 2f, maxZ + 1f), new Vector3(maxX - minX + 4f, h, 2f), rock, rockTile);
+            RockWall("Roche sud", new Vector3((minX + maxX) / 2f, h / 2f, minZ - 1f), new Vector3(maxX - minX + 4f, h, 2f), rock, rockTile);
 
             foreach (SpaceObstacle o in space.Obstacles)
             {
@@ -110,6 +110,21 @@ namespace EdS.Game
                 Vector3 glow = at - outward * 1.5f;
                 _curtains.Add(CaveGlow("Jour du rideau (" + door.Id + ")", glow.x, glow.z, new Color(0.75f, 0.85f, 1f), 0f, (float)CaveLooks.CurtainReach));
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #245 : mur de roche du pourtour (6 m), enregistré comme occulteur (fondu ou coupé comme les autres murs
+        /// quand il cache le personnage), à la différence de <see cref="Box"/>.
+        /// </summary>
+        private GameObject RockWall(string name, Vector3 center, Vector3 size, Material material, float tile)
+        {
+            float y = center.y - size.y / 2f, hx = size.x / 2f, hz = size.z / 2f;
+            var points = new List<Vector3>
+            {
+                new Vector3(center.x - hx, y, center.z - hz), new Vector3(center.x + hx, y, center.z - hz),
+                new Vector3(center.x + hx, y, center.z + hz), new Vector3(center.x - hx, y, center.z + hz),
+            };
+            return Prism(name, points, size.y, material, true, tile);
         }
 
         /// <summary>Le modèle du kit pour cette pièce, posé dans l'emprise de l'obstacle ; faux sans lui.</summary>
