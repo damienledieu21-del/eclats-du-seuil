@@ -86,7 +86,7 @@ public class SaisonsV2443Tests
         string build = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsBuildShaders.cs"));
         Assert.Contains("Shader.Find(\"EdS/Neige\")", build);
         string game = Game("EdsGame.cs"), view = Game("SeasonView.cs"), space = Game("SpaceView.cs");
-        Assert.Contains("_snowCover.Sync(Time.deltaTime, a.Indoors, _arena.DecorRoot, CellStreamView.CurrentRoot)", game);
+        Assert.Contains("_snowCover.Sync(Time.deltaTime, a.Sheltered, _arena.DecorRoot, CellStreamView.CurrentRoot)", game);   // V2.46 : ni dans un dessous
         Assert.Contains("_snowCover?.Clear();", game);
         Assert.Contains("_EdsSnowPass", view);
         Assert.Contains("r.gameObject.name != WinterLook.OverlayName", space);   // le fondu des obstacles ignore la neige posée

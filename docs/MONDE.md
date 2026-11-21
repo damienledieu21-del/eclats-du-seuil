@@ -1384,12 +1384,23 @@ Limites du cœur : pas encore de contenu (zone, porte, paliers, meubles, recette
 
 ## Étages : le dessous (chantier V2.45)
 
-Recommandation du [plan de la grande carte](PLAN_GRANDE_CARTE.md#3-les-trois-étages-recommandation-sur-la-base-du-retenu) (§ 3), format dans [DONNEES.md](DONNEES.md#étages-dessous-et-genres-de-porte-chantier-v245). Aucun dessous livré pour l'instant : ils viennent avec la grotte de la cascade (V2.46), la mine (V2.47), les cryptes (V2.48), les égouts (V2.49), les galeries du Seuil (V2.50) et les grottes noyées (V2.50.1).
+Recommandation du [plan de la grande carte](PLAN_GRANDE_CARTE.md#3-les-trois-étages-recommandation-sur-la-base-du-retenu) (§ 3), format dans [DONNEES.md](DONNEES.md#étages-dessous-et-genres-de-porte-chantier-v245). Premier dessous livré : la grotte de la cascade (V2.46, [ci-dessous](#la-grotte-derrière-la-cascade-chantier-v246)) ; les autres viennent avec la mine (V2.47), les cryptes (V2.48), les égouts (V2.49), les galeries du Seuil (V2.50) et les grottes noyées (V2.50.1).
 
 - **Un dessous** est une zone à part (`floor: "dessous"`) reliée à la surface, à un intérieur ou à un autre dessous par des portes : porte, escalier, puits, trappe ou faille (les deux côtés du même genre). On y passe comme dans un intérieur : chargement court, sauvegarde à la porte d'en face, pas de passage en plein combat.
 - **Ses créatures** y vivent comme dehors (populations, laisse, réapparition, chefs) et partent à 8 m au moins de chaque porte (V2.45.1, retenu par Damien le 21 novembre 2026).
 - **Ses points sûrs** (camp de mineurs…) se découvrent et servent à la reprise (V2.28) ; **le voyage rapide n'y mène pas** (V2.45.2) ; on peut en partir par le voyage rapide, comme d'un intérieur (retenu par Damien le 21 novembre 2026).
-- **À l'abri** (V2.45.2) : on n'y entre jamais à cheval (retenu par Damien le 21 novembre 2026), et l'affichage n'y met ni neige ni glace pour l'instant (comme dans une pièce) ; la pluie au V2.46.
+- **À l'abri** (V2.45.2) : on n'y entre jamais à cheval (retenu par Damien le 21 novembre 2026), et l'affichage n'y met ni neige ni glace (comme dans une pièce) ; ni pluie depuis le V2.46 (`AdventureSession.Sheltered`).
+
+## La grotte derrière la cascade (chantier V2.46)
+
+Premier vrai dessous ([plan](PLAN_GRANDE_CARTE.md), ligne V2.46 ; format dans [DONNEES.md](DONNEES.md#étages-dessous-et-genres-de-porte-chantier-v245)).
+
+- **Entrée** : une porte (`porte_grotte_cascade`, genre « porte ») au pied de la falaise de la cascade, à l'est du bassin (600, 1 076), dans le lieu « Cascade » (niveau 10), à quelques pas du point sûr du pied de la cascade. On passe derrière le rideau d'eau : chargement court, comme une maison.
+- **La grotte** (`zone.grotte_cascade`, 40 × 36 m, de [−20, −4] à [20, 32]) : la **salle du rideau** (niveau 10) puis la **salle du bassin** (niveau 12), séparées par un pilier ; parois, stalagmites, bassin, cristaux du Seuil, éboulis, un vieux coffre près du gardien (décor). Point sûr « Derrière le rideau d'eau », à l'entrée (découvert en entrant, sert à la reprise ; le voyage rapide n'y mène pas).
+- **Créatures** (bestiaire existant, comme pour la vallée) : deux **échos** de jour comme de nuit (la grotte est sombre), un **ours** au fond ; toutes à 8 m au moins de la porte. Mêmes chiffres que l'écho de la vallée et l'ours de la forêt, portés au niveau des salles par la montée en niveau de la zone (mêmes réglages que les Vallons).
+- **Gardien et récompense** (recommandation appliquée, question à Damien dans la PR) : le **gardien de la grotte**, un grand ours à deux formes (la seconde, furieuse, fait tomber des pierres autour d'elle : cercle de 3,5 m annoncé), chef au sens des chefs des Vallons : à sa **première défaite**, l'**anneau de la cascade** (anneau rare nommé, niveau 12, +60 PV, +25 armure ; revendu 1 200), une fois (fait `fact.gardien_de_la_grotte.vaincu`) ; butin de l'ours à chaque fois. Options écartées : un coffre caché qui s'ouvre (pas de mécanisme de coffre avant les gabarits de petits points), des filons dans la grotte (les nœuds de récolte ne sont que dans la zone de l'histoire).
+- **Rendu** (Unity, `SpaceView.Cave`) : sol et murs de roche, **pénombre** froide et brume noire (`CaveLooks`), le jour qui passe par le rideau d'eau éclaire l'entrée et s'éteint la nuit, lueur des cristaux ; **ni pluie, ni neige, ni glace**, ni bêtes du dehors (`AdventureSession.Sheltered`). Les modèles du kit de grotte sont branchés par leur nom (`Resources/Grotte/<nom>`) ; sans eux, des formes simples.
+- **Limites** : la grotte n'a pas de voûte affichée (la caméra la voit d'en haut) ; le coffre est un décor ; les modèles du kit ne sont pas encore faits (aucune dépense engagée).
 
 ## Sauvegarde
 

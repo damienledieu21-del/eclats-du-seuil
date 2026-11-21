@@ -1189,6 +1189,13 @@ Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : �
 - **Modèles** : les 11 plats `Modeles/Fetes/F01_P01` … `F12_P01` (sans celui du Carnaval) et le masque `F03_R01` (même chaîne que les décorations : maillage réduit à 2 500 faces, couleur JPEG 512, normale PNG 512 ; 5,3 Mo pour les 12), rangés par le menu avec les autres (`StyleCatalog.Feasts`).
 - Essais : `V2563AccessoiresDeFeteTests`, `FetesF4EtalTests` (72 dossiers : 60 décorations, 11 plats, le masque). Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; décalages (visage, poitrine, main) fixés à la main ; le masque est plus petit que sa cote du dossier (échelle Tripo : 0,125 m de large pour 0,22) ; la main droite ne se ferme pas sur le plat.
 
+## La grotte derrière la cascade (chantier V2.46, 21 novembre 2026)
+
+- **Un dessous** (`AdventureMap.Underground`) est dessiné par `SpaceView.Cave` : sol et murs de roche autour de l'aire, chaque obstacle selon sa pièce (`CaveLooks.PieceFor` : paroi, stalagmites, pilier, bassin d'eau, cristaux qui luisent, éboulis, coffre), le **rideau d'eau** sur la porte et le jour qui passe à travers (lumière qui suit l'heure : éteinte la nuit).
+- **Pénombre** : `StyleWorld.SetCave` passe à l'abri comme une pièce (ni ciel, ni soleil) avec la lumière froide et la brume presque noire de `CaveLooks` (de 5 à 24 m). La pluie (`WeatherFx`), la neige au sol (`SnowCover`) et les voix des bêtes du dehors suivent `AdventureSession.Sheltered` (intérieur ou dessous) : la pluie restait affichée dans un dessous (noté au V2.45.2), c'est corrigé.
+- **Modèles du kit** : `Assets/Resources/Grotte/<nom>` (`paroi_grotte`, `stalagmites`, `pilier_grotte`, `rideau_d_eau`, `bassin_grotte`, `cristaux_grotte`, `eboulis_grotte`, `coffre_grotte` ; `CaveLooks.Models`), étirés à l'emprise de leur obstacle, sans collision. Tant qu'un modèle manque, une forme simple le remplace (prisme de roche, cônes pour les stalagmites, nappe d'eau). Le kit est préparé dans l'atelier (`Grotte/modeles.json`, `tripo_grotte.py`) et **n'est pas lancé** (dépense à valider par Damien).
+- **À essayer** : entrer par la porte au pied de la cascade (à l'est du bassin), vérifier la pénombre, l'absence de pluie quand il pleut dehors, le jour du rideau d'eau de jour et de nuit, le gardien au fond de la salle du bassin.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

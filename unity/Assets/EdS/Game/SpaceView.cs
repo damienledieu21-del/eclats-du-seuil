@@ -159,6 +159,13 @@ namespace EdS.Game
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
             _ice = IceOf(_water);   // V2.44.3 : la bande du lac gelé (seule eau qui gèle)
 
+            // Chantier V2.46 : un dessous (la grotte de la cascade) : roche, pénombre, rideau d'eau, sans terrain, herbe, ciel ni pluie.
+            if (map != null && map.Underground)
+            {
+                _rivers = new List<List<Vector3>>();
+                Cave(space, map);
+                return;
+            }
             // Intérieurs : une pièce (plancher, murs, meubles, lumières), sans terrain, herbe ni ciel.
             if (map != null && map.Indoor)
             {
@@ -1990,7 +1997,8 @@ namespace EdS.Game
         {
             _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
             Walk(deltaTime);   // essai réaliste 8 : les passants du bourg
-            if (_indoor) Flicker();   // intérieurs : le feu, les bougies et les lanternes vacillent
+            if (_indoor) Flicker();
+            if (_cave) CaveDaylight(1f - StyleWorld.NightShare);   // V2.46 : le jour du rideau d'eau suit l'heure   // intérieurs : le feu, les bougies et les lanternes vacillent
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             bool underRoof = _hasRoof && player.x >= _roofMin.x && player.x <= _roofMax.x && player.z >= _roofMin.z && player.z <= _roofMax.z;
@@ -2196,6 +2204,8 @@ namespace EdS.Game
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             StyleWorld.SetRelief(null);   // V2.24 : plus de relief sous les pieds
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
+            if (_cave) StyleWorld.SetCave(false);   // V2.46 : sortie de la grotte
+            if (_caveCrystal != null) Object.Destroy(_caveCrystal);
             ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
             ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
             ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
