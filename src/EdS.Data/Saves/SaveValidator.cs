@@ -396,7 +396,7 @@ namespace EdS.Data.Saves
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
                 Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards, Feasts, Rebuilds, home, Corruption);
 
-        /// <summary>Sous-lot V2.42.1 (version 31) : autels purifiés du personnage (jour de la dernière purification par terre) ; vide : aucun.</summary>
+        /// <summary>Sous-lot V2.42.1 (version 32) : autels purifiés du personnage (jour de la dernière purification par terre) ; vide : aucun.</summary>
         public SavedCorruption Corruption { get; }
 
         /// <summary>Sous-lot V2.42.1 : même personnage avec d'autres autels purifiés.</summary>
@@ -774,14 +774,15 @@ namespace EdS.Data.Saves
         /// entre 0 et <c>last</c>, avec au moins un échec ; écrit seulement s'il est connu. Le contrecoup d'un pillage dure ainsi ses jours
         /// même si une occurrence plus récente est réussie. Une sauvegarde de version 29 ou antérieure est lue telle quelle (jour inconnu : le
         /// contrecoup suit la dernière issue, comme avant) et mise à jour ; elle n'a pas de <c>lostDay</c>.</remarks>
-        /// <remarks>Version 31 (corruption qui s'étend et recule, <see cref="CorruptionSince"/>, sous-lot V2.42.1) : <c>corruption</c>
+        /// <remarks>Version 32 (corruption qui s'étend et recule, <see cref="CorruptionSince"/>, sous-lot V2.42.1 ; la version 31 est celle de la
+        /// quête de reprise des caravanes, PR #243, fusionnée avant : ses champs s'assembleront à ceux-ci à la fusion de main) : <c>corruption</c>
         /// facultatif dans le personnage (absent tant qu'aucun autel n'est purifié) : par terre (<c>corruption.json</c>, ordre ordinal), le jour
-        /// du monde de la dernière purification de son autel. Une sauvegarde de version 30 ou antérieure est lue telle quelle (aucun autel
+        /// du monde de la dernière purification de son autel. Une sauvegarde de version 31 ou antérieure est lue telle quelle (aucun autel
         /// purifié) et mise à jour ; elle n'a pas de <c>corruption</c>.</remarks>
-        public const int CurrentSchemaVersion = 31;
+        public const int CurrentSchemaVersion = 32;
 
         /// <summary>Corruption : version où les autels purifiés (<c>corruption</c>) entrent dans la sauvegarde.</summary>
-        public const int CorruptionSince = 31;
+        public const int CorruptionSince = 32;
 
         /// <summary>Jour du dernier échec : version où <c>lostDay</c> entre dans le registre des événements.</summary>
         public const int EventLostDaySince = 30;
@@ -1349,7 +1350,7 @@ namespace EdS.Data.Saves
             }
             else if (c.Home != null) CheckHome(c.Home, path + ".home", version, report);
             else if (c.Present.Contains("home")) Missing(report, path + ".home", "maison");
-            // Sous-lot V2.42.1 (version 31) : autels purifiés, facultatif ; une sauvegarde antérieure n'en a pas.
+            // Sous-lot V2.42.1 (version 32) : autels purifiés, facultatif ; une sauvegarde antérieure n'en a pas.
             if (version < CorruptionSince)
             {
                 if (c.Present.Contains("corruption") || c.Corruption != null)
@@ -1432,7 +1433,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>
-        /// Sous-lot V2.42.1 (version 31) : autels purifiés : au moins un, au plus <see cref="SavedCorruption.MaxEntries"/>, terres bien formées en
+        /// Sous-lot V2.42.1 (version 32) : autels purifiés : au moins un, au plus <see cref="SavedCorruption.MaxEntries"/>, terres bien formées en
         /// ordre ordinal sans doublon, jour de la dernière purification dans [0, <see cref="SavedEvent.MaxDay"/>].
         /// </summary>
         private static void CheckCorruption(List<KeyValuePair<string, long?>> x, string path, ValidationReport report)

@@ -35,7 +35,7 @@ namespace EdS.World
 
         private CorruptionBook? ActiveCorruption => _corruption != null && Definition?.Id == _corruption.ZoneId ? _corruption : null;
 
-        /// <summary>Sous-lot V2.42.1 : autels purifiés du personnage (sauvegarde v31).</summary>
+        /// <summary>Sous-lot V2.42.1 : autels purifiés du personnage (sauvegarde v32).</summary>
         public SavedCorruption CorruptionState => _character.Corruption;
 
         /// <summary>Sous-lot V2.42.1 : annonces de la corruption du dernier tick (<see cref="Step"/>).</summary>

@@ -119,7 +119,7 @@ namespace EdS.Data.Saves
         /// <summary>Lieux reconstruits (version 28) : chantiers par lieu, dans l'ordre lu (facultatif).</summary>
         public List<KeyValuePair<string, SavedRebuildData?>>? Rebuilds { get; set; }
 
-        /// <summary>Sous-lot V2.42.1 (version 31) : autels purifiés, terre → jour de la dernière purification.</summary>
+        /// <summary>Sous-lot V2.42.1 (version 32) : autels purifiés, terre → jour de la dernière purification.</summary>
         public List<KeyValuePair<string, long?>>? Corruption { get; set; }
 
         /// <summary>Maison du joueur (version 29) : paliers, apports, meubles posés, coffre (facultatif : absente tant qu'elle n'est pas achetée).</summary>

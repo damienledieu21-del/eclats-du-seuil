@@ -85,7 +85,7 @@ public class V228RepriseTests : IDisposable
     [Fact]
     public void Version_19_point_de_reprise_ecrit_relu_canonique()
     {
-        Assert.Equal((31, 19), (SaveValidator.CurrentSchemaVersion, SaveValidator.ResumeSince));
+        Assert.Equal((32, 19), (SaveValidator.CurrentSchemaVersion, SaveValidator.ResumeSince));
         var save = new WorldSave("zone.vallons", 1200, 3, new[] { "zone.vallons/safe/place_du_bourg" }, null, false, null, new SavedResume("place_du_bourg", "s07_06"));
         string written = SaveJsonReader.Write(save);
         Assert.Contains(SaveVersion.Current, written, StringComparison.Ordinal);
