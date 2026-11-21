@@ -1389,7 +1389,7 @@ Recommandation du [plan de la grande carte](PLAN_GRANDE_CARTE.md#3-les-trois-ét
 - **Un dessous** est une zone à part (`floor: "dessous"`) reliée à la surface, à un intérieur ou à un autre dessous par des portes : porte, escalier, puits, trappe ou faille (les deux côtés du même genre). On y passe comme dans un intérieur : chargement court, sauvegarde à la porte d'en face, pas de passage en plein combat.
 - **Ses créatures** y vivent comme dehors (populations, laisse, réapparition, chefs) et partent à 8 m au moins de chaque porte (V2.45.1, retenu par Damien le 21 novembre 2026).
 - **Ses points sûrs** (camp de mineurs…) se découvrent et servent à la reprise (V2.28) ; **le voyage rapide n'y mène pas** (V2.45.2) ; on peut en partir par le voyage rapide, comme d'un intérieur (retenu par Damien le 21 novembre 2026).
-- **À l'abri** (V2.45.2) : on n'y entre jamais à cheval (retenu par Damien le 21 novembre 2026), et l'affichage n'y met ni pluie, ni neige, ni glace (comme dans une pièce).
+- **À l'abri** (V2.45.2) : on n'y entre jamais à cheval (retenu par Damien le 21 novembre 2026), et l'affichage n'y met ni neige ni glace pour l'instant (comme dans une pièce) ; la pluie au V2.46.
 
 ## Sauvegarde
 

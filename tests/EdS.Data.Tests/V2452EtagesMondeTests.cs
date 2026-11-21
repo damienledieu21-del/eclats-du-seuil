@@ -28,11 +28,11 @@ public class V2452EtagesMondeTests
     private static PointData Point(int x, int z) => new() { X = Fixed.FromInt(x), Z = Fixed.FromInt(z) };
 
     /// <summary>Zone d'essai sur le scénario des Vallons d'un bloc (le loup peuplé), sans région, à l'étage <paramref name="floor"/>.</summary>
-    private static ZoneDefinition Zone(string floor, bool indoor = false)
+    private static ZoneDefinition Zone(string floor, bool indoor = false, string id = "zone.grotte")
     {
         var data = new ZoneData
         {
-            Id = "zone.grotte",
+            Id = id,
             Name = "Grotte",
             Scenario = "zones/vallons",
             Entry = "place",
@@ -49,8 +49,8 @@ public class V2452EtagesMondeTests
         return r.Zone!;
     }
 
-    private static WorldSession Open(ZoneDefinition zone) =>
-        new(new WorldSave(zone.Id, 0, 0, Array.Empty<string>(),
+    private static WorldSession Open(ZoneDefinition zone, params string[] registry) =>
+        new(new WorldSave(zone.Id, 0, 0, registry,
             PlayerCharacters.Create("bastion", "class.bastion", Progression).WithMount(PlayerCharacters.Horse)), zone, ShippedData, Progression, Items);
 
     [Fact]
@@ -85,5 +85,17 @@ public class V2452EtagesMondeTests
         Assert.True(below.IsDiscovered(under, "place"));
         Assert.Equal(TravelRefusal.UnknownPlace, below.CanTravel(under, "place"));   // découvert, mais pas une destination
         Assert.True(under.Sheltered && !surface.Sheltered);
+    }
+
+    /// <summary>Relecture indépendante : on part d'un dessous par le voyage rapide vers un point sûr de surface découvert.</summary>
+    [Fact]
+    public void Le_voyage_rapide_est_permis_depuis_un_dessous()
+    {
+        ZoneDefinition surface = Zone("surface", id: "zone.vallons_essai"), under = Zone("dessous");
+        WorldSession below = Open(under, surface.SafePointKey("place"));
+        below.Step();
+        Assert.True(below.IsDiscovered(surface, "place"));
+        Assert.Equal(TravelRefusal.None, below.CanTravel(surface, "place"));
+        Assert.Equal(TravelRefusal.NotDiscovered, Open(under).CanTravel(surface, "place"));   // sans la découverte, non
     }
 }
