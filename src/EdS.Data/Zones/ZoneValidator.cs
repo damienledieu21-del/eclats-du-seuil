@@ -511,7 +511,7 @@ namespace EdS.Data.Zones
         /// </summary>
         internal ZoneDefinition WithCaravanAttacks(IEnumerable<WorldEventDefinition> attacks) =>
             new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, Populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region, Floor);
 
         internal ZoneDefinition WithSeasons(IReadOnlyDictionary<string, PopulationSeasons> seasons)
         {

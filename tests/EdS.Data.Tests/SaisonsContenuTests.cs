@@ -296,6 +296,63 @@ public class SaisonsContenuTests
         }
     }
 
+    /// <summary>
+    /// Revue Codex de la PR #239 : en hiver, la surface montre la neige, le col et la glace ; un dessous (même zone, étage « dessous ») n'en montre
+    /// aucune et l'ambiance y est celle d'une pièce (<c>Mood().Indoors</c>) : <c>Sheltered</c> compte, pas seulement <c>Indoor</c>.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void L_affichage_d_hiver_suit_l_abri_d_un_dessous(bool underground)
+    {
+        string data = ScenarioTestData.CopyData((file, text) =>
+        {
+            if (!underground || file != "world/zones/vallons.json") return text;
+            JsonObject root = JsonNode.Parse(text)!.AsObject();
+            root["schemaVersion"] = ZoneValidator.CurrentSchemaVersion;
+            root["data"]!["floor"] = "dessous";
+            // Règle du dessous : aucune créature à moins de 8 m d'une porte. Cinq portes du village y manquent : elles sont déplacées d'autant.
+            var moved = new Dictionary<string, double[]>
+            {
+                ["souvenir"] = new[] { -24.0, 17 }, ["porte_grange"] = new[] { -93.8, -50.4 }, ["porte_moulin_interieur"] = new[] { -8.0, 6 },
+                ["porte_tour"] = new[] { 23.2, 70.9 }, ["porte_dortoir_abbaye"] = new[] { 1658.0, 97 },
+            };
+            foreach (JsonNode? door in root["data"]!["doors"]!.AsArray())
+                if (moved.TryGetValue((string)door!["id"]!, out double[]? at)) door["position"] = new JsonArray(at[0], at[1]);
+            return root.ToJsonString();
+        });
+        string folder = Path.Combine(Path.GetTempPath(), "eds_abri_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string savePath = Path.Combine(folder, "partie", "sauvegarde.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+            SaveStore.Write(savePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(),
+                PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, Progression)));
+            AdventureSession a = AdventureSession.Load(data, ScenariosDirectory, savePath);
+            a.SetCivilTime(Utc(2027, 1, 20));
+            a.Advance(0.05);
+            Assert.Equal(underground, a.World.Definition!.Underground);
+            SeasonLook look = a.SeasonShown;
+            if (underground)
+            {
+                Assert.Equal(0f, look.Snow);
+                Assert.Equal(0f, look.PassSnow);
+                Assert.Equal(0f, look.Ice);
+            }
+            else
+            {
+                Assert.Equal(SeasonLook.WinterSnow, look.Snow);   // la surface, elle, a la neige (et pas de pièce)
+                Assert.True(look.Snow > 0f);
+            }
+            Assert.Equal(underground, a.Mood().Indoors);
+        }
+        finally
+        {
+            Directory.Delete(data, true);
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
     [Fact]
     public void L_aventure_recoit_la_date_de_l_hote_et_la_garde()
     {

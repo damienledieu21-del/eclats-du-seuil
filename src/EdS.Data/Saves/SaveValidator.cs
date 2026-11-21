@@ -760,7 +760,15 @@ namespace EdS.Data.Saves
         /// cases de 0,25 m, rangés par case) et places du coffre (comme l'inventaire). Voir <see cref="SavedHome"/>. L'accord avec le catalogue
         /// est vérifié quand la partie reprend. Une sauvegarde de version 28 ou antérieure est lue telle quelle (pas de maison) et mise à
         /// jour ; elle n'a pas de <c>home</c>.</remarks>
-        public const int CurrentSchemaVersion = 29;
+        /// <remarks>Version 30 (jour du dernier échec d'un événement, <see cref="EventLostDaySince"/>, revue Codex de la PR #240, V2.41.1) :
+        /// <c>lostDay</c> facultatif sur une ligne du registre des événements (<c>events[]</c>) : jour du monde de la dernière occurrence manquée,
+        /// entre 0 et <c>last</c>, avec au moins un échec ; écrit seulement s'il est connu. Le contrecoup d'un pillage dure ainsi ses jours
+        /// même si une occurrence plus récente est réussie. Une sauvegarde de version 29 ou antérieure est lue telle quelle (jour inconnu : le
+        /// contrecoup suit la dernière issue, comme avant) et mise à jour ; elle n'a pas de <c>lostDay</c>.</remarks>
+        public const int CurrentSchemaVersion = 30;
+
+        /// <summary>Jour du dernier échec : version où <c>lostDay</c> entre dans le registre des événements.</summary>
+        public const int EventLostDaySince = 30;
 
         /// <summary>Maison du joueur : version où la maison (<c>home</c>) entre dans la sauvegarde.</summary>
         public const int HomeSince = 29;
@@ -1215,7 +1223,7 @@ namespace EdS.Data.Saves
                     report.Add(path + ".events", ValidationCode.UnknownField, $"champ inconnu en version {version} (registre des événements : version {EventsSince}).");
             }
             else if (c.Events is null) Missing(report, path + ".events", "registre des événements du monde, éventuellement vide");
-            else CheckEvents(c.Events, path + ".events", report);
+            else CheckEvents(c.Events, path + ".events", report, version);
             // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes ; une sauvegarde antérieure n'en a aucune.
             if (version < ScarsSince)
             {
@@ -1337,7 +1345,7 @@ namespace EdS.Data.Saves
                 version < ItemStateSince ? 0 : c.Crafts!.Value,
                 version < BoonsSince ? null : c.Boons!.Select(b => new SavedBoon(BoonKindOf(b!.Kind!), b.Item!, b.Ticks!.Value)),
                 version < EventsSince ? null : c.Events!.Select(e => new SavedEvent(e!.Id!, e.Won!.Value, e.Lost!.Value, e.Last!.Value,
-                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false)),
+                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false, e.LostDay ?? -1)),
                 version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)),
                 c.Stock?.Select(x => new SavedStock(x!.Id!, x.Bought!.Value, x.Resold!.Value, x.Day!.Value)),
                 c.Look is null ? null : new SavedLook(c.Look.Body!, c.Look.Hair!.Value, c.Look.Beard!.Value, c.Look.Dark!.Value, c.Look.HairTone!.Value, c.Look.Palette!.Value),
@@ -1774,7 +1782,7 @@ namespace EdS.Data.Saves
         /// -1 (aucun) à <see cref="SavedEvent.MaxDay"/> ; issue « none », « won » ou « lost » (« none » seule possible sans jour) ; <c>owed</c>
         /// facultatif, écrit seulement vrai, et seulement après une réussite.
         /// </summary>
-        private static void CheckEvents(List<SavedEventData?> events, string path, ValidationReport report)
+        private static void CheckEvents(List<SavedEventData?> events, string path, ValidationReport report, int version)
         {
             if (events.Count > SavedEvent.MaxEntries)
             {
@@ -1802,6 +1810,15 @@ namespace EdS.Data.Saves
                 else if (e.Outcome != "none" && e.Last < 0) report.Add(p + ".outcome", ValidationCode.InvalidValue, "une issue demande le jour de son occurrence (last).");
                 if (e.Owed == false) report.Add(p + ".owed", ValidationCode.InvalidValue, "écrit seulement vrai (absent : rien n'est dû).");
                 else if (e.Owed == true && e.Won is long won && won < 1) report.Add(p + ".owed", ValidationCode.InvalidValue, "une récompense due demande une réussite.");
+                // Version 30 (revue Codex de la PR #240) : jour de la dernière occurrence manquée, facultatif.
+                if (e.LostDay is long lostDay)
+                {
+                    if (version < EventLostDaySince)
+                        report.Add(p + ".lostDay", ValidationCode.UnknownField, $"champ inconnu en version {version} (jour du dernier échec : version {EventLostDaySince}).");
+                    else if (lostDay < 0 || lostDay > SavedEvent.MaxDay || (e.Last is long l && lostDay > l))
+                        report.Add(p + ".lostDay", ValidationCode.OutOfRange, "jour hors de [0, last] (écrit seulement s'il est connu).");
+                    else if (e.Lost is long lost && lost < 1) report.Add(p + ".lostDay", ValidationCode.InvalidValue, "un jour d'échec demande un échec.");
+                }
             }
         }
 

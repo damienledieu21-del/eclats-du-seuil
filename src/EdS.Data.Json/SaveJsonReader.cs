@@ -237,6 +237,7 @@ namespace EdS.Data.Json
                             ["last"] = (ev2, ep) => ev.Last = input.Int64(ev2, ep),
                             ["outcome"] = (ev2, ep) => ev.Outcome = input.Text(ev2, ep),
                             ["owed"] = (ev2, ep) => ev.Owed = input.Boolean(ev2, ep),
+                            ["lostDay"] = (ev2, ep) => ev.LostDay = input.Int64(ev2, ep),
                         });
                         return eok ? ev : null;
                     });
@@ -864,6 +865,7 @@ namespace EdS.Data.Json
                     b.Append("        {\"id\": \"").Append(e.Id).Append('"').Append(", \"won\": ").Append(e.Won.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"lost\": ").Append(e.Lost.ToString(CultureInfo.InvariantCulture)).Append(", \"last\": ").Append(e.Last.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"outcome\": \"").Append(SavedEvent.OutcomeNames[(int)e.Outcome]).Append('"').Append(e.Owed ? ", \"owed\": true" : "")
+                        .Append(e.LostDay >= 0 ? ", \"lostDay\": " + e.LostDay.ToString(CultureInfo.InvariantCulture) : "")
                         .Append(i + 1 < c.Events.Count ? "},\n" : "}\n");
                 }
                 b.Append("      ],\n");
