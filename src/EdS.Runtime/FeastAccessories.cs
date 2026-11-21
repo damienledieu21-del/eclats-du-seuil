@@ -74,5 +74,32 @@ namespace EdS.Runtime
         /// </summary>
         public static FeastAccessory? For(int feast, HumanOutfit outfit) =>
             outfit == HumanOutfit.Guard || outfit == HumanOutfit.Bandit || outfit == HumanOutfit.Hero ? null : Of(feast);
+
+        /// <summary>
+        /// L'accessoire à poser sur un habitant au moment de l'habiller (revue Codex de la PR #237) : rien pour le héros
+        /// (<paramref name="hero"/>), sans la vraie tenue de fête (<paramref name="festiveClothes"/>) ou hors fête d'Orsédia
+        /// (<paramref name="festival"/>) ; sinon <see cref="For"/>.
+        /// </summary>
+        public static FeastAccessory? Worn(int feast, HumanOutfit outfit, bool hero, bool festiveClothes, bool festival) =>
+            hero || !festiveClothes || !festival ? null : For(feast, outfit);
+
+        /// <summary>
+        /// Vrai si l'os nommé <paramref name="name"/> porte l'accessoire de place <paramref name="place"/> (noms des Universal Base
+        /// Characters, de Quaternius et de Mixamo) : la tête pour le masque, la main droite pour le plat.
+        /// </summary>
+        public static bool IsBone(string? name, FeastAccessoryPlace place)
+        {
+            string n = name ?? string.Empty, low = n.ToLowerInvariant();
+            switch (place)
+            {
+                case FeastAccessoryPlace.Face:
+                    return low == "head" || low.EndsWith(":head", StringComparison.Ordinal);
+                case FeastAccessoryPlace.Chest:
+                    return low == "spine_03" || low == "chest" || low == "spine.003" || n.EndsWith("Spine2", StringComparison.Ordinal);
+                default:
+                    return n.EndsWith("RightHand", StringComparison.Ordinal) || low == "hand_r" || low == "hand.r"
+                        || low.EndsWith(":hand_r", StringComparison.Ordinal);
+            }
+        }
     }
 }

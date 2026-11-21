@@ -553,7 +553,7 @@ namespace EdS.Game
             }
             // V2.56.3 (relecture indépendante) : les PNJ faits dans MakeHuman portent aussi le plat ou le masque de la fête (avant le
             // rattachement au corps, dans la pose où ils sont habillés), si les vrais vêtements sont en service.
-            if (slot != StyleSlot.Hero && catalog.HumanClothes && HumanBodies.Festival) FeastAccessoryLook.Attach(model, HumanOutfit.Peasant, HumanBodies.Feast);
+            FeastAccessoryLook.Attach(model, FeastAccessories.Worn(HumanBodies.Feast, HumanOutfit.Peasant, slot == StyleSlot.Hero, catalog.HumanClothes, HumanBodies.Festival));
             Vector3 hs = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
             float hk = look.transform.localScale.y;
@@ -611,7 +611,7 @@ namespace EdS.Game
                 }
                 // V2.56.3 : un jour de fête d'Orsédia, les habitants en tenue de fête portent son accessoire (pas le héros).
                 // Relecture indépendante : seulement à qui reçoit vraiment la tenue de fête (vrais vêtements en service : pas de plan sans eux).
-                if (slot != StyleSlot.Hero && clothes != null && clothes.Festive && HumanBodies.Festival) FeastAccessoryLook.Attach(model, person.Outfit, HumanBodies.Feast);
+                FeastAccessoryLook.Attach(model, FeastAccessories.Worn(HumanBodies.Feast, person.Outfit, slot == StyleSlot.Hero, clothes != null && clothes.Festive, HumanBodies.Festival));
                 Vector3 hs = body.transform.localScale;
                 look.transform.SetParent(body.transform, false);
                 float hk = look.transform.localScale.y;

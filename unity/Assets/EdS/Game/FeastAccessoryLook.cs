@@ -10,10 +10,9 @@ namespace EdS.Game
     /// </summary>
     public static class FeastAccessoryLook
     {
-        /// <summary>Pose l'accessoire de la fête <paramref name="feast"/> sur le corps <paramref name="model"/> de tenue <paramref name="outfit"/> ; faux si rien n'est posé.</summary>
-        public static bool Attach(GameObject model, HumanOutfit outfit, int feast)
+        /// <summary>Pose l'accessoire <paramref name="accessory"/> (<see cref="FeastAccessories.Worn"/>, null : rien) sur le corps <paramref name="model"/> ; faux si rien n'est posé.</summary>
+        public static bool Attach(GameObject model, FeastAccessory accessory)
         {
-            FeastAccessory accessory = FeastAccessories.For(feast, outfit);
             StyleCatalog catalog = StyleCatalog.Loaded;
             GameObject prefab = accessory != null && catalog != null ? catalog.FeastModel(accessory.Code) : null;
             if (prefab == null || model == null) return false;
@@ -50,25 +49,11 @@ namespace EdS.Game
             return true;
         }
 
-        /// <summary>L'os de la place <paramref name="place"/> (noms des Universal Base Characters, de Quaternius et de Mixamo), ou null.</summary>
+        /// <summary>L'os de la place <paramref name="place"/> (<see cref="FeastAccessories.IsBone"/>), ou null.</summary>
         private static Transform Bone(Transform root, FeastAccessoryPlace place)
         {
             foreach (Transform t in root.GetComponentsInChildren<Transform>())
-            {
-                string n = t.name ?? string.Empty, low = n.ToLowerInvariant();
-                switch (place)
-                {
-                    case FeastAccessoryPlace.Face:
-                        if (low == "head" || low.EndsWith(":head")) return t;
-                        break;
-                    case FeastAccessoryPlace.Chest:
-                        if (low == "spine_03" || low == "chest" || low == "spine.003" || n.EndsWith("Spine2")) return t;
-                        break;
-                    default:
-                        if (n.EndsWith("RightHand") || low == "hand_r" || low == "hand.r" || low.EndsWith(":hand_r")) return t;
-                        break;
-                }
-            }
+                if (FeastAccessories.IsBone(t.name, place)) return t;
             return null;
         }
     }
