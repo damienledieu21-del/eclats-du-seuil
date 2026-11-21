@@ -82,8 +82,8 @@ Shader "EdS/Feuillage"
         // V2.44.3 : neige au point de hauteur y : celle de la plaine, ou celle du col au-dessus de sa limite (fondu en dessous).
         half EdsSnowAt(float y)
         {
-            half pass = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
-            return max(_EdsSnow, pass);
+            half colSnow = _EdsSnowPass.x * saturate((y - (_EdsSnowPass.y - _EdsSnowPass.z)) / max(_EdsSnowPass.z, 0.01));
+            return max(_EdsSnow, colSnow);
         }
 
         half3 EdsSeason(half3 albedo, half up, float y)
