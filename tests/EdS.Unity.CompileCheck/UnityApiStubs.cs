@@ -341,6 +341,7 @@ namespace UnityEditor.Build
 }
 namespace UnityEditor
 {
+    public enum BuildTargetGroup { Unknown = 0, Standalone = 1, Android = 7 }
     public enum IconKind { Any = -1, Application = 0 }
     public class PlatformIconKind { }
     public class PlatformIcon { public int maxLayerCount => 1; public UnityEngine.Texture2D GetTexture(int layer) => null; public void SetTexture(UnityEngine.Texture2D texture, int layer) { } }
@@ -348,7 +349,6 @@ namespace UnityEditor
     {
         public static UnityEngine.Texture2D[] GetIcons(UnityEditor.Build.NamedBuildTarget target, IconKind kind) => null;
         public static void SetIcons(UnityEditor.Build.NamedBuildTarget target, UnityEngine.Texture2D[] icons, IconKind kind) { }
-        public static PlatformIconKind[] GetSupportedIconKindsForNamedBuildTarget(UnityEditor.Build.NamedBuildTarget target) => null;
         public static PlatformIcon[] GetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind) => null;
         public static void SetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind, PlatformIcon[] icons) { }
     }

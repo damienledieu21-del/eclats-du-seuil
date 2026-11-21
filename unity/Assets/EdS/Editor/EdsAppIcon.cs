@@ -41,7 +41,7 @@ namespace EdS.Game.Editor
                 if (!empty && !replace) return;
                 Fill(NamedBuildTarget.Unknown, icon, replace);
                 Fill(NamedBuildTarget.Android, icon, replace);
-                foreach (PlatformIconKind kind in PlayerSettings.GetSupportedIconKindsForNamedBuildTarget(NamedBuildTarget.Android))
+                foreach (PlatformIconKind kind in SupportedAndroidIconKinds())
                 {
                     PlatformIcon[] icons = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, kind);
                     bool single = icons.Length > 0;
@@ -59,6 +59,21 @@ namespace EdS.Game.Editor
             {
                 Debug.LogWarning("Éclats du Seuil : icône de l'application non appliquée : " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// Les sortes d'icônes Android, cherchées par réflexion : le nom de l'API change selon la version d'Unity
+        /// (<c>GetSupportedIconKinds(NamedBuildTarget)</c> dans Unity 6, <c>GetSupportedIconKindsForPlatform(BuildTargetGroup)</c> avant).
+        /// Aucune trouvée : liste vide, seule l'icône par défaut est posée.
+        /// </summary>
+        private static PlatformIconKind[] SupportedAndroidIconKinds()
+        {
+            var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static;
+            var byTarget = typeof(PlayerSettings).GetMethod("GetSupportedIconKinds", flags, null, new[] { typeof(NamedBuildTarget) }, null);
+            if (byTarget != null) return byTarget.Invoke(null, new object[] { NamedBuildTarget.Android }) as PlatformIconKind[] ?? new PlatformIconKind[0];
+            var byGroup = typeof(PlayerSettings).GetMethod("GetSupportedIconKindsForPlatform", flags, null, new[] { typeof(BuildTargetGroup) }, null);
+            if (byGroup != null) return byGroup.Invoke(null, new object[] { BuildTargetGroup.Android }) as PlatformIconKind[] ?? new PlatformIconKind[0];
+            return new PlatformIconKind[0];
         }
 
         private static void Fill(NamedBuildTarget target, Texture2D icon, bool replace)
