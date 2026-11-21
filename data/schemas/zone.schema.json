@@ -24,9 +24,10 @@
         11,
         12,
         13,
-        14
+        14,
+        15
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux). Version 15 (chantier V2.45.1, étages) : floor (« surface » ou « dessous ») sur la zone et kind sur une porte (porte, escalier, puits, trappe, faille) ; dans un dessous, une créature (population, première forme d'un chef) part à 8 m au moins de chaque porte ; bornes relevées (64 portes, 256 zones reliées, 512 portes avec région, 32 portes par case) ; la version 14 est encore lue (sans eux, avec ses bornes de 16 portes, 256 avec région, 16 par case)."
     },
     "kind": {
       "const": "zone"
@@ -648,14 +649,21 @@
             }
           }
         },
+        "floor": {
+          "enum": [
+            "surface",
+            "dessous"
+          ],
+          "description": "Chantier V2.45.1 (schéma 15) : étage de la zone, « surface » par défaut ; « dessous » : zone à part sous la surface (grotte, mine, crypte, égouts), reliée par des portes, avec créatures, jamais un intérieur ; le voyage rapide n'y mène pas ; ses créatures partent à 8 m au moins de chaque porte."
+        },
         "indoor": {
           "type": "boolean",
           "description": "La zone est un intérieur (une pièce : l'aire en est le sol, ses bords les murs). Affichage seulement."
         },
         "doors": {
           "type": "array",
-          "maxItems": 256,
-          "description": "Au plus 16 sans region ; avec region (schéma 13), au plus 256 et 16 par case. Portes vers d'autres zones : on s'y tient pour passer, on y arrive en venant de la porte toDoor de la zone to, qui ramène ici.",
+          "maxItems": 512,
+          "description": "Au plus 16 sans region ; avec region (schéma 13), au plus 256 et 16 par case. Chantier V2.45.1 (schéma 15) : au plus 64 sans region ; avec region, au plus 512 et 32 par case. Portes vers d'autres zones : on s'y tient pour passer, on y arrive en venant de la porte toDoor de la zone to, qui ramène ici.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -700,6 +708,16 @@
                 "description": "Obstacle du scénario (le bâtiment) dont c'est la porte, à 2 m au plus ; sa façade est tournée vers elle.",
                 "maxLength": 64,
                 "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "kind": {
+                "enum": [
+                  "porte",
+                  "escalier",
+                  "puits",
+                  "trappe",
+                  "faille"
+                ],
+                "description": "Chantier V2.45.1 (schéma 15) : genre de passage, « porte » par défaut ; les deux portes qui se répondent sont du même genre."
               }
             }
           }

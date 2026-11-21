@@ -104,7 +104,7 @@ public class InterieursTests : IDisposable
                 "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules", "zone.auberge_logement", "zone.auberge_combles" },   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
-        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.CurrentSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.4 : Vallons en 9, intérieurs en 7
+        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.TerritorySchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.4 : Vallons en 9, intérieurs en 7
         ZoneDefinition vallons = linked.Zones[0];
         Assert.False(vallons.Indoor);
         Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison"),

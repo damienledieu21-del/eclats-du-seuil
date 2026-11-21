@@ -55,6 +55,12 @@ namespace EdS.Data.Zones
         /// </summary>
         public bool? Indoor { get; set; }
 
+        /// <summary>
+        /// Chantier V2.45.1 (schéma 15, plan de la grande carte § 3) : étage de la zone, « surface » (par défaut) ou « dessous » (zone à
+        /// part sous la surface, reliée par des portes, avec créatures ; jamais un intérieur) ; facultatif.
+        /// </summary>
+        public string? Floor { get; set; }
+
         /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones ; facultatif.</summary>
         public List<DoorData?>? Doors { get; set; }
 
@@ -122,6 +128,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Obstacle du scénario (le bâtiment) dont c'est la porte ; facultatif. Affichage : la façade du bâtiment est tournée vers elle.</summary>
         public string? Building { get; set; }
+
+        /// <summary>
+        /// Chantier V2.45.1 (schéma 15) : genre de passage, « porte » (par défaut), « escalier », « puits », « trappe » ou « faille » ;
+        /// facultatif. Les deux portes qui se répondent sont du même genre.
+        /// </summary>
+        public string? Kind { get; set; }
     }
 
     /// <summary>Vallons agrandis (schéma 3) : une route ou un chemin, ligne brisée de largeur constante.</summary>
