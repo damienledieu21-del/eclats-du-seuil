@@ -474,6 +474,7 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.6 : cicatrices du Seuil (couleurs fanées, brume froide, pointes sombres).</summary>
         private ScarsView _scars;
+        private CaravansView _caravans;   // sous-lot V2.41.2
 
         /// <summary>Saisons : date fournie au cœur et saison exposée au rendu (teinte, neige, glace).</summary>
         private SeasonView _seasonView;
@@ -533,6 +534,8 @@ namespace EdS.Game
             _worldEvents = null;
             _scars?.Destroy();   // sous-lot V2.6
             _scars = null;
+            _caravans?.Destroy();   // sous-lot V2.41.2
+            _caravans = null;
             _seasonView = null;   // saisons
             SeasonView.Clear();
             _snowCover?.Clear();   // V2.44.3
@@ -796,6 +799,8 @@ namespace EdS.Game
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
+            if (_caravans == null) _caravans = new CaravansView();   // sous-lot V2.41.2 : caravanes sur les routes
+            _caravans.Sync(a, _camera.Camera.transform.position);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
