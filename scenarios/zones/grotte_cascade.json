@@ -1,0 +1,482 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 461,
+    "durationMs": 3600000,
+    "zone": true,
+    "truces": [
+      [
+        "echos",
+        "meute"
+      ]
+    ],
+    "space": {
+      "bounds": {
+        "min": [
+          -20,
+          -4
+        ],
+        "max": [
+          20,
+          32
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "paroi_grotte_ouest",
+          "points": [
+            [
+              -20,
+              -4
+            ],
+            [
+              -12,
+              -4
+            ],
+            [
+              -14,
+              6
+            ],
+            [
+              -20,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "paroi_grotte_est",
+          "points": [
+            [
+              12,
+              -4
+            ],
+            [
+              20,
+              -4
+            ],
+            [
+              20,
+              10
+            ],
+            [
+              14,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "pilier_grotte",
+          "points": [
+            [
+              -3,
+              12
+            ],
+            [
+              3,
+              12
+            ],
+            [
+              2,
+              16
+            ],
+            [
+              -2,
+              16
+            ]
+          ]
+        },
+        {
+          "id": "paroi_grotte_nord_ouest",
+          "points": [
+            [
+              -20,
+              24
+            ],
+            [
+              -14,
+              22
+            ],
+            [
+              -12,
+              32
+            ],
+            [
+              -20,
+              32
+            ]
+          ]
+        },
+        {
+          "id": "paroi_grotte_nord_est",
+          "points": [
+            [
+              14,
+              22
+            ],
+            [
+              20,
+              20
+            ],
+            [
+              20,
+              32
+            ],
+            [
+              12,
+              32
+            ]
+          ]
+        },
+        {
+          "id": "stalagmite_grotte_1",
+          "points": [
+            [
+              -8.6,
+              5.4
+            ],
+            [
+              -7.4,
+              5.4
+            ],
+            [
+              -7.4,
+              6.6
+            ],
+            [
+              -8.6,
+              6.6
+            ]
+          ]
+        },
+        {
+          "id": "stalagmite_grotte_2",
+          "points": [
+            [
+              8.4,
+              8.4
+            ],
+            [
+              9.6,
+              8.4
+            ],
+            [
+              9.6,
+              9.6
+            ],
+            [
+              8.4,
+              9.6
+            ]
+          ]
+        },
+        {
+          "id": "stalagmite_grotte_3",
+          "points": [
+            [
+              -10.6,
+              17.4
+            ],
+            [
+              -9.4,
+              17.4
+            ],
+            [
+              -9.4,
+              18.6
+            ],
+            [
+              -10.6,
+              18.6
+            ]
+          ]
+        },
+        {
+          "id": "stalagmite_grotte_4",
+          "points": [
+            [
+              6.4,
+              19.4
+            ],
+            [
+              7.6,
+              19.4
+            ],
+            [
+              7.6,
+              20.6
+            ],
+            [
+              6.4,
+              20.6
+            ]
+          ]
+        },
+        {
+          "id": "stalagmite_grotte_5",
+          "points": [
+            [
+              -4.6,
+              26.4
+            ],
+            [
+              -3.4,
+              26.4
+            ],
+            [
+              -3.4,
+              27.6
+            ],
+            [
+              -4.6,
+              27.6
+            ]
+          ]
+        },
+        {
+          "id": "bassin_grotte",
+          "low": true,
+          "points": [
+            [
+              4,
+              24
+            ],
+            [
+              10,
+              24
+            ],
+            [
+              10,
+              29
+            ],
+            [
+              4,
+              29
+            ]
+          ]
+        },
+        {
+          "id": "cristaux_grotte_1",
+          "points": [
+            [
+              -14.5,
+              14.5
+            ],
+            [
+              -13.5,
+              14.5
+            ],
+            [
+              -13.5,
+              15.5
+            ],
+            [
+              -14.5,
+              15.5
+            ]
+          ]
+        },
+        {
+          "id": "cristaux_grotte_2",
+          "points": [
+            [
+              14.5,
+              15.5
+            ],
+            [
+              15.5,
+              15.5
+            ],
+            [
+              15.5,
+              16.5
+            ],
+            [
+              14.5,
+              16.5
+            ]
+          ]
+        },
+        {
+          "id": "eboulis_grotte_1",
+          "points": [
+            [
+              9,
+              -1
+            ],
+            [
+              11,
+              -1
+            ],
+            [
+              11,
+              1
+            ],
+            [
+              9,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "coffre_grotte",
+          "points": [
+            [
+              5.5,
+              30.2
+            ],
+            [
+              6.5,
+              30.2
+            ],
+            [
+              6.5,
+              30.8
+            ],
+            [
+              5.5,
+              30.8
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "loup_echo_grotte1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -8,
+          12
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_echo_grotte2",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          8,
+          14
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "ours_grotte1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 460,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -9,
+          26
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

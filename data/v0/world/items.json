@@ -1870,6 +1870,20 @@
         "named": true
       },
       {
+        "id": "item.anneau_de_la_cascade",
+        "name": "Anneau de la cascade",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 12,
+        "bonus": {
+          "maxHealth": 60,
+          "armor": 25
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",
