@@ -501,7 +501,7 @@ namespace EdS.World
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: BoonGear(_entryEquipmentGear, items, EnteredBoons), consumables: carried,
                 shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
                 equipment: Inventory.Effects(),   // sous-lot V1.3 : effets des objets nommés et des ensembles
-                withMount: zoneSetup.Space != null && hosted?.Indoor != true);
+                withMount: zoneSetup.Space != null && hosted?.Sheltered != true);   // V2.45.2 : ni dans une pièce ni dans un dessous
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.

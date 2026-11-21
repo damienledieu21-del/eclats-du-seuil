@@ -1289,7 +1289,8 @@ namespace EdS.Game
             {
                 if (rider.Mounted || rider.Mounting) rider.SendMountAway();
                 else if (!rider.HasMount && owns)
-                    Say(a.World.Definition != null && a.World.Definition.Indoor ? "Pas de cheval à l'intérieur." : "Ton cheval te rejoindra à la prochaine halte.");
+                    Say(a.World.Definition == null || !a.World.Definition.Sheltered ? "Ton cheval te rejoindra à la prochaine halte."
+                        : a.World.Definition.Indoor ? "Pas de cheval à l'intérieur." : "Pas de cheval ici.");
                 else if (rider.CallMount()) Say("Vous sifflez votre cheval…");
             }
             bool mounted = rider.Mounted;

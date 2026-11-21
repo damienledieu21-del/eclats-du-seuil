@@ -366,13 +366,13 @@ namespace EdS.World
 
         /// <summary>
         /// Le voyage rapide vers le point sûr <paramref name="safePoint"/> de <paramref name="zone"/> est possible maintenant : zone du dehors
-        /// et point sûr connus, découvert, personnage présent et vivant (sinon <see cref="TravelRefusal.Unavailable"/>), hors combat, pas déjà
+        /// (ni intérieur, ni dessous : V2.45.2) et point sûr connus, découvert, personnage présent et vivant (sinon <see cref="TravelRefusal.Unavailable"/>), hors combat, pas déjà
         /// à ce point (<see cref="TravelRefusal.AlreadyHere"/>, relecture de la PR #72 : le voyage n'est pas une halte gratuite ; vient en
         /// dernier, car il ne concerne que cette destination).
         /// </summary>
         public TravelRefusal CanTravel(ZoneDefinition zone, string safePoint)
         {
-            if (zone is null || zone.Indoor || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
+            if (zone is null || zone.Sheltered || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
             if (!IsDiscovered(zone, safePoint)) return TravelRefusal.NotDiscovered;
             if (_defeated || !Zone.Engine.View(CombatantId).IsPresent || Zone.Engine.View(CombatantId).IsDead) return TravelRefusal.Unavailable;
             if (InCombat) return TravelRefusal.InCombat;
