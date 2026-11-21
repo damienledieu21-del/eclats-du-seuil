@@ -239,7 +239,7 @@ public class MaisonTests
     [Fact]
     public void Sauvegarde_v29_aller_retour_et_v28_encore_lue()
     {
-        Assert.Equal((30, 29), (SaveValidator.CurrentSchemaVersion, SaveValidator.HomeSince));
+        Assert.Equal((31, 29), (SaveValidator.CurrentSchemaVersion, SaveValidator.HomeSince));
         string json = Write(Hero().WithHome(Saved));
         Assert.Contains("\"home\": {\"stage\": 1, \"given\": {\"pierre\": 1}, \"placed\": [{\"piece\": \"lanterne\", \"x\": 0, \"z\": 0, \"turn\": 0}, "
             + "{\"piece\": \"table\", \"x\": 4, \"z\": 2, \"turn\": 1}], \"chest\": [{\"item\": \"item.planche\", \"count\": 12}]},", json, StringComparison.Ordinal);

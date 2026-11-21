@@ -296,7 +296,7 @@ public class CompagnonsProgressionTests
     [Fact]
     public void Sauvegarde_version_20_aller_retour_absente_quand_vide_et_migration()
     {
-        Assert.Equal((30, 20), (SaveValidator.CurrentSchemaVersion, SaveValidator.CompanionsSince));   // monture : 22
+        Assert.Equal((31, 20), (SaveValidator.CurrentSchemaVersion, SaveValidator.CompanionsSince));   // monture : 22
         SavedCompanions roster = CompanionRules.React(CompanionRules.AfterCombat(With("companion.nyx", "companion.aveline"),
             new[] { ("companion.nyx", 55, true) }).WithSecond(), "companion.aveline", -20).Roster;
         string text = Saved(roster);

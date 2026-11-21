@@ -428,6 +428,7 @@ public class V241CaravanesTests
         ZoneDefinition essai = loaded.Zone!;
         JsonObject root = JsonNode.Parse(Shipped)!.AsObject();
         JsonObject c = root["data"]!["caravans"]![0]!.AsObject();
+        c.Remove("recovery");   // sous-lot V2.41.3 : la zone d'essai n'a pas de fort
         c["firstDay"] = 0;
         c["start"] = "06:00";
         c["route"] = new JsonArray(new JsonArray(20, 90), new JsonArray(380, 90), new JsonArray(500, 90));
@@ -496,7 +497,7 @@ public class V241CaravanesTests
     [Fact]
     public void Jour_du_dernier_echec_format_version_30()
     {
-        Assert.Equal((30, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventLostDaySince));
+        Assert.Equal((31, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventLostDaySince));
         string Line(string extra) => "{\"id\": \"zone.vallons/" + Attack + "\", \"won\": 1, \"lost\": 1, \"last\": 5, \"outcome\": \"won\"" + extra + "}";
         string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             Hero().WithEvents(new[] { new SavedEvent("zone.vallons/" + Attack, 1, 1, 5, EventOutcome.Won, lostDay: 4) })));
@@ -513,9 +514,9 @@ public class V241CaravanesTests
         SaveLoadResult noLoss = SaveJsonReader.Read(json.Replace("\"lost\": 1", "\"lost\": 0"));
         Assert.Contains(noLoss.Report.Errors, x => x.Path.EndsWith(".lostDay", StringComparison.Ordinal));
         // Version 29 : champ inconnu.
-        SaveLoadResult old = SaveJsonReader.Read(json.Replace("\"schemaVersion\": 30", "\"schemaVersion\": 29"));
+        SaveLoadResult old = SaveJsonReader.Read(json.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 29"));
         Assert.Contains(old.Report.Errors, x => x.Path.EndsWith(".lostDay", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
-        Assert.True(SaveJsonReader.Read(json.Replace("\"schemaVersion\": 30", "\"schemaVersion\": 29").Replace(", \"lostDay\": 4", "")).IsValid);
+        Assert.True(SaveJsonReader.Read(json.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 29").Replace(", \"lostDay\": 4", "")).IsValid);
         Assert.Throws<ArgumentOutOfRangeException>(() => new SavedEvent("zone.vallons/" + Attack, 1, 1, 5, EventOutcome.Won, lostDay: 6));
         Assert.Throws<ArgumentException>(() => new SavedEvent("zone.vallons/" + Attack, 1, 0, 5, EventOutcome.Won, lostDay: 4));
     }

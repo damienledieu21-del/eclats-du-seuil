@@ -61,7 +61,7 @@ public class FetesSauvegardeTests
     [Fact]
     public void Sauvegarde_v27_aller_retour_et_v26_encore_lue()
     {
-        Assert.Equal((30, 27), (SaveValidator.CurrentSchemaVersion, SaveValidator.FeastsSince));
+        Assert.Equal((31, 27), (SaveValidator.CurrentSchemaVersion, SaveValidator.FeastsSince));
         string json = Write(Char(Sample));
         Assert.Contains(SaveVersion.Current, json, StringComparison.Ordinal);
         Assert.Contains("\"feasts\": {\"shown\": \"festival.foire\", \"wallets\": {\"festival.foire\": {\"coins\": 120, \"edition\": 2027, \"done\": {\"cible\": 740000, \"concours\": 739999}, "
