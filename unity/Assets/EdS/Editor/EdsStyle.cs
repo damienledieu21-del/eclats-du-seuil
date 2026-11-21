@@ -280,7 +280,8 @@ namespace EdS.Game.Editor
             if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
             catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
             catalog.LotC = LotCPieces(notes);   // lot C (16 novembre 2026) : modèles Tripo reliés aux données (LotCModels)
-            catalog.Caravans = CaravanPieces(notes);   // sous-lot V2.41.2 : modèles des caravanes (CaravanLooks), quand l'atelier les aura livrés
+            catalog.Caravans = CaravanPieces(notes);
+            CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)   // sous-lot V2.41.2 : modèles des caravanes (CaravanLooks), quand l'atelier les aura livrés
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
@@ -610,6 +611,20 @@ namespace EdS.Game.Editor
             }
             if (result.Count > 0) notes.Add("Caravanes : " + result.Count + " modèles (" + string.Join(", ", result.Select(m => m.name)) + ").");
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// Chantier V2.46 : le kit de grotte (<see cref="CaveLooks.AssetFolder"/>, reconnu par <see cref="CaveLooks.NameOf"/>) : chaque modèle
+        /// reçoit sa matière (« &lt;nom&gt;_couleur », « &lt;nom&gt;_normale », <see cref="OwnMaterial"/>) ; le jeu le charge par son nom
+        /// (<c>Resources.Load</c>), sans passer par le catalogue. Sans dossier : rien, sans erreur.
+        /// </summary>
+        private static void CavePieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(CaveLooks.AssetFolder)) return;
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { CaveLooks.AssetFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => CaveLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            foreach (string path in paths) OwnMaterial(path, notes);
+            if (paths.Count > 0) notes.Add("Grotte : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(CaveLooks.NameOf)) + ").");
         }
 
         private static GameObject[] FeastPieces(List<string> notes)

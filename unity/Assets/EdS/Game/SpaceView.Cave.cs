@@ -54,13 +54,13 @@ namespace EdS.Game
                 CavePiece piece = CaveLooks.PieceFor(o.Id);
                 var points = o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
                 float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+                // Le bassin garde son eau, avec ou sans le modèle de sa margelle.
+                if (piece == CavePiece.Pool) _waters.Add(Prism(o.Id + " eau", points.Select(p => new Vector3(p.x, 0.05f, p.z)).ToList(), 0.04f, _water, false));
                 if (CaveProp(piece, o.Id, x0, z0, x1, z1)) continue;
-                // Formes de remplacement.
+                // Formes de remplacement (repli sans le modèle du kit).
                 switch (piece)
                 {
                     case CavePiece.Pool:
-                        var pool = new List<Vector3>(points.Select(p => new Vector3(p.x, -0.02f, p.z)));
-                        _waters.Add(Prism(o.Id, pool, 0.04f, _water, false));
                         break;
                     case CavePiece.Crystals:
                         Prism(o.Id, points, (float)CaveLooks.HeightOf(piece), crystal, false, 1f);

@@ -29,6 +29,29 @@ namespace EdS.Runtime
         /// <summary>Dossier des modèles dans Unity (<c>Resources/Grotte/&lt;nom&gt;</c>).</summary>
         public const string Folder = "Grotte/";
 
+        /// <summary>
+        /// Dossier des modèles dans le projet Unity : <c>&lt;nom&gt;.fbx</c>, <c>&lt;nom&gt;_couleur.jpg</c> et <c>&lt;nom&gt;_normale.png</c> à plat
+        /// (finition Blender de l'atelier, <c>Grotte/finir_grotte.py</c>), chargés par <c>Resources.Load(Folder + nom)</c>.
+        /// </summary>
+        public const string AssetFolder = "Assets/Resources/Grotte";
+
+        /// <summary>
+        /// Nom du modèle du kit (<see cref="Models"/>) du fichier <paramref name="path"/> (« Assets/Resources/Grotte/paroi_grotte.fbx »), ou null :
+        /// autre dossier, sous-dossier, autre extension que .fbx (casse ignorée) ou nom inconnu.
+        /// </summary>
+        public static string? NameOf(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            string p = path.Replace('\\', '/');
+            if (!p.StartsWith(AssetFolder + "/", StringComparison.Ordinal)) return null;
+            string file = p.Substring(AssetFolder.Length + 1);
+            if (file.IndexOf('/') >= 0 || !file.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) return null;
+            string name = file.Substring(0, file.Length - 4);
+            foreach (string m in Models)
+                if (m == name) return m;
+            return null;
+        }
+
         /// <summary>Le rideau d'eau vu de dedans, posé sur chaque porte d'un dessous qui mène dehors.</summary>
         public const string CurtainModel = "rideau_d_eau";
 

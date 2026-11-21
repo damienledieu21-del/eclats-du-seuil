@@ -221,6 +221,40 @@ public class V246GrotteTests
         Assert.Contains("RenderSettings.fogEndDistance = (float)CaveLooks.FogEnd;", style);
     }
 
+    /// <summary>
+    /// Kit de grotte livré (décision de Damien du 21 novembre 2026 : 240 crédits validés) : les huit modèles finis dans Blender sont dans
+    /// Resources/Grotte, chacun avec sa couleur et sa normale, et reconnus par leur nom ; la préparation leur donne leur matière.
+    /// </summary>
+    [Fact]
+    public void Kit_de_grotte_present_et_reconnu()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", CaveLooks.AssetFolder);
+        foreach (string name in CaveLooks.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, CaveLooks.NameOf(CaveLooks.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(CaveLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.Equal("Grotte/", CaveLooks.Folder);
+        Assert.EndsWith("Resources/" + CaveLooks.Folder.TrimEnd('/'), CaveLooks.AssetFolder);   // Resources.Load(Folder + nom) trouve le fichier
+        Assert.Contains("CavePieces(notes);", File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs")));
+    }
+
+    [Theory]
+    [InlineData("Assets/Resources/Grotte/paroi_grotte.fbx", "paroi_grotte")]
+    [InlineData("Assets\\Resources\\Grotte\\coffre_grotte.FBX", "coffre_grotte")]
+    [InlineData("Assets/Resources/Grotte/sous/paroi_grotte.fbx", null)]
+    [InlineData("Assets/Resources/Grotte/paroi_grotte.glb", null)]
+    [InlineData("Assets/Resources/Grotte/paroi.fbx", null)]
+    [InlineData("Assets/EdS/Modeles/Caravanes/paroi_grotte.fbx", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void Nom_d_un_modele_du_kit(string? path, string? name) => Assert.Equal(name, CaveLooks.NameOf(path!));
+
     [Theory]
     [InlineData("paroi_grotte_ouest", CavePiece.Wall)]
     [InlineData("pilier_grotte", CavePiece.Pillar)]
