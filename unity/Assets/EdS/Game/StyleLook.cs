@@ -605,6 +605,8 @@ namespace EdS.Game
                     Object.Destroy(look);
                     return Dress(body, slot, id, height, lookId, false, false);
                 }
+                // V2.56.3 : un jour de fête d'Orsédia, les habitants en tenue de fête portent son accessoire (pas le héros).
+                if (slot != StyleSlot.Hero && HumanBodies.Festival) FeastAccessoryLook.Attach(model, person.Outfit, HumanBodies.Feast);
                 Vector3 hs = body.transform.localScale;
                 look.transform.SetParent(body.transform, false);
                 float hk = look.transform.localScale.y;
