@@ -86,8 +86,10 @@ namespace EdS.World
             long day = PillageDay(entry);
             if (day < 0) return null;
             long since = Zone.Time.Day - day;
-            if (since < 0 || since >= c.Recovery.Days || entry.Recovered == c.Recovery.AllChests) return null;
-            return new CaravanRecoveryView(c, day, entry.Recovered);
+            // Relecture de la PR #243 : seuls les bits des coffres de la quête comptent (des bits en trop ne la bloquent pas).
+            int taken = entry.Recovered & c.Recovery.AllChests;
+            if (since < 0 || since >= c.Recovery.Days || taken == c.Recovery.AllChests) return null;
+            return new CaravanRecoveryView(c, day, taken);
         }
 
         /// <summary>
@@ -101,8 +103,8 @@ namespace EdS.World
         /// Sous-lot V2.41.3 (décision de Damien du 21 novembre 2026) : reprend le coffre <paramref name="chest"/> de la caravane
         /// <paramref name="caravan"/> au fort, pendant sa quête de reprise : à portée (<see cref="CaravanRecovery.Reach"/>) et quand aucun
         /// ennemi n'est debout à moins de <see cref="CaravanRecovery.GuardRadius"/> du coffre. Chaque coffre enlève un jour au contrecoup des
-        /// marchands ; le dernier l'annule et donne la récompense (expérience sous le plafond ; cuivre si la bourse le tient, sinon rien,
-        /// comme la prime). Gardé au registre (sauvegarde v31). Annonces au tick suivant. Refus atomique.
+        /// marchands ; le dernier l'annule et donne la récompense : la première fois, l'expérience (sous le plafond) et le cuivre ; ensuite,
+        /// le cuivre seul (décision de Damien du 21 novembre 2026) ; le cuivre si la bourse le tient, sinon rien, comme la prime. Gardé au registre (sauvegarde v31). Annonces au tick suivant. Refus atomique.
         /// </summary>
         public ChestRefusal TakeCaravanChest(string caravan, int chest)
         {
@@ -120,12 +122,15 @@ namespace EdS.World
             if (!HasEventRoom(e)) return ChestRefusal.Full;
             // Tout est calculé avant de rien changer.
             SavedEvent entry = EventEntry(e);
-            int taken = open.Taken | (1 << chest);
+            int taken = (open.Taken | (1 << chest)) & rec.AllChests;
             bool done = taken == rec.AllChests;
-            long xp = done ? Math.Min(SaveValidator.MaxXp, checked(_character.Xp + rec.Xp)) : _character.Xp;
+            // Décision de Damien du 21 novembre 2026 (anti-triche) : l'expérience à la première reprise complète seulement ; ensuite, l'or seul
+            // (comme la prime d'une caravane sauvée).
+            bool first = done && !entry.RecoveredOnce;
+            long xp = first ? Math.Min(SaveValidator.MaxXp, checked(_character.Xp + rec.Xp)) : _character.Xp;
             long money = _character.Money, paid = 0;
             if (done && rec.Money > 0 && Coins.TryAdd(_character.Money, rec.Money, out long purse)) { money = purse; paid = rec.Money; }
-            var line = new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome, entry.Owed, open.PillageDay, taken);
+            var line = new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome, entry.Owed, open.PillageDay, taken, entry.RecoveredOnce || done);
             if (!SetEventEntry(e, line)) return ChestRefusal.Full;
             long gained = xp - _character.Xp;
             _character = _character.WithMoney(money).WithXp(xp);

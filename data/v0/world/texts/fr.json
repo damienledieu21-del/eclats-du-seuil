@@ -1509,6 +1509,7 @@
   "text.event.attaque_caravane_d_ambre.reprise_ouverte": "Les coffres de la caravane d'Ambre ont fini derrière la palissade du fort. Les marchands du Bourg comptent sur toi : trois jours, pas plus, avant que les bandits ne les vendent ailleurs.",
   "text.event.attaque_caravane_d_ambre.coffre": "Tu fais sauter la serrure d'un coffre aux armes d'Ambre : la marchandise est là. Un chariot du Bourg viendra le chercher.",
   "text.event.attaque_caravane_d_ambre.reprise": "Tous les coffres de la caravane d'Ambre sont repris. Les étals du Bourg se remplissent déjà, et les marchands d'Ambre te paient ta peine.",
+  "text.event.attaque_caravane_d_ambre.reprise_sans_or": "Tous les coffres de la caravane d'Ambre sont repris. Les étals du Bourg se remplissent déjà ; ta bourse est trop pleine pour la récompense des marchands d'Ambre.",
   "text.event.attaque_caravane_d_ambre.merci": "Les muletiers d'Ambre lèvent leur chapeau en te voyant. Ils te payent ta prime, comme convenu.",
   "text.event.attaque_hameau.absence": "Pendant que tu étais ailleurs, le hameau de la carrière a été attaqué. Personne n'est venu.",
       "text.event.attaque_hameau.recompense": "Maître Josse te met une bourse dans la main et refuse qu'on la lui rende.",

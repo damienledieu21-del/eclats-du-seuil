@@ -161,7 +161,7 @@ namespace EdS.World
             long day = Math.Min(SavedEvent.MaxDay, o.Day);
             // Sous-lot V2.41.3 : un nouveau pillage remet les coffres au fort (quête de reprise de ce pillage, à zéro).
             if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, day, outcome, entry.Owed || first, outcome == EventOutcome.Lost ? day : entry.LostDay,
-                outcome == EventOutcome.Lost ? 0 : entry.Recovered))) return;
+                outcome == EventOutcome.Lost ? 0 : entry.Recovered, entry.RecoveredOnce))) return;
             if (lostKind == WorldEventNoticeKind.Escaped) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Escaped, e.Id, o.Group.Id, o.Day));
             // Sous-lot V2.7 : la réputation suit l'issue (le hameau défendu, la faille refermée), une fois par occurrence réglée.
             if (outcome == EventOutcome.Won || outcome == EventOutcome.Lost) Narrative?.EventSettled(e.Id, outcome == EventOutcome.Won, lostKind == WorldEventNoticeKind.Missed);   // pendant l'absence : plus faible
@@ -210,7 +210,7 @@ namespace EdS.World
             long gained = xp - _character.Xp;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(money).WithXp(xp);
-            SetEventEntry(e, new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome, lostDay: entry.LostDay, recovered: entry.Recovered));
+            SetEventEntry(e, new SavedEvent(entry.Id, entry.Won, entry.Lost, entry.Last, entry.Outcome, lostDay: entry.LostDay, recovered: entry.Recovered, recoveredOnce: entry.RecoveredOnce));
             notices.Add(new WorldEventNotice(WorldEventNoticeKind.Rewarded, e.Id, string.Empty, entry.Last, 0, gained, r.Money, r.Items));
             return true;
         }

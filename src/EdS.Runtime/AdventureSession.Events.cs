@@ -60,7 +60,9 @@ namespace EdS.Runtime
         private void EventNotice(WorldEventNotice n)
         {
             // Sous-lot V2.6 : les annonces d'une cicatrice disent son palier ({0}) et son lieu ({1}).
-            if (EventText(n.Event, n.Group, Moment(n.Kind)) is string key)
+            // Relecture de la PR #243 : reprise complète sans or (bourse pleine) : une variante qui ne parle pas de paiement.
+            string moment = n.Kind == WorldEventNoticeKind.Recovered && n.Money == 0 ? "reprise_sans_or" : Moment(n.Kind);
+            if (EventText(n.Event, n.Group, moment) is string key)
             {
                 // Sous-lot V2.6.1 : une propagation dit aussi d'où vient le froid ({2}).
                 if (IsScarNotice(n.Kind)) Say(key, n.Wave, ScarPlace(n.Event, n.Group), ScarPlace(n.Event, n.From));
@@ -86,10 +88,17 @@ namespace EdS.Runtime
             get
             {
                 if (!(Me is GroundVector p) || World.IsDefeated) return null;
+                // Relecture de la PR #243 : le plus proche, à la portée du monde (CaravanRecovery.Reach).
+                (string, int)? best = null;
+                long bestSquared = long.MaxValue;
                 foreach (CaravanRecoveryView v in World.CaravanRecoveries)
                     for (int k = 0; k < v.Recovery.Chests.Count; k++)
-                        if (!v.IsTaken(k) && Within(p, v.Recovery.Chests[k], RiftReach)) return (v.Caravan.Id, k);
-                return null;
+                    {
+                        GroundVector c = v.Recovery.Chests[k];
+                        long dx = checked(c.X.Raw - p.X.Raw), dz = checked(c.Z.Raw - p.Z.Raw), d = checked(dx * dx + dz * dz);
+                        if (!v.IsTaken(k) && Within(p, c, EdS.Data.Caravans.CaravanRecovery.Reach) && d < bestSquared) { best = (v.Caravan.Id, k); bestSquared = d; }
+                    }
+                return best;
             }
         }
 

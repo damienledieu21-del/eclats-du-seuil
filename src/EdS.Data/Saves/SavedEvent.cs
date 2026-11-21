@@ -52,6 +52,12 @@ namespace EdS.Data.Saves
         /// </summary>
         public int Recovered { get; }
 
+        /// <summary>
+        /// Sous-lot V2.41.3 (sauvegarde v31 ; décision de Damien du 21 novembre 2026, anti-triche) : une reprise complète a déjà été faite :
+        /// les suivantes ne donnent plus que la prime (sans expérience). Gardé d'un pillage à l'autre.
+        /// </summary>
+        public bool RecoveredOnce { get; }
+
         /// <summary>Masque des coffres repris, au plus (huit coffres).</summary>
         public const int MaxRecovered = 255;
 
@@ -69,7 +75,7 @@ namespace EdS.Data.Saves
 
         public static readonly IReadOnlyList<string> OutcomeNames = Array.AsReadOnly(new[] { "none", "won", "lost" });
 
-        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false, long lostDay = -1, int recovered = 0)
+        public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false, long lostDay = -1, int recovered = 0, bool recoveredOnce = false)
         {
             if (!SaveValidator.IsEventKey(id) || id.Length > MaxKeyLength) throw new ArgumentException($"Événement « {id} » hors du format des sauvegardes.", nameof(id));
             if (won < 0 || won > MaxCount) throw new ArgumentOutOfRangeException(nameof(won));
@@ -81,7 +87,9 @@ namespace EdS.Data.Saves
             if (lostDay >= 0 && lost < 1) throw new ArgumentException("Un jour d'échec sans échec.", nameof(lostDay));
             if (recovered < 0 || recovered > MaxRecovered) throw new ArgumentOutOfRangeException(nameof(recovered));
             if (recovered > 0 && lostDay < 0) throw new ArgumentException("Des coffres repris sans jour de pillage.", nameof(recovered));
+            if (recoveredOnce && lost < 1) throw new ArgumentException("Une reprise sans pillage.", nameof(recoveredOnce));
             Recovered = recovered;
+            RecoveredOnce = recoveredOnce;
             Id = id;
             Won = won;
             Lost = lost;
@@ -117,5 +125,8 @@ namespace EdS.Data.Saves
 
         /// <summary>Version 31 : coffres repris après le dernier pillage (facultatif, masque de 1 à 255).</summary>
         public long? Recovered { get; set; }
+
+        /// <summary>Version 31 : une reprise complète déjà faite (facultatif, écrit seulement vrai).</summary>
+        public bool? RecoveredOnce { get; set; }
     }
 }
