@@ -347,8 +347,8 @@ public sealed class FetesF4EtalTests
     public void Modeles_des_decorations_seulement_textures_au_budget()
     {
         string folder = Unity("Modeles/Fetes");
-        // Sous-lot F5 : les 60 décorations (40 de l'étal en F4, les 20 autres pour le décor du mois) ; V2.56.3 : les 12 récompenses,
-        // accessoires des habitants (FeastAccessories) ; ni plats, ni monnaies.
+        // Sous-lot F5 : les 60 décorations (40 de l'étal en F4, les 20 autres pour le décor du mois) ; V2.56.3 : 11 plats et 1 masque,
+        // accessoires des habitants (FeastAccessories) ; ni monnaies, ni autres récompenses.
         string[] decorations = Feasts.Value.Refs.Where(r => r.Category == FeastCategory.Decoration).Select(r => r.Code).ToArray();
         Assert.Equal(60, decorations.Length);
         string[] stall = decorations.Concat(FeastAccessories.All.Select(a => a.Code)).ToArray();
