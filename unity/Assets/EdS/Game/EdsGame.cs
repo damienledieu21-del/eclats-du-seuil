@@ -805,6 +805,7 @@ namespace EdS.Game
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
+            _arena.Vines(a.World.VineNow, a.World.SeasonIndex);   // V2.44.4 : rangs de vigne en trois états, vendanges
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
