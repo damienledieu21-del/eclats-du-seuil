@@ -1179,6 +1179,16 @@ Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSessi
 - **Décisions de Damien du 19 novembre 2026** : réconfort à rendre réel hors combat (60 minutes de jeu, +10 % proposé, sans statistique de combat ; demande un changement du moteur) ; accessoire par fête plus tard, avec les costumes en 3D.
 - Textes **0.39.0**. Tests : `FetesF6CostumesPlatsTests`. Pas vu dans Unity.
 
+
+### Accessoires de fête des habitants (V2.56.3, 21 novembre 2026)
+
+Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : « un accessoire par fête, plus tard, avec les costumes en 3D »). Affichage seulement.
+
+- **Quel accessoire** (`FeastAccessories`, sans Unity, testé ; **décision de Damien du 21 novembre 2026, option B**) : les habitants en fête tiennent **le plat de la fête** (P01) en main droite, porté à plat ; la récompense n'est pas portée, pour qu'elle reste rare. **Exception** : au Carnaval, le **masque de l'Autre Rôle** (R01), vrai accessoire de costume, se porte sur le visage.
+- **Qui** : les mêmes habitants que ceux qui prennent les teintes de la fête (`HumanWardrobe.FeastTints`) : ni gardes, ni bandits, ni le héros ; posé à l'habillage (`StyleLook.Dress` → `FeastAccessoryLook.Attach`), attaché à l'os (`Head`, `hand_r`/`RightHand`), il suit l'animation. Comme la tenue, un habitant déjà là quand la fête commence garde son aspect jusqu'à sa réapparition.
+- **Modèles** : les 11 plats `Modeles/Fetes/F01_P01` … `F12_P01` (sans celui du Carnaval) et le masque `F03_R01` (même chaîne que les décorations : maillage réduit à 2 500 faces, couleur JPEG 512, normale PNG 512 ; 5,3 Mo pour les 12), rangés par le menu avec les autres (`StyleCatalog.Feasts`).
+- Essais : `V2563AccessoiresDeFeteTests`, `FetesF4EtalTests` (72 dossiers : 60 décorations, 11 plats, le masque). Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; décalages (visage, poitrine, main) fixés à la main ; le masque est plus petit que sa cote du dossier (échelle Tripo : 0,125 m de large pour 0,22) ; la main droite ne se ferme pas sur le plat.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
