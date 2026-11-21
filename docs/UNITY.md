@@ -925,10 +925,30 @@ Liste partagée : `src/EdS.Runtime/AssetStore.cs` (même forme que la 5e vague :
 Essai de Damien du 9 novembre 2026 : « System out of memory » (MemoryLabel Texture, `d3d11 failed to create 2D texture` 2048, erreur 8007000e, ALLOC_GFX ~1,9 Go) sur son PC (4 Go de RAM, GTX 470 à 1224 Mo, Direct3D 11) : les textures 2K/4K (Poly Haven, Megascans, packs de l'Asset Store) dépassent sa mémoire vidéo.
 
 - **Règle partagée** `src/EdS.Runtime/MachineTier.cs` (testée : `V2124PcModesteTests`) : téléphone → `Phone` ; sinon **PC modeste** si mémoire vidéo < 3072 Mo ou mémoire < 6144 Mo, sinon `Full` (une mémoire inconnue, 0, ne compte pas). Limite de mipmaps automatique : 0 sur téléphone (inchangé) et sur PC complet ; sur PC modeste 2 (quart) si mémoire vidéo ≤ 1536 Mo ou mémoire ≤ 4096 Mo, sinon 1 (moitié).
-- **Jeu** `unity/Assets/EdS/Game/DeviceQuality.cs` : au démarrage (`EdsGame.Start`), `QualitySettings.globalTextureMipmapLimit` selon le choix du joueur ; réglage de la pause « Qualité des textures : auto / pleine / moitié / quart » (Auto par défaut, `PlayerPrefs` `eds.textures`, appliqué tout de suite).
+- **Jeu** `unity/Assets/EdS/Game/DeviceQuality.cs` : au démarrage (`EdsGame.Start`), `QualitySettings.globalTextureMipmapLimit` selon le réglage du joueur. L'ancien réglage « Qualité des textures : auto / pleine / moitié / quart » (`eds.textures`) est remplacé par le réglage « Qualité » (voir plus bas).
 - **Ressources lourdes** : sur PC modeste, celles « jamais sur téléphone » (`Wave5Fix.NotOnPhone`, 5e vague et Asset Store) ne se montrent pas, comme sur téléphone (`StyleCatalog.Shown` teste `DeviceQuality.Light`) ; l'ancien rendu reste. Le calcul hors champ des corps animés est coupé aussi.
 - **Vérifier l'essai** : ligne « Machine et textures » (classe, mémoires, limite appliquée).
 - **Limite** : les modèles écartés restent référencés par le catalogue (seule la construction pour téléphone les retire, `EdsPhoneBuild`) ; leurs textures peuvent donc encore être chargées ; la limite de mipmaps réduit toutes les textures, elle. Dans l'éditeur, la vue Scène garde ses propres textures.
+
+### Réglage « Qualité » forcée (21 novembre 2026)
+
+Demande de Damien : graphismes trop bas sur son PC (1 224 Mo de mémoire vidéo, 4 Go de RAM), que le jeu classe en PC modeste (textures au quart, 1 case de détail, brume à 900 m, ressources lourdes écartées). Il peut maintenant forcer le niveau.
+
+- **Où** : menu **Échap → Réglages**, bouton « Qualité » (à la place de « Textures »), et rangée « Qualité » des réglages de l'écran titre. Chaque clic : **Automatique** (par défaut, la détection du sous-lot V2.12.4) → **Basse** → **Moyenne** → **Haute** → Automatique.
+- **Règle partagée** `MachineTier.Level` (`src/EdS.Runtime/MachineTier.cs`, testée : `QualiteForceeTests`) :
+
+  | Réglage | Classe utilisée (cases, brume, arbres, images) | Ressources lourdes | Textures |
+  |---|---|---|---|
+  | Automatique | détectée | selon la détection | selon la détection |
+  | Basse | PC modeste (un téléphone reste téléphone) : 1 case de détail, brume 900 m | écartées | quart (limite 2) |
+  | Moyenne | PC complet : 2 cases de détail, brume sur toute la région | écartées | moitié (limite 1) |
+  | Haute | PC complet | montrées | pleines (limite 0) |
+
+- **Quand** : les textures changent **tout de suite** ; la classe et les ressources lourdes sont lues une fois au lancement (`DeviceQuality.Session`) et changent **au prochain lancement**. Le bouton le dit à la ligne (« au prochain lancement ») tant que le niveau de la partie diffère du réglage.
+- **Avertissement** : en Haute sur un téléphone ou un PC modeste, le bouton ajoute « peut ralentir sur cette machine ».
+- **Retenu** : `PlayerPrefs` `eds.qualite` (0 automatique, 1 basse, 2 moyenne, 3 haute ; autre valeur : automatique), comme la luminosité. L'ancienne clé `eds.textures` n'est plus lue : le réglage repart sur Automatique.
+- **Vérifier l'essai** : la ligne « Machine et textures » dit le niveau forcé (« qualité forcée : haute (réglages d'un PC complet), peut ralentir sur cette machine ») ; « Chargement par cases » suit le réglage.
+- **Limite** : aucun format ne change (préférence locale seulement). Haute sur un PC à 1 224 Mo peut redonner le « System out of memory » du 9 novembre : revenir en Automatique ou Basse depuis l'écran titre.
 
 ### L'atelier : nos propres bâtiments (sous-lot V2.17)
 
