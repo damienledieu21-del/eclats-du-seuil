@@ -363,8 +363,8 @@ Chantier V2.45 du [plan de la grande carte](PLAN_GRANDE_CARTE.md#3-les-trois-ét
 | zones reliées par des portes | 256 au plus (64 avant ; borne du chargement `ZoneJsonReader.ReadLinked`, pas d'un fichier) |
 
 - **Dessous** (`ZoneDefinition.Underground`) : une zone à part sous la surface (grotte, mine, crypte, égouts, galeries), **avec ses créatures** (populations, chefs, comme une zone du dehors), reliée par des portes. Un dessous plus grand que 256 m peut avoir sa région (secteurs), comme la surface.
-- **Créatures loin des portes** (recommandation de Claude, prise par défaut) : dans un dessous, chaque créature peuplée part à **8 m au moins** de chaque porte (calcul exact sur les entiers, 8 m passent ; `$.data.populations[i].creature`). On n'arrive pas au milieu d'une meute ; même distance que les anneaux d'arrivée d'un point sûr. À la surface, rien ne change.
-- **Identifiants** : les zones gardent le format `zone.<nom>` (celui des sauvegardes et du registre) ; le plan écrivait `zone.vallons.dessous.<nom>` : c'est le champ `floor` qui dit l'étage, pas l'identifiant (aucun changement du format des sauvegardes).
+- **Créatures loin des portes** (retenu par Damien le 21 novembre 2026) : dans un dessous, chaque créature peuplée part à **8 m au moins** de chaque porte (calcul exact sur les entiers, 8 m passent ; `$.data.populations[i].creature`). On n'arrive pas au milieu d'une meute ; même distance que les anneaux d'arrivée d'un point sûr. À la surface, rien ne change.
+- **Identifiants** (retenu par Damien le 21 novembre 2026) : les zones gardent le format `zone.<nom>` (celui des sauvegardes et du registre) ; le plan écrivait `zone.vallons.dessous.<nom>` : c'est le champ `floor` qui dit l'étage, pas l'identifiant (aucun changement du format des sauvegardes).
 - **Pourquoi relever les bornes** : intérieurs du Bourg, bouches d'égout, entrées des dessous et niveaux de la mine, failles (§ 3 du plan). Les bornes sont celles des données ; le moteur n'en dépend pas (une session ne tient qu'une zone).
 
 ## Altérations (sous-lot 7.2)
