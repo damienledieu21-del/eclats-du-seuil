@@ -242,6 +242,18 @@ namespace EdS.World
         /// <see cref="WorldEventDefinition.GuardsPercent"/>) : réglée sans issue.
         /// </summary>
         Escaped = 17,
+
+        /// <summary>Sous-lot V2.41.3 : la caravane pillée laisse ses coffres au fort : la quête de reprise s'ouvre.</summary>
+        RecoveryOpened = 18,
+
+        /// <summary>Sous-lot V2.41.3 : un coffre repris au fort (<see cref="WorldEventNotice.Wave"/> : son rang).</summary>
+        ChestRecovered = 19,
+
+        /// <summary>
+        /// Sous-lot V2.41.3 : tous les coffres repris : le contrecoup est annulé ; <see cref="WorldEventNotice.Xp"/> et
+        /// <see cref="WorldEventNotice.Money"/> : la récompense donnée.
+        /// </summary>
+        Recovered = 20,
     }
 
     public sealed class WorldEventNotice

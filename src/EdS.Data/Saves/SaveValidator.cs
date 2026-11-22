@@ -765,7 +765,16 @@ namespace EdS.Data.Saves
         /// entre 0 et <c>last</c>, avec au moins un échec ; écrit seulement s'il est connu. Le contrecoup d'un pillage dure ainsi ses jours
         /// même si une occurrence plus récente est réussie. Une sauvegarde de version 29 ou antérieure est lue telle quelle (jour inconnu : le
         /// contrecoup suit la dernière issue, comme avant) et mise à jour ; elle n'a pas de <c>lostDay</c>.</remarks>
-        public const int CurrentSchemaVersion = 30;
+        /// <remarks>Version 31 (quête de reprise au fort, <see cref="EventRecoveredSince"/>, sous-lot V2.41.3, décision de Damien du 21 novembre
+        /// 2026) : <c>recovered</c> facultatif sur une ligne du registre des événements : coffres repris au fort après le dernier pillage
+        /// (masque de 1 à 255, bit k pour le coffre k), seulement avec <c>lostDay</c> ; écrit seulement s'il n'est pas nul. Une sauvegarde de
+        /// version 30 ou antérieure est lue telle quelle (aucun coffre repris) et mise à jour ; elle n'a pas de <c>recovered</c>. Aussi
+        /// <c>recoveredOnce</c> facultatif (écrit seulement vrai, avec au moins un pillage) : une reprise complète a déjà été faite (les suivantes
+        /// ne donnent que la prime, décision de Damien du 21 novembre 2026).</remarks>
+        public const int CurrentSchemaVersion = 31;
+
+        /// <summary>Coffres repris : version où <c>recovered</c> entre dans le registre des événements.</summary>
+        public const int EventRecoveredSince = 31;
 
         /// <summary>Jour du dernier échec : version où <c>lostDay</c> entre dans le registre des événements.</summary>
         public const int EventLostDaySince = 30;
@@ -1345,7 +1354,7 @@ namespace EdS.Data.Saves
                 version < ItemStateSince ? 0 : c.Crafts!.Value,
                 version < BoonsSince ? null : c.Boons!.Select(b => new SavedBoon(BoonKindOf(b!.Kind!), b.Item!, b.Ticks!.Value)),
                 version < EventsSince ? null : c.Events!.Select(e => new SavedEvent(e!.Id!, e.Won!.Value, e.Lost!.Value, e.Last!.Value,
-                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false, e.LostDay ?? -1)),
+                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false, e.LostDay ?? -1, (int)(e.Recovered ?? 0), e.RecoveredOnce ?? false)),
                 version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)),
                 c.Stock?.Select(x => new SavedStock(x!.Id!, x.Bought!.Value, x.Resold!.Value, x.Day!.Value)),
                 c.Look is null ? null : new SavedLook(c.Look.Body!, c.Look.Hair!.Value, c.Look.Beard!.Value, c.Look.Dark!.Value, c.Look.HairTone!.Value, c.Look.Palette!.Value),
@@ -1818,6 +1827,22 @@ namespace EdS.Data.Saves
                     else if (lostDay < 0 || lostDay > SavedEvent.MaxDay || (e.Last is long l && lostDay > l))
                         report.Add(p + ".lostDay", ValidationCode.OutOfRange, "jour hors de [0, last] (écrit seulement s'il est connu).");
                     else if (e.Lost is long lost && lost < 1) report.Add(p + ".lostDay", ValidationCode.InvalidValue, "un jour d'échec demande un échec.");
+                }
+                // Version 31 (sous-lot V2.41.3) : coffres repris au fort après le dernier pillage, facultatif.
+                if (e.Recovered is long recovered)
+                {
+                    if (version < EventRecoveredSince)
+                        report.Add(p + ".recovered", ValidationCode.UnknownField, $"champ inconnu en version {version} (coffres repris : version {EventRecoveredSince}).");
+                    else if (recovered < 1 || recovered > SavedEvent.MaxRecovered)
+                        report.Add(p + ".recovered", ValidationCode.OutOfRange, $"masque hors de [1, {SavedEvent.MaxRecovered}] (écrit seulement s'il n'est pas nul).");
+                    else if (e.LostDay is null) report.Add(p + ".recovered", ValidationCode.InvalidValue, "des coffres repris demandent le jour du pillage (lostDay).");
+                }
+                if (e.RecoveredOnce is bool once)
+                {
+                    if (version < EventRecoveredSince)
+                        report.Add(p + ".recoveredOnce", ValidationCode.UnknownField, $"champ inconnu en version {version} (reprise déjà faite : version {EventRecoveredSince}).");
+                    else if (!once) report.Add(p + ".recoveredOnce", ValidationCode.InvalidValue, "écrit seulement vrai (absent : aucune reprise complète).");
+                    else if (e.Lost is long lost && lost < 1) report.Add(p + ".recoveredOnce", ValidationCode.InvalidValue, "une reprise demande un pillage.");
                 }
             }
         }

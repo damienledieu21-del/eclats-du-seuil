@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/caravans.schema.json",
   "title": "Éclats du Seuil — caravanes et attaques des bandits",
-  "description": "Caravanes (sous-lot V2.41.1), version 1 : caravanes de marchands sur les routes de la zone (départ, fréquence, vitesse, route) et l'attaque des bandits qui les arrête à leur halte. Documentation. La validation qui fait foi est celle du programme (CaravanValidator), avec la zone et le catalogue d'objets.",
+  "description": "Caravanes (sous-lot V2.41.1), version 2 (sous-lot V2.41.3 : quête de reprise au fort, recovery ; la version 1, sans elle, est encore lue) : caravanes de marchands sur les routes de la zone (départ, fréquence, vitesse, route) et l'attaque des bandits qui les arrête à leur halte. Documentation. La validation qui fait foi est celle du programme (CaravanValidator), avec la zone et le catalogue d'objets.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,10 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "enum": [
+        1,
+        2
+      ]
     },
     "kind": {
       "const": "caravans"
@@ -95,6 +98,57 @@
                   "maxItems": 2,
                   "items": {
                     "type": "number"
+                  }
+                }
+              },
+              "recovery": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "place",
+                  "days",
+                  "guardRadius",
+                  "chests",
+                  "xp",
+                  "money"
+                ],
+                "description": "Sous-lot V2.41.3 (version 2) : quête de reprise au fort après un pillage : lieu des coffres, jours d'ouverture à partir du jour du pillage, rayon où aucun ennemi ne doit être debout pour prendre un coffre, places des coffres (dans le lieu, à 3 m au moins l'un de l'autre), récompense quand tous sont repris (expérience, cuivre). Chaque coffre repris enlève un jour au contrecoup des marchands.",
+                "properties": {
+                  "place": {
+                    "type": "string"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 30
+                  },
+                  "guardRadius": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 50
+                  },
+                  "chests": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "xp": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "money": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
                   }
                 }
               },

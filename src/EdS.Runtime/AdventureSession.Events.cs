@@ -42,6 +42,9 @@ namespace EdS.Runtime
             WorldEventNoticeKind.ScarStirs => "cicatrice_rode",
             WorldEventNoticeKind.ScarSpread => "cicatrice_propagee",   // sous-lot V2.6.1
             WorldEventNoticeKind.Escaped => "passee",   // sous-lot V2.41.1 : la caravane est passée sans le joueur
+            WorldEventNoticeKind.RecoveryOpened => "reprise_ouverte",   // sous-lot V2.41.3 : quête de reprise au fort
+            WorldEventNoticeKind.ChestRecovered => "coffre",
+            WorldEventNoticeKind.Recovered => "reprise",
             _ => "fin",
         };
 
@@ -57,7 +60,9 @@ namespace EdS.Runtime
         private void EventNotice(WorldEventNotice n)
         {
             // Sous-lot V2.6 : les annonces d'une cicatrice disent son palier ({0}) et son lieu ({1}).
-            if (EventText(n.Event, n.Group, Moment(n.Kind)) is string key)
+            // Relecture de la PR #243 : reprise complète sans or (bourse pleine) : une variante qui ne parle pas de paiement.
+            string moment = n.Kind == WorldEventNoticeKind.Recovered && n.Money == 0 ? "reprise_sans_or" : Moment(n.Kind);
+            if (EventText(n.Event, n.Group, moment) is string key)
             {
                 // Sous-lot V2.6.1 : une propagation dit aussi d'où vient le froid ({2}).
                 if (IsScarNotice(n.Kind)) Say(key, n.Wave, ScarPlace(n.Event, n.Group), ScarPlace(n.Event, n.From));
@@ -70,10 +75,41 @@ namespace EdS.Runtime
                 _dirty = true;
                 if (n.Xp > 0) Say("text.ui.scar.purified", n.Xp);
             }
-            if (n.Kind != WorldEventNoticeKind.Rewarded) return;
+            if (n.Kind == WorldEventNoticeKind.ChestRecovered) _dirty = true;   // sous-lot V2.41.3 : coffre repris au fort
+            if (n.Kind != WorldEventNoticeKind.Rewarded && n.Kind != WorldEventNoticeKind.Recovered) return;
             _dirty = true;
             Say("text.ui.event.reward", n.Xp, MoneyText(n.Money));
             foreach ((string item, int count) in n.Items) Say("text.ui.reward", ItemName(item), count);
+        }
+
+        /// <summary>Sous-lot V2.41.3 : coffre d'une quête de reprise ouverte, pas encore repris, à portée (caravane, rang), ou null.</summary>
+        public (string Caravan, int Chest)? ChestInReach
+        {
+            get
+            {
+                if (!(Me is GroundVector p) || World.IsDefeated) return null;
+                // Relecture de la PR #243 : le plus proche, à la portée du monde (CaravanRecovery.Reach).
+                (string, int)? best = null;
+                long bestSquared = long.MaxValue;
+                foreach (CaravanRecoveryView v in World.CaravanRecoveries)
+                    for (int k = 0; k < v.Recovery.Chests.Count; k++)
+                    {
+                        GroundVector c = v.Recovery.Chests[k];
+                        long dx = checked(c.X.Raw - p.X.Raw), dz = checked(c.Z.Raw - p.Z.Raw), d = checked(dx * dx + dz * dz);
+                        if (!v.IsTaken(k) && Within(p, c, EdS.Data.Caravans.CaravanRecovery.Reach) && d < bestSquared) { best = (v.Caravan.Id, k); bestSquared = d; }
+                    }
+                return best;
+            }
+        }
+
+        /// <summary>Sous-lot V2.41.3 : reprend le coffre à portée ; un message dit pourquoi si c'est refusé.</summary>
+        public bool TakeChest()
+        {
+            if (!(ChestInReach is (string caravan, int chest))) return false;
+            ChestRefusal refusal = World.TakeCaravanChest(caravan, chest);
+            if (refusal == ChestRefusal.Guarded) Say("text.ui.caravan.chest.guarded");
+            else if (refusal == ChestRefusal.NotHere) Say("text.ui.caravan.chest.too_far");
+            return refusal == ChestRefusal.None;
         }
 
         /// <summary>Sous-lot V2.5 : faille ouverte à portée (pour la refermer), ou null.</summary>

@@ -263,7 +263,7 @@ public class LieuxReconstruitsTests
     [Fact]
     public void Sauvegarde_v28_aller_retour_et_v27_encore_lue()
     {
-        Assert.Equal((30, 28), (SaveValidator.CurrentSchemaVersion, SaveValidator.RebuildsSince));
+        Assert.Equal((31, 28), (SaveValidator.CurrentSchemaVersion, SaveValidator.RebuildsSince));
         string json = Write(Hero().WithRebuilds(Saved));
         Assert.Contains("\"rebuilds\": {\"hameau\": {\"stage\": 0, \"given\": {\"bandits\": 1, \"or\": 1200}}, \"moulin\": {\"stage\": 1, \"given\": {}, \"done\": true}},", json, StringComparison.Ordinal);
         SaveLoadResult back = SaveJsonReader.Read(json);
