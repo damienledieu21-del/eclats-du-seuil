@@ -35,6 +35,10 @@ namespace EdS.Runtime
             ["croc_gris_enrage"] = "Croc-Gris enragé",
             ["echo_de_la_rupture"] = "Écho de la Rupture",
             ["voix_de_la_rupture"] = "Voix de la Rupture",   // sous-lot V1.9.9 : la seconde forme de l'écho du souvenir
+            // Sous-lot V2.42.3 : le gardien de la source de la corruption et ses formes.
+            ["gardien_de_la_source"] = "Gardien de la source",
+            ["gardien_de_la_source_fissure"] = "Gardien fissuré",
+            ["gardien_de_la_source_dechaine"] = "Gardien déchaîné",
             // Sous-lot V2.4 : les bêtes paisibles et les loups de la brume.
             ["lievre"] = "Lièvre",
             ["loup_brume"] = "Loup gris",
