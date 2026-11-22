@@ -1884,6 +1884,21 @@
         "named": true
       },
       {
+        "id": "item.coeur_de_cristal_du_seuil",
+        "name": "Cœur de cristal du Seuil",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "neck",
+        "requiredLevel": 20,
+        "bonus": {
+          "magicResistance": 70,
+          "maxHealth": 120,
+          "physicalPower": 12
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",

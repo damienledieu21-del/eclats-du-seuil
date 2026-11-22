@@ -1,0 +1,131 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.mine_filons",
+    "name": "Mine : galeries des filons",
+    "scenario": "zones/mine_filons",
+    "floor": "dessous",
+    "entry": "camp_des_mineurs",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "camp_des_mineurs",
+        "name": "Camp des mineurs",
+        "position": [
+          20,
+          2
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "galerie_des_filons",
+        "name": "Galerie des filons",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          22
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "chambre_des_eboulis",
+        "name": "Chambre des éboulis",
+        "min": [
+          -30,
+          22
+        ],
+        "max": [
+          30,
+          40
+        ],
+        "minLevel": 20
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_mine1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_mine2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_mine3",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_mine1",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "bete_des_eboulis",
+        "scenario": "zones/mine_filons_chef",
+        "forms": [
+          "ours_bete_des_eboulis",
+          "ours_bete_des_eboulis_furieuse"
+        ],
+        "fact": "fact.bete_des_eboulis.vaincue",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          }
+        ],
+        "loot": "loot.ours"
+      }
+    ],
+    "doors": [
+      {
+        "id": "ascenseur",
+        "name": "Ascenseur de la mine",
+        "position": [
+          20,
+          -2.5
+        ],
+        "to": "zone.mine_galeries",
+        "toDoor": "ascenseur",
+        "kind": "puits"
+      },
+      {
+        "id": "echelles",
+        "name": "Échelles du fond",
+        "position": [
+          -22,
+          38
+        ],
+        "to": "zone.mine_cristaux",
+        "toDoor": "echelles",
+        "kind": "escalier"
+      }
+    ]
+  }
+}
