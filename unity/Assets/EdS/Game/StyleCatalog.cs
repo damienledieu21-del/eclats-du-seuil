@@ -562,6 +562,8 @@ namespace EdS.Game
         public GameObject[] Feasts = new GameObject[0];
         [Tooltip("Sous-lot V2.41.2 : modèles des caravanes (« Assets/EdS/Modeles/Caravanes/<nom>/<nom>.fbx », remplis par le menu) : chariot bâché, attelage, coffres de marchandises ; sans eux, des formes simples.")]
         public GameObject[] Caravans = new GameObject[0];
+        [Tooltip("Sous-lot V2.42.2 : modèles de la corruption (« Assets/EdS/Modeles/Corruption/<nom>/<nom>.fbx », remplis par le menu) : arbres, souche, rochers et cristaux corrompus, autel corrompu et autel purifié ; sans eux, des formes simples.")]
+        public GameObject[] Corruption = new GameObject[0];
         [Tooltip("V2.25.4 : arbres de l'atelier (« Assets/EdS/Modeles/Arbres/<essence>/ », remplis par le menu) ; ils remplacent les arbres téléchargés partout où le jeu pose des arbres.")]
         public TreeLook[] AtelierTrees = new TreeLook[0];
         [Tooltip("V2.25.4 : l'arbre millénaire de l'atelier, livré mais pas posé (il ira avec la grande carte, V2.32).")]
@@ -856,6 +858,15 @@ namespace EdS.Game
         {
             if (Caravans == null || string.IsNullOrEmpty(name)) return null;
             foreach (GameObject g in Caravans)
+                if (g != null && g.name == name) return g;
+            return null;
+        }
+
+        /// <summary>Sous-lot V2.42.2 : le modèle de la corruption nommé <paramref name="name"/> (<see cref="CorruptionLooks.Models"/>) ; null sans lui.</summary>
+        public GameObject CorruptionModel(string name)
+        {
+            if (Corruption == null || string.IsNullOrEmpty(name)) return null;
+            foreach (GameObject g in Corruption)
                 if (g != null && g.name == name) return g;
             return null;
         }

@@ -175,6 +175,30 @@ public sealed class V2471MinesTests : IDisposable
             }
     }
 
+    /// <summary>
+    /// Décision de Damien du 22 novembre 2026 : aucune créature (ni forme de chef) des trois niveaux n'est à portée d'aggro d'une porte, sans
+    /// quoi on arrive en combat et on ne peut plus repasser la porte (l'archer de la salle des pilleurs était à 10 m de l'ascenseur pour 13).
+    /// </summary>
+    [Fact]
+    public void Aucune_creature_a_portee_d_aggro_d_une_porte()
+    {
+        int checkedPairs = 0;
+        foreach (ZoneDefinition z in Mine.Value)
+            foreach (Door d in z.Doors)
+            {
+                (double dx, double dz) = P(d.Position);
+                foreach (var c in z.Setup.Combatants.Concat(z.Chiefs.SelectMany(b => b.Forms)))
+                {
+                    if ((c as AssailantSetup)?.Behavior?.AggroRange is not Fixed aggro) continue;
+                    (double x, double zz) = P(c.Placement!.Position);
+                    double r = aggro.Raw / 1e4;
+                    Assert.True((x - dx) * (x - dx) + (zz - dz) * (zz - dz) > r * r, z.Id + " / " + d.Id + " : " + c.Id);
+                    checkedPairs++;
+                }
+            }
+        Assert.True(checkedPairs >= 25, checkedPairs.ToString());   // toutes les créatures ont une portée d'aggro
+    }
+
     /// <summary>Niveau <paramref name="zone"/> lu d'un dossier de scénarios d'essai où <paramref name="edit"/> retouche le scénario <paramref name="scenario"/>.</summary>
     private ZoneLoadResult WithScenario(string zone, string scenario, Action<JsonObject> edit, Action<JsonObject>? zoneEdit = null)
     {
