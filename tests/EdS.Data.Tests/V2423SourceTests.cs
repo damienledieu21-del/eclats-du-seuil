@@ -444,6 +444,48 @@ public class V2423SourceTests
     }
 
     [Fact]
+    public void Defaite_simultanee_aucune_forme_n_apparait_apres_l_echec_puis_defi_relance()
+    {
+        // Revue Codex de la PR #252 (2e tour) : défi perdu au tick même où la première forme tombe (la suivante est déjà programmée).
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        string first = w.SourceGuardianForm!;
+        w.SourceFailsForTest = () => w.Zone.Engine.View(first).IsDead;
+        var notices = new List<CorruptionNotice>();
+        var boss = new List<BossEvent>();
+        for (int i = 0; i < 8000 && !notices.Any(n => n.Kind == CorruptionNoticeKind.ChallengeFailed); i++)
+        {
+            if (i % 20 == 0 && w.Zone.Engine.CombatantIds.Contains(first))
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", first)); }
+                catch (ArgumentException) { }
+            boss.AddRange(w.Step().Boss);
+            notices.AddRange(w.CorruptionNotices);
+        }
+        w.SourceFailsForTest = null;
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.True(w.Zone.Engine.View(first).IsDead);
+        Assert.Contains(boss, b => b.Kind == BossEventKind.FormArrived && b.Phase == 1);   // la forme suivante était programmée
+        Assert.False(w.SourceChallengeUnderway);
+        for (int i = 0; i < 20; i++)
+        {
+            w.Step();
+            notices.AddRange(w.CorruptionNotices);
+        }
+        Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id.StartsWith(Forms[0], StringComparison.Ordinal)
+            && w.Zone.Engine.View(id) is { IsPresent: true, IsDead: false });   // aucune forme restée sans combat suivi
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        // Le défi se relance normalement, jusqu'à la purification.
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        var again = new List<CorruptionNotice>();
+        Fight(w, again);
+        Assert.Single(again, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+        Assert.DoesNotContain(again, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.Equal(6, w.CorruptionState.DayOf(Source));
+    }
+
+    [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {
         CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);

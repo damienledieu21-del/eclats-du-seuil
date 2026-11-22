@@ -134,6 +134,7 @@ namespace EdS.World
         /// </summary>
         private void StepCorruption()
         {
+            DismissSourceDoomed();
             if (!(ActiveCorruption is CorruptionBook))
             {
                 CorruptionNotices = NoCorruptionNotices;
@@ -165,6 +166,37 @@ namespace EdS.World
         /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
         /// <summary>Essais (revue Codex de la PR #252) : appelé juste avant le départ du gardien d'un défi perdu (session, forme).</summary>
         internal Action<Zone, string>? BeforeSourceLeaveForTest { get; set; }
+
+        /// <summary>Essais (revue Codex de la PR #252, 2e tour) : vrai pour perdre le défi à ce tick (comme une laisse franchie).</summary>
+        internal Func<bool>? SourceFailsForTest { get; set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (2e tour) : forme du gardien d'un défi perdu dont l'arrivée était encore en attente (forme suivante
+        /// programmée au tick même de l'échec) ; elle quitte sa session dès qu'elle y est arrivée (comme les formes oubliées d'un boss du monde).
+        /// </summary>
+        private (Zone Session, string Id)? _sourceDoomed;
+
+        /// <summary>Fait partir la forme oubliée du gardien arrivée depuis ; l'oublie si sa session est finie, si elle est morte ou partie.</summary>
+        private void DismissSourceDoomed()
+        {
+            if (!(_sourceDoomed is (Zone session, string id))) return;
+            if (session.IsOver) { _sourceDoomed = null; return; }
+            CombatantView v = session.Engine.View(id);
+            if (v.IsDead || v.HasLeft) _sourceDoomed = null;
+            else if (v.IsPresent)
+            {
+                try
+                {
+                    session.Leave(id);
+                    _sourceDoomed = null;
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                    // départ refusé (plafond de commandes ou d'événements) : nouvel essai au tick suivant
+                }
+            }
+            else if (!(v.ArrivalTick is long due) || due < session.Engine.CurrentTick) _sourceDoomed = null;   // arrivée refusée : rien à retirer
+        }
 
         internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
 
@@ -270,6 +302,7 @@ namespace EdS.World
             bool far = !me.IsPresent || !(me.Position is GroundVector p)
                 || CorruptionValidator.Beyond(p, book.Source.Position, checked(book.Source.Radius + SourceLeash))
                 || !ReferenceEquals(f.Session, Zone);   // relecture de la PR #252 : sorti de la session du combat (autre secteur, autre session)
+            far = far || SourceFailsForTest?.Invoke() == true;
             // Relecture indépendante de la PR #252 : une forme qui ne peut pas arriver (combat arrêté) est un échec propre.
             if (!_defeated && live && !far && !f.IsDefeated && !f.IsStalled) return false;
             // Défi perdu : la forme en jeu, présente et vivante, quitte sa session ; le combat quitte la liste (aucune forme à venir).
@@ -286,6 +319,10 @@ namespace EdS.World
                     try { s.Leave(f.CurrentForm); }
                     catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
                 }
+                // Revue Codex de la PR #252 (2e tour) : forme suivante programmée à ce tick (la précédente vient de tomber), pas encore
+                // arrivée : elle partira dès son arrivée, au lieu de rester dans la zone sans combat suivi.
+                else if (!v.IsDead && !v.HasLeft && v.ArrivalTick is long due && due >= s.Engine.CurrentTick)
+                    _sourceDoomed = (s, f.CurrentForm);
             }
             if (!f.RewardPending) _fights.Remove(f);
             _sourceSettled = true;
