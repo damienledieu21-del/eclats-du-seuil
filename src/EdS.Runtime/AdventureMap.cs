@@ -39,9 +39,16 @@ namespace EdS.Runtime
         /// </summary>
         public bool Outside { get; }
 
-        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false)
+        /// <summary>
+        /// Chantier V2.47.2 : genre de la porte (porte, escalier, puits…) : dans la mine, l'ascenseur est posé sur un puits, les échelles sur
+        /// un escalier. Affichage seulement.
+        /// </summary>
+        public DoorKind Kind { get; }
+
+        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false, DoorKind kind = DoorKind.Door)
         {
             Outside = outside;
+            Kind = kind;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Building = building;

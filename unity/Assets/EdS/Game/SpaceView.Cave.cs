@@ -34,6 +34,7 @@ namespace EdS.Game
         private void Cave(CombatSpace space, AdventureMap map)
         {
             _cave = true;
+            _mine = MineLooks.IsMine(space.Obstacles);   // V2.47.2 : la mine de la carrière (pièces du kit de mine)
             StyleWorld.SetCave(true);
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             Material rock = Built(StyleSurface.Stone, new Color(0.3f, 0.29f, 0.28f), out float rockTile);
@@ -52,6 +53,7 @@ namespace EdS.Game
             foreach (SpaceObstacle o in space.Obstacles)
             {
                 CavePiece piece = CaveLooks.PieceFor(o.Id);
+                if (piece == CavePiece.None && MineObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.47.2 : pièces de la mine
                 var points = o.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
                 float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
                 // Le bassin garde son eau, avec ou sans le modèle de sa margelle.
@@ -78,9 +80,17 @@ namespace EdS.Game
                 }
             }
 
+            if (_mine) MineBridges(space, wood, woodTile);   // V2.47.2 : passerelles sur la rivière souterraine
+
             // Le rideau d'eau, vu de dedans, sur les portes qui mènent dehors, tourné vers la grotte ; le jour du dehors passe à travers.
             foreach (MapDoor door in map.Doors)
             {
+                // V2.47.2 : dans la mine, ni rideau d'eau : le jour de la bouche, l'ascenseur, les échelles.
+                if (_mine)
+                {
+                    MineDoor(door, minX, minZ, maxX, maxZ, wood, woodTile);
+                    continue;
+                }
                 if (!door.Outside) continue;
                 var facing = CaveLooks.CurtainFacing(door.X, door.Z, minX, minZ, maxX, maxZ);
                 Vector3 at = new Vector3((float)door.X, 0f, (float)door.Z);
