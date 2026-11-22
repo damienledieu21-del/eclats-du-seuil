@@ -44,6 +44,7 @@ namespace EdS.Runtime
             ["item.eclat_du_seuil_endormi"] = new[] { "crystal", "shard", "gem" },
             ["item.poussiere_d_echo"] = new[] { "dust", "powder", "sand", "crystal" },
             ["item.talisman_du_seuil"] = new[] { "talisman", "amulet", "necklace" },
+            ["item.coeur_de_cristal_du_seuil"] = new[] { "amulet", "crystal", "necklace" },   // V2.47.1 : la récompense du fond de la mine
             ["item.potion_de_soin"] = new[] { "healthpotion", "redpotion", "potion" },
             // Fusion de V2.10 (récompenses uniques des concours du marché) avec V2.11.
             ["item.tablier_de_maitre"] = new[] { "apron", "belt" },
