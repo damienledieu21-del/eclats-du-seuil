@@ -189,7 +189,7 @@ public sealed class V2471MinesTests : IDisposable
                 (double dx, double dz) = P(d.Position);
                 foreach (var c in z.Setup.Combatants.Concat(z.Chiefs.SelectMany(b => b.Forms)))
                 {
-                    if (c.Behavior?.AggroRange is not Fixed aggro) continue;
+                    if ((c as AssailantSetup)?.Behavior?.AggroRange is not Fixed aggro) continue;
                     (double x, double zz) = P(c.Placement!.Position);
                     double r = aggro.Raw / 1e4;
                     Assert.True((x - dx) * (x - dx) + (zz - dz) * (zz - dz) > r * r, z.Id + " / " + d.Id + " : " + c.Id);
