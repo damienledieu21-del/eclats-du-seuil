@@ -1992,7 +1992,7 @@ namespace EdS.Runtime
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
                         VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z),
-                            _zones.Any(z => z.Id == d.To && !z.Sheltered))), _zone.Indoor,
+                            _zones.Any(z => z.Id == d.To && !z.Sheltered), d.Kind)), _zone.Indoor,   // V2.47.2 : et son genre (ascenseur, échelles)
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
                         _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
