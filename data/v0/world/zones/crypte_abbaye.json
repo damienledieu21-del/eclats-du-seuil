@@ -1,0 +1,130 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.crypte_abbaye",
+    "name": "Crypte de l'abbaye : galerie des gisants",
+    "scenario": "zones/crypte_abbaye",
+    "floor": "dessous",
+    "entry": "pied_de_l_escalier",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "pied_de_l_escalier",
+        "name": "Pied de l'escalier",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "galerie_des_gisants",
+        "name": "Galerie des gisants",
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          21
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "ossuaire_des_moines",
+        "name": "Ossuaire des moines",
+        "min": [
+          -24,
+          21
+        ],
+        "max": [
+          24,
+          36
+        ],
+        "minLevel": 21
+      }
+    ],
+    "populations": [
+      {
+        "creature": "moine_echo_crypte1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_crypte2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_crypte3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_crypte4",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "gardien_de_l_ossuaire",
+        "scenario": "zones/crypte_abbaye_gardien",
+        "forms": [
+          "moine_echo_gardien_ossuaire",
+          "moine_echo_gardien_ossuaire_dechaine"
+        ],
+        "fact": "fact.gardien_de_l_ossuaire.vaincu",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Abbaye en ruine",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_crypte_abbaye"
+      },
+      {
+        "id": "escalier_du_tombeau",
+        "name": "Escalier du tombeau",
+        "position": [
+          18,
+          33
+        ],
+        "to": "zone.crypte_tombeau",
+        "toDoor": "escalier_du_tombeau",
+        "kind": "escalier"
+      }
+    ]
+  }
+}

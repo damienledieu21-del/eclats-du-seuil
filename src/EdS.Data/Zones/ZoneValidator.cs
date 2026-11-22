@@ -1161,11 +1161,13 @@ namespace EdS.Data.Zones
                 var bosses = new List<(Boss Boss, string Path)>();
                 if (boss != null) bosses.Add((boss, "$.data.boss"));
                 foreach (Boss chief in chiefs) bosses.Add((chief, $"$.data.chiefs[{d.Chiefs!.FindIndex(x => x?.Id == chief.Id)}]"));
+                // Relecture indépendante de la PR #250 : toutes les formes, pas seulement la première (chacune a sa place dans le scénario).
                 foreach ((Boss each, string bossPath) in bosses)
-                    foreach (Door door in doors)
-                        if (Closer(each.Forms[0].Placement!.Position, door.Position, MinDoorClearance))
-                            report.Add(bossPath + ".forms[0]", ValidationCode.OutOfRange,
-                                $"dans un dessous, la forme « {each.Forms[0].Id} » du chef « {each.Id} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                    for (int f = 0; f < each.Forms.Count; f++)
+                        foreach (Door door in doors)
+                            if (each.Forms[f].Placement is CombatantPlacement at && Closer(at.Position, door.Position, MinDoorClearance))
+                                report.Add(bossPath + $".forms[{f}]", ValidationCode.OutOfRange,
+                                    $"dans un dessous, la forme « {each.Forms[f].Id} » du chef « {each.Id} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
                 for (int i = 0; i < populations.Count; i++)
                 {
                     if (!(populations[i].Template.Placement is CombatantPlacement start)) continue;

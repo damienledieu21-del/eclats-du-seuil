@@ -117,6 +117,7 @@ namespace EdS.Runtime
             ["rosalie"] = true, ["aubine"] = true, ["sauge"] = true, ["bertille"] = true, ["colombe"] = true, ["garance"] = true, ["mahaut"] = true,
             ["brunehilde"] = true, ["achille"] = false, ["aldric"] = false, ["ancel"] = false, ["colin"] = false, ["firmin"] = false, ["galeran"] = false,
             ["guerin"] = false, ["berenger"] = false,
+            ["moine"] = false,   // V2.48.1 : les échos des moines de l'abbaye (crypte), des frères
             ["odile"] = true, ["albe"] = true, ["maelle"] = true, ["lison"] = true, ["ysolde"] = true, ["epiciere"] = true, ["apprentie"] = true,
             ["veuve"] = true, ["fermiere"] = true, ["maitresse"] = true, ["herboriste"] = true, ["habitant"] = true, ["habitante"] = true,
             ["boulanger"] = false, ["pretre"] = false, ["renart"] = false, ["gaspard"] = false, ["capitaine"] = false, ["doyen"] = false,
@@ -198,7 +199,8 @@ namespace EdS.Runtime
                 {
                     case "garde": case "capitaine": case "archer": return HumanOutfit.Guard;
                     case "sentinelle": return HumanOutfit.Sentinel;
-                    case "pretre": case "albe": case "doyen": case "fidele": case "archiviste": return HumanOutfit.Clergy;
+                    case "pretre": case "albe": case "doyen": case "fidele": case "archiviste":
+                    case "moine": return HumanOutfit.Clergy;   // V2.48.1 : les échos des moines, en robe
                     case "maelle": case "armurier": case "apprentie": case "forgeron": return HumanOutfit.Smith;
                     case "renart": case "epiciere": case "boulanger": case "aubergiste": case "marchand": case "intendant": case "maitresse": return HumanOutfit.Merchant;
                     case "rodeur": return HumanOutfit.Ranger;

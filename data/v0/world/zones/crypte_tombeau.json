@@ -1,0 +1,125 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.crypte_tombeau",
+    "name": "Crypte de l'abbaye : tombeau de l'abbé",
+    "scenario": "zones/crypte_tombeau",
+    "floor": "dessous",
+    "entry": "bas_de_l_escalier",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "bas_de_l_escalier",
+        "name": "Bas de l'escalier",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_des_chapelains",
+        "name": "Salle des chapelains",
+        "min": [
+          -20,
+          -4
+        ],
+        "max": [
+          20,
+          15
+        ],
+        "minLevel": 21
+      },
+      {
+        "id": "tombeau_de_l_abbe",
+        "name": "Tombeau de l'abbé",
+        "min": [
+          -20,
+          15
+        ],
+        "max": [
+          20,
+          32
+        ],
+        "minLevel": 22
+      }
+    ],
+    "populations": [
+      {
+        "creature": "moine_echo_tombeau1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_tombeau2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_tombeau3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_echo_tombeau4",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "abbe_sans_repos",
+        "scenario": "zones/crypte_tombeau_abbe",
+        "forms": [
+          "moine_echo_abbe",
+          "moine_echo_abbe_courrouce",
+          "moine_echo_abbe_dechire"
+        ],
+        "fact": "fact.abbe_sans_repos.apaise",
+        "rewards": [
+          {
+            "item": "item.sceau_de_l_abbe",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "escalier_du_tombeau",
+        "name": "Escalier de la galerie",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.crypte_abbaye",
+        "toDoor": "escalier_du_tombeau",
+        "kind": "escalier"
+      }
+    ]
+  }
+}
