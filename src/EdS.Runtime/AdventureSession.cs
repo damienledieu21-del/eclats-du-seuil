@@ -896,6 +896,8 @@ namespace EdS.Runtime
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
             if (AltarInReach != null) return PurifyAltar();   // sous-lot V2.42.1 : puis l'autel d'une terre corrompue
+            // Revue Codex de la PR #243 (P1) : puis un coffre de la quête de reprise au fort (avant portes et PNJ ; la touche d'action).
+            if (ChestInReach != null) return TakeChest();
             // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
             // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
             if (DoorFirst) return UseDoor();
@@ -1206,6 +1208,15 @@ namespace EdS.Runtime
 
         /// <summary>Intérieurs : la zone en cours est un intérieur.</summary>
         public bool Indoors => _zone.Indoor;
+
+        /// <summary>Chantier V2.46 : la zone en cours est un dessous (grotte, mine…), jamais un intérieur.</summary>
+        public bool Underground => _zone.Underground;
+
+        /// <summary>
+        /// Chantier V2.46 : la zone en cours est à l'abri (intérieur ou dessous) : ni pluie, ni neige, ni glace à l'affichage (la pluie restait
+        /// affichée dans un dessous, noté au V2.45.2).
+        /// </summary>
+        public bool Sheltered => _zone.Sheltered;
 
         /// <summary>Sous-lot V2.53 : l'écran de chargement peint du lieu où est le personnage (le village à défaut). Affichage seulement.</summary>
         public LoadingScreen LoadingHere() =>
@@ -1980,14 +1991,17 @@ namespace EdS.Runtime
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
-                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
+                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z),
+                            _zones.Any(z => z.Id == d.To && !z.Sheltered))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
                         _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
                         // V2.25.2 : la porte du moulin, fermée ou ouverte (sa barrière reste dans le décor).
                         _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!,
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
-                        _zone.Indoor ? null : _zone.Region);
+                        _zone.Indoor ? null : _zone.Region,
+                        // Chantier V2.46 : un dessous (la grotte de la cascade) est dessiné en grotte, à l'abri.
+                        _zone.Underground);
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
 
@@ -2249,7 +2263,9 @@ namespace EdS.Runtime
             if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
             if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
             // V2.45.2 : un dessous est à l'abri comme une pièce (l'affichage n'y montre ni pluie ni ciel), sans être habité comme le village.
-            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+            // V2.46 (relecture) : sous terre, la pluie ne s'entend pas non plus (l'ambiance n'a pas de vent à couper).
+            double rain = _zone.Underground ? 0 : Weather().Rain / (double)WorldWeather.Scale;
+            return new AdventureMood(village, fighting, boss, river, _zone.Sheltered, DayCycle.NightShare(minute), rain,
                 places, minute, forge);
         }
 

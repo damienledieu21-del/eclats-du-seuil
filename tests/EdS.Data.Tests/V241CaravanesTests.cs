@@ -428,6 +428,7 @@ public class V241CaravanesTests
         ZoneDefinition essai = loaded.Zone!;
         JsonObject root = JsonNode.Parse(Shipped)!.AsObject();
         JsonObject c = root["data"]!["caravans"]![0]!.AsObject();
+        c.Remove("recovery");   // sous-lot V2.41.3 : la zone d'essai n'a pas de fort
         c["firstDay"] = 0;
         c["start"] = "06:00";
         c["route"] = new JsonArray(new JsonArray(20, 90), new JsonArray(380, 90), new JsonArray(500, 90));

@@ -718,6 +718,16 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
+                      },
+                      "recovered": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 255,
+                        "description": "Version 31 (sous-lot V2.41.3) : coffres repris au fort après le dernier pillage (bit k : coffre k), seulement avec lostDay."
+                      },
+                      "recoveredOnce": {
+                        "const": true,
+                        "description": "Version 31 (sous-lot V2.41.3) : une reprise complète déjà faite : les suivantes ne donnent que la prime (décision de Damien du 21 novembre 2026)."
                       }
                     }
                   },

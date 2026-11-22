@@ -178,7 +178,7 @@ namespace EdS.Game
 
         private void RefreshRows()
         {
-            _qualityRow = "Textures : " + DeviceQuality.Label;
+            _qualityRow = DeviceQuality.Label;   // « Qualité : … » (21 novembre 2026)
             _brightnessRow = "‹   Luminosité : " + BrightnessSetting.Label + "   ›";
         }
 

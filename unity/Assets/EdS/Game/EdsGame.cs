@@ -609,7 +609,7 @@ namespace EdS.Game
         {
             AdventureSession a = _adventure;
             if (a == null || _weatherFx == null || _camera == null) return;
-            _weatherFx.Update(_weatherLook, _weatherState, _weatherKey, _camera.Camera.transform.position, a.Indoors,
+            _weatherFx.Update(_weatherLook, _weatherState, _weatherKey, _camera.Camera.transform.position, a.Sheltered,   // V2.46 : ni pluie dans un dessous
                 StyleWorld.Memory || _stage != null && _stage.Hush(a), covered, Time.deltaTime);
         }
 
@@ -793,7 +793,7 @@ namespace EdS.Game
             if (_seasonView == null) _seasonView = new SeasonView();
             _seasonView.Sync(a, Time.deltaTime);   // saisons : l'hôte fournit la date, puis teinte, neige et glace pour le rendu
             if (_snowCover == null) _snowCover = new SnowCover();
-            _snowCover.Sync(Time.deltaTime, a.Indoors, _arena.DecorRoot, CellStreamView.CurrentRoot);   // V2.44.3 : neige sur les toits, les rochers et le sol
+            _snowCover.Sync(Time.deltaTime, a.Sheltered, _arena.DecorRoot, CellStreamView.CurrentRoot);   // V2.44.3 : neige sur les toits, les rochers et le sol
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             HumanBodies.Feast = a.FeastNumber;   // sous-lot F6 : aux teintes de la fête d'Orsédia en cours
@@ -833,7 +833,7 @@ namespace EdS.Game
             // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
             // pause, pendant une scène et dans une maison.
             _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
-                _paused || _loading.Active || a.InScene || a.Indoors ? 0f : Time.deltaTime);
+                _paused || _loading.Active || a.InScene || a.Sheltered ? 0f : Time.deltaTime);   // V2.46 : ni dans un dessous
             // Sous-lot V2.9 (2e vague) : bêtes de la ferme et leurs cris ; pas du personnage selon le sol.
             if (_arena.Player != null)
             {
@@ -878,6 +878,7 @@ namespace EdS.Game
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
             if (a.AltarInReach != null) return a.Text("text.ui.corruption.purify");   // sous-lot V2.42.2 : purifier l'autel d'une terre corrompue
+            if (a.ChestInReach != null) return a.Text("text.ui.caravan.chest.take");   // sous-lot V2.41.3 : reprendre un coffre au fort (comme Interact)
             // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
             if (a.DoorFirst && a.DoorInReach != null) return a.DoorHint;   // V2.43.4 : « fermée » devant la porte d'un lieu pas encore reconstruit
             if (a.NpcInReach is EdS.Data.Story.Npc npc)

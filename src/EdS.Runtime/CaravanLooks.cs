@@ -32,8 +32,39 @@ namespace EdS.Runtime
     /// Sous-lot V2.41.2 : à quoi ressemble une caravane (affichage seulement). Les modèles prévus (liste de l'atelier, <c>Caravanes/modeles.json</c>)
     /// sont branchés par leur nom ; tant qu'ils manquent, Unity montre des formes simples de la même taille (<see cref="Size"/>).
     /// </summary>
+    /// <summary>Sous-lot V2.41.3 (revue Codex de la PR #243) : un coffre à reprendre au fort, à afficher (clé stable, place au sol).</summary>
+    public readonly struct FortChest
+    {
+        /// <summary>« caravane/jour du pillage/rang » : stable tant que le coffre attend.</summary>
+        public string Key { get; }
+        public double X { get; }
+        public double Z { get; }
+
+        public FortChest(string key, double x, double z)
+        {
+            Key = key;
+            X = x;
+            Z = z;
+        }
+    }
+
     public static class CaravanLooks
     {
+        /// <summary>
+        /// Sous-lot V2.41.3 (revue Codex de la PR #243) : les coffres encore à reprendre des quêtes ouvertes (ni repris, ni quête fermée),
+        /// dans l'ordre des quêtes puis des coffres. Affichage seulement (modèle <see cref="Goods"/>).
+        /// </summary>
+        public static IReadOnlyList<FortChest> RecoveryChests(IReadOnlyList<CaravanRecoveryView> open)
+        {
+            if (open is null) throw new ArgumentNullException(nameof(open));
+            var list = new List<FortChest>();
+            foreach (CaravanRecoveryView v in open)
+                for (int k = 0; k < v.Recovery.Chests.Count; k++)
+                    if (!v.IsTaken(k))
+                        list.Add(new FortChest(v.Caravan.Id + "/" + v.PillageDay + "/" + k, v.Recovery.Chests[k].X.Raw / 10000.0, v.Recovery.Chests[k].Z.Raw / 10000.0));
+            return list;
+        }
+
         /// <summary>Dossier des modèles des caravanes dans le projet Unity (« …/Caravanes/&lt;nom&gt;/&lt;nom&gt;.fbx »).</summary>
         public const string Folder = "Assets/EdS/Modeles/Caravanes";
 

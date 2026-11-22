@@ -29,6 +29,9 @@ namespace EdS.Game
         private readonly List<string> _gone = new List<string>();
         private readonly List<string> _seen = new List<string>();
 
+        /// <summary>Sous-lot V2.41.3 : coffres à reprendre au fort affichés, par clé (<see cref="FortChest.Key"/>).</summary>
+        private readonly Dictionary<string, GameObject> _chests = new Dictionary<string, GameObject>();
+
         public CaravansView()
         {
             _root = new GameObject("Caravanes (V2.41)");
@@ -38,6 +41,8 @@ namespace EdS.Game
         {
             foreach (Shown s in _shown.Values) if (s.Root != null) Object.Destroy(s.Root);
             _shown.Clear();
+            foreach (GameObject g in _chests.Values) if (g != null) Object.Destroy(g);
+            _chests.Clear();
             if (_root != null) Object.Destroy(_root);
         }
 
@@ -69,6 +74,38 @@ namespace EdS.Game
             {
                 if (_shown[key].Root != null) Object.Destroy(_shown[key].Root);
                 _shown.Remove(key);
+            }
+            SyncChests(a);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.41.3 (revue Codex de la PR #243) : les coffres à reprendre au fort (<see cref="AdventureSession.FortChests"/>), posés sur
+        /// le sol affiché ; un coffre repris ou une quête fermée retire le sien (instance détruite).
+        /// </summary>
+        private void SyncChests(AdventureSession a)
+        {
+            IReadOnlyList<FortChest> chests = a.FortChests;
+            _seen.Clear();
+            for (int i = 0; i < chests.Count; i++)
+            {
+                FortChest c = chests[i];
+                _seen.Add(c.Key);
+                if (_chests.ContainsKey(c.Key) && _chests[c.Key] != null) continue;
+                var holder = new GameObject("Coffre a reprendre " + c.Key);
+                holder.transform.SetParent(_root.transform, false);
+                holder.transform.position = StyleWorld.OnGround(new Vector3((float)c.X, 0f, (float)c.Z));
+                var size = CaravanLooks.Size(CaravanLooks.Goods);
+                GameObject model = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.CaravanModel(CaravanLooks.Goods) : null;
+                if (model != null) Fit(Object.Instantiate(model), holder.transform, size);
+                else Stand(CaravanLooks.Goods, holder.transform, size);
+                _chests[c.Key] = holder;
+            }
+            _gone.Clear();
+            foreach (string key in _chests.Keys) if (!_seen.Contains(key)) _gone.Add(key);
+            foreach (string key in _gone)
+            {
+                if (_chests[key] != null) Object.Destroy(_chests[key]);
+                _chests.Remove(key);
             }
         }
 

@@ -632,7 +632,7 @@ public class V25EvenementsTests
     [Fact]
     public void Textes_d_un_moment_variante_puis_commun()
     {
-        Assert.Equal(new[] { "annonce", "debut", "vague", "victoire", "defaite", "absence", "recompense", "attente", "merci", "fin", "passee" },   // V2.41.1 : caravane passée
+        Assert.Equal(new[] { "annonce", "debut", "vague", "victoire", "defaite", "absence", "recompense", "attente", "merci", "fin", "passee", "reprise_ouverte", "coffre", "reprise" },   // V2.41.1 : caravane passée ; V2.41.3 : reprise au fort
             Enum.GetValues<WorldEventNoticeKind>().Where(k => !AdventureSession.IsScarNotice(k)).Select(AdventureSession.Moment));   // V2.6 : les cicatrices à part
     }
 

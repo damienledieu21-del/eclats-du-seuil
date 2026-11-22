@@ -925,10 +925,30 @@ Liste partagée : `src/EdS.Runtime/AssetStore.cs` (même forme que la 5e vague :
 Essai de Damien du 9 novembre 2026 : « System out of memory » (MemoryLabel Texture, `d3d11 failed to create 2D texture` 2048, erreur 8007000e, ALLOC_GFX ~1,9 Go) sur son PC (4 Go de RAM, GTX 470 à 1224 Mo, Direct3D 11) : les textures 2K/4K (Poly Haven, Megascans, packs de l'Asset Store) dépassent sa mémoire vidéo.
 
 - **Règle partagée** `src/EdS.Runtime/MachineTier.cs` (testée : `V2124PcModesteTests`) : téléphone → `Phone` ; sinon **PC modeste** si mémoire vidéo < 3072 Mo ou mémoire < 6144 Mo, sinon `Full` (une mémoire inconnue, 0, ne compte pas). Limite de mipmaps automatique : 0 sur téléphone (inchangé) et sur PC complet ; sur PC modeste 2 (quart) si mémoire vidéo ≤ 1536 Mo ou mémoire ≤ 4096 Mo, sinon 1 (moitié).
-- **Jeu** `unity/Assets/EdS/Game/DeviceQuality.cs` : au démarrage (`EdsGame.Start`), `QualitySettings.globalTextureMipmapLimit` selon le choix du joueur ; réglage de la pause « Qualité des textures : auto / pleine / moitié / quart » (Auto par défaut, `PlayerPrefs` `eds.textures`, appliqué tout de suite).
+- **Jeu** `unity/Assets/EdS/Game/DeviceQuality.cs` : au démarrage (`EdsGame.Start`), `QualitySettings.globalTextureMipmapLimit` selon le réglage du joueur. L'ancien réglage « Qualité des textures : auto / pleine / moitié / quart » (`eds.textures`) est remplacé par le réglage « Qualité » (voir plus bas).
 - **Ressources lourdes** : sur PC modeste, celles « jamais sur téléphone » (`Wave5Fix.NotOnPhone`, 5e vague et Asset Store) ne se montrent pas, comme sur téléphone (`StyleCatalog.Shown` teste `DeviceQuality.Light`) ; l'ancien rendu reste. Le calcul hors champ des corps animés est coupé aussi.
 - **Vérifier l'essai** : ligne « Machine et textures » (classe, mémoires, limite appliquée).
 - **Limite** : les modèles écartés restent référencés par le catalogue (seule la construction pour téléphone les retire, `EdsPhoneBuild`) ; leurs textures peuvent donc encore être chargées ; la limite de mipmaps réduit toutes les textures, elle. Dans l'éditeur, la vue Scène garde ses propres textures.
+
+### Réglage « Qualité » forcée (21 novembre 2026)
+
+Demande de Damien : graphismes trop bas sur son PC (1 224 Mo de mémoire vidéo, 4 Go de RAM), que le jeu classe en PC modeste (textures au quart, 1 case de détail, brume à 900 m, ressources lourdes écartées). Il peut maintenant forcer le niveau.
+
+- **Où** : menu **Échap → Réglages**, bouton « Qualité » (à la place de « Textures »), et rangée « Qualité » des réglages de l'écran titre. Chaque clic : **Automatique** (par défaut, la détection du sous-lot V2.12.4) → **Basse** → **Moyenne** → **Haute** → Automatique.
+- **Règle partagée** `MachineTier.Level` (`src/EdS.Runtime/MachineTier.cs`, testée : `QualiteForceeTests`) :
+
+  | Réglage | Classe utilisée (cases, brume, arbres, images) | Ressources lourdes | Textures |
+  |---|---|---|---|
+  | Automatique | détectée | selon la détection | selon la détection |
+  | Basse | PC modeste (un téléphone reste téléphone) : 1 case de détail, brume 900 m | écartées | quart (limite 2) |
+  | Moyenne | PC complet (un téléphone reste téléphone) : 2 cases de détail, brume sur toute la région | écartées | moitié (limite 1) |
+  | Haute | PC complet | montrées | pleines (limite 0) |
+
+- **Quand** : les textures changent **tout de suite** ; la classe et les ressources lourdes sont lues une fois au lancement (`DeviceQuality.Session`) et ne changent qu'en **relançant le jeu** (le fermer et le rouvrir). Le bouton le dit sur la même ligne (« Qualité : haute · relancer le jeu ») tant que le niveau de la partie diffère du réglage.
+- **Avertissement** : en Moyenne ou Haute sur un téléphone ou un PC modeste (dont le PC de Damien), le bouton ajoute « · peut ralentir sur cette machine ».
+- **Retenu** : `PlayerPrefs` `eds.qualite` (0 automatique, 1 basse, 2 moyenne, 3 haute ; autre valeur : automatique), comme la luminosité. L'ancienne clé `eds.textures` n'est plus lue : le réglage repart sur Automatique.
+- **Vérifier l'essai** : la ligne « Machine et textures » dit le niveau forcé (« qualité forcée : haute (réglages d'un PC complet), peut ralentir sur cette machine ») ; « Chargement par cases » suit le réglage.
+- **Limite** : aucun format ne change (préférence locale seulement). Moyenne ou Haute sur un PC à 1 224 Mo peut redonner le « System out of memory » du 9 novembre : revenir en Automatique ou Basse depuis l'écran titre.
 
 ### L'atelier : nos propres bâtiments (sous-lot V2.17)
 
@@ -1188,6 +1208,13 @@ Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : �
 - **Qui** : les mêmes habitants que ceux qui prennent les teintes de la fête (`HumanWardrobe.FeastTints`) : ni gardes, ni bandits, ni le héros ; posé à l'habillage (`StyleLook.Dress` → `FeastAccessoryLook.Attach`), attaché à l'os (`Head`, `hand_r`/`RightHand`), il suit l'animation. Comme la tenue, un habitant déjà là quand la fête commence garde son aspect jusqu'à sa réapparition.
 - **Modèles** : les 11 plats `Modeles/Fetes/F01_P01` … `F12_P01` (sans celui du Carnaval) et le masque `F03_R01` (même chaîne que les décorations : maillage réduit à 2 500 faces, couleur JPEG 512, normale PNG 512 ; 5,3 Mo pour les 12), rangés par le menu avec les autres (`StyleCatalog.Feasts`).
 - Essais : `V2563AccessoiresDeFeteTests`, `FetesF4EtalTests` (72 dossiers : 60 décorations, 11 plats, le masque). Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; décalages (visage, poitrine, main) fixés à la main ; le masque est plus petit que sa cote du dossier (échelle Tripo : 0,125 m de large pour 0,22) ; la main droite ne se ferme pas sur le plat.
+
+## La grotte derrière la cascade (chantier V2.46, 21 novembre 2026)
+
+- **Un dessous** (`AdventureMap.Underground`) est dessiné par `SpaceView.Cave` : sol et murs de roche autour de l'aire, chaque obstacle selon sa pièce (`CaveLooks.PieceFor` : paroi, stalagmites, pilier, bassin d'eau, cristaux qui luisent, éboulis, coffre), le **rideau d'eau** sur la porte et le jour qui passe à travers (lumière qui suit l'heure : éteinte la nuit).
+- **Pénombre** : `StyleWorld.SetCave` passe à l'abri comme une pièce (ni ciel, ni soleil) avec la lumière froide et la brume presque noire de `CaveLooks` (de 5 à 24 m). La pluie (`WeatherFx`), la neige au sol (`SnowCover`) et les voix des bêtes du dehors suivent `AdventureSession.Sheltered` (intérieur ou dessous) : la pluie restait affichée dans un dessous (noté au V2.45.2), c'est corrigé.
+- **Modèles du kit** (faits le 21 novembre 2026, 240 crédits validés par Damien) : `Assets/EdS/Modeles/Resources/Grotte/<nom>.fbx` avec `<nom>_couleur.jpg` et `<nom>_normale.png`, à plat (`paroi_grotte`, `stalagmites`, `pilier_grotte`, `rideau_d_eau`, `bassin_grotte`, `cristaux_grotte`, `eboulis_grotte`, `coffre_grotte` ; `CaveLooks.Models`, `CaveLooks.NameOf`). Finition Blender de l'atelier (`Grotte/finir_grotte.py`) : un seul maillage, pivot au sol au centre, allégé à 50 %, plus grand côté horizontal sur X, rideau d'eau tourné vers l'intérieur (+Z). **Préparer** (menu du style, `EdsStyle.CavePieces`) leur donne leur matière URP (couleur, normale) ; le jeu les charge par leur nom (`Resources.Load("Grotte/<nom>")`), étirés à l'emprise de leur obstacle, sans collision. Si un modèle manque, une forme simple le remplace (prisme de roche, cônes pour les stalagmites, nappe d'eau).
+- **À essayer** : entrer par la porte au pied de la cascade (à l'est du bassin), vérifier la pénombre, l'absence de pluie quand il pleut dehors, le jour du rideau d'eau de jour et de nuit, le gardien au fond de la salle du bassin.
 
 ## 8. En cas de problème
 

@@ -60,7 +60,9 @@ namespace EdS.World
             else day = entry.Outcome == EventOutcome.None ? -1 : entry.Last;
             if (day < 0) return false;
             long since = Zone.Time.Day - day;
-            return since >= 0 && since < shock.Days;
+            // Sous-lot V2.41.3 : chaque coffre repris au fort après ce pillage enlève un jour au contrecoup (tous repris : annulé).
+            long days = shock.Outcome == "lost" ? shock.Days - RecoveredChests(entry) : shock.Days;
+            return since >= 0 && since < days;
         }
 
         /// <summary>Sous-lot V2.10 : contrecoups en cours (pour l'affichage : « les étals sont vides depuis l'attaque »).</summary>

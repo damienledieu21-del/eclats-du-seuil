@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/caravans.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "caravans",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "caravans": [
       {
@@ -60,6 +60,14 @@
             "bounty": 200
           },
           "lostFact": "fact.event.attaque_caravane_d_ambre.pillee"
+        },
+        "recovery": {
+          "place": "enceinte_du_fort",
+          "days": 3,
+          "guardRadius": 12,
+          "chests": [[1180, 1016], [1206, 994], [1240, 1018]],
+          "xp": 400,
+          "money": 200
         }
       }
     ]
