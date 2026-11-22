@@ -153,7 +153,7 @@ public class V2413RepriseFortTests
     [Fact]
     public void Coffres_repris_format_version_31()
     {
-        Assert.Equal((31, 31, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventRecoveredSince, SaveValidator.EventLostDaySince));
+        Assert.Equal((32, 31, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventRecoveredSince, SaveValidator.EventLostDaySince));
         string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Pillaged(recovered: 5)));
         Assert.Contains("\"lostDay\": 10, \"recovered\": 5}", json);
         SaveLoadResult ok = SaveJsonReader.Read(json);
@@ -169,7 +169,7 @@ public class V2413RepriseFortTests
         SaveLoadResult noDay = SaveJsonReader.Read(json.Replace("\"lostDay\": 10, ", ""));
         Assert.Contains(noDay.Report.Errors, x => x.Path.EndsWith(".recovered", StringComparison.Ordinal) && x.Code == ValidationCode.InvalidValue);
         // Version 30 : champ inconnu ; sans lui, encore lue.
-        string v30 = json.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 30");
+        string v30 = json.Replace(SaveVersion.Current, "\"schemaVersion\": 30");
         Assert.Contains(SaveJsonReader.Read(v30).Report.Errors, x => x.Path.EndsWith(".recovered", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
         Assert.True(SaveJsonReader.Read(v30.Replace(", \"recovered\": 5", "")).IsValid);
         // Reprise déjà faite (décision de Damien du 21 novembre 2026) : écrit seulement vrai, avec un pillage.
@@ -177,7 +177,7 @@ public class V2413RepriseFortTests
         Assert.Contains("\"recovered\": 5, \"recoveredOnce\": true}", once);
         Assert.True(SaveJsonReader.Read(once).Save!.Character!.Events.Single().RecoveredOnce);
         Assert.Contains(SaveJsonReader.Read(once.Replace("\"recoveredOnce\": true", "\"recoveredOnce\": false")).Report.Errors, x => x.Path.EndsWith(".recoveredOnce", StringComparison.Ordinal));
-        Assert.Contains(SaveJsonReader.Read(once.Replace("\"schemaVersion\": 31", "\"schemaVersion\": 30")).Report.Errors,
+        Assert.Contains(SaveJsonReader.Read(once.Replace(SaveVersion.Current, "\"schemaVersion\": 30")).Report.Errors,
             x => x.Path.EndsWith(".recoveredOnce", StringComparison.Ordinal) && x.Code == ValidationCode.UnknownField);
         Assert.Throws<ArgumentException>(() => new SavedEvent(Key, 1, 0, J, EventOutcome.Won, recoveredOnce: true));
         Assert.Throws<ArgumentOutOfRangeException>(() => new SavedEvent(Key, 0, 1, J, EventOutcome.Lost, lostDay: J, recovered: 256));

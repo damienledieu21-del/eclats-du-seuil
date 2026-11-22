@@ -522,6 +522,39 @@ namespace EdS.Data.Zones
                 Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor);
         }
 
+        /// <summary>
+        /// Sous-lot V2.42.1 (décision de Damien du 21 novembre 2026) : la même zone, chaque créature placée (combattant du scénario et modèle
+        /// de sa population ; ni chef ni forme de chef) renforcée au pourcentage <paramref name="percentAt"/> de sa place (100 : inchangée ;
+        /// <see cref="ZoneScaling.Strengthen"/> : PV et dégâts bruts, arrondis et plafonds du réglage par niveau). La même zone si rien ne change.
+        /// </summary>
+        public ZoneDefinition Strengthened(Func<GroundVector, long> percentAt)
+        {
+            if (percentAt is null) throw new ArgumentNullException(nameof(percentAt));
+            var bossForms = new HashSet<string>(Bosses.SelectMany(b => b.Forms).Select(f => f.Id), StringComparer.Ordinal);
+            AssailantSetup One(AssailantSetup a)
+            {
+                if (bossForms.Contains(a.Id) || !(a.Placement is CombatantPlacement at)) return a;
+                long percent = percentAt(at.Position);
+                return percent == 100 ? a : ZoneScaling.Strengthen(a, percent);
+            }
+            var strong = new Dictionary<string, AssailantSetup>(StringComparer.Ordinal);
+            bool changed = false;
+            foreach (CombatantSetup c in Setup.Combatants)
+                if (c is AssailantSetup a && !ReferenceEquals(strong[a.Id] = One(a), a)) changed = true;
+            var populations = Populations.Select(p =>
+            {
+                AssailantSetup t = strong.TryGetValue(p.Template.Id, out AssailantSetup s) ? s : One(p.Template);
+                if (ReferenceEquals(t, p.Template)) return p;
+                changed = true;
+                return new Population(p.Creature, t, p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, p.Seasons);
+            }).ToList();
+            if (!changed) return this;
+            CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
+                Setup.Combatants.Select(c => c is AssailantSetup a ? strong[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
+            return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor);
+        }
+
         public ZoneDefinition ForLevel(int playerLevel)
         {
             if (playerLevel < 1) throw new ArgumentOutOfRangeException(nameof(playerLevel));

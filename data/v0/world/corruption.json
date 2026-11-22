@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "corruption",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "zone": "zone.vallons",
+    "source": { "id": "cercle_des_pierres", "place": "cercle_des_pierres_levees", "position": [1565, -625], "radius": 45 },
+    "spreadDays": 2,
+    "growDays": 2,
+    "maxStage": 3,
+    "respiteDays": 4,
+    "purifyItem": "item.eclat_de_seuil",
+    "purifyXp": 150,
+    "strengthPercent": 10,
+    "purifiedFact": "fact.corruption.autel_purifie",
+    "areas": [
+      { "id": "pierres_ouest", "place": "terres_corrompues", "position": [1420, -630], "radius": 70, "altar": [1420, -670], "from": ["cercle_des_pierres"] },
+      { "id": "faille_du_nord", "place": "terres_corrompues", "position": [1680, -450], "radius": 90, "altar": [1700, -410], "from": ["cercle_des_pierres"] },
+      { "id": "faille_de_l_est", "place": "terres_corrompues", "position": [1860, -700], "radius": 100, "altar": [1840, -740], "from": ["cercle_des_pierres"] },
+      { "id": "faille_du_sud", "place": "terres_corrompues", "position": [1500, -920], "radius": 100, "altar": [1530, -890], "from": ["cercle_des_pierres"] },
+      { "id": "landes_grises", "place": "landes_du_seuil", "position": [1150, -560], "radius": 120, "altar": [1150, -620], "from": ["pierres_ouest"] },
+      { "id": "marches_de_l_abbaye", "place": "terres_corrompues", "position": [1700, -200], "radius": 90, "altar": [1720, -230], "from": ["faille_du_nord"] },
+      { "id": "confins_du_sud", "place": "terres_corrompues", "position": [1800, -1150], "radius": 120, "altar": [1780, -1180], "from": ["faille_du_sud", "faille_de_l_est"] },
+      { "id": "plaine_grise", "place": "plaine_de_l_est", "position": [880, -420], "radius": 110, "altar": [900, -400], "from": ["landes_grises"] }
+    ]
+  }
+}

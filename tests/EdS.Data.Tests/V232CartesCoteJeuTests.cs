@@ -158,7 +158,7 @@ public class V232CartesCoteJeuTests
     [Fact]
     public void Sauvegarde_v26_titre_actif_et_migration_depuis_v25()
     {
-        Assert.Equal((25, 26, 31), (SaveValidator.CardsSince, SaveValidator.CardTitleSince, SaveValidator.CurrentSchemaVersion));
+        Assert.Equal((25, 26, 32), (SaveValidator.CardsSince, SaveValidator.CardTitleSince, SaveValidator.CurrentSchemaVersion));
         string v25 = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "sauvegardes", "v25-avec-cartes.json"));
         Assert.Contains("\"schemaVersion\": 25", v25);
         Assert.DoesNotContain("\"shown\"", v25);
