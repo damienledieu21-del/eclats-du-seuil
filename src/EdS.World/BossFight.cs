@@ -106,6 +106,9 @@ namespace EdS.World
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
+        /// <summary>Relecture indépendante de la PR #252 : une forme liée à une cible absente n'a pas pu arriver ; le combat est arrêté.</summary>
+        public bool IsStalled => _stalled;
+
         /// <summary>
         /// Revue Codex de la PR #159 (3e tour) : la forme du moment est emportée d'une session renouvelée et pas encore arrivée (état gardé,
         /// nouvel essai à chaque pas et dès la session suivante, <see cref="Continue"/>). Comptée partout comme une arrivée à venir : borne du

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Data.Corruption;
 using EdS.Data.Zones;
 using EdS.World;
 
@@ -113,9 +114,10 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Vrai si <paramref name="id"/> est une forme d'un chef de <paramref name="zone"/> (ou de son Gardien) dont le fait de victoire est
-        /// connu (<paramref name="knows"/>) : il a été tué, et il revient. Une vie « _v2 » d'une forme compte comme la forme.
+        /// connu (<paramref name="knows"/>) : il a été tué, et il revient. Une vie « _v2 » d'une forme compte comme la forme. Relecture
+        /// indépendante de la PR #252 : le gardien du défi de la source (<paramref name="corruption"/>) compte comme un chef.
         /// </summary>
-        public static bool ChiefSlain(ZoneDefinition? zone, Func<string, bool>? knows, string? id)
+        public static bool ChiefSlain(ZoneDefinition? zone, Func<string, bool>? knows, string? id, CorruptionBook? corruption = null)
         {
             if (zone == null || knows == null || string.IsNullOrEmpty(id)) return false;
             string key = id!;
@@ -124,6 +126,7 @@ namespace EdS.Runtime
             if (zone.Boss is Boss boss && IsForm(boss, key)) return knows(boss.Fact);
             for (int i = 0; i < zone.Chiefs.Count; i++)
                 if (IsForm(zone.Chiefs[i], key)) return knows(zone.Chiefs[i].Fact);
+            if (corruption != null && corruption.Challenge != null && IsForm(corruption.Challenge.Boss, key)) return knows(corruption.Challenge.Boss.Fact);
             return false;
         }
 

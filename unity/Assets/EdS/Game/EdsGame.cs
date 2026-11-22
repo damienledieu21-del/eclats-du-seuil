@@ -458,7 +458,7 @@ namespace EdS.Game
         private void EchoContext(AdventureSession a)
         {
             SeuilCreatures(a);
-            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
+            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id, _adventure.World.CorruptionBook);
             if (_returned == null) _returned = id => _adventure != null && _adventure.World.ReturnedFromDeath(id);
             _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief, _returned);
         }

@@ -162,6 +162,9 @@ namespace EdS.World
 
         // --- Sous-lot V2.42.3 : défi de la source -------------------------------------------------------------------------------------
 
+        /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
+        internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
+
         /// <summary>Sous-lot V2.42.3 : marge au-delà du disque de la source où le défi tient ; plus loin, il est perdu.</summary>
         public static readonly Fixed SourceLeash = Fixed.FromInt(30);
 
@@ -170,6 +173,9 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.42.3 : la victoire sur le gardien a déjà été réglée (purification ou refus annoncé).</summary>
         private bool _sourceSettled;
+
+        /// <summary>Relecture indépendante de la PR #252 : le personnage était présent et vivant dans la session du gardien à sa défaite.</summary>
+        private bool _sourceWonHere;
 
         /// <summary>Sous-lot V2.42.3 : le défi de la source est en cours (le gardien se bat).</summary>
         public bool SourceChallengeUnderway => _sourceFight != null && !_sourceSettled;
@@ -220,6 +226,7 @@ namespace EdS.World
             if (_sourceFight != null) _fights.Remove(_sourceFight);   // le combat réglé d'un défi précédent de la session
             _sourceFight = fight;
             _sourceSettled = false;
+            _sourceWonHere = false;
             _fights.Add(fight);   // après les chefs de la zone : ordre stable des événements
             _bossStarts.Add(started);
             _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeStarted, book.Source.Id, 0, day));
@@ -229,15 +236,17 @@ namespace EdS.World
         /// <summary>
         /// Sous-lot V2.42.3, à chaque tick (après les chefs) : le gardien vaincu, le personnage debout, purifie la source (jour gardé sous
         /// l'identifiant de la source, expérience, annonce) ; le personnage tombé, parti à plus de <see cref="SourceLeash"/> du disque de la source
-        /// ou sorti de la session du combat : le défi est perdu, la forme en jeu s'en va. Rend vrai si toutes les terres viennent de reculer
-        /// (pas d'annonce terre par terre).
+        /// ou sorti de la session du combat, le gardien vaincu sans lui, ou une forme qui ne peut pas arriver : le défi est perdu, la forme en
+        /// jeu s'en va. Un renouvellement de la session (gel, fonte, fin) ne le perd pas : le combat y continue (OpenedSector). Rend vrai si
+        /// toutes les terres viennent de reculer (pas d'annonce terre par terre).
         /// </summary>
         private bool StepSourceChallenge()
         {
             if (!(_sourceFight is BossFight f) || _sourceSettled || !(ActiveCorruption is CorruptionBook book) || !(book.Challenge is CorruptionChallenge challenge))
                 return false;
             long day = Math.Min(SavedEvent.MaxDay, Today);
-            if (f.IsDefeated && !_defeated)
+            // Relecture indépendante de la PR #252 : la victoire demande la présence (même règle que la récompense de la première victoire).
+            if (f.IsDefeated && !_defeated && _sourceWonHere)
             {
                 _sourceSettled = true;
                 SavedCorruption saved = _character.Corruption;
@@ -256,8 +265,10 @@ namespace EdS.World
             bool live = Live(f);
             CombatantView me = Zone.Engine.View(CombatantId);
             bool far = !me.IsPresent || !(me.Position is GroundVector p)
-                || CorruptionValidator.Beyond(p, book.Source.Position, checked(book.Source.Radius + SourceLeash));
-            if (!_defeated && live && !far && !f.IsDefeated) return false;
+                || CorruptionValidator.Beyond(p, book.Source.Position, checked(book.Source.Radius + SourceLeash))
+                || !ReferenceEquals(f.Session, Zone);   // relecture de la PR #252 : sorti de la session du combat (autre secteur, autre session)
+            // Relecture indépendante de la PR #252 : une forme qui ne peut pas arriver (combat arrêté) est un échec propre.
+            if (!_defeated && live && !far && !f.IsDefeated && !f.IsStalled) return false;
             // Défi perdu : la forme en jeu, présente et vivante, quitte sa session ; le combat quitte la liste (aucune forme à venir).
             if (live && f.Session is Zone z && System.Linq.Enumerable.Contains(z.Engine.CombatantIds, f.CurrentForm))
             {

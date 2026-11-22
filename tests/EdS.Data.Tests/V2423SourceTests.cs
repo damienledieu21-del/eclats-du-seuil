@@ -353,4 +353,170 @@ public class V2423SourceTests
         CombatantView v = w.Zone.Engine.View(form);
         Assert.False(v.IsPresent && !v.IsDead);   // le gardien est reparti
     }
+
+    // --- Relecture indépendante de la PR #252 : frontières et cas limites ---------------------------------------------------------
+
+    /// <summary>Le catalogue livré avec le disque de la source réduit à <paramref name="radius"/>.</summary>
+    private static CorruptionBook WithSourceRadius(double radius)
+    {
+        CorruptionLoadResult r = Read(d => d["source"]!["radius"] = radius);
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Book!;
+    }
+
+    [Theory]
+    [InlineData(15.0, false)]      // 15 + 30 = 45 m : exactement à la laisse, le défi tient
+    [InlineData(14.9999, true)]    // 44,9999 m : juste au-delà, le défi est perdu
+    public void Laisse_exactement_rayon_plus_30_puis_juste_au_dela(double radius, bool lost)
+    {
+        CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1610, -625, 6, Strong(ThreeAltars(6)), slow);   // 45 m du centre : au bord du disque (45 m)
+        GroundVector at = w.Zone.Engine.View(w.CombatantId).Position!.Value;
+        Assert.Equal((Fixed.FromInt(1610), Fixed.FromInt(-625)), (at.X, at.Z));
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        // Même centre, disque réduit : le personnage, immobile, est à rayon + 30 m (ou juste au-delà) ; le gardien reste dans le disque.
+        w.UseCorruption(WithSourceRadius(radius));
+        var notices = new List<CorruptionNotice>();
+        for (int i = 0; i < 3; i++)
+        {
+            w.Step();
+            notices.AddRange(w.CorruptionNotices);
+        }
+        Assert.Equal(lost, notices.Any(n => n.Kind == CorruptionNoticeKind.ChallengeFailed));
+        Assert.Equal(!lost, w.SourceChallengeUnderway);
+        Assert.Null(w.CorruptionState.DayOf(Source));
+    }
+
+    [Fact]
+    public void Defi_perdu_au_passage_dans_une_autre_session()
+    {
+        CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), slow);
+        SavedCorruption before = w.CorruptionState;
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        Assert.True(w.SourceChallengeUnderway);
+        // Passage de secteur (l'ancienne session reste ouverte) : le personnage n'est plus dans la session du combat.
+        ZoneDefinition zone = Zone(1556, -632);
+        var other = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, V11TestData.Book(zone), safePoint: "place_du_village");
+        other.Step();   // le personnage y est présent, debout, au même endroit : seule la session change
+        Assert.True(other.Zone.Engine.View(other.CombatantId).IsPresent);
+        w.PassToForTest(other.Zone);
+        var notices = new List<CorruptionNotice>();
+        for (int i = 0; i < 3; i++)
+        {
+            w.Step();
+            notices.AddRange(w.CorruptionNotices);
+        }
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.False(w.SourceChallengeUnderway);
+        Assert.Same(before, w.CorruptionState);
+    }
+
+    [Fact]
+    public void Session_renouvelee_gel_ou_fonte_le_combat_du_gardien_continue()
+    {
+        CorruptionBook sturdy = WithGuardian(health: 400, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), sturdy);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        for (int i = 0; i < 5; i++) w.Step();
+        Zone first = w.Zone;
+        string form = w.SourceGuardianForm!;
+        w.SeasonRenewForTest();
+        var notices = new List<CorruptionNotice>();
+        SessionStep renewal = w.Step();
+        notices.AddRange(w.CorruptionNotices);
+        Assert.NotSame(first, w.Zone);
+        Assert.Equal(1, w.Renewals);
+        Assert.DoesNotContain(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.True(w.SourceChallengeUnderway);
+        Assert.StartsWith(form, w.SourceGuardianForm!);
+        Assert.DoesNotContain(renewal.Boss, b => b.Kind == BossEventKind.FormArrived);   // pas de retour à la première forme d'un nouveau défi
+        List<SessionStep> steps = Fight(w, notices);
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+        Assert.DoesNotContain(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.Equal(new[] { (Shard, 3) }, steps.SelectMany(s => s.Rewards));
+        Assert.Equal(6, w.CorruptionState.DayOf(Source));
+    }
+
+    [Fact]
+    public void Victoire_sans_place_dans_la_sauvegarde_source_bloquee()
+    {
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        // La sauvegarde se remplit pendant le combat : plus de place pour la source à la victoire.
+        SavedCorruption full = w.CorruptionState;
+        for (int i = 0; full.Purified.Count < SavedCorruption.MaxEntries; i++) full = full.With("terre_oubliee_" + i, 1);
+        w.SetCorruptionForTest(full);
+        long xp = w.Save().Character!.Xp;
+        var notices = new List<CorruptionNotice>();
+        Fight(w, notices);
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.SourceBlocked && n.Area == Source);
+        Assert.DoesNotContain(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified || n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.Same(full, w.CorruptionState);
+        Assert.Null(w.CorruptionState.DayOf(Source));
+        Assert.False(w.SourceResting);
+        Assert.False(w.SourceChallengeUnderway);
+        Assert.True(w.Save().Character!.Xp - xp < 400);   // pas l'expérience du défi (celle des formes vaincues seulement)
+    }
+
+    private static string SaveOf(SavedCorruption corruption) =>
+        SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithCorruption(corruption)));
+
+    [Fact]
+    public void Sauvegarde_v32_relue_puis_ecrite_en_v33()
+    {
+        string v33 = SaveOf(Purified(("faille_du_nord", 5), ("pierres_ouest", 3)));
+        Assert.Contains("\"schemaVersion\": 33", v33, StringComparison.Ordinal);
+        string v32 = v33.Replace("\"schemaVersion\": 33", "\"schemaVersion\": 32");
+        SaveLoadResult r = SaveJsonReader.Read(v32);
+        Assert.True(r.IsValid, r.Report.ToString());
+        Assert.Equal(new[] { "faille_du_nord:5", "pierres_ouest:3" }, r.Save!.Character!.Corruption.Purified.Select(e => $"{e.Key}:{e.Value}"));
+        Assert.Equal(v33, SaveJsonReader.Write(r.Save));   // réécrite en v33, même contenu
+    }
+
+    [Fact]
+    public void Sauvegarde_v33_aller_retour_avec_la_cle_de_la_source()
+    {
+        string json = SaveOf(ThreeAltars(6).With(Source, 6));
+        Assert.Contains($"\"{Source}\": 6", json, StringComparison.Ordinal);
+        SaveLoadResult r = SaveJsonReader.Read(json);
+        Assert.True(r.IsValid, r.Report.ToString());
+        Assert.Equal(6, r.Save!.Character!.Corruption.DayOf(Source));
+        Assert.Equal(json, SaveJsonReader.Write(r.Save));
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(json).RootElement));
+    }
+
+    [Fact]
+    public void Sauvegarde_et_rechargement_en_plein_defi()
+    {
+        CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), slow);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        for (int i = 0; i < 5; i++) w.Step();
+        Assert.True(w.SourceChallengeUnderway);
+        // Le défi n'est pas gardé : la partie rechargée n'a ni gardien ni purification, et le défi se relance.
+        WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
+        Assert.Null(saved.Character!.Corruption.DayOf(Source));
+        Assert.DoesNotContain(Vallons.Id + "/boss/gardien_de_la_source", saved.Consumed);
+        WorldSession back = Session(1556, -632, 6, saved.Character, slow, saved.Consumed);
+        Assert.False(back.SourceChallengeUnderway);
+        Assert.Null(back.SourceGuardianForm);
+        Assert.Equal(3, back.AltarsResting);
+        Assert.Equal(SourceChallengeRefusal.None, back.ChallengeSource());
+        Assert.True(back.SourceChallengeUnderway);
+    }
+
+    [Fact]
+    public void Gardien_rejoue_apparence_d_echo_revenu()
+    {
+        Func<string, bool> knows = f => f == "fact.corruption.source_purifiee";
+        Assert.True(EchoLooks.ChiefSlain(Vallons, knows, "gardien_de_la_source_fissure", Book));
+        Assert.True(EchoLooks.ChiefSlain(Vallons, knows, "gardien_de_la_source_v2", Book));
+        Assert.False(EchoLooks.ChiefSlain(Vallons, _ => false, "gardien_de_la_source", Book));
+        Assert.False(EchoLooks.ChiefSlain(Vallons, knows, "gardien_de_la_source"));   // sans le catalogue de la corruption
+        Assert.Equal("Poing de pierre", DisplayNames.Attack("poing_de_pierre"));
+        Assert.Equal("Ruée des pierres", DisplayNames.Attack("ruee_des_pierres"));
+    }
 }

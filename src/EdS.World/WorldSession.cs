@@ -978,7 +978,22 @@ namespace EdS.World
             }
             // Sous-lot V2.28b (2c) : créatures d'événement et échos rôdeurs de ce secteur emportés dans la session renouvelée (préparés de même).
             Action? adoptEvents = renewedFrom != null ? _events?.Renew(sector, zone, renewedFrom) : null;
+            // Relecture indépendante de la PR #252 : le défi de la source continue de même dans la session renouvelée (gel, fonte, fin de session).
+            BossFight? source = null;
+            if (renewedFrom != null && SourceChallengeUnderway && _sourceFight!.Sector == sector && ReferenceEquals(_sourceFight.Session, renewedFrom))
+            {
+                source = BossFight.Continue(_sourceFight, renewedFrom.Engine, zone);
+                source.Sector = sector;
+                source.Session = zone;
+            }
             adoptEvents?.Invoke();
+            if (source != null)
+            {
+                int at = _fights.IndexOf(_sourceFight!);
+                if (at >= 0) _fights[at] = source;
+                else _fights.Add(source);
+                _sourceFight = source;
+            }
             foreach ((int at, Boss b, BossFight fight, BossEvent? started) in prepared)
             {
                 if (started != null) _bossStarts.Add(started);
@@ -1019,6 +1034,9 @@ namespace EdS.World
         /// Pour les essais : la forme du moment du chef <paramref name="boss"/> quitte sa session et devient une forme emportée en attente,
         /// à sa place, sans nouvel essai avant <paramref name="ticks"/> ticks (sinon au renouvellement : <see cref="BossFight.Continue"/>).
         /// </summary>
+        /// <summary>Essais : la session du secteur du personnage est renouvelée au prochain tick, comme pour un gel ou une fonte.</summary>
+        internal void SeasonRenewForTest() => _host!.SeasonRenewForTest(_zoneSector!);
+
         internal void PendChiefForTest(string boss, long ticks)
         {
             BossFight f = _fights.Single(x => x.Boss.Id == boss);
@@ -1486,6 +1504,7 @@ namespace EdS.World
                     CombatantView there = ReferenceEquals(fight.Session, _tickZone) ? _tickZone!.Engine.View(_tickId!) : me;
                     bool here = ReferenceEquals(fight.Session, _tickZone) && !there.IsDead && (there.IsPresent || (there.HasLeft && wasPresent));
                     if (b.Kind == BossEventKind.Defeated && here && !Registered(Definition!.VictoryKeyOf(fight.Boss))) fight.RewardPending = true;
+                    if (b.Kind == BossEventKind.Defeated && ReferenceEquals(fight, _sourceFight)) _sourceWonHere = here;   // relecture de la PR #252
                 }
                 if (fight.RewardPending) GiveBossRewards(fight, rewards, story);
             }

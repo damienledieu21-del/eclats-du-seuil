@@ -58,6 +58,9 @@ namespace EdS.Runtime
             ["ruee"] = "Ruée",
             ["volee"] = "Volée",   // sous-lot V1.6
             ["charge_du_chef"] = "Charge du chef",
+            // Relecture indépendante de la PR #252 : les attaques du gardien de la source.
+            ["poing_de_pierre"] = "Poing de pierre",
+            ["ruee_des_pierres"] = "Ruée des pierres",
         };
 
         /// <summary>Nom à montrer pour le combattant <paramref name="id"/> (vide pour un identifiant vide).</summary>
