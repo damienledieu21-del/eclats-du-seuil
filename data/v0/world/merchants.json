@@ -394,6 +394,14 @@
         "value": 2400
       },
       {
+        "item": "item.sceau_de_l_abbe",
+        "value": 2400
+      },
+      {
+        "item": "item.anneau_du_sacristain",
+        "value": 180
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },

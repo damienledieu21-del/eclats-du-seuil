@@ -1,0 +1,628 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 484,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -20,
+          -4
+        ],
+        "max": [
+          20,
+          32
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "mur_crypte_escalier_ouest",
+          "points": [
+            [
+              -20,
+              -4
+            ],
+            [
+              -5,
+              -4
+            ],
+            [
+              -5,
+              6
+            ],
+            [
+              -20,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_escalier_est",
+          "points": [
+            [
+              5,
+              -4
+            ],
+            [
+              20,
+              -4
+            ],
+            [
+              20,
+              6
+            ],
+            [
+              5,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_tombeau_ouest",
+          "points": [
+            [
+              -20,
+              14
+            ],
+            [
+              -3.6,
+              14
+            ],
+            [
+              -3.6,
+              15.5
+            ],
+            [
+              -20,
+              15.5
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_tombeau_est",
+          "points": [
+            [
+              3.6,
+              14
+            ],
+            [
+              20,
+              14
+            ],
+            [
+              20,
+              15.5
+            ],
+            [
+              3.6,
+              15.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_crypte_tombeau_ouest",
+          "points": [
+            [
+              -3.6,
+              14
+            ],
+            [
+              -3,
+              14
+            ],
+            [
+              -3,
+              15.5
+            ],
+            [
+              -3.6,
+              15.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_crypte_tombeau_est",
+          "points": [
+            [
+              3,
+              14
+            ],
+            [
+              3.6,
+              14
+            ],
+            [
+              3.6,
+              15.5
+            ],
+            [
+              3,
+              15.5
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_5",
+          "points": [
+            [
+              -8.4,
+              9.6
+            ],
+            [
+              -7.6,
+              9.6
+            ],
+            [
+              -7.6,
+              10.4
+            ],
+            [
+              -8.4,
+              10.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_6",
+          "points": [
+            [
+              7.6,
+              9.6
+            ],
+            [
+              8.4,
+              9.6
+            ],
+            [
+              8.4,
+              10.4
+            ],
+            [
+              7.6,
+              10.4
+            ]
+          ]
+        },
+        {
+          "id": "sarcophage_crypte_4",
+          "points": [
+            [
+              -18,
+              7
+            ],
+            [
+              -16,
+              7
+            ],
+            [
+              -16,
+              9.4
+            ],
+            [
+              -18,
+              9.4
+            ]
+          ]
+        },
+        {
+          "id": "sarcophage_crypte_5",
+          "points": [
+            [
+              16,
+              7
+            ],
+            [
+              18,
+              7
+            ],
+            [
+              18,
+              9.4
+            ],
+            [
+              16,
+              9.4
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_5",
+          "points": [
+            [
+              -14.5,
+              20
+            ],
+            [
+              -13.5,
+              20
+            ],
+            [
+              -13.5,
+              22.2
+            ],
+            [
+              -14.5,
+              22.2
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_6",
+          "points": [
+            [
+              13.5,
+              20
+            ],
+            [
+              14.5,
+              20
+            ],
+            [
+              14.5,
+              22.2
+            ],
+            [
+              13.5,
+              22.2
+            ]
+          ]
+        },
+        {
+          "id": "tombeau_abbe",
+          "points": [
+            [
+              -2,
+              25
+            ],
+            [
+              2,
+              25
+            ],
+            [
+              2,
+              29
+            ],
+            [
+              -2,
+              29
+            ]
+          ]
+        },
+        {
+          "id": "autel_crypte_1",
+          "points": [
+            [
+              -1.5,
+              30.6
+            ],
+            [
+              1.5,
+              30.6
+            ],
+            [
+              1.5,
+              31.6
+            ],
+            [
+              -1.5,
+              31.6
+            ]
+          ]
+        },
+        {
+          "id": "candelabre_crypte_3",
+          "points": [
+            [
+              -3.2,
+              26.8
+            ],
+            [
+              -2.8,
+              26.8
+            ],
+            [
+              -2.8,
+              27.2
+            ],
+            [
+              -3.2,
+              27.2
+            ]
+          ]
+        },
+        {
+          "id": "candelabre_crypte_4",
+          "points": [
+            [
+              2.8,
+              26.8
+            ],
+            [
+              3.2,
+              26.8
+            ],
+            [
+              3.2,
+              27.2
+            ],
+            [
+              2.8,
+              27.2
+            ]
+          ]
+        },
+        {
+          "id": "ossuaire_crypte_3",
+          "points": [
+            [
+              -20,
+              18
+            ],
+            [
+              -18.8,
+              18
+            ],
+            [
+              -18.8,
+              28
+            ],
+            [
+              -20,
+              28
+            ]
+          ]
+        },
+        {
+          "id": "ossuaire_crypte_4",
+          "points": [
+            [
+              18.8,
+              18
+            ],
+            [
+              20,
+              18
+            ],
+            [
+              20,
+              28
+            ],
+            [
+              18.8,
+              28
+            ]
+          ]
+        },
+        {
+          "id": "bougies_crypte_2",
+          "points": [
+            [
+              -0.4,
+              29.6
+            ],
+            [
+              0.4,
+              29.6
+            ],
+            [
+              0.4,
+              30.2
+            ],
+            [
+              -0.4,
+              30.2
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "coffre_crypte_1",
+          "points": [
+            [
+              14,
+              29.4
+            ],
+            [
+              16,
+              29.4
+            ],
+            [
+              16,
+              30.8
+            ],
+            [
+              14,
+              30.8
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "moine_echo_abbe",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 1100,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "anatheme",
+            "rawDamage": 32,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true
+          }
+        ],
+        "position": [
+          0,
+          22
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "moine_echo_abbe_courrouce",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 800,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1400,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "anatheme",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true
+          },
+          {
+            "id": "glas",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -2.2,
+          21
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "moine_echo_abbe_dechire",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 600,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "glas",
+            "rawDamage": 32,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 4,
+            "holdPosition": true
+          },
+          {
+            "id": "cri_des_morts",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1600,
+            "radius": 6,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          2.2,
+          21
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

@@ -1227,7 +1227,20 @@ namespace EdS.Runtime
         public string CurrentZone => _zone.Id;
 
         /// <summary>Intérieurs : portes de la zone en cours (nom de ce qu'il y a derrière), pour les montrer.</summary>
-        public IReadOnlyList<WorldMarker> Doors() => VisibleDoors.Select(d => new WorldMarker(d.Id, d.Name, d.Position)).ToList();
+        public IReadOnlyList<WorldMarker> Doors() => VisibleDoors.Where(d => !SecretHidden(d)).Select(d => new WorldMarker(d.Id, d.Name, d.Position)).ToList();
+
+        /// <summary>
+        /// V2.48.1 : une porte secrète (identifiant « secret_… », la dalle descellée de la chapelle) n'a ni étiquette ni repère sur la carte tant
+        /// que le point d'arrivée de la zone où elle mène n'est pas découvert : on la trouve en fouillant (à portée, elle se passe comme une autre).
+        /// </summary>
+        public static bool IsSecretDoor(Door door) => (door ?? throw new ArgumentNullException(nameof(door))).Id.StartsWith(SecretDoorPrefix, StringComparison.Ordinal);
+
+        /// <summary>V2.48.1 : début de l'identifiant d'une porte secrète.</summary>
+        public const string SecretDoorPrefix = "secret_";
+
+        /// <summary>V2.48.1 : la porte secrète <paramref name="door"/> est encore cachée (sa zone d'arrivée jamais atteinte) ; faux pour une autre porte.</summary>
+        public bool SecretHidden(Door door) =>
+            IsSecretDoor(door) && !(_zones.FirstOrDefault(z => z.Id == door.To) is ZoneDefinition target && World.IsDiscovered(target, target.Entry.Id));
 
         /// <summary>Dialogue ouvert (clés de texte), ou null.</summary>
         public DialogueView? Dialogue => World.Narrative?.Open;

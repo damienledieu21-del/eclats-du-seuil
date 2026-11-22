@@ -1,0 +1,647 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 481,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          36
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "mur_crypte_entree_ouest",
+          "points": [
+            [
+              -24,
+              -4
+            ],
+            [
+              -8,
+              -4
+            ],
+            [
+              -8,
+              10
+            ],
+            [
+              -24,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_entree_est",
+          "points": [
+            [
+              8,
+              -4
+            ],
+            [
+              24,
+              -4
+            ],
+            [
+              24,
+              10
+            ],
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_ossuaire_ouest",
+          "points": [
+            [
+              -24,
+              20
+            ],
+            [
+              -3.6,
+              20
+            ],
+            [
+              -3.6,
+              21.5
+            ],
+            [
+              -24,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "mur_crypte_ossuaire_est",
+          "points": [
+            [
+              3.6,
+              20
+            ],
+            [
+              24,
+              20
+            ],
+            [
+              24,
+              21.5
+            ],
+            [
+              3.6,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_crypte_ossuaire_ouest",
+          "points": [
+            [
+              -3.6,
+              20
+            ],
+            [
+              -3,
+              20
+            ],
+            [
+              -3,
+              21.5
+            ],
+            [
+              -3.6,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_crypte_ossuaire_est",
+          "points": [
+            [
+              3,
+              20
+            ],
+            [
+              3.6,
+              20
+            ],
+            [
+              3.6,
+              21.5
+            ],
+            [
+              3,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_1",
+          "points": [
+            [
+              -6.4,
+              11.6
+            ],
+            [
+              -5.6,
+              11.6
+            ],
+            [
+              -5.6,
+              12.4
+            ],
+            [
+              -6.4,
+              12.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_2",
+          "points": [
+            [
+              5.6,
+              11.6
+            ],
+            [
+              6.4,
+              11.6
+            ],
+            [
+              6.4,
+              12.4
+            ],
+            [
+              5.6,
+              12.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_3",
+          "points": [
+            [
+              -6.4,
+              17.6
+            ],
+            [
+              -5.6,
+              17.6
+            ],
+            [
+              -5.6,
+              18.4
+            ],
+            [
+              -6.4,
+              18.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_crypte_4",
+          "points": [
+            [
+              5.6,
+              17.6
+            ],
+            [
+              6.4,
+              17.6
+            ],
+            [
+              6.4,
+              18.4
+            ],
+            [
+              5.6,
+              18.4
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_1",
+          "points": [
+            [
+              -20.5,
+              11.5
+            ],
+            [
+              -19.5,
+              11.5
+            ],
+            [
+              -19.5,
+              13.7
+            ],
+            [
+              -20.5,
+              13.7
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_2",
+          "points": [
+            [
+              -11.5,
+              11.5
+            ],
+            [
+              -10.5,
+              11.5
+            ],
+            [
+              -10.5,
+              13.7
+            ],
+            [
+              -11.5,
+              13.7
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_3",
+          "points": [
+            [
+              10.5,
+              11.5
+            ],
+            [
+              11.5,
+              11.5
+            ],
+            [
+              11.5,
+              13.7
+            ],
+            [
+              10.5,
+              13.7
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_4",
+          "points": [
+            [
+              19.5,
+              11.5
+            ],
+            [
+              20.5,
+              11.5
+            ],
+            [
+              20.5,
+              13.7
+            ],
+            [
+              19.5,
+              13.7
+            ]
+          ]
+        },
+        {
+          "id": "candelabre_crypte_1",
+          "points": [
+            [
+              -5.2,
+              19.2
+            ],
+            [
+              -4.8,
+              19.2
+            ],
+            [
+              -4.8,
+              19.6
+            ],
+            [
+              -5.2,
+              19.6
+            ]
+          ]
+        },
+        {
+          "id": "candelabre_crypte_2",
+          "points": [
+            [
+              4.8,
+              19.2
+            ],
+            [
+              5.2,
+              19.2
+            ],
+            [
+              5.2,
+              19.6
+            ],
+            [
+              4.8,
+              19.6
+            ]
+          ]
+        },
+        {
+          "id": "sarcophage_crypte_1",
+          "points": [
+            [
+              -10,
+              24
+            ],
+            [
+              -8,
+              24
+            ],
+            [
+              -8,
+              26.4
+            ],
+            [
+              -10,
+              26.4
+            ]
+          ]
+        },
+        {
+          "id": "sarcophage_crypte_2",
+          "points": [
+            [
+              8,
+              24
+            ],
+            [
+              10,
+              24
+            ],
+            [
+              10,
+              26.4
+            ],
+            [
+              8,
+              26.4
+            ]
+          ]
+        },
+        {
+          "id": "sarcophage_crypte_3",
+          "points": [
+            [
+              -16,
+              30
+            ],
+            [
+              -14,
+              30
+            ],
+            [
+              -14,
+              32.4
+            ],
+            [
+              -16,
+              32.4
+            ]
+          ]
+        },
+        {
+          "id": "ossuaire_crypte_1",
+          "points": [
+            [
+              -24,
+              23
+            ],
+            [
+              -22.8,
+              23
+            ],
+            [
+              -22.8,
+              33
+            ],
+            [
+              -24,
+              33
+            ]
+          ]
+        },
+        {
+          "id": "ossuaire_crypte_2",
+          "points": [
+            [
+              -16,
+              34.8
+            ],
+            [
+              0,
+              34.8
+            ],
+            [
+              0,
+              36
+            ],
+            [
+              -16,
+              36
+            ]
+          ]
+        },
+        {
+          "id": "bougies_crypte_1",
+          "points": [
+            [
+              -9.4,
+              27
+            ],
+            [
+              -8.6,
+              27
+            ],
+            [
+              -8.6,
+              27.6
+            ],
+            [
+              -9.4,
+              27.6
+            ]
+          ],
+          "low": true
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "moine_echo_crypte1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "griffe_spectrale",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -16,
+          16
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "moine_echo_crypte2",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "griffe_spectrale",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          16,
+          16
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "moine_echo_crypte3",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "griffe_spectrale",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -18,
+          27
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "moine_echo_crypte4",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "griffe_spectrale",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -4,
+          31
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      }
+    ],
+    "commands": []
+  }
+}

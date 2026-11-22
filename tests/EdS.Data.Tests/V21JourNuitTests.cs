@@ -145,7 +145,8 @@ public sealed class V21JourNuitTests : IDisposable
         // blanc et, depuis V2.9.2, le vieux Brunot).
         Assert.Equal(v7.Zone.Setup.Combatants.Count - 2, ZoneSetups.For(v7.Zone, Array.Empty<string>(), DayPhase.Night).Combatants.Count);
         // Les intérieurs livrés restent au schéma 7.
-        Assert.All(V16TestData.Interiors.Where(z => !z.Underground), z =>   // V2.46 : la grotte (un dessous) est au schéma 15
+        // V2.46 : la grotte (un dessous) est au schéma 15 ; V2.48.1 : la chapelle aussi, pour la trappe de sa crypte secrète.
+        Assert.All(V16TestData.Interiors.Where(z => !z.Underground && z.Id != "zone.chapelle"), z =>
             Assert.Equal(ZoneValidator.OldestSchemaVersion, z.SchemaVersion));
 
         ValidationError hours = Error(ZoneMutated(root =>

@@ -38,6 +38,30 @@ namespace EdS.Runtime
             // Sous-lot V2.4 : les bêtes paisibles et les loups de la brume.
             ["lievre"] = "Lièvre",
             ["loup_brume"] = "Loup gris",
+            // V2.47 (relecture indépendante de la PR #250) : les mines de la carrière.
+            ["bandit_mine"] = "Pilleur de la mine",
+            ["bandit_arc_mine"] = "Archer des pilleurs",
+            ["bandit_mine_galerie"] = "Pilleur des galeries",
+            ["bandit_arc_mine_galerie"] = "Archer des pilleurs",
+            ["bandit_chef_mine"] = "Chef des pilleurs",
+            ["bandit_chef_mine_enrage"] = "Chef des pilleurs enragé",
+            ["loup_echo_mine"] = "Loup-écho",
+            ["loup_echo_mine_cristaux"] = "Loup-écho des cristaux",
+            ["ours_mine"] = "Ours des galeries",
+            ["ours_bete_des_eboulis"] = "Bête des éboulis",
+            ["ours_bete_des_eboulis_furieuse"] = "Bête des éboulis furieuse",
+            ["loup_echo_gardien_cristaux"] = "Gardien des cristaux",
+            ["loup_echo_gardien_cristaux_fendu"] = "Gardien des cristaux fendu",
+            ["loup_echo_gardien_cristaux_brise"] = "Gardien des cristaux brisé",
+            // V2.48 (relecture indépendante de la PR #250) : les échos des moines des cryptes et leurs chefs.
+            ["moine_echo_crypte"] = "Moine revenu",
+            ["moine_echo_tombeau"] = "Moine revenu",
+            ["moine_echo_gardien_ossuaire"] = "Gardien de l'ossuaire",
+            ["moine_echo_gardien_ossuaire_dechaine"] = "Gardien de l'ossuaire déchaîné",
+            ["moine_echo_abbe"] = "Abbé sans repos",
+            ["moine_echo_abbe_courrouce"] = "Abbé sans repos courroucé",
+            ["moine_echo_abbe_dechire"] = "Abbé sans repos déchiré",
+            ["moine_echo_sacristain"] = "Sacristain",
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -54,6 +78,18 @@ namespace EdS.Runtime
             ["ruee"] = "Ruée",
             ["volee"] = "Volée",   // sous-lot V1.6
             ["charge_du_chef"] = "Charge du chef",
+            // V2.47 : les mines (relecture indépendante de la PR #250).
+            ["pluie_d_eclats"] = "Pluie d'éclats",
+            ["eboulement"] = "Éboulement",
+            ["coup_de_pic"] = "Coup de pic",
+            // V2.48 : les cryptes.
+            ["volee_d_ossements"] = "Volée d'ossements",
+            ["frappe_d_os"] = "Frappe d'os",
+            ["anatheme"] = "Anathème",
+            ["cri_des_morts"] = "Cri des morts",
+            ["griffe_spectrale"] = "Griffe spectrale",
+            ["glas"] = "Glas",
+            ["crosse"] = "Coup de crosse",
         };
 
         /// <summary>Nom à montrer pour le combattant <paramref name="id"/> (vide pour un identifiant vide).</summary>
