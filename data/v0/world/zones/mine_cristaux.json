@@ -1,0 +1,118 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.mine_cristaux",
+    "name": "Mine : cœur de cristal",
+    "scenario": "zones/mine_cristaux",
+    "floor": "dessous",
+    "entry": "pied_des_echelles",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "pied_des_echelles",
+        "name": "Pied des échelles",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "rive_de_la_riviere_souterraine",
+        "name": "Rive de la rivière souterraine",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          18
+        ],
+        "minLevel": 21
+      },
+      {
+        "id": "coeur_de_cristal",
+        "name": "Cœur de cristal",
+        "min": [
+          -30,
+          18
+        ],
+        "max": [
+          30,
+          44
+        ],
+        "minLevel": 22
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_mine_cristaux1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_mine_cristaux2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_mine_cristaux3",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "gardien_des_cristaux",
+        "scenario": "zones/mine_cristaux_gardien",
+        "forms": [
+          "loup_echo_gardien_cristaux",
+          "loup_echo_gardien_cristaux_fendu",
+          "loup_echo_gardien_cristaux_brise"
+        ],
+        "fact": "fact.gardien_des_cristaux.vaincu",
+        "rewards": [
+          {
+            "item": "item.coeur_de_cristal_du_seuil",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "echelles",
+        "name": "Échelles du fond",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.mine_filons",
+        "toDoor": "echelles",
+        "kind": "escalier"
+      }
+    ]
+  }
+}

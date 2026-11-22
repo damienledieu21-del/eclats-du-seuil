@@ -191,8 +191,8 @@ internal static class ScenarioTestData
     public static readonly string[] RebuildDoors = { "porte_atelier_charron", "porte_relais_du_pont", "porte_moulin_a_foulon", "porte_tour_de_signal", "porte_dortoir_abbaye",
         "porte_maison_joueur" };   // V2.53.2 : et la porte de la maison du joueur (hors de l'aire d'avant)
 
-    /// <summary>V2.46 : les portes des dessous (hors de l'aire d'avant) : la grotte derrière la cascade.</summary>
-    public static readonly string[] UnderDoors = { "porte_grotte_cascade" };
+    /// <summary>V2.46 : les portes des dessous (hors de l'aire d'avant) : la grotte derrière la cascade, puis la mine (V2.47.1).</summary>
+    public static readonly string[] UnderDoors = { "porte_grotte_cascade", "porte_mine_galeries" };   // V2.47.1 : et la bouche de la mine
 
     /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits (V2.46 : ni celles des dessous).</summary>
     public static void WithoutRebuildDoors(JsonObject zone)

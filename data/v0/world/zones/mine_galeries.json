@@ -1,0 +1,130 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.mine_galeries",
+    "name": "Mine : galeries boisées",
+    "scenario": "zones/mine_galeries",
+    "floor": "dessous",
+    "entry": "bouche_des_galeries",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "bouche_des_galeries",
+        "name": "Bouche des galeries",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "galerie_d_entree",
+        "name": "Galerie d'entrée",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          26
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "salle_des_pilleurs",
+        "name": "Salle des pilleurs",
+        "min": [
+          -30,
+          26
+        ],
+        "max": [
+          30,
+          40
+        ],
+        "minLevel": 19
+      }
+    ],
+    "populations": [
+      {
+        "creature": "bandit_mine_galerie1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_mine_galerie2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_mine_galerie1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_mine_galerie2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "chef_des_pilleurs",
+        "scenario": "zones/mine_galeries_chef",
+        "forms": [
+          "bandit_chef_mine",
+          "bandit_chef_mine_enrage"
+        ],
+        "fact": "fact.chef_des_pilleurs.vaincu",
+        "rewards": [
+          {
+            "item": "item.minerai_de_fer",
+            "count": 6
+          }
+        ],
+        "loot": "loot.chef_des_bandits"
+      }
+    ],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bouche de la mine",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_mine_galeries"
+      },
+      {
+        "id": "ascenseur",
+        "name": "Ascenseur de la mine",
+        "position": [
+          21,
+          38
+        ],
+        "to": "zone.mine_filons",
+        "toDoor": "ascenseur",
+        "kind": "puits"
+      }
+    ]
+  }
+}

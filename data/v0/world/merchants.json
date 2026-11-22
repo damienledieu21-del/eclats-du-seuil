@@ -390,6 +390,10 @@
         "value": 1200
       },
       {
+        "item": "item.coeur_de_cristal_du_seuil",
+        "value": 2400
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },

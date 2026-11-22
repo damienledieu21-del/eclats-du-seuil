@@ -100,8 +100,9 @@ public class InterieursTests : IDisposable
         // Sous-lot V1.9.6 : la scène du souvenir de la Rupture, reliée au pré par une porte qui ne se montre pas (voir V196OuvertureTests).
         // Sous-lot V2.14 : les boutiques dans de vraies maisons (boulangerie, épicerie, herboristerie, mercerie).
         Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.souvenir_rupture", "zone.boulangerie", "zone.epicerie",
-                "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere", "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.grotte_cascade", "zone.garde_du_signal", "zone.dortoir_abbaye", "zone.maison_joueur",
-                "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules", "zone.auberge_logement", "zone.auberge_combles" },   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
+                "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere", "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.grotte_cascade", "zone.mine_galeries", "zone.garde_du_signal", "zone.dortoir_abbaye", "zone.maison_joueur",
+                "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules", "zone.mine_filons", "zone.auberge_logement", "zone.mine_cristaux",
+                "zone.auberge_combles" },   // V2.47.1 : les trois niveaux de la mine   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
         Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.TerritorySchemaVersion : z.Underground ? ZoneValidator.CurrentSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.4 : Vallons en 9, intérieurs en 7 ; V2.46 : la grotte (dessous) au schéma courant
@@ -122,6 +123,7 @@ public class InterieursTests : IDisposable
         // V2.43.4 : sans bâtiment aussi, le relais du pont, le moulin à foulon (hors de la rivière) et le dortoir (au milieu de ses ruines).
         Assert.Equal(new[] { ("souvenir", "zone.souvenir_rupture"), ("porte_relais_du_pont", "zone.relais_pont"), ("porte_moulin_a_foulon", "zone.foulon"),
             ("porte_grotte_cascade", "zone.grotte_cascade"),   // V2.46 : la grotte derrière la cascade (un dessous)
+            ("porte_mine_galeries", "zone.mine_galeries"),   // V2.47.1 : la mine de la carrière (premier niveau)
             ("porte_dortoir_abbaye", "zone.dortoir_abbaye") }, vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)));
         foreach (ZoneDefinition inside in linked.Zones.Skip(1).Where(z => z.Id != "zone.souvenir_rupture" && !z.Underground))
         {
@@ -150,8 +152,8 @@ public class InterieursTests : IDisposable
         }
         Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg", "Maison de la Guilde", "Souvenir de la Rupture", "Boulangerie de Firmin",
                 "Épicerie de Bertille", "Herboristerie de Sauge", "Mercerie de Margot", "Forge couverte de Maëlle", "Grange", "Moulin", "Tour de guet",
-                "Maison paysanne", "Atelier du charron", "Relais du pont", "Moulin à foulon", "Grotte de la cascade", "Salle de garde de la tour de signal", "Dortoir de l'abbaye", "Chez soi", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules",
-                "Logement et dortoir de l'auberge", "Combles de l'auberge" },   // V2.14 : les boutiques ; lot C
+                "Maison paysanne", "Atelier du charron", "Relais du pont", "Moulin à foulon", "Grotte de la cascade", "Mine : galeries boisées", "Salle de garde de la tour de signal", "Dortoir de l'abbaye", "Chez soi", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules",
+                "Mine : galeries des filons", "Logement et dortoir de l'auberge", "Mine : cœur de cristal", "Combles de l'auberge" },   // V2.14 : les boutiques ; lot C
             linked.Zones.Skip(1).Select(z => z.Name));
         MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
         foreach (string zone in linked.Zones.Select(z => z.Id))
@@ -246,7 +248,7 @@ public class InterieursTests : IDisposable
         ZoneDefinition souvenir = Read(ZoneJson("zone.souvenir_rupture")).Zone!;   // sous-lot V1.9.6 : la scène du souvenir
         // Zones manquantes.
         ValidationReport alone = ZoneValidator.CheckDoors(new[] { vallons });
-        Assert.Equal(21, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(22, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         ZoneDefinition[] shops = { Read(ZoneJson("zone.boulangerie")).Zone!, Read(ZoneJson("zone.epicerie")).Zone!, Read(ZoneJson("zone.herboristerie")).Zone!,
             Read(ZoneJson("zone.mercerie")).Zone! };
         // Lot C (16 novembre 2026) : les intérieurs de métier, la cuisine et les chambres de l'auberge, l'étage des meules.
@@ -254,7 +256,8 @@ public class InterieursTests : IDisposable
             "zone.auberge_chambres", "zone.auberge_logement", "zone.auberge_combles",
             // V2.43.4 : les intérieurs des lieux reconstruits.
             "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.garde_du_signal", "zone.dortoir_abbaye", "zone.maison_joueur",
-            "zone.grotte_cascade" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();   // V2.46 : la grotte de la cascade (un dessous)
+            "zone.grotte_cascade",   // V2.46 : la grotte de la cascade (un dessous)
+            "zone.mine_galeries", "zone.mine_filons", "zone.mine_cristaux" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();   // V2.47.1 : les trois niveaux de la mine
         ValidationReport all = ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison, guilde, archives, souvenir }.Concat(shops).Concat(trades).ToArray());
         Assert.True(all.IsValid, all.ToString());
 
@@ -370,7 +373,7 @@ public class InterieursTests : IDisposable
         Assert.False(a.Indoors);
         Assert.Equal("porte_auberge", a.DoorInReach!.Id);
         Assert.True(a.CanUseDoor);
-        Assert.Equal(20, a.Doors().Count);   // V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(21, a.Doors().Count);   // V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         long tick = a.World.Save().WorldTick;
 
         Assert.True(a.Interact());   // F : la porte (ni PNJ ni nœud à portée)
@@ -410,7 +413,7 @@ public class InterieursTests : IDisposable
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
         Assert.False(a.Map.Indoor);
-        Assert.Equal(20, a.Map.Doors.Count);   // V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(21, a.Map.Doors.Count);   // V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
     }

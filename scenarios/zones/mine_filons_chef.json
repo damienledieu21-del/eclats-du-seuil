@@ -1,0 +1,485 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 474,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "paroi_mine_sud",
+          "points": [
+            [
+              -30,
+              -4
+            ],
+            [
+              10,
+              -4
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              -30,
+              12
+            ]
+          ]
+        },
+        {
+          "id": "paroi_mine_nord",
+          "points": [
+            [
+              -10,
+              22
+            ],
+            [
+              0,
+              22
+            ],
+            [
+              0,
+              40
+            ],
+            [
+              -10,
+              40
+            ]
+          ]
+        },
+        {
+          "id": "etai_mine_1",
+          "points": [
+            [
+              10.3,
+              1.7
+            ],
+            [
+              10.9,
+              1.7
+            ],
+            [
+              10.9,
+              2.3
+            ],
+            [
+              10.3,
+              2.3
+            ]
+          ]
+        },
+        {
+          "id": "etai_mine_2",
+          "points": [
+            [
+              10.3,
+              7.7
+            ],
+            [
+              10.9,
+              7.7
+            ],
+            [
+              10.9,
+              8.3
+            ],
+            [
+              10.3,
+              8.3
+            ]
+          ]
+        },
+        {
+          "id": "etai_mine_3",
+          "points": [
+            [
+              -6.3,
+              12.3
+            ],
+            [
+              -5.7,
+              12.3
+            ],
+            [
+              -5.7,
+              12.9
+            ],
+            [
+              -6.3,
+              12.9
+            ]
+          ]
+        },
+        {
+          "id": "etai_mine_4",
+          "points": [
+            [
+              7.7,
+              21.1
+            ],
+            [
+              8.3,
+              21.1
+            ],
+            [
+              8.3,
+              21.7
+            ],
+            [
+              7.7,
+              21.7
+            ]
+          ]
+        },
+        {
+          "id": "etai_mine_5",
+          "points": [
+            [
+              13.7,
+              21.1
+            ],
+            [
+              14.3,
+              21.1
+            ],
+            [
+              14.3,
+              21.7
+            ],
+            [
+              13.7,
+              21.7
+            ]
+          ]
+        },
+        {
+          "id": "effondrement_mine_1",
+          "points": [
+            [
+              -4,
+              12
+            ],
+            [
+              2,
+              12
+            ],
+            [
+              2,
+              18
+            ],
+            [
+              -4,
+              18
+            ]
+          ]
+        },
+        {
+          "id": "effondrement_mine_2",
+          "points": [
+            [
+              -20,
+              16
+            ],
+            [
+              -14,
+              16
+            ],
+            [
+              -14,
+              22
+            ],
+            [
+              -20,
+              22
+            ]
+          ]
+        },
+        {
+          "id": "effondrement_mine_3",
+          "points": [
+            [
+              24,
+              34
+            ],
+            [
+              30,
+              34
+            ],
+            [
+              30,
+              40
+            ],
+            [
+              24,
+              40
+            ]
+          ]
+        },
+        {
+          "id": "filon_mine_1",
+          "points": [
+            [
+              29,
+              24
+            ],
+            [
+              30,
+              24
+            ],
+            [
+              30,
+              27
+            ],
+            [
+              29,
+              27
+            ]
+          ]
+        },
+        {
+          "id": "filon_mine_2",
+          "points": [
+            [
+              0,
+              30
+            ],
+            [
+              0.8,
+              30
+            ],
+            [
+              0.8,
+              33
+            ],
+            [
+              0,
+              33
+            ]
+          ]
+        },
+        {
+          "id": "filon_mine_3",
+          "points": [
+            [
+              -30,
+              26
+            ],
+            [
+              -29.2,
+              26
+            ],
+            [
+              -29.2,
+              29
+            ],
+            [
+              -30,
+              29
+            ]
+          ]
+        },
+        {
+          "id": "rails_mine_1",
+          "points": [
+            [
+              26.6,
+              -3
+            ],
+            [
+              28,
+              -3
+            ],
+            [
+              28,
+              11
+            ],
+            [
+              26.6,
+              11
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "wagonnet_mine_1",
+          "points": [
+            [
+              26.4,
+              7
+            ],
+            [
+              28.2,
+              7
+            ],
+            [
+              28.2,
+              9.6
+            ],
+            [
+              26.4,
+              9.6
+            ]
+          ]
+        },
+        {
+          "id": "caisses_mine_1",
+          "points": [
+            [
+              12,
+              -3.6
+            ],
+            [
+              14.6,
+              -3.6
+            ],
+            [
+              14.6,
+              -1
+            ],
+            [
+              12,
+              -1
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "ours_bete_des_eboulis",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1000,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          20,
+          30
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.2,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "ours_bete_des_eboulis_furieuse",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 600,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "eboulement",
+            "rawDamage": 32,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          18,
+          28
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.2,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

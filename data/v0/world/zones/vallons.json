@@ -3455,6 +3455,16 @@
         "toDoor": "sortie"
       },
       {
+        "id": "porte_mine_galeries",
+        "name": "Mine de la carrière",
+        "position": [
+          1185,
+          360
+        ],
+        "to": "zone.mine_galeries",
+        "toDoor": "sortie"
+      },
+      {
         "id": "porte_tour_de_signal",
         "name": "Salle de garde de la tour de signal",
         "position": [
