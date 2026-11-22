@@ -173,5 +173,10 @@ namespace EdS.World
         NoItem = 4,
         /// <summary>Le personnage est tombé.</summary>
         Defeated = 5,
+        /// <summary>
+        /// Revue Codex de la PR #242 : la sauvegarde garde déjà <see cref="SavedCorruption.MaxEntries"/> autels purifiés et pas celui-ci
+        /// (des terres que le catalogue n'a plus) : rien ne change, l'éclat reste.
+        /// </summary>
+        Full = 6,
     }
 }

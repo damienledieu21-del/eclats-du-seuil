@@ -104,6 +104,9 @@ namespace EdS.World
             long day = Math.Min(SavedEvent.MaxDay, Today);
             int stage = CorruptionRules.StageAt(CorruptionRules.CorruptedSince(book, _character.Corruption)[a.Index], book, day);
             if (stage < 1) return CorruptionRefusal.NotCorrupted;
+            // Revue Codex de la PR #242 (P1) : la place dans la sauvegarde est vérifiée avant toute mutation (SavedCorruption.With ne peut
+            // plus lever après le retrait de l'éclat : terre au format du catalogue, jour dans [0, MaxDay], au plus MaxEntries terres).
+            if (_character.Corruption.DayOf(a.Id) is null && _character.Corruption.Purified.Count >= SavedCorruption.MaxEntries) return CorruptionRefusal.Full;
             if (Inventory.Available(book.PurifyItem) < 1) return CorruptionRefusal.NoItem;
             // Tout est vérifié : l'objet d'abord (refus atomique de l'inventaire), puis le reste, qui ne peut plus échouer.
             if (Inventory.Remove(book.PurifyItem, 1) != InventoryRefusal.None) return CorruptionRefusal.NoItem;

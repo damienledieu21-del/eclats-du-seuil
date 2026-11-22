@@ -381,6 +381,28 @@ public class V242CorruptionTests
     }
 
     [Fact]
+    public void Sauvegarde_pleine_refus_atomique()
+    {
+        // Revue Codex de la PR #242 (P1) : 32 terres purifiées (que le catalogue n'a plus), un autel nouveau : refusé avant toute mutation.
+        SavedCharacter full = Hero(0, new ItemStack(Shard, 1)).WithCorruption(Purified(Enumerable.Range(0, SavedCorruption.MaxEntries).Select(i => ($"t{i}", 1L)).ToArray()));
+        WorldSession w = Session(1421, -670, Noon(18), full);
+        Run(w, 2);
+        string before = Snapshot(w) + w.Character.Xp + string.Join(",", w.CorruptionState.Purified.Select(e => e.Key + e.Value)) + w.Save().Character!.Story.Facts.Count;
+        Assert.Equal(CorruptionRefusal.Full, w.PurifyAltar("pierres_ouest"));
+        Assert.Equal(before, Snapshot(w) + w.Character.Xp + string.Join(",", w.CorruptionState.Purified.Select(e => e.Key + e.Value)) + w.Save().Character!.Story.Facts.Count);
+        Assert.Equal(1, w.Inventory.Count(Shard));
+        Assert.DoesNotContain(Run(w, 1), n => n.Kind == CorruptionNoticeKind.Purified);
+        Assert.True(Texts.Has("text.ui.corruption.full"));
+        // Un autel déjà gardé se repurifie même sauvegarde pleine (la ligne est remplacée, pas ajoutée).
+        SavedCharacter kept = Hero(0, new ItemStack(Shard, 1)).WithCorruption(Purified(Enumerable.Range(0, SavedCorruption.MaxEntries - 1).Select(i => ($"t{i}", 1L))
+            .Append(("pierres_ouest", 1L)).ToArray()));
+        WorldSession again = Session(1421, -670, Noon(18), kept);
+        Run(again, 2);
+        Assert.Equal(CorruptionRefusal.None, again.PurifyAltar("pierres_ouest"));
+        Assert.Equal((SavedCorruption.MaxEntries, 18L), (again.CorruptionState.Purified.Count, again.CorruptionState.DayOf("pierres_ouest")!.Value));
+    }
+
+    [Fact]
     public void Fin_du_repit_et_repurification()
     {
         // Purifié le jour 18 : propre les jours 19 à 21 (P+3), de nouveau corrompu au palier 1 le jour 22 (P+4), et purifiable encore.
