@@ -24,6 +24,16 @@ public class DisplayNamesTests
     [InlineData("bastion2", "Bastion")]
     [InlineData("", "")]
     [InlineData(null, "")]
+    // Relecture indépendante de la PR #250 : chefs des cryptes et des mines (« Moine echo abbe dechire » s'affichait).
+    [InlineData("moine_echo_abbe_dechire", "Abbé sans repos déchiré")]
+    [InlineData("moine_echo_abbe_courrouce_v2", "Abbé sans repos courroucé")]
+    [InlineData("moine_echo_gardien_ossuaire_dechaine", "Gardien de l'ossuaire déchaîné")]
+    [InlineData("moine_echo_crypte3", "Moine revenu")]
+    [InlineData("moine_echo_sacristain", "Sacristain")]
+    [InlineData("loup_echo_gardien_cristaux_brise", "Gardien des cristaux brisé")]
+    [InlineData("ours_bete_des_eboulis_furieuse", "Bête des éboulis furieuse")]
+    [InlineData("bandit_arc_mine_galerie2", "Archer des pilleurs")]
+    [InlineData("loup_echo_mine_cristaux1", "Loup-écho des cristaux")]
     public void Nom_montre(string? id, string shown) => Assert.Equal(shown, DisplayNames.Of(id!));
 
     /// <summary>Nom de l'attaque annoncée sous la cible (« Ruée · 1,5 s ») : accents, exemplaires et variantes.</summary>
@@ -40,6 +50,11 @@ public class DisplayNamesTests
     [InlineData("brulure", "Brûlure")]
     [InlineData("onde_du_seuil", "Onde du Seuil")]
     [InlineData("ecrasement", "Écrasement")]
+    [InlineData("volee_d_ossements", "Volée d'ossements")]
+    [InlineData("anatheme", "Anathème")]
+    [InlineData("crosse", "Coup de crosse")]
+    [InlineData("pluie_d_eclats", "Pluie d'éclats")]
+    [InlineData("eboulement_2", "Éboulement")]
     [InlineData("", "Coup")]
     [InlineData(null, "Coup")]
     public void Attaque_montree(string? id, string shown) => Assert.Equal(shown, DisplayNames.Attack(id!));
