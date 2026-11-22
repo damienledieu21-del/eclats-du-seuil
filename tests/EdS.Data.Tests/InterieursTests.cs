@@ -569,7 +569,7 @@ public class InterieursTests : IDisposable
         return new AdventureMap(zone.Setup.Space!,
             zone.Places.Select(p => new MapPlace(p.Id, p.Name, M(p.Min.X), M(p.Min.Z), M(p.Max.X), M(p.Max.Z))), null,
             zone.SafePoints.Select(s => (M(s.Position.X), M(s.Position.Z))).Concat(zone.Doors.Select(d => (M(d.Position.X), M(d.Position.Z)))),
-            zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, M(d.Position.X), M(d.Position.Z))), zone.Indoor);
+            zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, M(d.Position.X), M(d.Position.Z), false, d.Kind)), zone.Indoor);   // V2.48.2 : et le genre (trappe)
     }
 
     private static string Describe(InteriorPiece p) => FormattableString.Invariant(
@@ -637,7 +637,7 @@ public class InterieursTests : IDisposable
             // Chaque meuble des données est reconnu ; les objets attendus du genre de la pièce sont là.
             foreach (SpaceObstacle o in map.Obstacles) Assert.True(InteriorRules.FurnitureFor(o.Id) != InteriorFurniture.None, inside.Id + " : " + o.Id);
             foreach (InteriorProp prop in props) Assert.True(layout.Pieces.Any(p => p.Prop == prop), inside.Id + " : " + prop);
-            Assert.Equal(map.Doors.Count, layout.Pieces.Count(p => p.Prop == InteriorProp.Door));   // sous-lot V1.7 : la guilde a deux portes
+            Assert.Equal(map.Doors.Count(d => !CryptLooks.OnFloor(d)), layout.Pieces.Count(p => p.Prop == InteriorProp.Door));   // sous-lot V1.7 : la guilde a deux portes ; V2.48.2 : pas la trappe de la chapelle (au sol)
             // Identifiants uniques ; un objet posé sur un autre vient après lui ; tout est dans la pièce, sous le plafond.
             Assert.Equal(layout.Pieces.Count, layout.Pieces.Select(p => p.Id).Distinct(StringComparer.Ordinal).Count());
             for (int i = 0; i < layout.Pieces.Count; i++)

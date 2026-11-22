@@ -180,6 +180,8 @@ namespace EdS.Game
             }
 
             Lights(layout);
+            foreach (MapDoor door in map.Doors)
+                if (CryptLooks.OnFloor(door)) CryptSlab(door);   // V2.48.2 : la dalle descellée de la chapelle
             // Sous-lot V1.9.8 : le souvenir de la Rupture n'a pas de villageois (ni fidèle devant la porte de lumière, ni paysan à la place de
             // la reine Ysolde : StoryStage la dessine).
             if (!space.Obstacles.Any(o => StoryStage.IsLightGate(o.Id))) Villagers(layout.Villagers);
@@ -216,7 +218,7 @@ namespace EdS.Game
                 // Ouvertures : portes et fenêtres de ce mur.
                 var openings = new List<(float T, float Width, float Bottom, float Top, bool Door)>();
                 foreach (MapDoor door in map.Doors)
-                    if (InteriorRules.NearestWall(map, door.X, door.Z) == wall)
+                    if (!CryptLooks.OnFloor(door) && InteriorRules.NearestWall(map, door.X, door.Z) == wall)   // V2.48.2 : une trappe est au sol
                         openings.Add(((float)(alongX ? door.X - cx : door.Z - cz), DoorWidth, 0f, DoorHeight, true));
                 foreach (InteriorWindow w in layout.Windows.Where(w => w.Wall == wall))
                     openings.Add(((float)(alongX ? w.X - cx : w.Z - cz), (float)w.Width, (float)w.Bottom, (float)w.Top, false));

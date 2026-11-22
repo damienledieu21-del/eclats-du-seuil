@@ -1430,6 +1430,7 @@ Crypte-donjon sous l'abbaye en ruine (Retenu, [plan](PLAN_GRANDE_CARTE.md), lign
 - **Créatures** (recommandation appliquée) : les **échos des moines** de l'abbaye (bestiaire existant des échos : mêmes forces, butin d'écho, équipe `echos`, une seule équipe par crypte donc pas de trêve), en corps humain **en robe du clergé** (`HumanLooks.OutfitOf` : « moine ») avec le rendu d'**écho revenu** gris-bleu pâle (`EchoLooks.Of` : `moine_echo…`).
 - **Comme tout dessous** : créatures et chefs à 8 m au moins de chaque porte, hors de portée d'aggro de bord à bord (rayons et 0,5 m de marge), et ici aussi au-delà de la garde des portes (12 m : on peut toujours repartir par où l'on est arrivé) ; points sûrs découverts en approchant, voyage rapide jamais vers une crypte, ni cheval, ni pluie, ni neige.
 - **Limites** : le coffre est un décor ; la crypte de la chapelle ne mène pas à celle de l'abbaye.
+- **Rendu** (Unity, V2.48.2, `SpaceView.Crypt`, [UNITY.md](UNITY.md)) : pénombre des dessous, murs et piliers occulteurs, voûtes sur les passages des grilles, candélabres et bougies qui éclairent, escalier de crypte à chaque porte et jour de la nef à celle du dehors ; dans la chapelle, la dalle au sol (aucune ouverture de mur). Kit de 13 modèles préparé, non généré (formes simples en attendant).
 
 ## Sauvegarde
 
