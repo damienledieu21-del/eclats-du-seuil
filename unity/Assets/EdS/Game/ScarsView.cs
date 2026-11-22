@@ -78,7 +78,8 @@ namespace EdS.Game
             }
             // Couleurs fanées à la place de la caméra (un peu lissées, pour ne pas sauter d'un coup).
             var at = new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.FromRaw((long)(camera.x * 10000f)), EdS.Domain.Numerics.Fixed.FromRaw((long)(camera.z * 10000f)));
-            float target = outside ? AdventureSession.FadeAt(scars, at) / 1000f : 0f;
+            // Sous-lot V2.42.2 : une terre corrompue fane aussi les couleurs (la plus forte des deux marques compte).
+            float target = outside ? Mathf.Max(AdventureSession.FadeAt(scars, at), AdventureSession.CorruptionFadeAt(a.Corruption, at)) / 1000f : 0f;
             _fade = Mathf.MoveTowards(_fade, target, deltaTime * 0.5f);
             StyleWorld.SetScarFade(_fade);
         }
