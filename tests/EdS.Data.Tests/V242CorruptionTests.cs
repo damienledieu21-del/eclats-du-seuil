@@ -39,7 +39,7 @@ public class V242CorruptionTests
     {
         JsonObject root = JsonNode.Parse(Shipped)!.AsObject();
         mutate?.Invoke(root["data"]!.AsObject());
-        return CorruptionJsonReader.Read(root.ToJsonString(), Vallons, ItemsCatalog);
+        return CorruptionJsonReader.Read(root.ToJsonString(), Vallons, ItemsCatalog, V11TestData.ScenariosDirectory, ShippedData);
     }
 
     private static CorruptionBook Book { get; } = Read().Book!;
@@ -79,7 +79,7 @@ public class V242CorruptionTests
     {
         CorruptionLoadResult r = Read();
         Assert.True(r.IsValid, r.Report.ToString());
-        Assert.Equal((1, 32, 32), (CorruptionValidator.CurrentSchemaVersion, SaveValidator.CurrentSchemaVersion, SaveValidator.CorruptionSince));
+        Assert.Equal((2, 33, 32, 33), (CorruptionValidator.CurrentSchemaVersion, SaveValidator.CurrentSchemaVersion, SaveValidator.CorruptionSince, SaveValidator.CorruptionSourceSince));   // V2.42.3 : défi de la source
         Assert.Equal(("cercle_des_pierres", 2, 2, 3, 4, 150L, 10), (Book.Source.Id, Book.SpreadDays, Book.GrowDays, Book.MaxStage, Book.RespiteDays, Book.PurifyXp, Book.StrengthPercent));
         Assert.Equal(Shard, Book.PurifyItem);
         Assert.Equal(8, Book.Areas.Count);

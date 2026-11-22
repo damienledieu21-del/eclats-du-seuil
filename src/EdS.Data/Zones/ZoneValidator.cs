@@ -1464,7 +1464,7 @@ namespace EdS.Data.Zones
         /// Sous-lot V2.28b (2c) : les formes d'un chef d'une zone à région sont toutes dans le secteur de sa première forme, à au moins
         /// <see cref="MinSectorInset"/> de ses bords intérieurs (au-delà, un autre secteur simulé).
         /// </summary>
-        private static void CheckBossSector(Boss boss, string path, RegionGrid region, CombatSpace space, ValidationReport report)
+        internal static void CheckBossSector(Boss boss, string path, RegionGrid region, CombatSpace space, ValidationReport report)
         {
             AssailantSetup first = boss.Forms[0];
             if (!region.Contains(first.Placement!.Position)) return;
@@ -1479,9 +1479,11 @@ namespace EdS.Data.Zones
             }
         }
 
-        private static Boss? CheckBoss(BossData b, string path, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
-            IReadOnlyList<SafePoint> safePoints, IReadOnlyList<Door> doors, int allForms, IReadOnlyList<Boss> others)
+        internal static Boss? CheckBoss(BossData b, string path, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
+            IReadOnlyList<SafePoint> safePoints, IReadOnlyList<Door> doors, int allForms, IReadOnlyList<Boss> others, int? sessionCreatures = null)
         {
+            // Sous-lot V2.42.3 : le défi de la source compte les créatures de la session de son secteur (zone à région) plutôt que toute la zone.
+            int creatures = sessionCreatures ?? scenario?.Combatants.Count ?? 0;
             bool ok = true;
             if (b.Id is null || b.Id.Length > 64 || !LocalId.IsMatch(b.Id)) { report.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant « {b.Id} » mal formé."); ok = false; }
             if (b.Scenario is null) { Missing(report, path + ".scenario", "scénario des formes du chef"); ok = false; }
@@ -1489,10 +1491,10 @@ namespace EdS.Data.Zones
             var templates = new List<AssailantSetup>();
             if (b.Forms is null || b.Forms.Count < 1 || b.Forms.Count > MaxForms) { report.Add(path + ".forms", ValidationCode.OutOfRange, $"de 1 à {MaxForms} formes."); ok = false; }
             // Revue Codex de la PR #48 (3e tour) : la session compte les créatures de la zone, le personnage qui entre et toutes les formes.
-            else if (scenario != null && checked(scenario.Combatants.Count + 1 + allForms) > scenario.Combat.MaxCombatants)
+            else if (scenario != null && checked(creatures + 1 + allForms) > scenario.Combat.MaxCombatants)
             {
                 report.Add(path + ".forms", ValidationCode.LimitExceeded,
-                    $"{scenario.Combatants.Count} créatures, le personnage et {allForms} formes de chefs : plus que les {scenario.Combat.MaxCombatants} combattants d'une session.");
+                    $"{creatures} créatures, le personnage et {allForms} formes de chefs : plus que les {scenario.Combat.MaxCombatants} combattants d'une session.");
                 ok = false;
             }
             else if (forms != null)

@@ -153,7 +153,7 @@ public class V2413RepriseFortTests
     [Fact]
     public void Coffres_repris_format_version_31()
     {
-        Assert.Equal((32, 31, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventRecoveredSince, SaveValidator.EventLostDaySince));
+        Assert.Equal((33, 31, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventRecoveredSince, SaveValidator.EventLostDaySince));
         string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Pillaged(recovered: 5)));
         Assert.Contains("\"lostDay\": 10, \"recovered\": 5}", json);
         SaveLoadResult ok = SaveJsonReader.Read(json);

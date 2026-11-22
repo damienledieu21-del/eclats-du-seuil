@@ -135,6 +135,19 @@ namespace EdS.World
             return new BossEvent(BossEventKind.FormArrived, _boss.Id, _current, 0, engine.CurrentTick);
         }
 
+        /// <summary>
+        /// Sous-lot V2.42.3 (défi de la source) : fait arriver la première forme en cours de session, sous une identité libre du moteur (celle
+        /// de la forme, ou <c>{forme}_v{n}</c> si un défi précédent l'a prise). Refus atomique : si le moteur refuse (lève), rien ne change.
+        /// </summary>
+        public BossEvent StartAnew(CombatEngine engine)
+        {
+            string id = FreeIdentity(engine, _boss.Forms[0].Id);
+            engine.Join(Copy(_boss.Forms[0], id, engine)
+                ?? throw new ArgumentException($"Forme « {id} » liée à une cible absente de la session : elle n'y est pas simulée."));
+            _current = id;
+            return new BossEvent(BossEventKind.FormArrived, _boss.Id, id, 0, engine.CurrentTick);
+        }
+
         public IReadOnlyList<BossEvent> Step(CombatEngine engine) => Step(engine, null);
 
         /// <summary>Sous-lot V2.28b (2c) : un pas dans la session <paramref name="zone"/> (règle de place libre pour une forme emportée).</summary>

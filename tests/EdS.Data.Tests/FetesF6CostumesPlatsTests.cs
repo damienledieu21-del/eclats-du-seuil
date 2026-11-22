@@ -136,7 +136,7 @@ public sealed class FetesF6CostumesPlatsTests
         Assert.Empty(a.FeastDishes);
         Assert.False(a.EatFeastDish(Carnaval));
         Assert.Contains("Vous n'avez plus de ce plat.", a.DrainMessages());
-        Assert.Equal(32, SaveValidator.CurrentSchemaVersion);   // format inchangé par les plats (28 : lieux reconstruits)
+        Assert.Equal(33, SaveValidator.CurrentSchemaVersion);   // format inchangé par les plats (28 : lieux reconstruits)
     }
 
     [Fact]

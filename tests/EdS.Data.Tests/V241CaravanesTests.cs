@@ -497,7 +497,7 @@ public class V241CaravanesTests
     [Fact]
     public void Jour_du_dernier_echec_format_version_30()
     {
-        Assert.Equal((32, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventLostDaySince));
+        Assert.Equal((33, 30), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventLostDaySince));
         string Line(string extra) => "{\"id\": \"zone.vallons/" + Attack + "\", \"won\": 1, \"lost\": 1, \"last\": 5, \"outcome\": \"won\"" + extra + "}";
         string json = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
             Hero().WithEvents(new[] { new SavedEvent("zone.vallons/" + Attack, 1, 1, 5, EventOutcome.Won, lostDay: 4) })));

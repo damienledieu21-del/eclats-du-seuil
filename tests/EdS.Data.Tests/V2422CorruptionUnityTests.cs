@@ -25,7 +25,7 @@ public class V2422CorruptionUnityTests
 {
     private static readonly WorldClock Clock = new(50);
     private static readonly ZoneDefinition Vallons = Zone(1421, -670);
-    private static readonly CorruptionBook Book = CorruptionJsonReader.ReadFile(CorruptionJsonReader.PathIn(DataDirectory), Vallons, ItemsCatalog).Book!;
+    private static readonly CorruptionBook Book = CorruptionJsonReader.ReadFile(CorruptionJsonReader.PathIn(DataDirectory), Vallons, ItemsCatalog, V11TestData.ScenariosDirectory, ShippedData).Book!;
 
     private static IReadOnlyList<CorruptionView> Views(long day, SavedCharacter? hero = null)
     {

@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/corruption.schema.json",
   "title": "Éclats du Seuil — corruption qui s'étend et recule",
-  "description": "Corruption (sous-lot V2.42.1), version 1 : la source (cercle des pierres levées), les terres que la corruption gagne de proche en proche (disque, autel, terres d'origine) et ses règles (jours pour gagner une terre, jours par palier, palier maximal, répit d'un autel purifié, objet et expérience d'une purification). Documentation. La validation qui fait foi est celle du programme (CorruptionValidator), avec la zone et le catalogue d'objets.",
+  "description": "Corruption (sous-lot V2.42.1), version 2 (sous-lot V2.42.3 : défi de la source, challenge ; la version 1, sans défi, est encore lue) : la source (cercle des pierres levées), les terres que la corruption gagne de proche en proche (disque, autel, terres d'origine) et ses règles (jours pour gagner une terre, jours par palier, palier maximal, répit d'un autel purifié, objet et expérience d'une purification). Documentation. La validation qui fait foi est celle du programme (CorruptionValidator), avec la zone et le catalogue d'objets.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "contentVersion", "data"],
   "properties": {
     "$schema": { "type": "string" },
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "enum": [1, 2] },
     "kind": { "const": "corruption" },
     "contentVersion": { "type": "string" },
     "data": {
@@ -37,6 +37,30 @@
         "purifyXp": { "type": "integer", "minimum": 0, "maximum": 100000 },
         "strengthPercent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Créatures plus fortes dans une terre corrompue : pourcentage de PV et de dégâts en plus par palier (décision de Damien du 21 novembre 2026 : 10)." },
         "purifiedFact": { "type": "string", "pattern": "^fact(\\.[a-z0-9_]+)+$" },
+        "challenge": {
+          "description": "Version 2 (sous-lot V2.42.3, décision de Damien du 21 novembre 2026) : défi de la source. Le gardien (boss : un chef au format des chefs d'une zone, toutes ses formes dans le disque de la source) se lance au cercle quand au moins minAltars autels sont dans leur répit ; sa défaite purifie la source : toute la région respire respiteDays jours, puis la corruption repart du cercle. Chaque victoire donne xp ; la première, les récompenses et le fait du gardien.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["boss", "minAltars", "respiteDays", "xp"],
+          "properties": {
+            "boss": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "scenario", "forms", "fact", "rewards"],
+              "properties": {
+                "id": { "$ref": "#/$defs/id" },
+                "scenario": { "type": "string" },
+                "forms": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string" } },
+                "fact": { "type": "string", "pattern": "^fact(\\.[a-z0-9_]+)+$" },
+                "rewards": { "type": "array", "maxItems": 8, "items": { "type": "object", "additionalProperties": false, "required": ["item", "count"], "properties": { "item": { "type": "string", "pattern": "^item(\\.[a-z0-9_]+)+$" }, "count": { "type": "integer", "minimum": 1 } } } },
+                "loot": { "type": "string" }
+              }
+            },
+            "minAltars": { "type": "integer", "minimum": 0, "maximum": 31 },
+            "respiteDays": { "type": "integer", "minimum": 1, "maximum": 30 },
+            "xp": { "type": "integer", "minimum": 0, "maximum": 100000 }
+          }
+        },
         "areas": {
           "type": "array",
           "minItems": 1,
