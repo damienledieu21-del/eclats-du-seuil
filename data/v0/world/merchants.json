@@ -386,6 +386,10 @@
         "value": 900
       },
       {
+        "item": "item.anneau_de_la_cascade",
+        "value": 1200
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },

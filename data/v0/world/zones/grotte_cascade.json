@@ -1,0 +1,112 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.grotte_cascade",
+    "name": "Grotte de la cascade",
+    "scenario": "zones/grotte_cascade",
+    "floor": "dessous",
+    "entry": "rideau_d_eau",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "rideau_d_eau",
+        "name": "Derrière le rideau d'eau",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_du_rideau",
+        "name": "Salle du rideau",
+        "min": [
+          -20,
+          -4
+        ],
+        "max": [
+          20,
+          14
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "salle_du_bassin",
+        "name": "Salle du bassin",
+        "min": [
+          -20,
+          14
+        ],
+        "max": [
+          20,
+          32
+        ],
+        "minLevel": 12
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_grotte1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_grotte2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_grotte1",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "gardien_de_la_grotte",
+        "scenario": "zones/grotte_cascade_gardien",
+        "forms": [
+          "ours_gardien_grotte",
+          "ours_gardien_grotte_furieux"
+        ],
+        "fact": "fact.gardien_de_la_grotte.vaincu",
+        "rewards": [
+          {
+            "item": "item.anneau_de_la_cascade",
+            "count": 1
+          }
+        ],
+        "loot": "loot.ours"
+      }
+    ],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Rideau de la cascade",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_grotte_cascade"
+      }
+    ]
+  }
+}

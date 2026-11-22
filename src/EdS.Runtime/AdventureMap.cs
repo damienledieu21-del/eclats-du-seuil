@@ -34,8 +34,14 @@ namespace EdS.Runtime
         public double X { get; }
         public double Z { get; }
 
-        public MapDoor(string id, string name, string? building, double x, double z)
+        /// <summary>
+        /// Chantier V2.46 : la porte mène dehors (une zone ni intérieure ni dessous) : dans une grotte, le rideau d'eau y est posé.
+        /// </summary>
+        public bool Outside { get; }
+
+        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false)
         {
+            Outside = outside;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Building = building;
@@ -224,6 +230,12 @@ namespace EdS.Runtime
         public bool Indoor { get; }
 
         /// <summary>
+        /// Chantier V2.46 : la zone est un dessous (grotte, mine…) : à l'abri comme une pièce (ni pluie, ni neige, ni glace, pénombre), mais
+        /// avec ses créatures et ses obstacles en rochers ; jamais un intérieur.
+        /// </summary>
+        public bool Underground { get; }
+
+        /// <summary>
         /// Sous-lot V1.6 : PNJ qui parlent dans cette pièce (identifiant, place en mètres) : le décor des intérieurs leur donne un corps
         /// (<see cref="InteriorRules.Layout"/>). Vide dehors.
         /// </summary>
@@ -249,7 +261,8 @@ namespace EdS.Runtime
 
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
-            IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null)
+            IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null,
+            bool underground = false)
         {
             Region = region;
             Space = space;
@@ -266,8 +279,10 @@ namespace EdS.Runtime
             Clearings = (clearings ?? Array.Empty<(double X, double Z)>()).ToList();
             Doors = (doors ?? Array.Empty<MapDoor>()).ToList();
             Indoor = indoor;
+            Underground = underground && !indoor;
             var key = new System.Text.StringBuilder();
             if (Indoor) key.Append("intérieur:");
+            if (Underground) key.Append("dessous:");
             key.Append(FormattableString.Invariant($"{MinX}/{MinZ}/{MaxX}/{MaxZ}"));
             foreach (SpaceObstacle o in Obstacles)
             {

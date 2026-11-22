@@ -480,7 +480,7 @@ namespace EdS.World
             WorldBossMemory after = WorldBossMemory.FromEvent(entry).After(e.Window, e.Outcome);
             bool earned = e.Outcome == WorldBossOutcome.PlayersWon && e.Contributions.Any(c => c.Key == CombatantId && c.Value > 0);
             SavedEvent saved = after.ToEvent(key);
-            if (earned) saved = new SavedEvent(key, saved.Won, saved.Lost, saved.Last, saved.Outcome, owed: true, lostDay: saved.LostDay);
+            if (earned) saved = new SavedEvent(key, saved.Won, saved.Lost, saved.Last, saved.Outcome, owed: true, lostDay: saved.LostDay, recovered: saved.Recovered, recoveredOnce: saved.RecoveredOnce);
             _character = _character.WithEvents(_character.Events.Where(x => x.Id != key).Concat(new[] { saved }));
             if (earned) GiveWorldBossSpoils(b, key, saved, ref notices);
             return true;
@@ -500,7 +500,7 @@ namespace EdS.World
                 foreach (string back in given) Inventory.Remove(back, 1);
                 return;
             }
-            var paid = new SavedEvent(key, entry.Won, entry.Lost, entry.Last, entry.Outcome, lostDay: entry.LostDay);
+            var paid = new SavedEvent(key, entry.Won, entry.Lost, entry.Last, entry.Outcome, lostDay: entry.LostDay, recovered: entry.Recovered, recoveredOnce: entry.RecoveredOnce);
             _character = _character.WithEvents(_character.Events.Where(x => x.Id != key).Concat(new[] { paid }));
             (notices ??= new List<WorldBossNotice>()).Add(new WorldBossNotice(WorldBossNoticeKind.Rewarded, b.Id, entry.Last, given));
         }

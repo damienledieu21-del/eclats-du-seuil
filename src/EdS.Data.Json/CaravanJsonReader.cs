@@ -63,6 +63,22 @@ namespace EdS.Data.Json
                 ["route"] = (v, p) => x.Route = input.ReadLimitedList(v, p, CaravanValidator.MaxRoute,
                     n => $"{n} points, au plus {CaravanValidator.MaxRoute}.", (e, ip) => ScenarioJsonReader.ReadPoint(input, e, ip)),
                 ["attack"] = (v, p) => x.Attack = ZoneJsonReader.ReadEvent(input, v, p, caravan: true),
+                ["recovery"] = (v, p) => x.Recovery = ReadRecovery(input, v, p),   // sous-lot V2.41.3 (version 2)
+            }) ? x : null;
+        }
+
+        private static CaravanRecoveryData? ReadRecovery(JsonInput input, JsonElement element, string path)
+        {
+            var x = new CaravanRecoveryData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["place"] = (v, p) => x.Place = input.Text(v, p),
+                ["days"] = (v, p) => x.Days = input.Int32(v, p),
+                ["guardRadius"] = (v, p) => x.GuardRadius = input.Decimal(v, p),
+                ["chests"] = (v, p) => x.Chests = input.ReadLimitedList(v, p, CaravanValidator.MaxChests,
+                    n => $"{n} coffres, au plus {CaravanValidator.MaxChests}.", (e, ip) => ScenarioJsonReader.ReadPoint(input, e, ip)),
+                ["xp"] = (v, p) => x.Xp = input.Int64(v, p),
+                ["money"] = (v, p) => x.Money = input.Int64(v, p),
             }) ? x : null;
         }
     }
