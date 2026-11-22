@@ -655,9 +655,10 @@ namespace EdS.Runtime
                 }
             }
 
-            // La porte, côté intérieur, contre son mur.
+            // La porte, côté intérieur, contre son mur (V2.48.2 : pas une trappe, qui est au sol).
             foreach (MapDoor door in map.Doors)
             {
+                if (CryptLooks.OnFloor(door)) continue;
                 (int X, int Z) wall = NearestWall(map, door.X, door.Z);
                 (double x, double z) = WallPoint(map, wall, wall.X != 0 ? door.Z - cz : door.X - cx, 0.02);
                 Add(new InteriorPiece("porte/" + door.Id, InteriorProp.Door, x, z, Math.Atan2(wall.X, wall.Z) * 180 / Math.PI, 0, height: 2.4, onWall: true));
@@ -708,7 +709,7 @@ namespace EdS.Runtime
             double span = wall.X != 0 ? map.Depth : map.Width;
             if (Math.Abs(t) + half > span / 2 - 0.6) return false;   // coins
             foreach (MapDoor door in map.Doors)
-                if (NearestWall(map, door.X, door.Z) == wall && Math.Abs((wall.X != 0 ? door.Z - cz : door.X - cx) - t) < half + 1.0) return false;
+                if (!CryptLooks.OnFloor(door) && NearestWall(map, door.X, door.Z) == wall && Math.Abs((wall.X != 0 ? door.Z - cz : door.X - cx) - t) < half + 1.0) return false;
             foreach (Box b in boxes)
             {
                 double gap = wall.X > 0 ? b.MinX - map.MinX : wall.X < 0 ? map.MaxX - b.MaxX : wall.Z > 0 ? b.MinZ - map.MinZ : map.MaxZ - b.MaxZ;
