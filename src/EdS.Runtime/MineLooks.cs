@@ -28,8 +28,8 @@ namespace EdS.Runtime
 
     /// <summary>
     /// Chantier V2.47.2 (mines de la carrière, PLAN_GRANDE_CARTE.md) : rendu de la mine, sans Unity. Les obstacles prennent une pièce du kit
-    /// de mine par le début de leur identifiant (« paroi_mine_nord » : une paroi) ; les modèles (kit préparé le 22 novembre 2026, à générer
-    /// après accord de Damien) sont cherchés dans <see cref="AssetFolder"/> et, s'ils manquent, Unity pose une forme de remplacement. Les
+    /// de mine par le début de leur identifiant (« paroi_mine_nord » : une paroi) ; les modèles (kit fait le 22 novembre 2026, 390 crédits validés
+    /// par Damien) sont cherchés dans <see cref="AssetFolder"/> et, s'ils manquent, Unity pose une forme de remplacement. Les
     /// portes de genre puits reçoivent l'ascenseur, celles de genre escalier les échelles ; la passerelle est posée sur l'écart entre deux bras
     /// de la rivière souterraine (<see cref="Bridges"/>). La caverne du fond reprend les pièces du kit de grotte (<see cref="CaveLooks"/>).
     /// </summary>
@@ -107,6 +107,42 @@ namespace EdS.Runtime
             MinePiece.River => 0.0,
             _ => 1.5,
         };
+
+        /// <summary>
+        /// Hauteur du modèle d'une pièce une fois posé (m), celle de sa fiche (<c>Mines/modeles.json</c>), la paroi à la hauteur des murs de la
+        /// grotte. Elle ne suit jamais l'emprise : une pièce longue et plate (rails, passerelle) reste plate.
+        /// </summary>
+        public static double ModelHeightOf(MinePiece piece) => piece switch
+        {
+            MinePiece.Wall => CaveLooks.WallHeight,
+            MinePiece.Prop => 3.2,
+            MinePiece.Rails => 0.25,
+            MinePiece.Cart => 1.3,
+            MinePiece.Vein => 2.0,
+            MinePiece.Collapse => 2.5,
+            MinePiece.Crates => 1.4,
+            MinePiece.Crystals => 2.2,
+            MinePiece.Chest => 0.8,
+            _ => 1.5,
+        };
+
+        /// <summary>Hauteur de la passerelle posée (m), celle de sa fiche.</summary>
+        public const double BridgeHeight = 1.2;
+
+        /// <summary>
+        /// Pose d'un modèle de taille (<paramref name="modelX"/>, <paramref name="modelY"/>, <paramref name="modelZ"/>) sur une emprise de
+        /// <paramref name="width"/> (X) sur <paramref name="depth"/> (Z) à la hauteur <paramref name="height"/> : tourné d'un quart de tour
+        /// (<c>Turn</c>) si son long côté n'est pas dans le sens de l'emprise (les rails, longs sur X, suivent une voie le long de Z), puis
+        /// étiré à l'emprise au sol ; l'échelle verticale ne dépend que de la hauteur voulue, jamais de l'emprise. Échelles à appliquer au
+        /// modèle tourné, dans les axes du monde. Tailles nulles ou négatives : aucune pose (échelles 1, pas de quart de tour).
+        /// </summary>
+        public static (bool Turn, double Sx, double Sy, double Sz) Fit(double modelX, double modelY, double modelZ, double width, double depth, double height)
+        {
+            if (!(modelX > 0) || !(modelY > 0) || !(modelZ > 0) || !(width > 0) || !(depth > 0) || !(height > 0)) return (false, 1, 1, 1);
+            bool turn = (modelX > modelZ && depth > width) || (modelZ > modelX && width > depth);
+            double footX = turn ? modelZ : modelX, footZ = turn ? modelX : modelZ;
+            return (turn, width / footX, height / modelY, depth / footZ);
+        }
 
         /// <summary>
         /// Nom du modèle du kit (<see cref="Models"/>) du fichier <paramref name="path"/>, ou null : autre dossier, sous-dossier, autre extension

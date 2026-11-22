@@ -13,7 +13,7 @@ namespace EdS.Game
     /// obstacles (<see cref="MineLooks.PieceFor"/>) ; passerelle sur l'écart entre deux bras de la rivière (<see cref="MineLooks.Bridges"/>) ;
     /// ascenseur sur les portes de genre puits, échelles sur les portes de genre escalier, jour de la bouche (sans rideau d'eau) sur la porte
     /// qui mène dehors. Les modèles du kit de mine sont pris dans <c>Resources/Mines/&lt;nom&gt;</c> (<see cref="MineLooks.Models"/>) ; en repli
-    /// (modèle absent : kit préparé, pas encore généré), des formes simples les remplacent.
+    /// (modèle absent), des formes simples les remplacent.
     /// </summary>
     public sealed partial class SpaceView
     {
@@ -52,7 +52,7 @@ namespace EdS.Game
             Color seuil = new Color((float)MineLooks.SeuilCrystal.R, (float)MineLooks.SeuilCrystal.G, (float)MineLooks.SeuilCrystal.B);
             if (piece == MinePiece.Crystals) CaveGlow(o.Id, cx, cz, seuil, 1.6f, 7f);
             if (piece == MinePiece.Prop) Lantern(o.Id, cx, cz);
-            if (FitMineModel(MineModel(MineLooks.ModelFor(piece)), o.Id, x0, z0, x1, z1, piece == MinePiece.Wall)) return true;
+            if (FitMineModel(MineModel(MineLooks.ModelFor(piece)), o.Id, x0, z0, x1, z1, (float)MineLooks.ModelHeightOf(piece), piece == MinePiece.Wall)) return true;
             // Formes de remplacement.
             switch (piece)
             {
@@ -96,18 +96,23 @@ namespace EdS.Game
             copy.transform.position = new Vector3(x, 2.4f, z);
         }
 
-        /// <summary>Le modèle <paramref name="model"/> étiré à l'emprise (x0, z0)-(x1, z1), posé au sol ; faux sans lui.</summary>
-        private bool FitMineModel(GameObject model, string id, float x0, float z0, float x1, float z1, bool occludes)
+        /// <summary>
+        /// Le modèle <paramref name="model"/> posé au sol sur l'emprise (x0, z0)-(x1, z1), à la hauteur <paramref name="height"/> de sa pièce
+        /// (<see cref="MineLooks.Fit"/> : quart de tour si son long côté croise l'emprise, étiré au sol, hauteur fixée par pièce, jamais par
+        /// l'emprise) ; faux sans lui.
+        /// </summary>
+        private bool FitMineModel(GameObject model, string id, float x0, float z0, float x1, float z1, float height, bool occludes)
         {
             if (model == null) return false;
             var look = new GameObject(id + " (" + model.name + ")");
-            Object.Instantiate(model, look.transform, false);
+            GameObject copy = Object.Instantiate(model, look.transform, false);
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             look.transform.SetParent(_root.transform, false);
-            if (StyleLook.VisibleBounds(look, out Bounds b) && b.size.x > 0.01f && b.size.z > 0.01f)
+            if (StyleLook.VisibleBounds(look, out Bounds b) && b.size.x > 0.01f && b.size.y > 0.01f && b.size.z > 0.01f)
             {
-                float sx = (x1 - x0) / b.size.x, sz = (z1 - z0) / b.size.z;
-                look.transform.localScale = new Vector3(sx, Mathf.Max(sx, sz), sz);
+                var fit = MineLooks.Fit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height);
+                if (fit.Turn) copy.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * copy.transform.localRotation;
+                look.transform.localScale = new Vector3((float)fit.Sx, (float)fit.Sy, (float)fit.Sz);
                 StyleLook.VisibleBounds(look, out b);
                 look.transform.position += new Vector3((x0 + x1) / 2f - b.center.x, -b.min.y, (z0 + z1) / 2f - b.center.z);
             }
@@ -122,7 +127,7 @@ namespace EdS.Game
             {
                 float x0 = (float)span.MinX, x1 = (float)span.MaxX, z0 = (float)span.MinZ, z1 = (float)span.MaxZ;
                 // La passerelle déborde d'un demi-mètre sur chaque rive.
-                if (FitMineModel(MineModel(MineLooks.BridgeModel), "Passerelle", x0, z0 - 0.5f, x1, z1 + 0.5f, false)) continue;
+                if (FitMineModel(MineModel(MineLooks.BridgeModel), "Passerelle", x0, z0 - 0.5f, x1, z1 + 0.5f, (float)MineLooks.BridgeHeight, false)) continue;
                 float cx = (x0 + x1) / 2f, cz = (z0 + z1) / 2f, length = z1 - z0 + 1f, width = x1 - x0;
                 Box("Passerelle (planches)", new Vector3(cx, 0.12f, cz), new Vector3(width, 0.08f, length), wood, woodTile);
                 Box("Passerelle (garde-corps ouest)", new Vector3(x0 + 0.08f, 0.6f, cz), new Vector3(0.12f, 0.08f, length), wood, woodTile);

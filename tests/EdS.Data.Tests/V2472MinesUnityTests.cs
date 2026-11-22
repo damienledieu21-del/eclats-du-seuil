@@ -12,7 +12,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Chantier V2.47.2 : la mine de la carrière dans Unity. Pièces du kit de mine par le nom des obstacles (<see cref="MineLooks"/>), passerelle
 /// sur l'écart de la rivière souterraine, ascenseur et échelles d'après le genre des portes, pas de rideau d'eau à la bouche ; modèles
-/// branchés par leur nom (kit préparé, pas encore généré : formes simples en repli).
+/// branchés par leur nom (kit fait le 22 novembre 2026, formes simples en repli si un modèle manque).
 /// </summary>
 [Trait("Category", "World")]
 public class V2472MinesUnityTests
@@ -151,5 +151,82 @@ public class V2472MinesUnityTests
         Assert.Contains("MineLooks.NameOf", style);
         // Aucun shader nouveau (mots réservés HLSL) : la mine n'utilise que les matériaux existants.
         Assert.DoesNotContain("Shader.Find", mine);
+    }
+
+    /// <summary>
+    /// Kit de mine livré (décision de Damien du 22 novembre 2026 : 390 crédits validés, dépense faite) : les treize modèles finis dans
+    /// Blender sont dans Resources/Mines, chacun avec sa couleur et sa normale, et reconnus par leur nom ; la préparation leur donne leur matière.
+    /// </summary>
+    [Fact]
+    public void Kit_de_mine_present_et_reconnu()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", MineLooks.AssetFolder);
+        foreach (string name in MineLooks.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, MineLooks.NameOf(MineLooks.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(13, MineLooks.Models.Count);
+        Assert.Equal(MineLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.Equal("Mines/", MineLooks.Folder);
+        Assert.EndsWith("Resources/" + MineLooks.Folder.TrimEnd('/'), MineLooks.AssetFolder);   // Resources.Load(Folder + nom) trouve le fichier
+    }
+
+    /// <summary>
+    /// Pose d'un modèle (<see cref="MineLooks.Fit"/>) : la hauteur ne suit jamais l'emprise. Les rails (4 × 0,25 × 1,4 m, longs sur X) sur
+    /// la voie de 1,4 × 14 m (le long de Z) tournent d'un quart de tour et restent à 0,25 m ; la passerelle reste à 1,2 m sur 5 m de long ;
+    /// une paroi de 25 × 20 m reste à la hauteur des murs.
+    /// </summary>
+    [Theory]
+    [InlineData(4.0, 0.25, 1.4, 1.4, 14.0, MinePiece.Rails, true, 1.0, 1.0, 3.5)]
+    [InlineData(4.0, 0.25, 1.4, 22.0, 1.2, MinePiece.Rails, false, 5.5, 1.0, 1.2 / 1.4)]
+    [InlineData(8.0, 6.57, 4.06, 25.0, 20.0, MinePiece.Wall, false, 3.125, 6.0 / 6.57, 20.0 / 4.06)]
+    [InlineData(0.8, 3.2, 0.8, 0.6, 0.6, MinePiece.Prop, false, 0.75, 1.0, 0.75)]
+    public void Pose_d_un_modele_hauteur_par_piece(double mx, double my, double mz, double width, double depth, MinePiece piece, bool turn, double sx, double sy, double sz)
+    {
+        var fit = MineLooks.Fit(mx, my, mz, width, depth, MineLooks.ModelHeightOf(piece));
+        Assert.Equal(turn, fit.Turn);
+        Assert.Equal(sx, fit.Sx, 9);
+        Assert.Equal(sy, fit.Sy, 9);
+        Assert.Equal(sz, fit.Sz, 9);
+        Assert.Equal(MineLooks.ModelHeightOf(piece), my * fit.Sy, 9);   // hauteur posée = hauteur de la pièce
+    }
+
+    [Fact]
+    public void Pose_d_un_modele_jamais_plus_haut_que_sa_piece()
+    {
+        // Propriété : pour toute emprise (de 0,1 à 60 m de côté), la hauteur posée est celle de la pièce, quelle que soit l'emprise.
+        double[] sides = { 0.1, 0.6, 1.4, 3, 5, 14, 25, 60 };
+        foreach (MinePiece piece in Enum.GetValues<MinePiece>())
+            foreach (double w in sides)
+                foreach (double d in sides)
+                {
+                    var fit = MineLooks.Fit(4.0, 0.25, 1.4, w, d, MineLooks.ModelHeightOf(piece));
+                    Assert.Equal(MineLooks.ModelHeightOf(piece), 0.25 * fit.Sy, 9);
+                    double footX = fit.Turn ? 1.4 : 4.0, footZ = fit.Turn ? 4.0 : 1.4;
+                    Assert.Equal(w, footX * fit.Sx, 9);
+                    Assert.Equal(d, footZ * fit.Sz, 9);
+                }
+        // Passerelle : 5 m de long sur X dans le modèle, posée le long de Z sur la rivière.
+        var bridge = MineLooks.Fit(5.0, 1.33, 1.81, 3.0, 6.0, MineLooks.BridgeHeight);
+        Assert.True(bridge.Turn);
+        Assert.Equal(MineLooks.BridgeHeight, 1.33 * bridge.Sy, 9);
+        // Tailles nulles : aucune pose.
+        Assert.Equal((false, 1.0, 1.0, 1.0), MineLooks.Fit(0, 1, 1, 1, 1, 1));
+        Assert.Equal((false, 1.0, 1.0, 1.0), MineLooks.Fit(1, 1, 1, 1, 1, 0));
+    }
+
+    [Fact]
+    public void Unity_pose_les_modeles_a_la_hauteur_de_leur_piece()
+    {
+        string mine = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Mine.cs"));
+        Assert.Contains("MineLooks.Fit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height)", mine);
+        Assert.Contains("(float)MineLooks.ModelHeightOf(piece)", mine);
+        Assert.Contains("(float)MineLooks.BridgeHeight", mine);
+        Assert.DoesNotContain("Mathf.Max(sx, sz)", mine);   // l'ancienne hauteur, étirée au plus grand côté de l'emprise
     }
 }

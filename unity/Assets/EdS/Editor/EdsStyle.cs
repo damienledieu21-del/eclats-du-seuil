@@ -281,7 +281,7 @@ namespace EdS.Game.Editor
             catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
             catalog.LotC = LotCPieces(notes);   // lot C (16 novembre 2026) : modèles Tripo reliés aux données (LotCModels)
             catalog.Caravans = CaravanPieces(notes);
-            MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), quand l'atelier l'aura généré
+            MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), kit fait le 22 novembre 2026
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)   // sous-lot V2.41.2 : modèles des caravanes (CaravanLooks), quand l'atelier les aura livrés
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
@@ -630,7 +630,7 @@ namespace EdS.Game.Editor
 
         /// <summary>
         /// Chantier V2.47.2 : le kit de mine (<see cref="MineLooks.AssetFolder"/>, reconnu par <see cref="MineLooks.NameOf"/>) : même traitement
-        /// que le kit de grotte (<see cref="CavePieces"/>). Sans dossier (kit pas encore généré) : rien, sans erreur.
+        /// que le kit de grotte (<see cref="CavePieces"/>). Sans dossier : rien, sans erreur.
         /// </summary>
         private static void MinePieces(List<string> notes)
         {
