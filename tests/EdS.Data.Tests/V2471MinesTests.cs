@@ -178,10 +178,15 @@ public sealed class V2471MinesTests : IDisposable
     /// <summary>
     /// Décision de Damien du 22 novembre 2026 : aucune créature (ni forme de chef) des trois niveaux n'est à portée d'aggro d'une porte, sans
     /// quoi on arrive en combat et on ne peut plus repasser la porte (l'archer de la salle des pilleurs était à 10 m de l'ascenseur pour 13).
+    /// Revue Codex de la PR #248 (tour 1) : l'engagement se mesure de bord à bord (<c>EdgeDistance</c> : centres moins les deux rayons) ;
+    /// on compte donc le rayon de la créature et celui du plus gros personnage qui arrive par la porte (héros ou compagnon), avec une marge.
     /// </summary>
     [Fact]
     public void Aucune_creature_a_portee_d_aggro_d_une_porte()
     {
+        const double margin = 0.5;
+        double hero = Math.Max(ZoneValidator.CharacterRadius.Raw / 1e4, LargestCompanionRadius());
+        Assert.True(hero >= 0.9, hero.ToString());   // l'ours compagnon
         int checkedPairs = 0;
         foreach (ZoneDefinition z in Mine.Value)
             foreach (Door d in z.Doors)
@@ -191,12 +196,25 @@ public sealed class V2471MinesTests : IDisposable
                 {
                     if ((c as AssailantSetup)?.Behavior?.AggroRange is not Fixed aggro) continue;
                     (double x, double zz) = P(c.Placement!.Position);
-                    double r = aggro.Raw / 1e4;
-                    Assert.True((x - dx) * (x - dx) + (zz - dz) * (zz - dz) > r * r, z.Id + " / " + d.Id + " : " + c.Id);
+                    double edge = Math.Sqrt((x - dx) * (x - dx) + (zz - dz) * (zz - dz)) - c.Placement.Radius.Raw / 1e4 - hero;
+                    Assert.True(edge > aggro.Raw / 1e4 + margin, $"{z.Id} / {d.Id} : {c.Id} à {edge:0.###} m de bord à bord (aggro {aggro.Raw / 1e4})");
                     checkedPairs++;
                 }
             }
         Assert.True(checkedPairs >= 25, checkedPairs.ToString());   // toutes les créatures ont une portée d'aggro
+    }
+
+    /// <summary>Le plus grand rayon des compagnons du catalogue (ils arrivent avec le héros).</summary>
+    private static double LargestCompanionRadius()
+    {
+        JsonNode root = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "companions.json")))!;
+        static IEnumerable<double> Radii(JsonNode? n) => n switch
+        {
+            JsonObject o => o.SelectMany(kv => kv.Key == "radius" && kv.Value is JsonValue v ? new[] { (double)v } : Radii(kv.Value)),
+            JsonArray a => a.SelectMany(Radii),
+            _ => Enumerable.Empty<double>(),
+        };
+        return Radii(root).Max();
     }
 
     /// <summary>Niveau <paramref name="zone"/> lu d'un dossier de scénarios d'essai où <paramref name="edit"/> retouche le scénario <paramref name="scenario"/>.</summary>
