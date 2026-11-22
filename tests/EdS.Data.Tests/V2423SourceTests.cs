@@ -387,6 +387,62 @@ public class V2423SourceTests
         Assert.Null(w.CorruptionState.DayOf(Source));
     }
 
+    /// <summary>
+    /// Revue Codex de la PR #252 : défi perdu (laisse franchie) au tick où le moteur refuse le départ du gardien. <paramref name="refuse"/>
+    /// prépare ce refus juste avant le départ ; le défi est réglé quand même (échec annoncé, sans exception) et un tick suivant ne relance rien.
+    /// </summary>
+    private static void Defi_perdu_depart_refuse(Action<Zone, string> refuse, Action<JsonObject>? scenario = null)
+    {
+        CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);
+        ZoneDefinition zone = Zone(1610, -625, scenario);
+        var w = new WorldSession(new WorldSave("zone.vallons", Noon(6), 0, new[] { PlayerCharacters.PlacesKey }, Strong(ThreeAltars(6))),
+            zone, ShippedData, Progression, ItemsCatalog, V11TestData.Book(zone), safePoint: "place_du_village");
+        w.UseCorruption(slow);
+        w.Step();
+        SavedCorruption before = w.CorruptionState;
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        Assert.True(w.SourceChallengeUnderway);
+        int calls = 0;
+        w.BeforeSourceLeaveForTest = (z, form) => { calls++; refuse(z, form); };
+        w.UseCorruption(WithSourceRadius(14.9999));   // laisse juste franchie : le défi est perdu au tick suivant
+        var notices = new List<CorruptionNotice>();
+        for (int i = 0; i < 5; i++)
+        {
+            w.Step();
+            notices.AddRange(w.CorruptionNotices);
+        }
+        Assert.Equal(1, calls);   // un seul essai de départ : aucun tick suivant ne le relance
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed && n.Area == Source);
+        Assert.DoesNotContain(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+        Assert.False(w.SourceChallengeUnderway);
+        Assert.Same(before, w.CorruptionState);
+    }
+
+    [Fact]
+    public void Defi_perdu_session_terminee_echec_propre()
+    {
+        Defi_perdu_depart_refuse((z, _) =>
+        {
+            for (int i = 0; i < 10_000 && !z.IsOver; i++) z.Step();   // la session du combat arrive au bout de sa durée
+            Assert.True(z.IsOver);
+            Assert.Throws<InvalidOperationException>(() => z.Engine.Submit(new CombatCommand(z.Engine.CurrentTick * 50, "x", CombatAction.GuardStart)));
+        }, s => s["data"]!["durationMs"] = 120_000);
+    }
+
+    [Fact]
+    public void Defi_perdu_plafond_de_commandes_atteint_echec_propre()
+    {
+        Defi_perdu_depart_refuse((z, form) =>
+        {
+            // Le gardien a déjà toutes ses commandes du tick : son départ (une commande de plus) est refusé par le moteur.
+            for (int i = 0; i < 100; i++)
+                try { z.Engine.Submit(new CombatCommand(z.Engine.CurrentTick * 50, form, CombatAction.GuardStart)); }
+                catch (InvalidOperationException) { break; }
+            Assert.Throws<InvalidOperationException>(() => z.Engine.Submit(new CombatCommand(z.Engine.CurrentTick * 50, form, CombatAction.GuardStart)));
+        });
+    }
+
     [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {
