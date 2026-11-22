@@ -159,6 +159,28 @@ public sealed class V2481CrypteTests : IDisposable
         Assert.Equal(12 + 7 + 1, pairs);   // (4 moines + 2 formes) × 2 portes ; 4 moines + 3 formes ; le sacristain
     }
 
+    [Fact]
+    public void Aucun_ennemi_des_Vallons_a_moins_de_12_m_d_une_porte_de_dessous()
+    {
+        // Relecture indépendante de la PR #250 : l'écho de l'abbaye à 11 m de l'escalier de la crypte bloquait la porte (CanUseDoor refuse à
+        // moins de RestSafety d'un ennemi vivant). Aucun ennemi des Vallons (créatures et formes des chefs) à 12 m ou moins d'une porte qui
+        // descend (grotte, mines, crypte).
+        ZoneDefinition vallons = Vallons.Value;
+        var under = V16TestData.Interiors.Where(z => z.Underground).Select(z => z.Id).ToHashSet();
+        double guard = AdventureSession.RestSafety.Raw / 1e4;
+        var doors = vallons.Doors.Where(d => under.Contains(d.To)).ToList();
+        Assert.Contains(doors, d => d.Id == "porte_crypte_abbaye");
+        Assert.True(doors.Count >= 3, string.Join(", ", doors.Select(d => d.Id)));
+        foreach (Door d in doors)
+            foreach (CombatantSetup c in Fighters(vallons).Where(c => c is AssailantSetup && c.Placement != null))
+            {
+                (double x, double z) = P(c.Placement!.Position);
+                (double dx, double dz) = P(d.Position);
+                double centre = Math.Sqrt((x - dx) * (x - dx) + (z - dz) * (z - dz));
+                Assert.True(centre > guard, $"{d.Id} : {c.Id} à {centre:0.##} m");
+            }
+    }
+
     private ZoneLoadResult WithScenario(string zone, string scenario, Action<JsonObject> edit)
     {
         string dir = Path.Combine(_folder, "scenarios_" + Guid.NewGuid().ToString("N"));
@@ -217,16 +239,23 @@ public sealed class V2481CrypteTests : IDisposable
         Assert.Contains(r.Report.Errors, e => e.Path == "$.data.indoor");
     }
 
-    [Fact]
-    public void Abbe_sans_repos_apaise_sceau_et_fait_une_fois_puis_rien()
+    /// <summary>
+    /// Chaque chef des cryptes ne donne sa récompense qu'à la première victoire (relecture indépendante de la PR #250 : le gardien de
+    /// l'ossuaire et le sacristain, en plus de l'abbé) ; la seconde victoire, après relecture de la sauvegarde, ne donne rien.
+    /// </summary>
+    [Theory]
+    [InlineData("zone.crypte_tombeau", "crypte_tombeau_abbe", "moine_echo_abbe,moine_echo_abbe_courrouce,moine_echo_abbe_dechire", "abbe_sans_repos", "fact.abbe_sans_repos.apaise", "item.sceau_de_l_abbe:1,item.eclat_de_seuil:2")]
+    [InlineData("zone.crypte_abbaye", "crypte_abbaye_gardien", "moine_echo_gardien_ossuaire,moine_echo_gardien_ossuaire_dechaine", "gardien_de_l_ossuaire", "fact.gardien_de_l_ossuaire.vaincu", "item.eclat_de_seuil:2")]
+    [InlineData("zone.crypte_chapelle", "crypte_chapelle_sacristain", "moine_echo_sacristain", "sacristain", "fact.sacristain.apaise", "item.anneau_du_sacristain:1")]
+    public void Chef_recompense_a_la_premiere_victoire_seulement(string zoneId, string scenario, string formList, string chief, string fact, string rewardList)
     {
-        string dir = Path.Combine(_folder, "scenarios_abbe");
+        string dir = Path.Combine(_folder, "scenarios_" + chief);
         Directory.CreateDirectory(Path.Combine(dir, "zones"));
         foreach (string f in Directory.GetFiles(Path.Combine(Scenarios, "zones"), "crypte_*.json")) File.Copy(f, Path.Combine(dir, "zones", Path.GetFileName(f)));
-        string path = Path.Combine(dir, "zones", "crypte_tombeau_abbe.json");
+        string path = Path.Combine(dir, "zones", scenario + ".json");
         JsonObject g = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
-        string[] forms = { "moine_echo_abbe", "moine_echo_abbe_courrouce", "moine_echo_abbe_dechire" };
-        for (int i = 0; i < 3; i++)
+        string[] forms = formList.Split(',');
+        for (int i = 0; i < forms.Length; i++)
         {
             JsonObject f = Combatant(g, forms[i]);
             f["health"] = 10;
@@ -235,27 +264,42 @@ public sealed class V2481CrypteTests : IDisposable
             f["position"] = new JsonArray(-3.0 + 3 * i, 7.0);   // près de l'arrivée
         }
         File.WriteAllText(path, g.ToJsonString());
-        JsonObject root = ZoneJson("zone.crypte_tombeau");
+        JsonObject root = ZoneJson(zoneId);
         root["data"]!["populations"] = new JsonArray();
         ZoneLoadResult loaded = Read(root, dir);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         ZoneDefinition zone = loaded.Zone!;
+        var rewards = rewardList.Split(',').Select(r => (r.Split(':')[0], int.Parse(r.Split(':')[1]))).ToArray();
         SavedCharacter hero = V11TestData.Hero().WithXp(Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 22));
         var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, Items);
-        List<SessionStep> first = Fight(w, "moine_echo_abbe");
+        List<SessionStep> first = Fight(w, forms[0]);
         Assert.Contains(first.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated);
-        Assert.Equal(new[] { ("item.sceau_de_l_abbe", 1), ("item.eclat_de_seuil", 2) }, first.SelectMany(s => s.Rewards));
+        Assert.Equal(rewards, first.SelectMany(s => s.Rewards));
         string key = zone.VictoryKeyOf(zone.Chiefs[0]);
-        Assert.Equal("zone.crypte_tombeau/boss/abbe_sans_repos", key);
+        Assert.Equal(zone.Id + "/boss/" + chief, key);
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
         Assert.Contains(key, saved.Consumed);
-        Assert.Contains("fact.abbe_sans_repos.apaise", SaveJsonReader.Write(w.Save()), StringComparison.Ordinal);
+        Assert.Contains(fact, SaveJsonReader.Write(w.Save()), StringComparison.Ordinal);
 
         var again = new WorldSession(saved, zone, ShippedData, Progression, Items);
-        List<SessionStep> second = Fight(again, "moine_echo_abbe");
+        List<SessionStep> second = Fight(again, forms[0]);
         Assert.Contains(second.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated);
         Assert.Empty(second.SelectMany(s => s.Rewards));
-        Assert.Equal(1, again.Inventory.Count("item.sceau_de_l_abbe"));
+        Assert.Equal(rewards[0].Item2, again.Inventory.Count(rewards[0].Item1));
+    }
+
+    /// <summary>Relecture indépendante de la PR #250 : le validateur garde à 8 m des portes toutes les formes d'un chef, pas seulement la première.</summary>
+    [Theory]
+    [InlineData(10.0, true)]      // la forme déchaînée à 8 m pile de l'escalier du tombeau (18 ; 33) : acceptée
+    [InlineData(10.0001, false)]  // juste en deçà : refusée, au chemin de la seconde forme
+    public void Frontiere_huit_metres_pour_la_seconde_forme_du_gardien(double x, bool valid)
+    {
+        ZoneLoadResult r = WithScenario("zone.crypte_abbaye", "crypte_abbaye_gardien", s => Combatant(s, "moine_echo_gardien_ossuaire_dechaine")["position"] = new JsonArray(x, 33.0));
+        Assert.Equal(valid, r.IsValid);
+        if (!valid)
+            Assert.Contains(r.Report.Errors, e => e.Path == "$.data.chiefs[0].forms[1]" && e.Message.Contains("porte « escalier_du_tombeau »", StringComparison.Ordinal));
+        else
+            Assert.True(r.IsValid, r.Report.ToString());
     }
 
     private static List<SessionStep> Fight(WorldSession w, string prefix, int max = 6000)
@@ -326,6 +370,46 @@ public sealed class V2481CrypteTests : IDisposable
         Assert.Throws<ArgumentNullException>(() => AdventureSession.IsSecretDoor(null!));
     }
 
+    /// <summary>
+    /// Relecture indépendante de la PR #250 : frontières de la porte secrète. Seul le préfixe exact « secret_ » compte (« secret » sans tiret
+    /// bas, « Secret_… » ou « SECRET_… » ne sont pas secrets ; la casse compte) ; une porte secrète vers une zone absente reste cachée.
+    /// </summary>
+    [Theory]
+    [InlineData("secret_dalle", true)]
+    [InlineData("secret_", true)]
+    [InlineData("secret", false)]
+    [InlineData("secretdalle", false)]
+    [InlineData("dalle_secret_", false)]
+    public void Prefixe_de_la_porte_secrete(string id, bool secret)
+    {
+        Assert.Equal(secret, AdventureSession.IsSecretDoor(ChapelDoor(id, "zone.crypte_chapelle")));
+    }
+
+    /// <summary>La casse compte : une majuscule est refusée par le validateur (identifiant local en minuscules), elle n'est donc jamais secrète.</summary>
+    [Theory]
+    [InlineData("Secret_dalle")]
+    [InlineData("SECRET_DALLE")]
+    public void Porte_secrete_en_majuscules_refusee(string id)
+    {
+        JsonObject chapelle = ZoneJson("zone.chapelle");
+        chapelle["data"]!["doors"]![1]!["id"] = id;
+        ZoneLoadResult r = Read(chapelle);
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.doors[1].id");
+    }
+
+    /// <summary>Porte de la chapelle relue avec un autre identifiant et une autre zone d'arrivée (une seule zone est validée : l'arrivée n'est pas vérifiée).</summary>
+    private static Door ChapelDoor(string id, string to)
+    {
+        JsonObject chapelle = ZoneJson("zone.chapelle");
+        Assert.Equal("secret_dalle", (string)chapelle["data"]!["doors"]![1]!["id"]!);
+        chapelle["data"]!["doors"]![1]!["id"] = id;
+        chapelle["data"]!["doors"]![1]!["to"] = to;
+        ZoneLoadResult r = Read(chapelle);
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Zone!.DoorOf(id)!;
+    }
+
     [Fact]
     public void Dalle_sans_repere_tant_qu_on_ne_l_a_pas_passee_puis_montree()
     {
@@ -356,6 +440,9 @@ public sealed class V2481CrypteTests : IDisposable
         Door dalle = a.World.Definition!.DoorOf("secret_dalle")!;
         Assert.True(a.SecretHidden(dalle));
         Assert.False(a.SecretHidden(a.World.Definition!.DoorOf("sortie")!));
+        // Zone d'arrivée absente du monde : jamais découverte, la porte secrète reste cachée ; une porte ordinaire vers elle ne l'est pas.
+        Assert.True(a.SecretHidden(ChapelDoor("secret_dalle", "zone.inexistante")));
+        Assert.False(a.SecretHidden(ChapelDoor("dalle", "zone.inexistante")));
         Assert.Equal(new[] { "sortie" }, a.Doors().Select(d => d.Id));   // ni étiquette…
         Assert.DoesNotContain(a.MapMarkers(), m => m.Kind == MapMarkerKind.Door && m.Name == "Dalle descellée");   // … ni repère
         Assert.Contains(a.Map.Doors, d => d.Id == "secret_dalle" && d.Kind == DoorKind.Hatch);   // le décor la garde (Unity : une dalle au sol)

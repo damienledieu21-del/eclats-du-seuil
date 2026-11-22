@@ -3468,7 +3468,7 @@
         "id": "porte_crypte_abbaye",
         "name": "Escalier de la crypte",
         "position": [
-          1756,
+          1759,
           146
         ],
         "to": "zone.crypte_abbaye",
