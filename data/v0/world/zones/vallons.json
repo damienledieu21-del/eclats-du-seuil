@@ -3465,6 +3465,16 @@
         "toDoor": "sortie"
       },
       {
+        "id": "porte_crypte_abbaye",
+        "name": "Escalier de la crypte",
+        "position": [
+          1756,
+          146
+        ],
+        "to": "zone.crypte_abbaye",
+        "toDoor": "sortie"
+      },
+      {
         "id": "porte_tour_de_signal",
         "name": "Salle de garde de la tour de signal",
         "position": [

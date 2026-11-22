@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 7,
+  "schemaVersion": 15,
   "kind": "zone",
   "contentVersion": "0.2.0-provisoire",
   "data": {
@@ -45,6 +45,17 @@
         ],
         "to": "zone.vallons",
         "toDoor": "porte_chapelle"
+      },
+      {
+        "id": "secret_dalle",
+        "name": "Dalle descellée",
+        "position": [
+          3.6,
+          -6.4
+        ],
+        "to": "zone.crypte_chapelle",
+        "toDoor": "dalle",
+        "kind": "trappe"
       }
     ]
   }

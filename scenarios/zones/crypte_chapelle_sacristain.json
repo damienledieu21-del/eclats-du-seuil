@@ -1,0 +1,227 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 486,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -6,
+          -3
+        ],
+        "max": [
+          6,
+          17
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "sarcophage_crypte_6",
+          "points": [
+            [
+              -5,
+              8
+            ],
+            [
+              -3,
+              8
+            ],
+            [
+              -3,
+              10.4
+            ],
+            [
+              -5,
+              10.4
+            ]
+          ]
+        },
+        {
+          "id": "gisant_crypte_7",
+          "points": [
+            [
+              3.5,
+              8
+            ],
+            [
+              4.5,
+              8
+            ],
+            [
+              4.5,
+              10.2
+            ],
+            [
+              3.5,
+              10.2
+            ]
+          ]
+        },
+        {
+          "id": "autel_crypte_2",
+          "points": [
+            [
+              -1.5,
+              15.6
+            ],
+            [
+              1.5,
+              15.6
+            ],
+            [
+              1.5,
+              16.6
+            ],
+            [
+              -1.5,
+              16.6
+            ]
+          ]
+        },
+        {
+          "id": "bougies_crypte_3",
+          "points": [
+            [
+              -0.4,
+              14.8
+            ],
+            [
+              0.4,
+              14.8
+            ],
+            [
+              0.4,
+              15.3
+            ],
+            [
+              -0.4,
+              15.3
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "candelabre_crypte_5",
+          "points": [
+            [
+              -2.6,
+              15.8
+            ],
+            [
+              -2.2,
+              15.8
+            ],
+            [
+              -2.2,
+              16.2
+            ],
+            [
+              -2.6,
+              16.2
+            ]
+          ]
+        },
+        {
+          "id": "candelabre_crypte_6",
+          "points": [
+            [
+              2.2,
+              15.8
+            ],
+            [
+              2.6,
+              15.8
+            ],
+            [
+              2.6,
+              16.2
+            ],
+            [
+              2.2,
+              16.2
+            ]
+          ]
+        },
+        {
+          "id": "coffre_crypte_2",
+          "points": [
+            [
+              3.6,
+              15
+            ],
+            [
+              5.2,
+              15
+            ],
+            [
+              5.2,
+              16.2
+            ],
+            [
+              3.6,
+              16.2
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "moine_echo_sacristain",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 700,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "griffe_spectrale",
+            "rawDamage": 18,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "glas",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          12.5
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 7,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

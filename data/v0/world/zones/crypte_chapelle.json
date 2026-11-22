@@ -1,0 +1,77 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.crypte_chapelle",
+    "name": "Crypte de la chapelle",
+    "scenario": "zones/crypte_chapelle",
+    "floor": "dessous",
+    "entry": "sous_la_dalle",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "sous_la_dalle",
+        "name": "Sous la dalle",
+        "position": [
+          0,
+          0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "crypte_de_la_chapelle",
+        "name": "Crypte de la chapelle",
+        "min": [
+          -6,
+          -3
+        ],
+        "max": [
+          6,
+          17
+        ],
+        "minLevel": 6
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "sacristain",
+        "scenario": "zones/crypte_chapelle_sacristain",
+        "forms": [
+          "moine_echo_sacristain"
+        ],
+        "fact": "fact.sacristain.apaise",
+        "rewards": [
+          {
+            "item": "item.anneau_du_sacristain",
+            "count": 1
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "dalle",
+        "name": "Chapelle du Bourg",
+        "position": [
+          0,
+          -1.5
+        ],
+        "to": "zone.chapelle",
+        "toDoor": "secret_dalle",
+        "kind": "trappe"
+      }
+    ]
+  }
+}

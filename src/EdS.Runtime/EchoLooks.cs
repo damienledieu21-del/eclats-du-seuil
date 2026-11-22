@@ -101,6 +101,8 @@ namespace EdS.Runtime
                 return EchoKind.Rupture;
             if (key.StartsWith("loup_blanc", StringComparison.Ordinal)) return EchoKind.WhiteWolf;
             if (key.StartsWith("loup_echo", StringComparison.Ordinal)) return HasSuffix(key, "_ev") ? EchoKind.Rift : EchoKind.Night;
+            // V2.48.1 : les moines de la crypte de l'abbaye sont des morts revenus (« moine_echo_crypte1 », l'abbé sans repos) : gris-bleu pâle.
+            if (key.StartsWith("moine_echo", StringComparison.Ordinal)) return EchoKind.Returned;
             if (fromSeuil) return EchoKind.Rift;
             if (slainBefore) return EchoKind.Returned;
             if (afterDeath && IsBeast(key)) return EchoKind.Returned;

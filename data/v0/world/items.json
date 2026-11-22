@@ -1899,6 +1899,35 @@
         "named": true
       },
       {
+        "id": "item.sceau_de_l_abbe",
+        "name": "Sceau de l'abbé",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "ring",
+        "requiredLevel": 20,
+        "bonus": {
+          "magicResistance": 50,
+          "maxHealth": 100,
+          "armor": 20
+        },
+        "named": true
+      },
+      {
+        "id": "item.anneau_du_sacristain",
+        "name": "Anneau du sacristain",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 6,
+        "bonus": {
+          "maxHealth": 35,
+          "statusResistance": 10
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",
