@@ -12,7 +12,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Chantier V2.48.2 : les cryptes dans Unity. Pièces du kit de crypte par le nom des obstacles (<see cref="CryptLooks"/>), voûte sur l'écart
 /// entre deux grilles, escalier de crypte sur les portes, dalle au sol de la chapelle (une trappe n'ouvre aucun mur) ; modèles branchés par
-/// leur nom (kit préparé, non généré : formes simples en attendant).
+/// leur nom (kit Tripo fait, 390 crédits validés par Damien le 22 novembre 2026 ; formes simples en repli).
 /// </summary>
 [Trait("Category", "World")]
 public class V2482CrypteUnityTests
@@ -214,20 +214,120 @@ public class V2482CrypteUnityTests
     }
 
     /// <summary>
-    /// Kit de crypte préparé, pas généré (aucune dépense Tripo sans l'accord de Damien) : tant que le dossier manque, les formes simples ;
-    /// s'il est là, il ne contient que des modèles reconnus, chacun avec sa couleur et sa normale.
+    /// Kit de crypte livré (décision de Damien du 22 novembre 2026 : 390 crédits validés, dépense faite) : les treize modèles finis dans
+    /// Blender sont dans Resources/Crypte, chacun avec sa couleur et sa normale, et reconnus par leur nom.
     /// </summary>
     [Fact]
-    public void Kit_de_crypte_reconnu_s_il_est_la()
+    public void Kit_de_crypte_present_et_reconnu()
     {
         string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", CryptLooks.AssetFolder);
-        if (!Directory.Exists(folder)) return;
-        foreach (string fbx in Directory.GetFiles(folder, "*.fbx"))
+        foreach (string name in CryptLooks.Models)
         {
-            string? name = CryptLooks.NameOf(CryptLooks.AssetFolder + "/" + Path.GetFileName(fbx));
-            Assert.NotNull(name);
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
             Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
             Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, CryptLooks.NameOf(CryptLooks.AssetFolder + "/" + name + ".fbx"));
         }
+        Assert.Equal(13, CryptLooks.Models.Count);
+        Assert.Equal(CryptLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.Equal("Crypte/", CryptLooks.Folder);
+        Assert.EndsWith("Resources/" + CryptLooks.Folder.TrimEnd('/'), CryptLooks.AssetFolder);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #251 : un mur de crypte n'est pas étiré sur une grande emprise (16 × 14 m) : il est répété en tuiles
+    /// qui couvrent l'emprise exactement, chacune au plus 1,5 fois le modèle sur chaque axe ; le mince mur de 20,4 × 1,5 m en trois tuiles.
+    /// </summary>
+    [Theory]
+    [InlineData(-24, -4, -8, 10, 8)]       // mur_crypte_entree_ouest : 2 × 4 tuiles
+    [InlineData(-10.2, 14, 10.2, 15.5, 3)]  // un mur d'ossuaire de 20,4 × 1,5 m
+    [InlineData(0, 0, 15, 10, 6)]          // mur_crypte_escalier : 2 × 3 tuiles
+    [InlineData(0, 0, 1.2, 10, 1)]         // ossuaire de 1,2 × 10 m (modèle de mur) : 1 × 1
+    public void Mur_repete_en_tuiles_jamais_etire(double x0, double z0, double x1, double z1, int count)
+    {
+        var (lon, sh) = CryptLooks.TileOf(CryptPiece.Wall)!.Value;
+        var tiles = CryptLooks.Tiles(x0, z0, x1, z1, lon, sh);
+        Assert.Equal(count, tiles.Count);
+        CheckTiles(tiles, x0, z0, x1, z1, lon, sh);
+    }
+
+    [Fact]
+    public void Tuiles_propriete_et_frontieres()
+    {
+        var rng = new Random(2482);
+        for (int k = 0; k < 2000; k++)
+        {
+            double w = 0.2 + rng.NextDouble() * 24, d = 0.2 + rng.NextDouble() * 24,   // jusqu'à 3 × 6 tuiles : jamais borné
+                   x0 = rng.NextDouble() * 50 - 25, z0 = rng.NextDouble() * 50 - 25;
+            var tiles = CryptLooks.Tiles(x0, z0, x0 + w, z0 + d, 8.0, 3.9);
+            Assert.InRange(tiles.Count, 1, CryptLooks.MaxTiles);
+            CheckTiles(tiles, x0, z0, x0 + w, z0 + d, 8.0, 3.9);
+        }
+        Assert.Empty(CryptLooks.Tiles(0, 0, 0, 5, 8, 3.9));     // emprise vide
+        Assert.Empty(CryptLooks.Tiles(0, 0, 5, 5, 0, 3.9));     // modèle vide
+        Assert.InRange(CryptLooks.Tiles(0, 0, 400, 400, 8, 3.9).Count, 1, CryptLooks.MaxTiles);   // borné
+        Assert.Null(CryptLooks.TileOf(CryptPiece.Pillar));
+        Assert.NotNull(CryptLooks.TileOf(CryptPiece.Ossuary));
+        string crypt = Unity("Assets", "EdS", "Game", "SpaceView.Crypt.cs");
+        Assert.Contains("CryptLooks.Tiles(x0, z0, x1, z1, tile.Value.Long, tile.Value.Short)", crypt);
+    }
+
+    private static void CheckTiles(IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> tiles, double x0, double z0, double x1, double z1, double lon, double sh)
+    {
+        double area = tiles.Sum(t => (t.MaxX - t.MinX) * (t.MaxZ - t.MinZ));
+        Assert.Equal((x1 - x0) * (z1 - z0), area, 6);   // couverture exacte, sans chevauchement (les tuiles sont dans l'emprise)
+        bool wide = x1 - x0 >= z1 - z0;
+        foreach (var t in tiles)
+        {
+            Assert.True(t.MinX >= x0 - 1e-9 && t.MaxX <= x1 + 1e-9 && t.MinZ >= z0 - 1e-9 && t.MaxZ <= z1 + 1e-9);
+            Assert.True((t.MaxX - t.MinX) / (wide ? lon : sh) <= CryptLooks.MaxStretch + 1e-9, $"{t}");
+            Assert.True((t.MaxZ - t.MinZ) / (wide ? sh : lon) <= CryptLooks.MaxStretch + 1e-9, $"{t}");
+        }
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #251 : l'escalier de remplacement longe le bord, à côté de la place d'arrivée (le joueur n'apparaît
+    /// pas dedans), dans l'aire (jamais dans le mur), hors des obstacles ; cinq marches de plus en plus hautes. Pour chaque porte des cryptes.
+    /// </summary>
+    [Fact]
+    public void Escalier_de_remplacement_a_cote_de_l_arrivee_et_dans_l_aire()
+    {
+        int doors = 0;
+        foreach (string id in new[] { "zone.crypte_abbaye", "zone.crypte_tombeau", "zone.crypte_chapelle" })
+        {
+            ZoneDefinition z = Zone(id);
+            CombatSpace space = z.Setup.Space!;
+            double minX = space.Min.X.Raw / 1e4, minZ = space.Min.Z.Raw / 1e4, maxX = space.Max.X.Raw / 1e4, maxZ = space.Max.Z.Raw / 1e4;
+            foreach (Door door in z.Doors)
+            {
+                double x = door.Position.X.Raw / 1e4, zz = door.Position.Z.Raw / 1e4;
+                var steps = CryptLooks.StairSteps(x, zz, minX, minZ, maxX, maxZ);
+                Assert.Equal(5, steps.Count);
+                for (int i = 0; i < steps.Count; i++)
+                {
+                    var s = steps[i];
+                    Assert.True(s.MinX >= minX && s.MaxX <= maxX && s.MinZ >= minZ && s.MaxZ <= maxZ, $"{id} / {door.Id} : marche {i + 1} hors de l'aire");
+                    double dx = Math.Max(Math.Max(s.MinX - x, 0), x - s.MaxX), dz = Math.Max(Math.Max(s.MinZ - zz, 0), zz - s.MaxZ);
+                    Assert.True(Math.Sqrt(dx * dx + dz * dz) >= CryptLooks.StairsClearance - 1e-9, $"{id} / {door.Id} : marche {i + 1} sur l'arrivée");
+                    Assert.True(i == 0 || s.Height > steps[i - 1].Height);
+                    foreach (SpaceObstacle o in space.Obstacles)
+                    {
+                        double ox0 = o.Points.Min(p => p.X.Raw) / 1e4, ox1 = o.Points.Max(p => p.X.Raw) / 1e4, oz0 = o.Points.Min(p => p.Z.Raw) / 1e4, oz1 = o.Points.Max(p => p.Z.Raw) / 1e4;
+                        Assert.False(s.MinX < ox1 && s.MaxX > ox0 && s.MinZ < oz1 && s.MaxZ > oz0, $"{id} / {door.Id} : marche {i + 1} dans {o.Id}");
+                    }
+                }
+                Assert.Equal(CryptLooks.StairsHeight, steps[^1].Height, 9);
+                doors++;
+            }
+        }
+        Assert.Equal(4, doors);
+        // Frontières : pas de place sur le côté (aire de 1 m de large) ou porte sur le bord : rien.
+        Assert.Empty(CryptLooks.StairSteps(0, 0, -0.5, -0.5, 0.5, 10));
+        Assert.Empty(CryptLooks.StairSteps(0, -4, -10, -4, 10, 10));
+        string crypt = Unity("Assets", "EdS", "Game", "SpaceView.Crypt.cs");
+        Assert.Contains("CryptLooks.StairSteps(door.X, door.Z, minX, minZ, maxX, maxZ)", crypt);
+        Assert.DoesNotContain("outward * (i * step)", crypt);   // l'ancienne volée partait de la place d'arrivée
     }
 }

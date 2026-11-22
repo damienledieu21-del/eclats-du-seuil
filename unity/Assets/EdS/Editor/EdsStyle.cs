@@ -283,7 +283,7 @@ namespace EdS.Game.Editor
             catalog.Caravans = CaravanPieces(notes);   // sous-lot V2.41.2 : modèles des caravanes (CaravanLooks), quand l'atelier les aura livrés
             catalog.Corruption = CorruptionPieces(notes);   // sous-lot V2.42.2 : modèles de la corruption (CorruptionLooks), quand l'atelier les aura livrés
             MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), kit fait le 22 novembre 2026
-            CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit préparé, non généré
+            CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit fait le 22 novembre 2026
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire

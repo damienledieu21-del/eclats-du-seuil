@@ -36,8 +36,8 @@ namespace EdS.Runtime
 
     /// <summary>
     /// Chantier V2.48.2 (cryptes de l'abbaye et de la chapelle, PLAN_GRANDE_CARTE.md) : rendu des cryptes, sans Unity. Les obstacles prennent
-    /// une pièce du kit de crypte par le début de leur identifiant (« mur_crypte_entree_ouest » : un mur) ; les modèles (kit préparé, non généré :
-    /// dépense à valider par Damien) sont cherchés dans <see cref="AssetFolder"/> et, s'ils manquent, Unity pose une forme de remplacement. La
+    /// une pièce du kit de crypte par le début de leur identifiant (« mur_crypte_entree_ouest » : un mur) ; les modèles (kit Tripo fait, dépense de
+    /// 390 crédits validée par Damien le 22 novembre 2026) sont cherchés dans <see cref="AssetFolder"/> et, s'ils manquent, Unity pose une forme de remplacement. La
     /// voûte est posée sur l'écart entre deux grilles (<see cref="Arches"/>) ; l'escalier de crypte sur les portes de la crypte (escalier, trappe
     /// ou porte vers la surface) ; la dalle sur une trappe vue d'en haut (la dalle descellée de la chapelle). Affichage seulement.
     /// </summary>
@@ -190,6 +190,81 @@ namespace EdS.Runtime
         /// la dalle (<see cref="SlabModel"/>). Faux pour toute autre porte.
         /// </summary>
         public static bool OnFloor(MapDoor door) => (door ?? throw new ArgumentNullException(nameof(door))).Kind == DoorKind.Hatch;
+
+        /// <summary>
+        /// Relecture indépendante de la PR #251 : taille au sol (long côté, petit côté, en mètres) d'un modèle répété en tuiles le long de son
+        /// emprise : le mur et l'ossuaire (tailles mesurées après la finition de l'atelier, <c>Crypte/finir_crypte.py</c>) ; null pour une pièce
+        /// posée d'un seul tenant.
+        /// </summary>
+        public static (double Long, double Short)? TileOf(CryptPiece piece) => piece switch
+        {
+            CryptPiece.Wall => (8.0, 3.9),
+            CryptPiece.Ossuary => (10.0, 3.0),
+            _ => null,
+        };
+
+        /// <summary>Au plus tant de tuiles par obstacle, et un modèle n'est jamais étiré de plus de <see cref="MaxStretch"/> sur un axe (dans cette limite).</summary>
+        public const int MaxTiles = 24;
+
+        public const double MaxStretch = 1.5;
+
+        /// <summary>
+        /// Tuiles d'une emprise [x0, x1] × [z0, z1] pour un modèle de taille au sol <paramref name="tileLong"/> × <paramref name="tileShort"/> :
+        /// le long côté du modèle suit le long côté de l'emprise ; sur chaque axe, le nombre de tuiles est l'arrondi de l'emprise sur le modèle
+        /// (au moins 1), donc chaque tuile est au plus 1,5 fois le modèle. Les tuiles couvrent l'emprise exactement, sans chevauchement. Au-delà
+        /// de <see cref="MaxTiles"/> tuiles, le nombre est borné (les tuiles s'allongent). Une emprise ou une taille vide ne donne rien.
+        /// </summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> Tiles(double x0, double z0, double x1, double z1, double tileLong, double tileShort)
+        {
+            var result = new List<(double, double, double, double)>();
+            double width = x1 - x0, depth = z1 - z0;
+            if (!(width > 0) || !(depth > 0) || !(tileLong > 0) || !(tileShort > 0)) return result;
+            double tileX = width >= depth ? tileLong : tileShort, tileZ = width >= depth ? tileShort : tileLong;
+            int nx = (int)Math.Max(1, Math.Min(MaxTiles, Math.Round(width / tileX, MidpointRounding.AwayFromZero)));
+            int nz = (int)Math.Max(1, Math.Min(MaxTiles, Math.Round(depth / tileZ, MidpointRounding.AwayFromZero)));
+            while (nx * nz > MaxTiles)
+                if (nx >= nz) nx--; else nz--;
+            for (int i = 0; i < nx; i++)
+                for (int j = 0; j < nz; j++)
+                    result.Add((x0 + width * i / nx, z0 + depth * j / nz, i + 1 == nx ? x1 : x0 + width * (i + 1) / nx, j + 1 == nz ? z1 : z0 + depth * (j + 1) / nz));
+            return result;
+        }
+
+        /// <summary>Écart (m) entre la place d'arrivée à une porte et la première marche de l'escalier de remplacement : on n'apparaît pas dedans.</summary>
+        public const double StairsClearance = 0.8;
+
+        /// <summary>
+        /// Relecture indépendante de la PR #251 : marches de l'escalier de remplacement d'une porte de crypte (de la plus basse à la plus haute,
+        /// rectangles au sol et hauteur). La volée longe le bord le plus proche de la porte (<see cref="CaveLooks.CurtainFacing"/>), plaquée
+        /// contre lui et jamais au-delà (dans le mur), à côté de la place d'arrivée (à <see cref="StairsClearance"/> de la porte), du côté où
+        /// il y a le plus de place, sur au plus <see cref="StairsLength"/> ; rien s'il n'y a pas la place.
+        /// </summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ, double Height)> StairSteps(double x, double z, double minX, double minZ, double maxX, double maxZ)
+        {
+            var steps = new List<(double, double, double, double, double)>();
+            var facing = CaveLooks.CurtainFacing(x, z, minX, minZ, maxX, maxZ);
+            double ox = facing.OutX, oz = facing.OutZ;
+            double toEdge = ox < 0 ? x - minX : ox > 0 ? maxX - x : oz < 0 ? z - minZ : maxZ - z;
+            double depth = Math.Min(StairsWidth, toEdge);
+            if (!(depth > 0)) return steps;
+            // Côté latéral (perpendiculaire au bord) où il y a le plus de place.
+            bool alongX = oz != 0;
+            double before = alongX ? x - minX : z - minZ, after = alongX ? maxX - x : maxZ - z;
+            int side = after >= before ? 1 : -1;
+            double length = Math.Min(StairsLength, (side > 0 ? after : before) - StairsClearance);
+            if (!(length > 0)) return steps;
+            // Bande contre le bord : de (toEdge - depth) à toEdge vers l'extérieur.
+            double outNear = toEdge - depth, outFar = toEdge;
+            for (int i = 0; i < 5; i++)
+            {
+                double l0 = StairsClearance + length * i / 5, l1 = StairsClearance + length * (i + 1) / 5;
+                double a0 = side > 0 ? l0 : -l1, a1 = side > 0 ? l1 : -l0;
+                double o0 = Math.Min(outNear * (alongX ? oz : ox), outFar * (alongX ? oz : ox)), o1 = Math.Max(outNear * (alongX ? oz : ox), outFar * (alongX ? oz : ox));
+                double height = StairsHeight * (i + 1) / 5;
+                steps.Add(alongX ? (x + a0, z + o0, x + a1, z + o1, height) : (x + o0, z + a0, x + o1, z + a1, height));
+            }
+            return steps;
+        }
 
         /// <summary>Lumière des bougies et des candélabres (chaude, dans la pénombre froide).</summary>
         public static readonly (double R, double G, double B) CandleColor = (1.0, 0.74, 0.45);

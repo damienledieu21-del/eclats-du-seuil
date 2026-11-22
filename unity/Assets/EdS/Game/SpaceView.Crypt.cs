@@ -46,6 +46,16 @@ namespace EdS.Game
             if (piece == CryptPiece.Candelabra) CaveGlow(o.Id, cx, cz, candle, (float)CryptLooks.CandelabraIntensity, (float)CryptLooks.CandelabraRange);
             if (piece == CryptPiece.Candles) CaveGlow(o.Id, cx, cz, candle, (float)CryptLooks.CandlesIntensity, (float)CryptLooks.CandlesRange);
             GameObject model = CryptModel(CryptLooks.FolderFor(piece), CryptLooks.ModelFor(piece));
+            var tile = CryptLooks.TileOf(piece);
+            if (model != null && tile.HasValue)
+            {
+                // Relecture indépendante de la PR #251 : un mur ou un ossuaire n'est pas étiré sur une grande emprise (16 × 14 m) : le modèle
+                // est répété en tuiles le long de l'emprise (CryptLooks.Tiles).
+                int n = 0;
+                foreach (var t in CryptLooks.Tiles(x0, z0, x1, z1, tile.Value.Long, tile.Value.Short))
+                    FitMineModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, CryptLooks.Occludes(piece));
+                return true;
+            }
             if (FitMineModel(model, o.Id, x0, z0, x1, z1, height, CryptLooks.Occludes(piece))) return true;
             // Formes de remplacement.
             Material pale = Tinted(rock, new Color(0.78f, 0.75f, 0.7f), "pierre des tombeaux");
@@ -111,25 +121,19 @@ namespace EdS.Game
             }
             string name = CryptLooks.DoorModel(door.Kind);
             if (name == null) return;
-            Vector3 center = at + outward * 1.2f;
-            GameObject model = CryptModel(CryptLooks.Folder, name);
-            if (model != null)
+            // Relecture indépendante de la PR #251 : la volée longe le bord, à côté de la place d'arrivée (on n'apparaît pas dedans) et sans
+            // sortir de l'aire (dans le mur) ; le modèle est posé sur la même emprise.
+            var steps = CryptLooks.StairSteps(door.X, door.Z, minX, minZ, maxX, maxZ);
+            if (steps.Count == 0) return;
+            float sx0 = (float)steps.Min(s => s.MinX), sz0 = (float)steps.Min(s => s.MinZ), sx1 = (float)steps.Max(s => s.MaxX), sz1 = (float)steps.Max(s => s.MaxZ);
+            if (FitMineModel(CryptModel(CryptLooks.Folder, name), "Escalier de crypte (" + door.Id + ")", sx0, sz0, sx1, sz1, (float)CryptLooks.StairsHeight, false)) return;
+            // Escalier de remplacement : cinq marches qui montent le long du bord.
+            for (int i = 0; i < steps.Count; i++)
             {
-                GameObject copy = Object.Instantiate(model, _root.transform, false);
-                copy.name = "Escalier de crypte (" + door.Id + ")";
-                foreach (Collider c in copy.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-                copy.transform.rotation = Quaternion.Euler(0f, (float)facing.Yaw, 0f);
-                copy.transform.position = center;
-                return;
-            }
-            // Escalier de remplacement : cinq marches qui montent vers le bord.
-            bool alongX = facing.OutX != 0;
-            float step = (float)CryptLooks.StairsLength / 5f, width = (float)CryptLooks.StairsWidth;
-            for (int i = 0; i < 5; i++)
-            {
-                float rise = (float)CryptLooks.StairsHeight * (i + 1) / 5f;
-                Vector3 c = at + outward * (i * step) + new Vector3(0f, rise / 2f, 0f);
-                Box("Escalier de crypte (marche " + (i + 1) + ", " + door.Id + ")", c, alongX ? new Vector3(step, rise, width) : new Vector3(width, rise, step), rock, rockTile);
+                var st = steps[i];
+                float h = (float)st.Height;
+                Vector3 c = new Vector3((float)(st.MinX + st.MaxX) / 2f, h / 2f, (float)(st.MinZ + st.MaxZ) / 2f);
+                Box("Escalier de crypte (marche " + (i + 1) + ", " + door.Id + ")", c, new Vector3((float)(st.MaxX - st.MinX), h, (float)(st.MaxZ - st.MinZ)), rock, rockTile);
             }
         }
 
