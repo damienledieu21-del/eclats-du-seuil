@@ -1597,6 +1597,7 @@
       "text.ui.corruption.purify": "F : purifier l'autel (un éclat de Seuil)",
       "text.ui.corruption.too_far": "Approche-toi de l'autel pour le purifier.",
       "text.ui.corruption.clean": "Cet autel est encore pur : la corruption n'est pas revenue ici.",
+      "text.ui.corruption.full": "Cet autel ne répond pas : trop d'anciens autels purifiés pèsent encore sur toi.",
       "text.ui.corruption.no_item": "Il te faut un éclat de Seuil pour purifier l'autel (marchands, guilde, failles refermées).",
       "text.ui.corruption.purified_xp": "Purification de l'autel : {0} points d'expérience.",
       "text.ui.corruption.label": "Terre corrompue ({2}) · palier {0} sur {1}",

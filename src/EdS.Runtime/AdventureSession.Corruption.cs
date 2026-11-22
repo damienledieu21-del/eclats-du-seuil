@@ -50,6 +50,7 @@ namespace EdS.Runtime
             if (refusal == CorruptionRefusal.TooFar) Say("text.ui.corruption.too_far");
             else if (refusal == CorruptionRefusal.NotCorrupted) Say("text.ui.corruption.clean");
             else if (refusal == CorruptionRefusal.NoItem) Say("text.ui.corruption.no_item");
+            else if (refusal == CorruptionRefusal.Full) Say("text.ui.corruption.full");
             if (refusal == CorruptionRefusal.None) _dirty = true;
             return refusal == CorruptionRefusal.None;
         }
