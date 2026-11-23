@@ -106,6 +106,21 @@ namespace EdS.World
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
+        /// <summary>Relecture indépendante de la PR #252 : une forme liée à une cible absente n'a pas pu arriver ; le combat est arrêté.</summary>
+        public bool IsStalled => _stalled;
+
+        /// <summary>
+        /// Revue finale de la PR #252 : le combat s'arrête (plus aucune forme : un défi de la source abandonné) ; sa récompense en attente,
+        /// s'il en a une, reste due.
+        /// </summary>
+        internal void Stop()
+        {
+            _stalled = true;
+            _nextAt = null;
+            _carryPlace = null;
+            _carryState = null;
+        }
+
         /// <summary>
         /// Revue Codex de la PR #159 (3e tour) : la forme du moment est emportée d'une session renouvelée et pas encore arrivée (état gardé,
         /// nouvel essai à chaque pas et dès la session suivante, <see cref="Continue"/>). Comptée partout comme une arrivée à venir : borne du
@@ -133,6 +148,48 @@ namespace EdS.World
             engine.Join(Copy(_boss.Forms[0], _current, engine)
                 ?? throw new ArgumentException($"Forme « {_current} » liée à une cible absente de la session : elle n'y est pas simulée."));
             return new BossEvent(BossEventKind.FormArrived, _boss.Id, _current, 0, engine.CurrentTick);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (4e tour) : arrivées refusées par le moteur d'affilée (remis à zéro à une arrivée admise). Les chefs
+        /// réessaient sans fin ; le défi de la source s'arrête au bout de quelques refus (<see cref="WorldSession.SourceArrivalTries"/>).
+        /// </summary>
+        public int JoinRefusals { get; private set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (4e tour) : le moteur admettrait-il toutes les formes du combat, en plus des combattants déjà venus ?
+        /// Le combat complété de leurs arrivées (identités distinctes, toutes au tick courant : majorant) passe la validation d'un scénario :
+        /// identités de la session (<see cref="CombatRules.MaxSessionCombatants"/>), majorant de file (<c>maxPendingEvents</c>, arrivées et
+        /// déclencheurs compris) et précontrôle numérique. Rend le premier motif de refus, ou null. Rien ne change.
+        /// </summary>
+        public string? WhyNotAll(CombatEngine engine)
+        {
+            if (engine is null) throw new ArgumentNullException(nameof(engine));
+            if (engine.IsFinished) return "Combat terminé : plus aucune arrivée.";
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            var forms = new List<CombatantSetup>(_boss.Forms.Count);
+            foreach (AssailantSetup t in _boss.Forms)
+            {
+                string id = FreeIdentity(engine, t.Id, ids);
+                ids.Add(id);
+                if (Copy(t, id, engine) is not AssailantSetup ready) return $"Forme « {id} » liée à une cible absente de la session.";
+                forms.Add(ready);
+            }
+            IReadOnlyList<Domain.RuleViolation> violations = engine.CompletedSetup().Completed(forms, Array.Empty<CombatCommand>()).Validate();
+            return violations.Count == 0 ? null : violations[0].Message;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.42.3 (défi de la source) : fait arriver la première forme en cours de session, sous une identité libre du moteur (celle
+        /// de la forme, ou <c>{forme}_v{n}</c> si un défi précédent l'a prise). Refus atomique : si le moteur refuse (lève), rien ne change.
+        /// </summary>
+        public BossEvent StartAnew(CombatEngine engine)
+        {
+            string id = FreeIdentity(engine, _boss.Forms[0].Id);
+            engine.Join(Copy(_boss.Forms[0], id, engine)
+                ?? throw new ArgumentException($"Forme « {id} » liée à une cible absente de la session : elle n'y est pas simulée."));
+            _current = id;
+            return new BossEvent(BossEventKind.FormArrived, _boss.Id, id, 0, engine.CurrentTick);
         }
 
         public IReadOnlyList<BossEvent> Step(CombatEngine engine) => Step(engine, null);
@@ -234,10 +291,12 @@ namespace EdS.World
             {
                 // Arrivée refusée (place prise, file pleine : refus atomique) : nouvel essai une seconde plus tard (comme les populations).
                 _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
+                JoinRefusals = checked(JoinRefusals + 1);
                 return Array.Empty<BossEvent>();
             }
             _current = id;
             _nextAt = null;
+            JoinRefusals = 0;
             if (_carryPlace != null) return Array.Empty<BossEvent>();   // l'événement Carried vient à l'arrivée effective
             BossEventKind kind = _returning ? BossEventKind.Returned : BossEventKind.FormArrived;
             _returning = false;
@@ -282,9 +341,10 @@ namespace EdS.World
             return fight;
         }
 
-        private static string FreeIdentity(CombatEngine engine, string form)
+        private static string FreeIdentity(CombatEngine engine, string form, ISet<string>? also = null)
         {
             var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
+            if (also != null) taken.UnionWith(also);
             if (!taken.Contains(form)) return form;
             int n = 2;
             while (taken.Contains($"{form}_v{n}")) n = checked(n + 1);

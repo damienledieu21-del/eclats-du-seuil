@@ -9,6 +9,7 @@ using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Collections;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 
@@ -38,6 +39,19 @@ namespace EdS.Data.Corruption
         public int? StrengthPercent { get; set; }
         public string? PurifiedFact { get; set; }
         public List<CorruptionAreaData?>? Areas { get; set; }
+
+        /// <summary>Sous-lot V2.42.3 (version 2) : défi de la source, facultatif.</summary>
+        public CorruptionChallengeData? Challenge { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.42.3 (version 2) : défi de la source tel que lu.</summary>
+    public sealed class CorruptionChallengeData
+    {
+        /// <summary>Le gardien de la source : un chef à formes, au même format que les chefs d'une zone.</summary>
+        public BossData? Boss { get; set; }
+        public int? MinAltars { get; set; }
+        public int? RespiteDays { get; set; }
+        public long? Xp { get; set; }
     }
 
     public sealed class CorruptionAreaData
@@ -128,6 +142,31 @@ namespace EdS.Data.Corruption
         }
 
         public CorruptionArea? Of(string id) => Areas.FirstOrDefault(a => a.Id == id);
+
+        /// <summary>Sous-lot V2.42.3 : défi de la source (version 2), ou null : la source ne se purifie pas.</summary>
+        public CorruptionChallenge? Challenge { get; internal set; }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.42.3 (décision de Damien du 21 novembre 2026) : défi de la source. Le gardien de la source (<see cref="Boss"/>, un chef à
+    /// formes, première victoire récompensée une fois comme les chefs) se lance au cercle quand au moins <see cref="MinAltars"/> autels sont
+    /// dans leur répit ; sa défaite purifie la source : toute la région respire <see cref="RespiteDays"/> jours, puis la corruption repart du
+    /// cercle, une terre tous les <see cref="CorruptionBook.SpreadDays"/> jours comme au début. Chaque victoire donne <see cref="Xp"/>.
+    /// </summary>
+    public sealed class CorruptionChallenge
+    {
+        public Boss Boss { get; }
+        public int MinAltars { get; }
+        public int RespiteDays { get; }
+        public long Xp { get; }
+
+        internal CorruptionChallenge(Boss boss, int minAltars, int respiteDays, long xp)
+        {
+            Boss = boss;
+            MinAltars = minAltars;
+            RespiteDays = respiteDays;
+            Xp = xp;
+        }
     }
 
     public sealed class CorruptionLoadResult
@@ -157,8 +196,11 @@ namespace EdS.Data.Corruption
     {
         public const string Kind = "corruption";
 
-        /// <summary>Version 1 (sous-lot V2.42.1).</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>Version 2 (sous-lot V2.42.3 : défi de la source, <c>challenge</c>) ; la version 1 (sous-lot V2.42.1) est encore lue, sans défi.</summary>
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Version où le défi de la source (<c>challenge</c>) entre dans le format.</summary>
+        public const int ChallengeSince = 2;
 
         public const int MaxAreas = SavedCorruption.MaxEntries, MaxFrom = 4, MaxDays = 30, MaxStages = 8;
         public const long MaxXp = 100_000;
@@ -170,13 +212,16 @@ namespace EdS.Data.Corruption
 
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
-        public static CorruptionLoadResult Validate(CorruptionDocument document, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null)
+        /// <param name="challengeScenario">Sous-lot V2.42.3 : scénario des formes du gardien (<c>challenge.boss.scenario</c>), chargé par le lecteur ; null sans défi ou s'il n'a pu être lu.</param>
+        public static CorruptionLoadResult Validate(CorruptionDocument document, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null,
+            CombatSetup? challengeScenario = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             if (items is null) throw new ArgumentNullException(nameof(items));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            int expected = document.SchemaVersion == 1 ? 1 : CurrentSchemaVersion;   // la version 1 est encore lue (sans défi)
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, expected, r))
                 return new CorruptionLoadResult(r, null);
             if (!(document.Data is CorruptionData d)) { Missing(r, "$.data", "données"); return new CorruptionLoadResult(r, null); }
             bool ok = true;
@@ -273,9 +318,80 @@ namespace EdS.Data.Corruption
                     if (Area(d.Areas[i], $"$.data.areas[{i}]", i) is CorruptionArea a) areas.Add(a);
                     else ok = false;
                 }
+            CorruptionChallenge? challenge = null;
+            if (d.Challenge != null)
+            {
+                if (document.SchemaVersion < ChallengeSince)
+                { r.Add("$.data.challenge", ValidationCode.UnknownField, $"champ inconnu en version {document.SchemaVersion} (défi de la source : version {ChallengeSince})."); ok = false; }
+                else if (sourceArea != null)
+                {
+                    challenge = CheckChallenge(d.Challenge, zone, items, sourceArea, d.Areas?.Count ?? 0, challengeScenario, r);
+                    if (challenge is null) ok = false;
+                }
+            }
             if (!ok || !r.IsValid) return new CorruptionLoadResult(r, null);
-            return new CorruptionLoadResult(r, new CorruptionBook(document.SchemaVersion!.Value, document.ContentVersion!, zone.Id, sourceArea!, spread!.Value,
-                grow!.Value, maxStage!.Value, respite!.Value, d.PurifyItem!, d.PurifyXp!.Value, d.PurifiedFact, strength!.Value, areas));
+            var book = new CorruptionBook(document.SchemaVersion!.Value, document.ContentVersion!, zone.Id, sourceArea!, spread!.Value,
+                grow!.Value, maxStage!.Value, respite!.Value, d.PurifyItem!, d.PurifyXp!.Value, d.PurifiedFact, strength!.Value, areas) { Challenge = challenge };
+            return new CorruptionLoadResult(r, book);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.42.3 : le défi de la source. <c>boss</c> : un chef au format de ceux d'une zone (mêmes règles, <see cref="ZoneValidator"/> :
+        /// formes du scénario, place libre dans la zone, aucune forme d'un chef de la zone, place des combattants d'une session), toutes ses
+        /// formes dans le disque de la source et, dans une zone à région, dans le secteur de la première, loin de ses bords ; son
+        /// identifiant n'est celui d'aucun chef de la zone. <c>minAltars</c> de 0 au nombre de terres ; <c>respiteDays</c> de 1 à
+        /// <see cref="MaxDays"/> ; <c>xp</c> de 0 à <see cref="MaxXp"/>. Avec un défi, au plus <see cref="MaxAreas"/> − 1 terres (la source a
+        /// sa place dans la sauvegarde).
+        /// </summary>
+        private static CorruptionChallenge? CheckChallenge(CorruptionChallengeData c, ZoneDefinition zone, ItemCatalog items, CorruptionArea source, int areas,
+            CombatSetup? scenario, ValidationReport r)
+        {
+            const string path = "$.data.challenge";
+            bool ok = true;
+            if (areas > MaxAreas - 1) { r.Add("$.data.areas", ValidationCode.OutOfRange, $"avec le défi de la source, au plus {MaxAreas - 1} terres (la source a sa place dans la sauvegarde)."); ok = false; }
+            int? Range(int? value, string field, string what, int min, int max)
+            {
+                if (value is null) { Missing(r, path + "." + field, what); ok = false; return null; }
+                if (value < min || value > max) { r.Add(path + "." + field, ValidationCode.OutOfRange, $"{what} hors de [{min}, {max}]."); ok = false; return null; }
+                return value;
+            }
+            int? minAltars = Range(c.MinAltars, "minAltars", "autels en répit pour lancer le défi", 0, Math.Max(0, areas));
+            int? respite = Range(c.RespiteDays, "respiteDays", "jours de répit de la région", 1, MaxDays);
+            if (c.Xp is null) { Missing(r, path + ".xp", "expérience d'une victoire"); ok = false; }
+            else if (c.Xp < 0 || c.Xp > MaxXp) { r.Add(path + ".xp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxXp}]."); ok = false; }
+            Boss? boss = null;
+            if (c.Boss is null) { Missing(r, path + ".boss", "gardien de la source"); ok = false; }
+            else if (c.Boss.Id != null && zone.Bosses.Any(b => b.Id == c.Boss.Id)) { r.Add(path + ".boss.id", ValidationCode.DuplicateId, $"« {c.Boss.Id} » est déjà un chef de la zone."); ok = false; }
+            else if (c.Boss.Scenario != null && scenario is null)
+            {
+                if (!r.HasErrorAtOrAbove(path + ".boss.scenario")) r.Add(path + ".boss.scenario", ValidationCode.UnknownReference, $"scénario du gardien « {c.Boss.Scenario} » non chargé.");
+                ok = false;
+            }
+            else
+            {
+                // Dans une zone à région, le gardien arrive dans la session du secteur du cercle : seules ses créatures et les formes des chefs
+                // de ce secteur comptent pour la place des combattants ; sinon, toute la zone (règle des chefs).
+                int allForms = checked(zone.Bosses.Sum(b => b.Forms.Count) + (c.Boss.Forms?.Count ?? 0));
+                int? creatures = null;
+                if (zone.Region is RegionGrid region && region.Contains(source.Position))
+                {
+                    string sector = region.CellOf(source.Position).SectorName;
+                    bool Here(GroundVector at) => region.Contains(at) && region.CellOf(at).SectorName == sector;
+                    creatures = zone.Setup.Combatants.Count(x => x is AssailantSetup a && a.Placement is CombatantPlacement pl && Here(pl.Position));
+                    allForms = checked(zone.Bosses.Sum(b => Here(b.Forms[0].Placement!.Position) ? b.Forms.Count : 0) + (c.Boss.Forms?.Count ?? 0));
+                }
+                boss = ZoneValidator.CheckBoss(c.Boss, path + ".boss", zone.Setup, scenario, items, r, zone.SafePoints, zone.Doors, allForms, zone.Bosses, creatures);
+                if (boss is null) ok = false;
+                else
+                {
+                    for (int i = 0; i < boss.Forms.Count; i++)
+                        if (Beyond(boss.Forms[i].Placement!.Position, source.Position, source.Radius))
+                        { r.Add($"{path}.boss.forms[{i}]", ValidationCode.OutOfRange, $"forme « {boss.Forms[i].Id} » hors du disque de la source."); ok = false; }
+                    if (zone.Region != null && zone.Setup.Space != null) ZoneValidator.CheckBossSector(boss, path + ".boss", zone.Region, zone.Setup.Space, r);
+                }
+            }
+            if (!ok || !r.IsValid) return null;
+            return new CorruptionChallenge(boss!, minAltars!.Value, respite!.Value, c.Xp!.Value);
         }
 
         /// <summary>Le point <paramref name="p"/> est-il à plus de <paramref name="radius"/> de <paramref name="center"/> (calcul vérifié) ?</summary>

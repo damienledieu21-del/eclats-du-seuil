@@ -427,7 +427,7 @@ namespace EdS.Runtime
             }
             // Sous-lot V2.42.1 : corruption qui s'étend et recule (fichier absent, données d'essai réduites : aucune ; présent, il doit être valide).
             string corruptionPath = CorruptionJsonReader.PathIn(dataDirectory);
-            CorruptionLoadResult? corruption = File.Exists(corruptionPath) ? CorruptionJsonReader.ReadFile(corruptionPath, definition, catalog) : null;
+            CorruptionLoadResult? corruption = File.Exists(corruptionPath) ? CorruptionJsonReader.ReadFile(corruptionPath, definition, catalog, scenariosDirectory, data) : null;   // V2.42.3 : formes du gardien
             return new AdventureSession(data, progression, catalog, played, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
@@ -705,7 +705,7 @@ namespace EdS.Runtime
             foreach (BossEvent b in step.Boss)
             {
                 if (b.Kind == BossEventKind.FormArrived && b.Phase > 0) Say(BossPhaseText(b.Boss), DisplayNames.Of(b.Boss));   // le message commun nomme le chef
-                else if (b.Kind == BossEventKind.Defeated) Say("text.ui.boss_defeated");
+                else if (b.Kind == BossEventKind.Defeated) Say(Texts.Has("text.ui.boss_defeated." + b.Boss) ? "text.ui.boss_defeated." + b.Boss : "text.ui.boss_defeated");   // V2.42.3 : texte propre à un chef s'il en a un
             }
             foreach ((string item, int count) in step.Rewards) Say("text.ui.reward", ItemName(item), count);
             // Réponses de Damien du 31 octobre 2026 : le signe d'une créature rare de la nuit (« Un hurlement glacé monte du pré… »).
@@ -896,6 +896,7 @@ namespace EdS.Runtime
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
             if (AltarInReach != null) return PurifyAltar();   // sous-lot V2.42.1 : puis l'autel d'une terre corrompue
+            if (SourceInReach) return ChallengeSource();   // sous-lot V2.42.3 : puis le défi de la source, au cercle des pierres levées
             // Revue Codex de la PR #243 (P1) : puis un coffre de la quête de reprise au fort (avant portes et PNJ ; la touche d'action).
             if (ChestInReach != null) return TakeChest();
             // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite

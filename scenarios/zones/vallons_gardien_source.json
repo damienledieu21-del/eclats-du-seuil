@@ -1,0 +1,213 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 4231,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          1530,
+          -650
+        ],
+        "max": [
+          1600,
+          -600
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "gardien_de_la_source",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 1000,
+        "armor": 30,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "poing_de_pierre",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "ruee_des_pierres",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 9,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          1553,
+          -625
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 12,
+          "pack": false
+        }
+      },
+      {
+        "id": "gardien_de_la_source_fissure",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 800,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1900,
+        "attacks": [
+          {
+            "id": "poing_de_pierre",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "ruee_des_pierres",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 9,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "onde_du_seuil",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 4,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          1553,
+          -629
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 12,
+          "pack": false
+        }
+      },
+      {
+        "id": "gardien_de_la_source_dechaine",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 600,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "poing_de_pierre",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "ruee_des_pierres",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 9,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "onde_du_seuil",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 4,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          1553,
+          -621
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.2,
+        "speed": 5.0,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 12,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

@@ -924,6 +924,9 @@ namespace EdS.World
         /// <summary>Pour les tests (sous-lot V2.28b (4)) : la règle d'avant, où seul le joueur arrivé au bout de la marge fait lâcher sa rencontre.</summary>
         internal bool MarginEndOnlyForTest { get; set; }
 
+        /// <summary>Essais : la session du secteur <paramref name="sector"/> est renouvelée au prochain tick, comme pour un gel ou une fonte.</summary>
+        internal void SeasonRenewForTest(string sector) => _open[sector].SeasonRenew = true;
+
         internal void RefuseForTest(string player, string diagnostic)
         {
             Player p = _players[player];

@@ -449,7 +449,7 @@ namespace EdS.Data.Json
             return ok ? night : null;
         }
 
-        private static BossData? ReadBoss(JsonInput input, JsonElement element, string path)
+        internal static BossData? ReadBoss(JsonInput input, JsonElement element, string path)
         {
             var b = new BossData();
             return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>

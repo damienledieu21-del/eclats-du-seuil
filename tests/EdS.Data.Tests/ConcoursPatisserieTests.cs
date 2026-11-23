@@ -135,7 +135,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Sauvegarde_v24_marque_du_patissier_relue_et_refusee_avant()
     {
-        Assert.Equal((32, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
+        Assert.Equal((33, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
         WorldSession w = Oven(Signed(Tarte, ItemQuality.Normal), Signed(Couronne, ItemQuality.Superior), Signed(Couronne, ItemQuality.Masterwork),
             new ItemStack(Couronne, 2));
         string json = SaveJsonReader.Write(w.Save());

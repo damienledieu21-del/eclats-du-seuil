@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "corruption",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "zone": "zone.vallons",
     "source": { "id": "cercle_des_pierres", "place": "cercle_des_pierres_levees", "position": [1565, -625], "radius": 45 },
@@ -13,6 +13,12 @@
     "purifyXp": 150,
     "strengthPercent": 10,
     "purifiedFact": "fact.corruption.autel_purifie",
+    "challenge": {
+      "boss": { "id": "gardien_de_la_source", "scenario": "zones/vallons_gardien_source", "forms": ["gardien_de_la_source", "gardien_de_la_source_fissure", "gardien_de_la_source_dechaine"], "fact": "fact.corruption.source_purifiee", "rewards": [{ "item": "item.eclat_de_seuil", "count": 3 }] },
+      "minAltars": 3,
+      "respiteDays": 8,
+      "xp": 400
+    },
     "areas": [
       { "id": "pierres_ouest", "place": "terres_corrompues", "position": [1420, -630], "radius": 70, "altar": [1420, -670], "from": ["cercle_des_pierres"] },
       { "id": "faille_du_nord", "place": "terres_corrompues", "position": [1680, -450], "radius": 90, "altar": [1700, -410], "from": ["cercle_des_pierres"] },

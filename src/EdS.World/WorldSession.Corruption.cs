@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EdS.Data.Corruption;
 using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -23,8 +24,12 @@ namespace EdS.World
         private static readonly IReadOnlyList<CorruptionView> NoCorruptionViews = new CorruptionView[0];
 
         /// <summary>Sous-lot V2.42.1 : la corruption de <paramref name="book"/>, si elle est de cette zone ; sinon aucune.</summary>
+        /// <exception cref="ArgumentException">Relecture de la refonte de la PR #252 : une forme du gardien de la source porte l'identité du
+        /// personnage (son arrivée serait impossible), comme <c>CheckZone</c> pour les chefs de la zone. Rien ne change.</exception>
         public void UseCorruption(CorruptionBook? book)
         {
+            if (book?.Challenge?.Boss is Boss guardian && System.Linq.Enumerable.Any(guardian.Forms, f => f.Id == _character.Id))
+                throw new ArgumentException($"Personnage « {_character.Id} » : identité d'une forme du gardien de la source.", nameof(book));
             _corruption = book != null && book.ZoneId == Definition?.Id ? book : null;
             _corruptionSeen = null;
             _corruptionViewsDay = -1;
@@ -57,9 +62,12 @@ namespace EdS.World
                 long day = Today;
                 if (day == _corruptionViewsDay && ReferenceEquals(_corruptionViewsOf, _character.Corruption)) return _corruptionViews;
                 long[] since = CorruptionRules.CorruptedSince(book, _character.Corruption);
+                // Sous-lot V2.42.3 : la source est propre pendant le répit de la région (après la défaite de son gardien).
+                long source = CorruptionRules.SourceSince(book, _character.Corruption);
                 var views = new List<CorruptionView>(book.Areas.Count + 1)
                 {
-                    new CorruptionView(book.Source, true, book.MaxStage, book.MaxStage, 0, null, null),
+                    new CorruptionView(book.Source, true, day < source ? 0 : book.MaxStage, book.MaxStage, source, _character.Corruption.DayOf(book.Source.Id),
+                        day < source ? source : (long?)null),
                 };
                 for (int i = 0; i < book.Areas.Count; i++)
                 {
@@ -131,15 +139,22 @@ namespace EdS.World
         /// </summary>
         private void StepCorruption()
         {
+            DismissSourceDoomed();
             if (!(ActiveCorruption is CorruptionBook))
             {
                 CorruptionNotices = NoCorruptionNotices;
                 _queuedCorruption.Clear();
+                // Revue finale de la PR #252 : corruption retirée en plein défi : le gardien n'est plus suivi par le défi, il s'en va (sans
+                // annonce : plus de source à nommer) au lieu de continuer comme un combat sans règle de victoire ni d'échec.
+                if (SourceFight is BossFight f) AbandonSourceFight(f, Live(f));
+                _sourceBoss = null;
                 return;
             }
+            bool silent = StepSourceChallenge();
             List<CorruptionNotice>? notices = _queuedCorruption.Count == 0 ? null : new List<CorruptionNotice>(_queuedCorruption);
             _queuedCorruption.Clear();
-            bool first = _corruptionSeen is null;
+            // Sous-lot V2.42.3 : la purification de la source fait reculer toutes les terres d'un coup : une seule annonce, pas une par terre.
+            bool first = _corruptionSeen is null || silent;
             _corruptionSeen ??= new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (CorruptionView v in Corruption)
             {
@@ -152,6 +167,250 @@ namespace EdS.World
                 _corruptionSeen[v.Area.Id] = v.Stage;
             }
             CorruptionNotices = notices is null ? NoCorruptionNotices : notices.AsReadOnly();
+        }
+
+        // --- Sous-lot V2.42.3 : défi de la source -------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Essais (revue Codex de la PR #252) : appelé juste avant chaque départ du gardien d'un défi perdu (session, forme), au réglement
+        /// du défi comme au départ d'une forme oubliée arrivée depuis.
+        /// </summary>
+        internal Action<Zone, string>? BeforeSourceLeaveForTest { get; set; }
+
+        /// <summary>Essais (revue Codex de la PR #252, 2e tour) : vrai pour perdre le défi à ce tick (comme une laisse franchie).</summary>
+        internal Func<bool>? SourceFailsForTest { get; set; }
+
+        /// <summary>Revue Codex de la PR #252 (4e tour) : arrivées d'une forme refusées d'affilée par le moteur (une par seconde) avant l'échec du défi.</summary>
+        public const int SourceArrivalTries = 5;
+
+        /// <summary>Formes oubliées du gardien suivies au plus (une par défi perdu ; chacune part ou est oubliée en un ou deux ticks).</summary>
+        internal const int MaxSourceDoomed = 8;
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (2e et 3e tours) : formes du gardien de défis perdus dont l'arrivée était encore en attente (forme suivante
+        /// programmée au tick même de l'échec) ; chacune quitte sa session dès qu'elle y est arrivée (comme les formes oubliées d'un boss du
+        /// monde). Une liste, pas une seule place : un nouvel échec ne fait pas oublier une forme encore suivie. Ordre d'ajout (stable).
+        /// </summary>
+        private readonly List<(Zone Session, string Id)> _sourceDoomed = new List<(Zone Session, string Id)>();
+
+        /// <summary>Fait partir les formes oubliées du gardien arrivées depuis ; oublie celles dont la session est finie, mortes ou parties.</summary>
+        private void DismissSourceDoomed()
+        {
+            for (int k = 0; k < _sourceDoomed.Count;)
+            {
+                (Zone session, string id) = _sourceDoomed[k];
+                bool done;
+                if (session.IsOver) done = true;
+                else
+                {
+                    CombatantView v = session.Engine.View(id);
+                    if (v.IsDead || v.HasLeft) done = true;
+                    else if (v.IsPresent)
+                    {
+                        BeforeSourceLeaveForTest?.Invoke(session, id);
+                        try
+                        {
+                            session.Leave(id);
+                            done = true;
+                        }
+                        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                        {
+                            done = false;   // départ refusé (plafond de commandes ou d'événements) : nouvel essai au tick suivant
+                        }
+                    }
+                    else done = !(v.ArrivalTick is long due) || due < session.Engine.CurrentTick;   // arrivée refusée : rien à retirer
+                }
+                if (done) _sourceDoomed.RemoveAt(k);
+                else k++;
+            }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (3e tour) : formes du défi de la source pas encore en jeu (à venir, ou programmées) : leurs morts possibles
+        /// gardent leur place au registre (<see cref="DeathReserve"/>), réservée à l'arrivée du gardien (<see cref="ChallengeSource"/>).
+        /// </summary>
+        private int SourceFormsToCome => SourceFight is BossFight f && f.Session != null ? f.FormsToCome : 0;
+
+        /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
+        internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
+
+        /// <summary>Sous-lot V2.42.3 : marge au-delà du disque de la source où le défi tient ; plus loin, il est perdu.</summary>
+        public static readonly Fixed SourceLeash = Fixed.FromInt(30);
+
+        /// <summary>
+        /// Décision de Damien du 23 novembre 2026 : le gardien de la source est un chef de la zone comme les autres (<see cref="Chiefs"/> :
+        /// arrivée, renouvellement, précontrôle du registre, récompense en attente), présent seulement pendant un défi lancé. Cet interrupteur
+        /// « défi en cours » est son chef tant que le défi n'est pas réglé (victoire, échec), null sinon.
+        /// </summary>
+        private Boss? _sourceBoss;
+
+        /// <summary>Combat du gardien pendant le défi : celui des chefs de la zone (<see cref="_fights"/>) qui porte le gardien, ou null.</summary>
+        private BossFight? SourceFight
+        {
+            get
+            {
+                if (_sourceBoss is null) return null;
+                foreach (BossFight f in _fights)
+                    if (ReferenceEquals(f.Boss, _sourceBoss)) return f;
+                return null;
+            }
+        }
+
+        /// <summary>Relecture indépendante de la PR #252 : le personnage était présent et vivant dans la session du gardien à sa défaite.</summary>
+        private bool _sourceWonHere;
+
+        /// <summary>Sous-lot V2.42.3 : le défi de la source est en cours (le gardien se bat).</summary>
+        public bool SourceChallengeUnderway => SourceFight != null;
+
+        /// <summary>Sous-lot V2.42.3 : forme du gardien en jeu (combattant), ou null hors du défi.</summary>
+        public string? SourceGuardianForm => SourceFight?.CurrentForm;
+
+        /// <summary>Sous-lot V2.42.3 : autels dans leur répit aujourd'hui (pour l'indice du défi).</summary>
+        public int AltarsResting => ActiveCorruption is CorruptionBook book ? CorruptionRules.AltarsResting(book, _character.Corruption, Today) : 0;
+
+        /// <summary>Sous-lot V2.42.3 : jours de répit de la région qui restent aujourd'hui (0 : aucun).</summary>
+        public long SourceRestDays => ActiveCorruption is CorruptionBook book ? Math.Max(0, CorruptionRules.SourceSince(book, _character.Corruption) - Today) : 0;
+
+        /// <summary>Sous-lot V2.42.3 : la région respire encore de la dernière purification de la source.</summary>
+        public bool SourceResting => ActiveCorruption is CorruptionBook book && CorruptionRules.SourceResting(book, _character.Corruption, Today);
+
+        /// <summary>
+        /// Sous-lot V2.42.3 (décision de Damien du 21 novembre 2026) : lance le défi de la source : le gardien se lève au cercle des pierres
+        /// levées (sa première forme arrive dans la session du personnage). Conditions : le défi existe, le personnage est debout dans le disque
+        /// de la source (et, sur l'hôte des secteurs, dans la session du secteur du gardien), aucun défi n'est en cours, la région n'est plus
+        /// dans le répit d'une purification de la source, au moins <see cref="CorruptionChallenge.MinAltars"/> autels sont dans leur répit, la
+        /// sauvegarde a la place de la source, et la simulation accepte l'arrivée. Refus atomique : tout est vérifié avant la moindre mutation.
+        /// </summary>
+        public SourceChallengeRefusal ChallengeSource()
+        {
+            if (_defeated) return SourceChallengeRefusal.Defeated;
+            if (!(ActiveCorruption is CorruptionBook book) || !(book.Challenge is CorruptionChallenge challenge)) return SourceChallengeRefusal.NoChallenge;
+            CombatantView me = Zone.Engine.View(CombatantId);
+            if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p) || CorruptionValidator.Beyond(p, book.Source.Position, book.Source.Radius))
+                return SourceChallengeRefusal.TooFar;
+            string? sector = _host?.Map.OwnerOf(challenge.Boss.Forms[0].Placement!.Position);
+            if (_host != null && sector != _zoneSector) return SourceChallengeRefusal.TooFar;
+            if (SourceChallengeUnderway) return SourceChallengeRefusal.Underway;
+            long day = Math.Min(SavedEvent.MaxDay, Today);
+            if (CorruptionRules.SourceResting(book, _character.Corruption, day)) return SourceChallengeRefusal.Resting;
+            if (CorruptionRules.AltarsResting(book, _character.Corruption, day) < challenge.MinAltars) return SourceChallengeRefusal.TooFewAltars;
+            if (_character.Corruption.DayOf(book.Source.Id) is null && _character.Corruption.Purified.Count >= SavedCorruption.MaxEntries) return SourceChallengeRefusal.Full;
+            // Revue Codex de la PR #252 (3e tour) : chaque forme du gardien ajoute une mort possible au registre du monde ; leur place est
+            // vérifiée ici (toutes les formes, en gardant celle des morts possibles d'un tick), puis réservée tant que le défi dure
+            // (SourceFormsToCome dans DeathReserve) : sinon le précontrôle du tick suivant lèverait. Refus atomique : rien ne change.
+            if (RegistryRoom - challenge.Boss.Forms.Count < DeathReserve) return SourceChallengeRefusal.RegistryFull;
+            var fight = new BossFight(challenge.Boss) { Sector = _host != null ? sector : null, Session = Zone };
+            // Revue Codex de la PR #252 (4e tour) : toutes les capacités que les formes consomment sur la durée du défi, vérifiées d'un coup.
+            // Identités (jamais rendues) : toutes les formes, en gardant celles déjà réservées et la réserve des quêtes (règle des boss du
+            // monde) ; places (une forme à la fois, les suivantes gardées contre les populations par ReservedPlaces) ; combat complété de
+            // toutes les arrivées valide (identités de la session, majorant de file avec déclencheurs, précontrôle numérique). Commandes : les
+            // formes ont un comportement et n'en soumettent pas (seul leur départ, refusable, en prend une).
+            CombatEngine engine = Zone.Engine;
+            int reserved = _host != null ? ReservedIn(_zoneSector!) : ReservedPlaces;
+            if (engine.IdentitiesLeft < checked(reserved + ZonePopulations.QuestReserve + challenge.Boss.Forms.Count)
+                || engine.FreePlaces < checked(reserved + 1)
+                || fight.WhyNotAll(engine) != null)
+                return SourceChallengeRefusal.Capacity;
+            BossEvent started;
+            try
+            {
+                started = fight.StartAnew(Zone.Engine);   // refus atomique du moteur : rien n'a changé s'il lève
+            }
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+            {
+                return SourceChallengeRefusal.NoRoom;
+            }
+            // Revue Codex de la PR #252 (5e tour) : le combat réglé d'un défi précédent (le même gardien) est remplacé ; sa récompense de la
+            // première victoire en attente (sac ou registre plein) passe au nouveau, comme pour un chef dans OpenedSector, au lieu d'être perdue.
+            // Même gardien, même clé de victoire, même si le catalogue a été relu (autre instance) ; jamais un chef de la zone.
+            int previous = _fights.FindIndex(x => x.Boss.Id == challenge.Boss.Id && !System.Linq.Enumerable.Contains(Definition!.Bosses, x.Boss));
+            if (previous >= 0)
+            {
+                fight.RewardPending = _fights[previous].RewardPending;
+                fight.RewardAnnounced = _fights[previous].RewardAnnounced;
+                _fights.RemoveAt(previous);
+            }
+            // Le gardien devient un chef de la zone (interrupteur du défi) : son combat suit le chemin des chefs, à son rang (après eux).
+            _sourceBoss = challenge.Boss;
+            _sourceWonHere = false;
+            _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(challenge.Boss)), fight);
+            _bossStarts.Add(started);
+            _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeStarted, book.Source.Id, 0, day));
+            return SourceChallengeRefusal.None;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.42.3, à chaque tick (après les chefs) : le gardien vaincu, le personnage debout, purifie la source (jour gardé sous
+        /// l'identifiant de la source, expérience, annonce) ; le personnage tombé, parti à plus de <see cref="SourceLeash"/> du disque de la source
+        /// ou sorti de la session du combat, le gardien vaincu sans lui, ou une forme qui ne peut pas arriver : le défi est perdu, la forme en
+        /// jeu s'en va. Un renouvellement de la session (gel, fonte, fin) ne le perd pas : le combat y continue (OpenedSector). Rend vrai si
+        /// toutes les terres viennent de reculer (pas d'annonce terre par terre).
+        /// </summary>
+        private bool StepSourceChallenge()
+        {
+            if (!(SourceFight is BossFight f) || !(ActiveCorruption is CorruptionBook book) || !(book.Challenge is CorruptionChallenge challenge))
+                return false;
+            long day = Math.Min(SavedEvent.MaxDay, Today);
+            // Relecture indépendante de la PR #252 : la victoire demande la présence (même règle que la récompense de la première victoire).
+            if (f.IsDefeated && !_defeated && _sourceWonHere)
+            {
+                _sourceBoss = null;   // défi réglé : le combat vaincu reste parmi les chefs pour sa récompense, sans plus être un chef de la zone
+                SavedCorruption saved = _character.Corruption;
+                if (saved.DayOf(book.Source.Id) is null && saved.Purified.Count >= SavedCorruption.MaxEntries)
+                {
+                    _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.SourceBlocked, book.Source.Id, 0, day));
+                    return false;
+                }
+                _character = _character.WithCorruption(saved.With(book.Source.Id, day));
+                long xp = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + challenge.Xp));
+                long gained = xp - _character.Xp;
+                _character = _character.WithXp(xp);
+                _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.SourcePurified, book.Source.Id, challenge.RespiteDays, day, gained));
+                return true;
+            }
+            bool live = Live(f);
+            CombatantView me = Zone.Engine.View(CombatantId);
+            bool far = !me.IsPresent || !(me.Position is GroundVector p)
+                || CorruptionValidator.Beyond(p, book.Source.Position, checked(book.Source.Radius + SourceLeash))
+                || !ReferenceEquals(f.Session, Zone);   // relecture de la PR #252 : sorti de la session du combat (autre secteur, autre session)
+            far = far || SourceFailsForTest?.Invoke() == true;
+            // Relecture indépendante de la PR #252 : une forme qui ne peut pas arriver (combat arrêté) est un échec propre.
+            // Revue Codex de la PR #252 (4e tour) : une forme que le moteur refuse d'affilée (capacité prise malgré la réserve) ne fait pas
+            // réessayer sans fin : le défi est perdu.
+            if (!_defeated && live && !far && !f.IsDefeated && !f.IsStalled && f.JoinRefusals < SourceArrivalTries) return false;
+            // Défi perdu : la forme en jeu, présente et vivante, quitte sa session ; le combat quitte la liste (aucune forme à venir).
+            // Revue Codex de la PR #252 : comme le départ d'un voyageur (Sectors.Leave), un départ refusé par le moteur (session terminée,
+            // plafond de commandes ou d'événements : InvalidOperationException ; forme refusée : ArgumentException) laisse la forme sur place,
+            // sans combat ; le défi est réglé quand même (échec annoncé), et aucun tick suivant ne retente le départ.
+            AbandonSourceFight(f, live);
+            _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeFailed, book.Source.Id, 0, day));
+            return false;
+        }
+
+        /// <summary>
+        /// Le combat du gardien est abandonné (défi perdu, ou corruption retirée en plein défi) : la forme en jeu quitte sa session, une
+        /// forme programmée partira à son arrivée ; le combat quitte la liste, sauf si sa récompense attend encore ; le défi est réglé.
+        /// </summary>
+        private void AbandonSourceFight(BossFight f, bool live)
+        {
+            if (live && f.Session is Zone z)
+                BeforeSourceLeaveForTest?.Invoke(z, f.CurrentForm);
+            if (live && f.Session is Zone s && !s.IsOver && System.Linq.Enumerable.Contains(s.Engine.CombatantIds, f.CurrentForm))
+            {
+                CombatantView v = s.Engine.View(f.CurrentForm);
+                if (v.IsPresent && !v.IsDead)
+                {
+                    try { s.Leave(f.CurrentForm); }
+                    catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
+                }
+                // Revue Codex de la PR #252 (2e tour) : forme suivante programmée à ce tick (la précédente vient de tomber), pas encore
+                // arrivée : elle partira dès son arrivée, au lieu de rester dans la zone sans combat suivi.
+                else if (!v.IsDead && !v.HasLeft && v.ArrivalTick is long due && due >= s.Engine.CurrentTick && _sourceDoomed.Count < MaxSourceDoomed)
+                    _sourceDoomed.Add((s, f.CurrentForm));
+            }
+            f.Stop();   // aucune forme de plus, même si le combat reste pour sa récompense en attente
+            if (!f.RewardPending) _fights.Remove(f);
+            _sourceBoss = null;   // interrupteur coupé : le gardien n'est plus un chef de la zone (ni renouvelé, ni recommencé)
         }
     }
 }

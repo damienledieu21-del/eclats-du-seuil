@@ -786,8 +786,12 @@ namespace EdS.Data.Saves
         /// <remarks>Version 32 (corruption qui s'étend et recule, <see cref="CorruptionSince"/>, sous-lot V2.42.1) : <c>corruption</c>
         /// facultatif dans le personnage (absent tant qu'aucun autel n'est purifié) : par terre (<c>corruption.json</c>, ordre ordinal), le jour
         /// du monde de la dernière purification de son autel. Une sauvegarde de version 31 ou antérieure est lue telle quelle (aucun autel
-        /// purifié) et mise à jour ; elle n'a pas de <c>corruption</c>.</remarks>
-        public const int CurrentSchemaVersion = 32;
+        /// purifié) et mise à jour ; elle n'a pas de <c>corruption</c>.
+        /// Version 33 (défi de la source, sous-lot V2.42.3, décision de Damien du 21 novembre 2026) : même
+        /// forme ; <c>corruption</c> peut aussi garder la source (son identifiant dans <c>corruption.json</c>) : le jour de la dernière défaite
+        /// de son gardien, d'où part le répit de toute la région. Une version 32 n'a jamais écrit la source (elle ne se purifiait pas) : elle
+        /// est lue telle quelle et mise à jour.</remarks>
+        public const int CurrentSchemaVersion = 33;
 
         /// <summary>Corruption : version où les autels purifiés (<c>corruption</c>) entrent dans la sauvegarde.</summary>
         public const int CorruptionSince = 32;

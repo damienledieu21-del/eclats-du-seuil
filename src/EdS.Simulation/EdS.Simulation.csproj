@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="EdS.Simulation.Tests" />
+    <InternalsVisibleTo Include="EdS.Data.Tests" />
   </ItemGroup>
 
 </Project>

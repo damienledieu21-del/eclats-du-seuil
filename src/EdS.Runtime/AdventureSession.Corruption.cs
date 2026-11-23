@@ -55,6 +55,50 @@ namespace EdS.Runtime
             return refusal == CorruptionRefusal.None;
         }
 
+        /// <summary>
+        /// Sous-lot V2.42.3 : le personnage, debout, est dans le disque de la source d'une corruption qui a son défi, et aucun défi n'est en
+        /// cours : la touche d'action lance le défi (ou dit pourquoi pas).
+        /// </summary>
+        public bool SourceInReach
+        {
+            get
+            {
+                if (World.IsDefeated || World.SourceChallengeUnderway || !(World.CorruptionBook is CorruptionBook book) || book.Challenge is null
+                    || !(Me is GroundVector p)) return false;
+                return !CorruptionValidator.Beyond(p, book.Source.Position, book.Source.Radius);
+            }
+        }
+
+        /// <summary>Sous-lot V2.42.3 : indice de la touche d'action au cercle (défi possible, autels qui manquent, ou région au repos), ou null.</summary>
+        public string? SourceHint
+        {
+            get
+            {
+                if (!SourceInReach) return null;
+                CorruptionBook book = World.CorruptionBook!;
+                if (World.SourceResting) return string.Format(System.Globalization.CultureInfo.InvariantCulture, Text("text.ui.corruption.challenge_resting"), SourceRestDays);
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, Text("text.ui.corruption.challenge"),
+                    Math.Min(World.AltarsResting, book.Challenge!.MinAltars), book.Challenge.MinAltars);
+            }
+        }
+
+        /// <summary>Sous-lot V2.42.3 : jours de répit de la région qui restent (0 : aucun).</summary>
+        public long SourceRestDays => World.SourceRestDays;
+
+        /// <summary>Sous-lot V2.42.3 : lance le défi de la source ; un message dit pourquoi si c'est refusé.</summary>
+        public bool ChallengeSource()
+        {
+            if (!SourceInReach) return false;
+            CorruptionBook book = World.CorruptionBook!;
+            SourceChallengeRefusal refusal = World.ChallengeSource();
+            if (refusal == SourceChallengeRefusal.TooFar) Say("text.ui.corruption.challenge_far");
+            else if (refusal == SourceChallengeRefusal.Resting) Say("text.ui.corruption.challenge_resting", SourceRestDays);
+            else if (refusal == SourceChallengeRefusal.TooFewAltars) Say("text.ui.corruption.challenge_few", book.Challenge!.MinAltars, World.AltarsResting);
+            else if (refusal == SourceChallengeRefusal.Full) Say("text.ui.corruption.full");
+            else if (refusal == SourceChallengeRefusal.NoRoom || refusal == SourceChallengeRefusal.RegistryFull || refusal == SourceChallengeRefusal.Capacity) Say("text.ui.corruption.challenge_no_room");
+            return refusal == SourceChallengeRefusal.None;
+        }
+
         /// <summary>Sous-lot V2.42.1 : nom d'une terre pour les textes (« les landes grises »), sinon son identifiant.</summary>
         public string CorruptionPlace(string area)
         {
@@ -70,12 +114,16 @@ namespace EdS.Runtime
                 CorruptionNoticeKind.Spread => "text.corruption.spread",
                 CorruptionNoticeKind.Grew => "text.corruption.grew",
                 CorruptionNoticeKind.Receded => n.Stage == 0 ? "text.corruption.receded" : "text.corruption.weakened",
+                CorruptionNoticeKind.ChallengeStarted => "text.corruption.challenge_started",   // sous-lot V2.42.3
+                CorruptionNoticeKind.SourcePurified => "text.corruption.source_purified",
+                CorruptionNoticeKind.ChallengeFailed => "text.corruption.challenge_failed",
+                CorruptionNoticeKind.SourceBlocked => "text.corruption.source_blocked",
                 _ => "text.corruption.purified",
             };
             Say(key, CorruptionPlace(n.Area), n.Stage);
-            if (n.Kind != CorruptionNoticeKind.Purified) return;
+            if (n.Kind != CorruptionNoticeKind.Purified && n.Kind != CorruptionNoticeKind.SourcePurified) return;
             _dirty = true;
-            if (n.Xp > 0) Say("text.ui.corruption.purified_xp", n.Xp);
+            if (n.Xp > 0) Say(n.Kind == CorruptionNoticeKind.SourcePurified ? "text.ui.corruption.source_xp" : "text.ui.corruption.purified_xp", n.Xp);
         }
 
         /// <summary>
