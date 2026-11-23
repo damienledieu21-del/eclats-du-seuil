@@ -767,6 +767,32 @@ public class V2423SourceTests
     }
 
     [Fact]
+    public void Renouvellement_au_registre_presque_plein_le_gardien_compte_comme_un_chef()
+    {
+        // Revue Codex de la PR #252 (6e tour), décision de Damien du 23 novembre 2026 : le gardien en jeu est un chef de la zone ; la session
+        // qui renaît le compte (JoinsAtBirth) : au registre juste à la borne, le renouvellement passe sans que le précontrôle lève.
+        CorruptionBook sturdy = WithGuardian(health: 400, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), sturdy);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        for (int i = 0; i < 3; i++) w.Step();
+        string form = w.SourceGuardianForm!;
+        w.SeasonRenewForTest();
+        SectorWorld host = w.Host!;
+        long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
+        for (int i = 0; i < room; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D5}"));
+        Assert.Equal(0, SaveValidator.MaxConsumed - host.NextTickRegistryNeed);
+        Assert.True(w.RenewsSessions);
+        Zone first = w.Zone;
+        w.Step();
+        Assert.NotSame(first, w.Zone);
+        Assert.Equal(1, w.Renewals);
+        Assert.True(w.SourceChallengeUnderway);
+        Assert.StartsWith(form, w.SourceGuardianForm!);
+        Assert.True(GuardianInPlay(w));
+        for (int i = 0; i < 3; i++) w.Step();   // les ticks suivants passent aussi
+    }
+
+    [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {
         CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);

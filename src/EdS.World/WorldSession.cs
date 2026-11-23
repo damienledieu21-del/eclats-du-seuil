@@ -889,7 +889,8 @@ namespace EdS.World
             // Sous-lot V2.5 : événements du monde de la zone (registre du personnage, sauvegarde v13).
             OpenEvents();
             // Sous-lot V2.28b (2c) : chefs et événements du monde arrivent ou continuent avec chaque session qui naît sur l'hôte.
-            if (_host != null && (zone.Bosses.Count > 0 || _events != null))
+            // Décision de Damien du 23 novembre 2026 : aussi sans chef ni événement : le gardien de la source peut en devenir un en cours de partie.
+            if (_host != null)
                 _host.OnOpened(OpenedSector, JoinsAtBirth);
         }
 
@@ -949,7 +950,7 @@ namespace EdS.World
             // seulement la partie les adopte, sans rien qui puisse lever.
             Boss? main = Definition?.Boss;
             var prepared = new List<(int At, Boss Boss, BossFight Fight, BossEvent? Started)>();
-            foreach (Boss b in Definition!.Bosses)
+            foreach (Boss b in Chiefs)
             {
                 if (_host!.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
                 int at = _fights.FindIndex(f => ReferenceEquals(f.Boss, b));
@@ -979,22 +980,7 @@ namespace EdS.World
             }
             // Sous-lot V2.28b (2c) : créatures d'événement et échos rôdeurs de ce secteur emportés dans la session renouvelée (préparés de même).
             Action? adoptEvents = renewedFrom != null ? _events?.Renew(sector, zone, renewedFrom) : null;
-            // Relecture indépendante de la PR #252 : le défi de la source continue de même dans la session renouvelée (gel, fonte, fin de session).
-            BossFight? source = null;
-            if (renewedFrom != null && SourceChallengeUnderway && _sourceFight!.Sector == sector && ReferenceEquals(_sourceFight.Session, renewedFrom))
-            {
-                source = BossFight.Continue(_sourceFight, renewedFrom.Engine, zone);
-                source.Sector = sector;
-                source.Session = zone;
-            }
             adoptEvents?.Invoke();
-            if (source != null)
-            {
-                int at = _fights.IndexOf(_sourceFight!);
-                if (at >= 0) _fights[at] = source;
-                else _fights.Add(source);
-                _sourceFight = source;
-            }
             foreach ((int at, Boss b, BossFight fight, BossEvent? started) in prepared)
             {
                 if (started != null) _bossStarts.Add(started);
@@ -1013,7 +999,7 @@ namespace EdS.World
         {
             Zone? renewing = _host!.SectorZone(sector) is Zone z && z.IsOver ? z : null;
             int n = 0;
-            foreach (Boss b in Definition!.Bosses)
+            foreach (Boss b in Chiefs)
             {
                 if (_host.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
                 if (renewing is null) { n++; continue; }
@@ -1050,9 +1036,30 @@ namespace EdS.World
         /// <summary>Rang du chef dans la zone : les combats restent dans l'ordre des chefs (ordre stable des événements).</summary>
         private int IndexOfBoss(Boss b)
         {
-            int rank = Definition!.Bosses.ToList().IndexOf(b), i = 0;
-            while (i < _fights.Count && Definition.Bosses.ToList().IndexOf(_fights[i].Boss) < rank) i++;
+            List<Boss> chiefs = Chiefs.ToList();
+            int rank = Rank(chiefs, b), i = 0;
+            while (i < _fights.Count && Rank(chiefs, _fights[i].Boss) < rank) i++;
             return i;
+        }
+
+        /// <summary>Rang d'un chef ; un combat qui n'en porte plus (gardien d'un défi réglé, gardé pour sa récompense) vient après eux.</summary>
+        private static int Rank(List<Boss> chiefs, Boss b)
+        {
+            int k = chiefs.IndexOf(b);
+            return k < 0 ? chiefs.Count : k;
+        }
+
+        /// <summary>
+        /// Chefs de la zone : ceux de la définition, puis, décision de Damien du 23 novembre 2026, le gardien de la source pendant un défi
+        /// lancé (interrupteur <see cref="_sourceBoss"/>) : il arrive, se renouvelle, compte au registre et rend sa récompense comme eux.
+        /// </summary>
+        private IEnumerable<Boss> Chiefs
+        {
+            get
+            {
+                foreach (Boss b in Definition!.Bosses) yield return b;
+                if (_sourceBoss != null) yield return _sourceBoss;
+            }
         }
 
         /// <summary>
@@ -1505,7 +1512,7 @@ namespace EdS.World
                     CombatantView there = ReferenceEquals(fight.Session, _tickZone) ? _tickZone!.Engine.View(_tickId!) : me;
                     bool here = ReferenceEquals(fight.Session, _tickZone) && !there.IsDead && (there.IsPresent || (there.HasLeft && wasPresent));
                     if (b.Kind == BossEventKind.Defeated && here && !Registered(Definition!.VictoryKeyOf(fight.Boss))) fight.RewardPending = true;
-                    if (b.Kind == BossEventKind.Defeated && ReferenceEquals(fight, _sourceFight)) _sourceWonHere = here;   // relecture de la PR #252
+                    if (b.Kind == BossEventKind.Defeated && ReferenceEquals(fight.Boss, _sourceBoss)) _sourceWonHere = here;   // relecture de la PR #252
                 }
                 if (fight.RewardPending) GiveBossRewards(fight, rewards, story);
             }

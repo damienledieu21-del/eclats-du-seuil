@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EdS.Data.Corruption;
 using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -141,8 +142,8 @@ namespace EdS.World
                 _queuedCorruption.Clear();
                 // Revue finale de la PR #252 : corruption retirée en plein défi : le gardien n'est plus suivi par le défi, il s'en va (sans
                 // annonce : plus de source à nommer) au lieu de continuer comme un combat sans règle de victoire ni d'échec.
-                if (_sourceFight is BossFight f && !_sourceSettled) AbandonSourceFight(f, Live(f));
-                _sourceFight = null;
+                if (SourceFight is BossFight f) AbandonSourceFight(f, Live(f));
+                _sourceBoss = null;
                 return;
             }
             bool silent = StepSourceChallenge();
@@ -225,27 +226,40 @@ namespace EdS.World
         /// Revue Codex de la PR #252 (3e tour) : formes du défi de la source pas encore en jeu (à venir, ou programmées) : leurs morts possibles
         /// gardent leur place au registre (<see cref="DeathReserve"/>), réservée à l'arrivée du gardien (<see cref="ChallengeSource"/>).
         /// </summary>
-        private int SourceFormsToCome => _sourceFight is BossFight f && !_sourceSettled && f.Session != null ? f.FormsToCome : 0;
+        private int SourceFormsToCome => SourceFight is BossFight f && f.Session != null ? f.FormsToCome : 0;
 
         internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
 
         /// <summary>Sous-lot V2.42.3 : marge au-delà du disque de la source où le défi tient ; plus loin, il est perdu.</summary>
         public static readonly Fixed SourceLeash = Fixed.FromInt(30);
 
-        /// <summary>Sous-lot V2.42.3 : combat du gardien de la source (dans <see cref="_fights"/> tant qu'il vit), ou null.</summary>
-        private BossFight? _sourceFight;
+        /// <summary>
+        /// Décision de Damien du 23 novembre 2026 : le gardien de la source est un chef de la zone comme les autres (<see cref="Chiefs"/> :
+        /// arrivée, renouvellement, précontrôle du registre, récompense en attente), présent seulement pendant un défi lancé. Cet interrupteur
+        /// « défi en cours » est son chef tant que le défi n'est pas réglé (victoire, échec), null sinon.
+        /// </summary>
+        private Boss? _sourceBoss;
 
-        /// <summary>Sous-lot V2.42.3 : la victoire sur le gardien a déjà été réglée (purification ou refus annoncé).</summary>
-        private bool _sourceSettled;
+        /// <summary>Combat du gardien pendant le défi : celui des chefs de la zone (<see cref="_fights"/>) qui porte le gardien, ou null.</summary>
+        private BossFight? SourceFight
+        {
+            get
+            {
+                if (_sourceBoss is null) return null;
+                foreach (BossFight f in _fights)
+                    if (ReferenceEquals(f.Boss, _sourceBoss)) return f;
+                return null;
+            }
+        }
 
         /// <summary>Relecture indépendante de la PR #252 : le personnage était présent et vivant dans la session du gardien à sa défaite.</summary>
         private bool _sourceWonHere;
 
         /// <summary>Sous-lot V2.42.3 : le défi de la source est en cours (le gardien se bat).</summary>
-        public bool SourceChallengeUnderway => _sourceFight != null && !_sourceSettled;
+        public bool SourceChallengeUnderway => SourceFight != null;
 
         /// <summary>Sous-lot V2.42.3 : forme du gardien en jeu (combattant), ou null hors du défi.</summary>
-        public string? SourceGuardianForm => SourceChallengeUnderway ? _sourceFight!.CurrentForm : null;
+        public string? SourceGuardianForm => SourceFight?.CurrentForm;
 
         /// <summary>Sous-lot V2.42.3 : autels dans leur répit aujourd'hui (pour l'indice du défi).</summary>
         public int AltarsResting => ActiveCorruption is CorruptionBook book ? CorruptionRules.AltarsResting(book, _character.Corruption, Today) : 0;
@@ -312,10 +326,10 @@ namespace EdS.World
                 fight.RewardAnnounced = _fights[previous].RewardAnnounced;
                 _fights.RemoveAt(previous);
             }
-            _sourceFight = fight;
-            _sourceSettled = false;
+            // Le gardien devient un chef de la zone (interrupteur du défi) : son combat suit le chemin des chefs, à son rang (après eux).
+            _sourceBoss = challenge.Boss;
             _sourceWonHere = false;
-            _fights.Add(fight);   // après les chefs de la zone : ordre stable des événements
+            _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(challenge.Boss)), fight);
             _bossStarts.Add(started);
             _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeStarted, book.Source.Id, 0, day));
             return SourceChallengeRefusal.None;
@@ -330,13 +344,13 @@ namespace EdS.World
         /// </summary>
         private bool StepSourceChallenge()
         {
-            if (!(_sourceFight is BossFight f) || _sourceSettled || !(ActiveCorruption is CorruptionBook book) || !(book.Challenge is CorruptionChallenge challenge))
+            if (!(SourceFight is BossFight f) || !(ActiveCorruption is CorruptionBook book) || !(book.Challenge is CorruptionChallenge challenge))
                 return false;
             long day = Math.Min(SavedEvent.MaxDay, Today);
             // Relecture indépendante de la PR #252 : la victoire demande la présence (même règle que la récompense de la première victoire).
             if (f.IsDefeated && !_defeated && _sourceWonHere)
             {
-                _sourceSettled = true;
+                _sourceBoss = null;   // défi réglé : le combat vaincu reste parmi les chefs pour sa récompense, sans plus être un chef de la zone
                 SavedCorruption saved = _character.Corruption;
                 if (saved.DayOf(book.Source.Id) is null && saved.Purified.Count >= SavedCorruption.MaxEntries)
                 {
@@ -392,7 +406,7 @@ namespace EdS.World
             }
             f.Stop();   // aucune forme de plus, même si le combat reste pour sa récompense en attente
             if (!f.RewardPending) _fights.Remove(f);
-            _sourceSettled = true;
+            _sourceBoss = null;   // interrupteur coupé : le gardien n'est plus un chef de la zone (ni renouvelé, ni recommencé)
         }
     }
 }
