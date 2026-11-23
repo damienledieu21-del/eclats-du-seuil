@@ -612,26 +612,11 @@ public class V2423SourceTests
         AssertLaunch(w, starts);
     }
 
-    /// <summary>
-    /// Identités brûlées jusqu'à <paramref name="target"/> (recalculé à chaque tour) : arrivées sur la place du personnage, toutes refusées
-    /// (l'identité n'est jamais rendue, la place l'est au tick d'arrivée).
-    /// </summary>
-    private static void BurnIdentities(WorldSession w, CorruptionBook book, Func<int> target)
+    /// <summary>Identités de la session tenues pour prises jusqu'à <paramref name="target"/> (point d'accroche du moteur, sans réapparitions simulées).</summary>
+    private static void BurnIdentities(WorldSession w, int target)
     {
-        GroundVector me = w.Zone.Engine.View(w.CombatantId).Position!.Value;
-        int n = 0;
-        for (int round = 0; round < 100; round++)
-        {
-            int burn = w.Zone.Engine.IdentitiesLeft - target();
-            int batch = Math.Min(burn, w.Zone.Engine.FreePlaces - Reserved(w) - 2);
-            if (burn <= batch)
-            {
-                for (int i = 0; i < burn; i++) Join(w, book, $"remplissage_identite_{n++}", me);
-                return;
-            }
-            for (int i = 0; i < batch; i++) Join(w, book, $"remplissage_identite_{n++}", me);
-            w.Step();
-        }
+        w.Zone.Engine.TakeIdentitiesForTest(w.Zone.Engine.IdentitiesLeft - target);
+        Assert.Equal(target, w.Zone.Engine.IdentitiesLeft);
     }
 
     [Theory]
@@ -641,7 +626,7 @@ public class V2423SourceTests
     {
         CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
         WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
-        BurnIdentities(w, weak, () => checked(Reserved(w) + ZonePopulations.QuestReserve + 3 + delta));
+        BurnIdentities(w, checked(Reserved(w) + ZonePopulations.QuestReserve + 3 + delta));
         Assert.Equal(checked(Reserved(w) + ZonePopulations.QuestReserve + 3 + delta), w.Zone.Engine.IdentitiesLeft);
         AssertLaunch(w, starts);
     }
@@ -676,7 +661,7 @@ public class V2423SourceTests
         Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
         w.Step();
         string first = w.SourceGuardianForm!;
-        BurnIdentities(w, weak, () => 0);   // plus aucune identité : la forme suivante sera refusée par le moteur (jamais rendue)
+        BurnIdentities(w, 0);   // plus aucune identité : la forme suivante sera refusée par le moteur (jamais rendue)
         Assert.Equal(0, w.Zone.Engine.IdentitiesLeft);
         var notices = new List<CorruptionNotice>();
         var boss = new List<BossEvent>();

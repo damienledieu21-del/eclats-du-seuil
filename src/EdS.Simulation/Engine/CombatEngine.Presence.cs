@@ -184,7 +184,13 @@ namespace EdS.Simulation.Engine
         public int FreePlaces => Math.Max(0, _rules.MaxCombatants - PlacesTaken);
 
         /// <summary>Sous-lot V2.26 : identités encore possibles dans la session (zone : plafond technique ; combat fermé : places).</summary>
-        public int IdentitiesLeft => Math.Max(0, (_setup.Zone ? CombatRules.MaxSessionCombatants : _rules.MaxCombatants) - _fighters.Count);
+        public int IdentitiesLeft => Math.Max(0, (_setup.Zone ? CombatRules.MaxSessionCombatants : _rules.MaxCombatants) - _fighters.Count - _identitiesTakenForTest);
+
+        // Essais (revue Codex de la PR #252) : identités tenues pour prises, sans combattant (amène vite une session près de son plafond).
+        private int _identitiesTakenForTest;
+
+        /// <summary>Essais : <paramref name="count"/> identités de plus tenues pour prises (sans combattant ; rien d'autre ne change).</summary>
+        internal void TakeIdentitiesForTest(int count) => _identitiesTakenForTest = checked(_identitiesTakenForTest + count);
 
         /// <summary>
         /// Premier combattant présent et vivant (ordre des identifiants) dont l'emprise, solide pour l'arrivant (règle de contact),
@@ -292,6 +298,9 @@ namespace EdS.Simulation.Engine
             // Sous-lot V2.26 : une place libre (présents vivants et arrivées attendues), refus atomique sinon.
             if (_setup.Zone && FreePlaces == 0)
                 throw new ArgumentException($"Arrivée refusée : plus de place libre ({_rules.MaxCombatants} places prises, combat.limits.maxCombatants).", nameof(combatant));
+            // Revue Codex de la PR #252 : plus aucune identité (le même refus que la validation du combat complété, au-delà du plafond technique).
+            if (_setup.Zone && IdentitiesLeft == 0)
+                throw new ArgumentException($"Arrivée refusée : plus aucune identité ({CombatRules.MaxSessionCombatants} au plus dans la session).", nameof(combatant));
             CombatSetup completed = _setup.Completed(_joined.Concat(new[] { combatant }), _submitted);
             IReadOnlyList<RuleViolation> violations = completed.Validate();
             if (violations.Count > 0)
