@@ -1235,6 +1235,17 @@ Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : �
 - **Escalier de remplacement** (relecture indépendante de la PR #251) : la volée longe le bord, à 0,8 m de la place d'arrivée (on n'apparaît pas dedans) et sans sortir de l'aire (`CryptLooks.StairSteps`) ; le modèle est posé sur la même emprise.
 - **À essayer** : descendre par l'escalier du chœur de l'abbaye, passer la grille de l'ossuaire puis l'escalier du tombeau ; dans la chapelle du Bourg, chercher la dalle au fond à droite.
 
+## Les égouts du Bourg (chantier V2.49.2, 23 novembre 2026)
+
+- **Les égouts** sont deux dessous dessinés par `SpaceView.Cave` (pénombre, ni pluie ni neige, ni leur son) ; leurs obstacles prennent une pièce du **kit d'égout** (`SpaceView.Sewer`, `SewerLooks.PieceFor`) : mur de brique et pilier (**occulteurs**, modèle ou forme simple), canal et bassin (**eau sombre** au ras du sol, margelle), grille, tuyau, déversoir, caisses des contrebandiers, repaires (**lanterne** chaude du passeur, **lueur verdâtre** de l'eau croupie chez la bête). Chaque pièce garde la hauteur de sa fiche.
+- **Jamais étirés** : le mur et le canal sont répétés en **tuiles** (`CryptLooks.Tiles`, au plus 1,5 fois le modèle sur chaque axe) ; les autres pièces sont mises à l'échelle de leur emprise sans qu'un axe dépasse 1,5 fois l'autre (`SewerLooks.Fit`, le modèle reste centré).
+- **Passerelles** sur l'écart entre deux tronçons du canal (`SewerLooks.Bridges`) ; **voûtes** (occulteurs) sur l'écart entre deux grilles et sur chaque passerelle (`SewerLooks.Arches`).
+- **Portes** : le **jour du Bourg** (qui suit le jour du dehors) sur la bouche du marché et le déversoir ; une **échelle** contre le mur le plus proche sur la bouche et sur l'échelle de la citerne (genre puits), à côté de la place d'arrivée (`SewerLooks.LadderAt`) ; rien au déversoir (on sort à pied).
+- **Côté Bourg** : la **bouche d'égout** au sol de la place du marché et le **déversoir** dans le talus du fossé sud, sur le sol affiché (`SewerLooks.SurfaceModel`, `SpaceView.SewerEntrances`) ; grille de fer et arche de pierre en repli.
+- **Créatures** : contrebandiers et passeur en personnage « bandit », loups-échos et bête en modèle de loup au rendu d'écho de la nuit (V2.49.1).
+- **Modèles du kit** (kit **préparé, non généré** : 13 modèles à 30 crédits, 390 crédits au plus, **à valider par Damien**) : `Assets/EdS/Modeles/Resources/Egouts/<nom>.fbx` avec `<nom>_couleur.jpg` et `<nom>_normale.png` (`SewerLooks.Models` : `mur_egout`, `voute_egout`, `canal_egout`, `passerelle_egout`, `grille_egout`, `echelle_egout`, `bouche_egout`, `tuyau_egout`, `deversoir_egout`, `caisses_egout`, `repaire_egout`, `pilier_egout`, `bassin_egout`) ; liste et script dans l'atelier (`Egouts/modeles.json`, `Egouts/tripo_egouts.py`, un seul essai par modèle, plafond de 390 crédits, jamais lancé). En attendant : formes simples. `EdsStyle` prépare leurs matières dès que le dossier existe.
+- **À essayer** : descendre par la bouche d'égout du marché, passer le canal par une passerelle, monter à la salle des contrebandiers, descendre l'échelle de la citerne ; ressortir par le déversoir dans le fossé sud.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

@@ -284,6 +284,7 @@ namespace EdS.Game.Editor
             catalog.Corruption = CorruptionPieces(notes);   // sous-lot V2.42.2 : modèles de la corruption (CorruptionLooks), quand l'atelier les aura livrés
             MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), kit fait le 22 novembre 2026
             CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit fait le 22 novembre 2026
+            SewerPieces(notes);   // chantier V2.49.2 : matières du kit d'égout (Resources/Egouts), quand l'atelier l'aura livré
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
@@ -671,6 +672,19 @@ namespace EdS.Game.Editor
                 .Where(p => CryptLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             foreach (string path in paths) OwnMaterial(path, notes);
             if (paths.Count > 0) notes.Add("Crypte : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(CryptLooks.NameOf)) + ").");
+        }
+
+        /// <summary>
+        /// Chantier V2.49.2 : le kit d'égout (<see cref="SewerLooks.AssetFolder"/>, reconnu par <see cref="SewerLooks.NameOf"/>) : même
+        /// traitement que les kits de grotte, de mine et de crypte. Sans dossier (kit pas encore généré) : rien, sans erreur.
+        /// </summary>
+        private static void SewerPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(SewerLooks.AssetFolder)) return;
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { SewerLooks.AssetFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => SewerLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            foreach (string path in paths) OwnMaterial(path, notes);
+            if (paths.Count > 0) notes.Add("Égouts : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(SewerLooks.NameOf)) + ").");
         }
 
         private static GameObject[] FeastPieces(List<string> notes)
