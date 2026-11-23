@@ -95,7 +95,7 @@ namespace EdS.Runtime
             else if (refusal == SourceChallengeRefusal.Resting) Say("text.ui.corruption.challenge_resting", SourceRestDays);
             else if (refusal == SourceChallengeRefusal.TooFewAltars) Say("text.ui.corruption.challenge_few", book.Challenge!.MinAltars, World.AltarsResting);
             else if (refusal == SourceChallengeRefusal.Full) Say("text.ui.corruption.full");
-            else if (refusal == SourceChallengeRefusal.NoRoom) Say("text.ui.corruption.challenge_no_room");
+            else if (refusal == SourceChallengeRefusal.NoRoom || refusal == SourceChallengeRefusal.RegistryFull) Say("text.ui.corruption.challenge_no_room");
             return refusal == SourceChallengeRefusal.None;
         }
 

@@ -234,6 +234,11 @@ namespace EdS.World
         Full = 7,
         /// <summary>La simulation refuse l'arrivée du gardien (place prise, session pleine).</summary>
         NoRoom = 8,
+        /// <summary>
+        /// Revue Codex de la PR #252 (3e tour) : le registre du monde n'a pas la place des morts possibles de toutes les formes du gardien
+        /// (en gardant celle des morts possibles d'un tick).
+        /// </summary>
+        RegistryFull = 9,
     }
 
     /// <summary>Sous-lot V2.42.1 : refus de <see cref="WorldSession.PurifyAltar"/> (refus atomique : rien ne change).</summary>

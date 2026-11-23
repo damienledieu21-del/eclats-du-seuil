@@ -485,6 +485,100 @@ public class V2423SourceTests
         Assert.Equal(6, w.CorruptionState.DayOf(Source));
     }
 
+    /// <summary>Frappe <paramref name="target"/> jusqu'à l'annonce d'un défi perdu (ou 8 000 ticks) ; rend le nombre d'échecs annoncés.</summary>
+    private static int StrikeUntilFailed(WorldSession w)
+    {
+        int failed = 0;
+        for (int i = 0; i < 8000 && failed == 0; i++)
+        {
+            string? target = w.SourceGuardianForm;
+            if (i % 20 == 0 && target != null && w.Zone.Engine.CombatantIds.Contains(target))
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", target)); }
+                catch (ArgumentException) { }
+            w.Step();
+            failed += w.CorruptionNotices.Count(n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        }
+        return failed;
+    }
+
+    private static bool GuardianInPlay(WorldSession w) => w.Zone.Engine.CombatantIds.Any(id => id.StartsWith(Forms[0], StringComparison.Ordinal)
+        && w.Zone.Engine.View(id) is { IsPresent: true, IsDead: false });
+
+    [Fact]
+    public void Second_echec_avec_une_forme_en_attente_les_deux_formes_oubliees_partent()
+    {
+        // Revue Codex de la PR #252 (3e tour) : une forme oubliée encore suivie (son départ refusé) au moment d'un nouvel échec, lui aussi
+        // au tick où une forme tombe : les deux formes oubliées partent, aucune ne reste sans combat suivi.
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        // Premier échec au tick où la deuxième forme tombe : la troisième (A) est programmée, à sa place à elle.
+        w.SourceFailsForTest = () => w.Zone.Engine.CombatantIds.Any(id => id.StartsWith(Forms[1], StringComparison.Ordinal) && w.Zone.Engine.View(id).IsDead);
+        Assert.Equal(1, StrikeUntilFailed(w));
+        string a = w.Zone.Engine.CombatantIds.Single(id => id.StartsWith(Forms[2], StringComparison.Ordinal));
+        Assert.False(w.Zone.Engine.View(a).IsPresent);   // programmée, pas encore arrivée
+        int refused = 0;
+        w.BeforeSourceLeaveForTest = (z, form) =>
+        {
+            if (form != a) return;
+            refused++;   // le départ de la forme oubliée est refusé (toutes ses commandes du tick prises) : elle reste suivie
+            for (int i = 0; i < 100; i++)
+                try { z.Engine.Submit(new CombatCommand(z.Engine.CurrentTick * 50, form, CombatAction.GuardStart)); }
+                catch (InvalidOperationException) { break; }
+        };
+        w.SourceFailsForTest = null;
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        string second = w.SourceGuardianForm!;
+        // Second échec au tick où la première forme du nouveau défi tombe : la deuxième (B) est programmée ; A est encore suivie.
+        w.SourceFailsForTest = () => w.Zone.Engine.View(second).IsDead;
+        Assert.Equal(1, StrikeUntilFailed(w));
+        Assert.True(refused > 0);
+        Assert.True(w.Zone.Engine.View(a).IsPresent);
+        Assert.Single(w.Zone.Engine.CombatantIds, id => id.StartsWith(Forms[1], StringComparison.Ordinal) && !w.Zone.Engine.View(id).IsDead
+            && !w.Zone.Engine.View(id).HasLeft);   // B, programmée
+        w.SourceFailsForTest = null;
+        w.BeforeSourceLeaveForTest = null;
+        for (int i = 0; i < 20; i++) w.Step();
+        Assert.False(GuardianInPlay(w));
+        Assert.False(w.SourceChallengeUnderway);
+    }
+
+    [Theory]
+    [InlineData(2, false)]   // une place de moins que les trois formes du gardien : refus
+    [InlineData(3, true)]    // juste la place des trois formes : le défi se lance
+    public void Registre_du_monde_juste_plein_refus_atomique_puis_tick_sans_exception(int spare, bool starts)
+    {
+        // Revue Codex de la PR #252 (3e tour) : la place des morts possibles de toutes les formes est vérifiée et réservée.
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        for (int i = 0; i < SaveValidator.MaxConsumed && w.RegistryRoom - w.DeathReserve > spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D5}"));
+        Assert.Equal(spare, w.RegistryRoom - w.DeathReserve);
+        int room = w.RegistryRoom, reserve = w.DeathReserve;
+        string[] ids = w.Zone.Engine.CombatantIds.ToArray();
+        SavedCorruption before = w.CorruptionState;
+        SourceChallengeRefusal refusal = w.ChallengeSource();
+        if (!starts)
+        {
+            Assert.Equal(SourceChallengeRefusal.RegistryFull, refusal);
+            Assert.False(w.SourceChallengeUnderway);
+            Assert.Null(w.SourceGuardianForm);
+            Assert.Equal(ids, w.Zone.Engine.CombatantIds);
+            Assert.Equal((room, reserve), (w.RegistryRoom, w.DeathReserve));
+            Assert.Same(before, w.CorruptionState);
+            for (int i = 0; i < 5; i++) w.Step();   // aucun précontrôle du registre ne lève
+            Assert.DoesNotContain(w.CorruptionNotices, n => n.Kind == CorruptionNoticeKind.ChallengeStarted);
+            Assert.False(GuardianInPlay(w));
+            return;
+        }
+        Assert.Equal(SourceChallengeRefusal.None, refusal);
+        Assert.Equal(reserve + 3, w.DeathReserve);   // la première forme en jeu, les deux autres réservées
+        var notices = new List<CorruptionNotice>();
+        Fight(w, notices);   // les trois formes arrivent et tombent sans que le précontrôle du registre lève
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+    }
+
     [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {

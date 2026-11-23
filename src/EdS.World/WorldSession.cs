@@ -212,9 +212,10 @@ namespace EdS.World
         /// Relecture indépendante de la PR #157 : réserve du registre pour les morts possibles d'un tick, la même pour toute inscription faite
         /// par la partie (compétences données, découverte d'un point sûr, nuit d'une créature rare, récompenses d'un chef) : les combattants
         /// de la session, ou ceux de toutes les sessions ouvertes sur l'hôte des secteurs (la borne du tick du monde les compte tous). Avec le
-        /// seul secteur du cœur, c'est exactement la réserve d'avant.
+        /// seul secteur du cœur, c'est exactement la réserve d'avant. Revue Codex de la PR #252 (3e tour) : avec les formes du défi de la
+        /// source pas encore en jeu (place réservée à son arrivée).
         /// </summary>
-        internal int DeathReserve => _host?.OpenCombatants ?? Zone.Engine.CombatantIds.Count;
+        internal int DeathReserve => checked((_host?.OpenCombatants ?? Zone.Engine.CombatantIds.Count) + SourceFormsToCome);
 
         /// <summary>Internes, pour les tests : l'hôte des secteurs de la partie.</summary>
         internal SectorWorld? Host => _host;

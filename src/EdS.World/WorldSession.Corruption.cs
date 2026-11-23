@@ -164,39 +164,62 @@ namespace EdS.World
         // --- Sous-lot V2.42.3 : défi de la source -------------------------------------------------------------------------------------
 
         /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
-        /// <summary>Essais (revue Codex de la PR #252) : appelé juste avant le départ du gardien d'un défi perdu (session, forme).</summary>
+        /// <summary>
+        /// Essais (revue Codex de la PR #252) : appelé juste avant chaque départ du gardien d'un défi perdu (session, forme), au réglement
+        /// du défi comme au départ d'une forme oubliée arrivée depuis.
+        /// </summary>
         internal Action<Zone, string>? BeforeSourceLeaveForTest { get; set; }
 
         /// <summary>Essais (revue Codex de la PR #252, 2e tour) : vrai pour perdre le défi à ce tick (comme une laisse franchie).</summary>
         internal Func<bool>? SourceFailsForTest { get; set; }
 
-        /// <summary>
-        /// Revue Codex de la PR #252 (2e tour) : forme du gardien d'un défi perdu dont l'arrivée était encore en attente (forme suivante
-        /// programmée au tick même de l'échec) ; elle quitte sa session dès qu'elle y est arrivée (comme les formes oubliées d'un boss du monde).
-        /// </summary>
-        private (Zone Session, string Id)? _sourceDoomed;
+        /// <summary>Formes oubliées du gardien suivies au plus (une par défi perdu ; chacune part ou est oubliée en un ou deux ticks).</summary>
+        internal const int MaxSourceDoomed = 8;
 
-        /// <summary>Fait partir la forme oubliée du gardien arrivée depuis ; l'oublie si sa session est finie, si elle est morte ou partie.</summary>
+        /// <summary>
+        /// Revue Codex de la PR #252 (2e et 3e tours) : formes du gardien de défis perdus dont l'arrivée était encore en attente (forme suivante
+        /// programmée au tick même de l'échec) ; chacune quitte sa session dès qu'elle y est arrivée (comme les formes oubliées d'un boss du
+        /// monde). Une liste, pas une seule place : un nouvel échec ne fait pas oublier une forme encore suivie. Ordre d'ajout (stable).
+        /// </summary>
+        private readonly List<(Zone Session, string Id)> _sourceDoomed = new List<(Zone Session, string Id)>();
+
+        /// <summary>Fait partir les formes oubliées du gardien arrivées depuis ; oublie celles dont la session est finie, mortes ou parties.</summary>
         private void DismissSourceDoomed()
         {
-            if (!(_sourceDoomed is (Zone session, string id))) return;
-            if (session.IsOver) { _sourceDoomed = null; return; }
-            CombatantView v = session.Engine.View(id);
-            if (v.IsDead || v.HasLeft) _sourceDoomed = null;
-            else if (v.IsPresent)
+            for (int k = 0; k < _sourceDoomed.Count;)
             {
-                try
+                (Zone session, string id) = _sourceDoomed[k];
+                bool done;
+                if (session.IsOver) done = true;
+                else
                 {
-                    session.Leave(id);
-                    _sourceDoomed = null;
+                    CombatantView v = session.Engine.View(id);
+                    if (v.IsDead || v.HasLeft) done = true;
+                    else if (v.IsPresent)
+                    {
+                        BeforeSourceLeaveForTest?.Invoke(session, id);
+                        try
+                        {
+                            session.Leave(id);
+                            done = true;
+                        }
+                        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                        {
+                            done = false;   // départ refusé (plafond de commandes ou d'événements) : nouvel essai au tick suivant
+                        }
+                    }
+                    else done = !(v.ArrivalTick is long due) || due < session.Engine.CurrentTick;   // arrivée refusée : rien à retirer
                 }
-                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
-                {
-                    // départ refusé (plafond de commandes ou d'événements) : nouvel essai au tick suivant
-                }
+                if (done) _sourceDoomed.RemoveAt(k);
+                else k++;
             }
-            else if (!(v.ArrivalTick is long due) || due < session.Engine.CurrentTick) _sourceDoomed = null;   // arrivée refusée : rien à retirer
         }
+
+        /// <summary>
+        /// Revue Codex de la PR #252 (3e tour) : formes du défi de la source pas encore en jeu (à venir, ou programmées) : leurs morts possibles
+        /// gardent leur place au registre (<see cref="DeathReserve"/>), réservée à l'arrivée du gardien (<see cref="ChallengeSource"/>).
+        /// </summary>
+        private int SourceFormsToCome => _sourceFight is BossFight f && !_sourceSettled && f.Session != null ? f.FormsToCome : 0;
 
         internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
 
@@ -248,6 +271,10 @@ namespace EdS.World
             if (CorruptionRules.SourceResting(book, _character.Corruption, day)) return SourceChallengeRefusal.Resting;
             if (CorruptionRules.AltarsResting(book, _character.Corruption, day) < challenge.MinAltars) return SourceChallengeRefusal.TooFewAltars;
             if (_character.Corruption.DayOf(book.Source.Id) is null && _character.Corruption.Purified.Count >= SavedCorruption.MaxEntries) return SourceChallengeRefusal.Full;
+            // Revue Codex de la PR #252 (3e tour) : chaque forme du gardien ajoute une mort possible au registre du monde ; leur place est
+            // vérifiée ici (toutes les formes, en gardant celle des morts possibles d'un tick), puis réservée tant que le défi dure
+            // (SourceFormsToCome dans DeathReserve) : sinon le précontrôle du tick suivant lèverait. Refus atomique : rien ne change.
+            if (RegistryRoom - challenge.Boss.Forms.Count < DeathReserve) return SourceChallengeRefusal.RegistryFull;
             var fight = new BossFight(challenge.Boss) { Sector = _host != null ? sector : null, Session = Zone };
             BossEvent started;
             try
@@ -321,8 +348,8 @@ namespace EdS.World
                 }
                 // Revue Codex de la PR #252 (2e tour) : forme suivante programmée à ce tick (la précédente vient de tomber), pas encore
                 // arrivée : elle partira dès son arrivée, au lieu de rester dans la zone sans combat suivi.
-                else if (!v.IsDead && !v.HasLeft && v.ArrivalTick is long due && due >= s.Engine.CurrentTick)
-                    _sourceDoomed = (s, f.CurrentForm);
+                else if (!v.IsDead && !v.HasLeft && v.ArrivalTick is long due && due >= s.Engine.CurrentTick && _sourceDoomed.Count < MaxSourceDoomed)
+                    _sourceDoomed.Add((s, f.CurrentForm));
             }
             if (!f.RewardPending) _fights.Remove(f);
             _sourceSettled = true;
