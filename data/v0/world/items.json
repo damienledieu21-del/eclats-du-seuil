@@ -1928,6 +1928,21 @@
         "named": true
       },
       {
+        "id": "item.manteau_du_passeur",
+        "name": "Manteau du passeur",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "cloak",
+        "requiredLevel": 8,
+        "bonus": {
+          "magicResistance": 30,
+          "maxHealth": 40,
+          "maxEndurance": 10
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",
