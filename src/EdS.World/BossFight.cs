@@ -151,10 +151,6 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V2.42.3 (défi de la source) : fait arriver la première forme en cours de session, sous une identité libre du moteur (celle
-        /// de la forme, ou <c>{forme}_v{n}</c> si un défi précédent l'a prise). Refus atomique : si le moteur refuse (lève), rien ne change.
-        /// </summary>
-        /// <summary>
         /// Revue Codex de la PR #252 (4e tour) : arrivées refusées par le moteur d'affilée (remis à zéro à une arrivée admise). Les chefs
         /// réessaient sans fin ; le défi de la source s'arrête au bout de quelques refus (<see cref="WorldSession.SourceArrivalTries"/>).
         /// </summary>
@@ -183,6 +179,10 @@ namespace EdS.World
             return violations.Count == 0 ? null : violations[0].Message;
         }
 
+        /// <summary>
+        /// Sous-lot V2.42.3 (défi de la source) : fait arriver la première forme en cours de session, sous une identité libre du moteur (celle
+        /// de la forme, ou <c>{forme}_v{n}</c> si un défi précédent l'a prise). Refus atomique : si le moteur refuse (lève), rien ne change.
+        /// </summary>
         public BossEvent StartAnew(CombatEngine engine)
         {
             string id = FreeIdentity(engine, _boss.Forms[0].Id);

@@ -793,6 +793,20 @@ public class V2423SourceTests
     }
 
     [Fact]
+    public void Personnage_a_l_identite_d_une_forme_du_gardien_corruption_refusee()
+    {
+        // Relecture de la refonte de la PR #252 : comme CheckZone pour les chefs de la zone ; refus sans rien changer.
+        ZoneDefinition zone = Zone(1556, -632);
+        SavedCharacter hero = PlayerCharacters.Create(Forms[1], "class.bastion", Progression).WithCorruption(ThreeAltars(6));
+        var w = new WorldSession(new WorldSave("zone.vallons", Noon(6), 0, new[] { PlayerCharacters.PlacesKey }, hero),
+            zone, ShippedData, Progression, ItemsCatalog, V11TestData.Book(zone), safePoint: "place_du_village");
+        Assert.Throws<ArgumentException>(() => w.UseCorruption(Book));
+        Assert.Null(w.CorruptionBook);
+        w.Step();
+        w.UseCorruption(null);   // sans défi, rien à refuser
+    }
+
+    [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {
         CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);

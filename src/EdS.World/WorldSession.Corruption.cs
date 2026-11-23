@@ -24,8 +24,12 @@ namespace EdS.World
         private static readonly IReadOnlyList<CorruptionView> NoCorruptionViews = new CorruptionView[0];
 
         /// <summary>Sous-lot V2.42.1 : la corruption de <paramref name="book"/>, si elle est de cette zone ; sinon aucune.</summary>
+        /// <exception cref="ArgumentException">Relecture de la refonte de la PR #252 : une forme du gardien de la source porte l'identité du
+        /// personnage (son arrivée serait impossible), comme <c>CheckZone</c> pour les chefs de la zone. Rien ne change.</exception>
         public void UseCorruption(CorruptionBook? book)
         {
+            if (book?.Challenge?.Boss is Boss guardian && System.Linq.Enumerable.Any(guardian.Forms, f => f.Id == _character.Id))
+                throw new ArgumentException($"Personnage « {_character.Id} » : identité d'une forme du gardien de la source.", nameof(book));
             _corruption = book != null && book.ZoneId == Definition?.Id ? book : null;
             _corruptionSeen = null;
             _corruptionViewsDay = -1;
@@ -167,7 +171,6 @@ namespace EdS.World
 
         // --- Sous-lot V2.42.3 : défi de la source -------------------------------------------------------------------------------------
 
-        /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
         /// <summary>
         /// Essais (revue Codex de la PR #252) : appelé juste avant chaque départ du gardien d'un défi perdu (session, forme), au réglement
         /// du défi comme au départ d'une forme oubliée arrivée depuis.
@@ -228,6 +231,7 @@ namespace EdS.World
         /// </summary>
         private int SourceFormsToCome => SourceFight is BossFight f && f.Session != null ? f.FormsToCome : 0;
 
+        /// <summary>Essais : autels purifiés du personnage remplacés (sans autre effet).</summary>
         internal void SetCorruptionForTest(SavedCorruption corruption) => _character = _character.WithCorruption(corruption);
 
         /// <summary>Sous-lot V2.42.3 : marge au-delà du disque de la source où le défi tient ; plus loin, il est perdu.</summary>

@@ -1017,13 +1017,13 @@ namespace EdS.World
             return n;
         }
 
+        /// <summary>Essais : la session du secteur du personnage est renouvelée au prochain tick, comme pour un gel ou une fonte.</summary>
+        internal void SeasonRenewForTest() => _host!.SeasonRenewForTest(_zoneSector!);
+
         /// <summary>
         /// Pour les essais : la forme du moment du chef <paramref name="boss"/> quitte sa session et devient une forme emportée en attente,
         /// à sa place, sans nouvel essai avant <paramref name="ticks"/> ticks (sinon au renouvellement : <see cref="BossFight.Continue"/>).
         /// </summary>
-        /// <summary>Essais : la session du secteur du personnage est renouvelée au prochain tick, comme pour un gel ou une fonte.</summary>
-        internal void SeasonRenewForTest() => _host!.SeasonRenewForTest(_zoneSector!);
-
         internal void PendChiefForTest(string boss, long ticks)
         {
             BossFight f = _fights.Single(x => x.Boss.Id == boss);
