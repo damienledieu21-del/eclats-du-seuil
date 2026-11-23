@@ -579,6 +579,125 @@ public class V2423SourceTests
         Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified);
     }
 
+    // --- Revue Codex de la PR #252 (4e tour) : capacités de toutes les formes, vérifiées d'un coup -------------------------------------
+
+    /// <summary>Un combattant de remplissage (copie de la première forme, sans dégâts notables) qui arrive en <paramref name="at"/> au tick courant.</summary>
+    private static void Join(WorldSession w, CorruptionBook book, string id, GroundVector at)
+    {
+        AssailantSetup t = book.Challenge!.Boss.Forms[0];
+        var a = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
+            t.Triggers, t.Health, new CombatantPlacement(at, t.Placement!.Radius, t.Placement.Facing), checked(w.Zone.Engine.CurrentTick * 50), t.Behavior, null);
+        w.Zone.Engine.Join(CombatantReferences.Adapt(a, new HashSet<string>(w.Zone.Engine.CombatantIds, StringComparer.Ordinal).Contains)!);
+    }
+
+    private static int Reserved(WorldSession w) => w.Host != null ? w.ReservedIn(w.Sector!) : w.ReservedPlaces;
+
+    /// <summary>Places prises par des combattants de remplissage qui arrivent (chacun à sa place) jusqu'à <paramref name="free"/> places libres.</summary>
+    private static void FillPlaces(WorldSession w, CorruptionBook book, int free)
+    {
+        GroundVector me = w.Zone.Engine.View(w.CombatantId).Position!.Value;
+        for (int i = 0; w.Zone.Engine.FreePlaces > free; i++)
+            Join(w, book, $"remplissage_place_{i}", new GroundVector(me.X - Fixed.FromInt(20 + 3 * (i % 10)), me.Z - Fixed.FromInt(20 + 3 * (i / 10))));
+        Assert.Equal(free, w.Zone.Engine.FreePlaces);
+    }
+
+    [Theory]
+    [InlineData(0, true)]     // juste la place : une place libre de plus que les places réservées
+    [InlineData(-1, false)]   // juste au-delà : refus
+    public void Capacite_places_libres_juste_a_la_limite_puis_au_dela(int delta, bool starts)
+    {
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        FillPlaces(w, weak, Reserved(w) + 1 + delta);
+        AssertLaunch(w, starts);
+    }
+
+    /// <summary>
+    /// Identités brûlées jusqu'à <paramref name="target"/> (recalculé à chaque tour) : arrivées sur la place du personnage, toutes refusées
+    /// (l'identité n'est jamais rendue, la place l'est au tick d'arrivée).
+    /// </summary>
+    private static void BurnIdentities(WorldSession w, CorruptionBook book, Func<int> target)
+    {
+        GroundVector me = w.Zone.Engine.View(w.CombatantId).Position!.Value;
+        int n = 0;
+        for (int round = 0; round < 100; round++)
+        {
+            int burn = w.Zone.Engine.IdentitiesLeft - target();
+            int batch = Math.Min(burn, w.Zone.Engine.FreePlaces - Reserved(w) - 2);
+            if (burn <= batch)
+            {
+                for (int i = 0; i < burn; i++) Join(w, book, $"remplissage_identite_{n++}", me);
+                return;
+            }
+            for (int i = 0; i < batch; i++) Join(w, book, $"remplissage_identite_{n++}", me);
+            w.Step();
+        }
+    }
+
+    [Theory]
+    [InlineData(0, true)]     // juste assez d'identités : les trois formes, les réservées et la réserve des quêtes
+    [InlineData(-1, false)]   // une de moins : refus
+    public void Capacite_identites_juste_a_la_limite_puis_au_dela(int delta, bool starts)
+    {
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        BurnIdentities(w, weak, () => checked(Reserved(w) + ZonePopulations.QuestReserve + 3 + delta));
+        Assert.Equal(checked(Reserved(w) + ZonePopulations.QuestReserve + 3 + delta), w.Zone.Engine.IdentitiesLeft);
+        AssertLaunch(w, starts);
+    }
+
+    /// <summary>Lancement admis (puis ticks sans exception), ou refus Capacity atomique (rien ne change, ticks sans exception).</summary>
+    private static void AssertLaunch(WorldSession w, bool starts)
+    {
+        string[] ids = w.Zone.Engine.CombatantIds.ToArray();
+        int identities = w.Zone.Engine.IdentitiesLeft, places = w.Zone.Engine.FreePlaces;
+        SourceChallengeRefusal refusal = w.ChallengeSource();
+        if (starts)
+        {
+            Assert.Equal(SourceChallengeRefusal.None, refusal);
+            Assert.True(w.SourceChallengeUnderway);
+        }
+        else
+        {
+            Assert.Equal(SourceChallengeRefusal.Capacity, refusal);
+            Assert.False(w.SourceChallengeUnderway);
+            Assert.Equal(ids, w.Zone.Engine.CombatantIds);
+            Assert.Equal((identities, places), (w.Zone.Engine.IdentitiesLeft, w.Zone.Engine.FreePlaces));
+            Assert.DoesNotContain(w.CorruptionNotices, n => n.Kind == CorruptionNoticeKind.ChallengeStarted);
+        }
+        for (int i = 0; i < 3; i++) w.Step();
+    }
+
+    [Fact]
+    public void Forme_suivante_refusee_par_le_moteur_d_affilee_defi_perdu_sans_essai_sans_fin()
+    {
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        string first = w.SourceGuardianForm!;
+        BurnIdentities(w, weak, () => 0);   // plus aucune identité : la forme suivante sera refusée par le moteur (jamais rendue)
+        Assert.Equal(0, w.Zone.Engine.IdentitiesLeft);
+        var notices = new List<CorruptionNotice>();
+        var boss = new List<BossEvent>();
+        for (int i = 0; i < 4000 && !notices.Any(n => n.Kind == CorruptionNoticeKind.ChallengeFailed); i++)
+        {
+            if (i % 20 == 0 && w.Zone.Engine.CombatantIds.Contains(first))
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", first)); }
+                catch (ArgumentException) { }
+            boss.AddRange(w.Step().Boss);
+            notices.AddRange(w.CorruptionNotices);
+        }
+        Assert.False(w.IsDefeated);
+        Assert.True(w.Zone.Engine.View(first).IsDead);
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        Assert.DoesNotContain(boss, b => b.Kind == BossEventKind.FormArrived && b.Phase > 0);
+        Assert.False(w.SourceChallengeUnderway);
+        for (int i = 0; i < 200; i++) boss.AddRange(w.Step().Boss);   // plus aucun essai
+        Assert.DoesNotContain(boss, b => b.Kind == BossEventKind.FormArrived && b.Phase > 0);
+        Assert.False(GuardianInPlay(w));
+    }
+
     [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {

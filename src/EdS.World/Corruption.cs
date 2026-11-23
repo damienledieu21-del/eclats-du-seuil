@@ -239,6 +239,11 @@ namespace EdS.World
         /// (en gardant celle des morts possibles d'un tick).
         /// </summary>
         RegistryFull = 9,
+        /// <summary>
+        /// Revue Codex de la PR #252 (4e tour) : la session n'a pas les capacités de toutes les formes du gardien (identités, réserve des
+        /// quêtes comprise ; place libre ; combat complété de leurs arrivées : identités de la session, file d'événements, précontrôle).
+        /// </summary>
+        Capacity = 10,
     }
 
     /// <summary>Sous-lot V2.42.1 : refus de <see cref="WorldSession.PurifyAltar"/> (refus atomique : rien ne change).</summary>

@@ -173,6 +173,9 @@ namespace EdS.World
         /// <summary>Essais (revue Codex de la PR #252, 2e tour) : vrai pour perdre le défi à ce tick (comme une laisse franchie).</summary>
         internal Func<bool>? SourceFailsForTest { get; set; }
 
+        /// <summary>Revue Codex de la PR #252 (4e tour) : arrivées d'une forme refusées d'affilée par le moteur (une par seconde) avant l'échec du défi.</summary>
+        public const int SourceArrivalTries = 5;
+
         /// <summary>Formes oubliées du gardien suivies au plus (une par défi perdu ; chacune part ou est oubliée en un ou deux ticks).</summary>
         internal const int MaxSourceDoomed = 8;
 
@@ -276,6 +279,17 @@ namespace EdS.World
             // (SourceFormsToCome dans DeathReserve) : sinon le précontrôle du tick suivant lèverait. Refus atomique : rien ne change.
             if (RegistryRoom - challenge.Boss.Forms.Count < DeathReserve) return SourceChallengeRefusal.RegistryFull;
             var fight = new BossFight(challenge.Boss) { Sector = _host != null ? sector : null, Session = Zone };
+            // Revue Codex de la PR #252 (4e tour) : toutes les capacités que les formes consomment sur la durée du défi, vérifiées d'un coup.
+            // Identités (jamais rendues) : toutes les formes, en gardant celles déjà réservées et la réserve des quêtes (règle des boss du
+            // monde) ; places (une forme à la fois, les suivantes gardées contre les populations par ReservedPlaces) ; combat complété de
+            // toutes les arrivées valide (identités de la session, majorant de file avec déclencheurs, précontrôle numérique). Commandes : les
+            // formes ont un comportement et n'en soumettent pas (seul leur départ, refusable, en prend une).
+            CombatEngine engine = Zone.Engine;
+            int reserved = _host != null ? ReservedIn(_zoneSector!) : ReservedPlaces;
+            if (engine.IdentitiesLeft < checked(reserved + ZonePopulations.QuestReserve + challenge.Boss.Forms.Count)
+                || engine.FreePlaces < checked(reserved + 1)
+                || fight.WhyNotAll(engine) != null)
+                return SourceChallengeRefusal.Capacity;
             BossEvent started;
             try
             {
@@ -331,7 +345,9 @@ namespace EdS.World
                 || !ReferenceEquals(f.Session, Zone);   // relecture de la PR #252 : sorti de la session du combat (autre secteur, autre session)
             far = far || SourceFailsForTest?.Invoke() == true;
             // Relecture indépendante de la PR #252 : une forme qui ne peut pas arriver (combat arrêté) est un échec propre.
-            if (!_defeated && live && !far && !f.IsDefeated && !f.IsStalled) return false;
+            // Revue Codex de la PR #252 (4e tour) : une forme que le moteur refuse d'affilée (capacité prise malgré la réserve) ne fait pas
+            // réessayer sans fin : le défi est perdu.
+            if (!_defeated && live && !far && !f.IsDefeated && !f.IsStalled && f.JoinRefusals < SourceArrivalTries) return false;
             // Défi perdu : la forme en jeu, présente et vivante, quitte sa session ; le combat quitte la liste (aucune forme à venir).
             // Revue Codex de la PR #252 : comme le départ d'un voyageur (Sectors.Leave), un départ refusé par le moteur (session terminée,
             // plafond de commandes ou d'événements : InvalidOperationException ; forme refusée : ArgumentException) laisse la forme sur place,
