@@ -684,6 +684,89 @@ public class V2423SourceTests
     }
 
     [Fact]
+    public void Premiere_victoire_sac_plein_relance_apres_le_repit_la_recompense_attend_puis_arrive()
+    {
+        // Revue Codex de la PR #252 (5e tour) : la récompense en attente passe au combat du défi relancé (comme pour un chef renouvelé).
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 20, Strong(ThreeAltars(20)), weak);
+        for (int i = 0; w.Inventory.FreePlaces > 0 && i < 100; i++) Assert.Equal(InventoryRefusal.None, w.Inventory.Add("item.gambison", 1));
+        Assert.Equal(0, w.Inventory.FreePlaces);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        var notices = new List<CorruptionNotice>();
+        List<SessionStep> steps = Fight(w, notices);
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+        Assert.Empty(steps.SelectMany(s => s.Rewards));
+        Assert.Single(steps.SelectMany(s => s.Story), e => e.Kind == StoryEventKind.RewardBlocked);
+        Assert.Equal(0, w.Inventory.Count(Shard));
+        // Après le répit (la source purifiée au jour 10 : repos fini au jour 18), le défi est relancé, sac toujours plein.
+        w.SetCorruptionForTest(w.CorruptionState.With(Source, 10));
+        Assert.False(w.SourceResting);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        Assert.Empty(w.Step().Rewards);
+        // Une place se libère (en plein défi) : les 3 éclats et le fait arrivent, une seule fois.
+        w.Inventory.Remove("item.gambison", 1);
+        SessionStep next = w.Step();
+        Assert.Equal(new[] { (Shard, 3) }, next.Rewards);
+        Assert.Equal(3, w.Inventory.Count(Shard));
+        Assert.Contains(Vallons.Id + "/boss/gardien_de_la_source", w.Save().Consumed);
+        Assert.Contains("fact.corruption.source_purifiee", SaveJsonReader.Write(w.Save()), StringComparison.Ordinal);
+        Assert.Empty(w.Step().Rewards);
+        var again = new List<CorruptionNotice>();
+        Assert.Empty(Fight(w, again).SelectMany(s => s.Rewards));   // la seconde victoire ne redonne rien
+        Assert.Single(again, n => n.Kind == CorruptionNoticeKind.SourcePurified);
+    }
+
+    [Fact]
+    public void Recompense_en_attente_defi_relance_puis_perdu_aucune_forme_de_plus_la_recompense_arrive()
+    {
+        // Revue finale de la PR #252 : le combat qui garde la récompense en attente s'arrête quand le défi relancé est perdu.
+        CorruptionBook weak = WithGuardian(health: 10, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 20, Strong(ThreeAltars(20)), weak);
+        for (int i = 0; w.Inventory.FreePlaces > 0 && i < 100; i++) Assert.Equal(InventoryRefusal.None, w.Inventory.Add("item.gambison", 1));
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        Fight(w, new List<CorruptionNotice>());
+        w.SetCorruptionForTest(w.CorruptionState.With(Source, 10));
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        w.SourceFailsForTest = () => true;
+        var notices = new List<CorruptionNotice>();
+        var boss = new List<BossEvent>();
+        for (int i = 0; i < 3; i++)
+        {
+            boss.AddRange(w.Step().Boss);
+            notices.AddRange(w.CorruptionNotices);
+        }
+        w.SourceFailsForTest = null;
+        Assert.Single(notices, n => n.Kind == CorruptionNoticeKind.ChallengeFailed);
+        for (int i = 0; i < 200; i++) boss.AddRange(w.Step().Boss);
+        Assert.DoesNotContain(boss, b => b.Kind == BossEventKind.FormArrived);
+        Assert.False(GuardianInPlay(w));
+        w.Inventory.Remove("item.gambison", 1);
+        Assert.Equal(new[] { (Shard, 3) }, w.Step().Rewards);
+        Assert.Empty(w.Step().Rewards);
+    }
+
+    [Fact]
+    public void Corruption_retiree_en_plein_defi_le_gardien_s_en_va()
+    {
+        // Revue finale de la PR #252 : sans catalogue, le combat n'a plus de règle de victoire ni d'échec : il est abandonné.
+        CorruptionBook weak = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);
+        WorldSession w = Session(1556, -632, 6, Strong(ThreeAltars(6)), weak);
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        Assert.True(GuardianInPlay(w));
+        w.UseCorruption(null);
+        for (int i = 0; i < 5; i++) w.Step();
+        Assert.False(w.SourceChallengeUnderway);
+        Assert.False(GuardianInPlay(w));
+        w.UseCorruption(weak);   // de retour : le défi se relance normalement
+        w.Step();
+        Assert.Equal(SourceChallengeRefusal.None, w.ChallengeSource());
+        w.Step();
+        Assert.True(w.SourceChallengeUnderway);
+    }
+
+    [Fact]
     public void Defi_perdu_au_passage_dans_une_autre_session()
     {
         CorruptionBook slow = WithGuardian(health: 100_000, damage: 1, intervalMs: 60_000);

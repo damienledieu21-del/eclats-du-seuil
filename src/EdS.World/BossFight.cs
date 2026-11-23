@@ -110,6 +110,18 @@ namespace EdS.World
         public bool IsStalled => _stalled;
 
         /// <summary>
+        /// Revue finale de la PR #252 : le combat s'arrête (plus aucune forme : un défi de la source abandonné) ; sa récompense en attente,
+        /// s'il en a une, reste due.
+        /// </summary>
+        internal void Stop()
+        {
+            _stalled = true;
+            _nextAt = null;
+            _carryPlace = null;
+            _carryState = null;
+        }
+
+        /// <summary>
         /// Revue Codex de la PR #159 (3e tour) : la forme du moment est emportée d'une session renouvelée et pas encore arrivée (état gardé,
         /// nouvel essai à chaque pas et dès la session suivante, <see cref="Continue"/>). Comptée partout comme une arrivée à venir : borne du
         /// registre à la naissance d'une session, places gardées.

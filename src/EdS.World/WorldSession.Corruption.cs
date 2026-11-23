@@ -139,6 +139,9 @@ namespace EdS.World
             {
                 CorruptionNotices = NoCorruptionNotices;
                 _queuedCorruption.Clear();
+                // Revue finale de la PR #252 : corruption retirée en plein défi : le gardien n'est plus suivi par le défi, il s'en va (sans
+                // annonce : plus de source à nommer) au lieu de continuer comme un combat sans règle de victoire ni d'échec.
+                if (_sourceFight is BossFight f && !_sourceSettled) AbandonSourceFight(f, Live(f));
                 _sourceFight = null;
                 return;
             }
@@ -299,7 +302,16 @@ namespace EdS.World
             {
                 return SourceChallengeRefusal.NoRoom;
             }
-            if (_sourceFight != null) _fights.Remove(_sourceFight);   // le combat réglé d'un défi précédent de la session
+            // Revue Codex de la PR #252 (5e tour) : le combat réglé d'un défi précédent (le même gardien) est remplacé ; sa récompense de la
+            // première victoire en attente (sac ou registre plein) passe au nouveau, comme pour un chef dans OpenedSector, au lieu d'être perdue.
+            // Même gardien, même clé de victoire, même si le catalogue a été relu (autre instance) ; jamais un chef de la zone.
+            int previous = _fights.FindIndex(x => x.Boss.Id == challenge.Boss.Id && !System.Linq.Enumerable.Contains(Definition!.Bosses, x.Boss));
+            if (previous >= 0)
+            {
+                fight.RewardPending = _fights[previous].RewardPending;
+                fight.RewardAnnounced = _fights[previous].RewardAnnounced;
+                _fights.RemoveAt(previous);
+            }
             _sourceFight = fight;
             _sourceSettled = false;
             _sourceWonHere = false;
@@ -352,6 +364,17 @@ namespace EdS.World
             // Revue Codex de la PR #252 : comme le départ d'un voyageur (Sectors.Leave), un départ refusé par le moteur (session terminée,
             // plafond de commandes ou d'événements : InvalidOperationException ; forme refusée : ArgumentException) laisse la forme sur place,
             // sans combat ; le défi est réglé quand même (échec annoncé), et aucun tick suivant ne retente le départ.
+            AbandonSourceFight(f, live);
+            _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeFailed, book.Source.Id, 0, day));
+            return false;
+        }
+
+        /// <summary>
+        /// Le combat du gardien est abandonné (défi perdu, ou corruption retirée en plein défi) : la forme en jeu quitte sa session, une
+        /// forme programmée partira à son arrivée ; le combat quitte la liste, sauf si sa récompense attend encore ; le défi est réglé.
+        /// </summary>
+        private void AbandonSourceFight(BossFight f, bool live)
+        {
             if (live && f.Session is Zone z)
                 BeforeSourceLeaveForTest?.Invoke(z, f.CurrentForm);
             if (live && f.Session is Zone s && !s.IsOver && System.Linq.Enumerable.Contains(s.Engine.CombatantIds, f.CurrentForm))
@@ -367,10 +390,9 @@ namespace EdS.World
                 else if (!v.IsDead && !v.HasLeft && v.ArrivalTick is long due && due >= s.Engine.CurrentTick && _sourceDoomed.Count < MaxSourceDoomed)
                     _sourceDoomed.Add((s, f.CurrentForm));
             }
+            f.Stop();   // aucune forme de plus, même si le combat reste pour sa récompense en attente
             if (!f.RewardPending) _fights.Remove(f);
             _sourceSettled = true;
-            _queuedCorruption.Add(new CorruptionNotice(CorruptionNoticeKind.ChallengeFailed, book.Source.Id, 0, day));
-            return false;
         }
     }
 }
