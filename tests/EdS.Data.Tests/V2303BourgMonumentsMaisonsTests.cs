@@ -61,15 +61,19 @@ public class V2303BourgMonumentsMaisonsTests
     [Fact]
     public void Houses_fit_their_footprint_gable_to_the_nearest_road_on_a_short_side()
     {
+        // Kit du Bourg (25 novembre 2026) : la maison posée est du kit (BourgKitTests) ; l'ancienne maison type reste en repli, au centre.
         var used = new Dictionary<string, int>();
-        foreach (BourgPiece h in Inside.Where(p => BourgModels.IsTownHouse(p.Covers)))
+        foreach (BourgPiece k in Inside.Where(p => BourgModels.IsTownHouse(p.Covers)))
         {
+            Assert.NotNull(k.Fallback);
+            BourgPiece h = k.Fallback!.For(k);
             var b = Box(h.Covers!);
             var f = BourgModels.Footprint(h.Piece, h.X, h.Z, h.Yaw);
             Assert.True(Overflow(f, b) <= BourgModels.HouseTolerance + 1e-9, h.Covers + " déborde " + h.Piece);
             Assert.Equal(((b.X0 + b.X1) / 2, (b.Z0 + b.Z1) / 2), (h.X, h.Z));
             // Pignon sur le petit côté (toutes les emprises sont plus longues en x).
             Assert.True(h.Yaw is 90 or -90, h.Covers + " " + h.Yaw);
+            Assert.Equal(h.Yaw, k.Yaw);
             Assert.True(BourgModels.Box(h.Piece)!.Value.Y1 - BourgModels.Box(h.Piece)!.Value.Y0 >= BourgModels.Box(h.Piece)!.Value.X1 - BourgModels.Box(h.Piece)!.Value.X0, h.Piece);
             used[h.Piece] = used.TryGetValue(h.Piece, out int n) ? n + 1 : 1;
         }

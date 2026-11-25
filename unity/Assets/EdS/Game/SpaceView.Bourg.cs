@@ -24,9 +24,12 @@ namespace EdS.Game
             if (_bourg == null || !_bourg.Needs.TryGetValue(id, out System.Collections.Generic.IReadOnlyList<string> needs)) return false;
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return false;
+            bool all = true;
             foreach (string piece in needs)
-                if (catalog.OwnDecorPiece(piece) == null) return false;
-            return true;
+                if (catalog.OwnDecorPiece(piece) == null) all = false;
+            if (all) return true;
+            // Kit du Bourg (25 novembre 2026) : une maison du kit absente laisse l'ancienne maison type de l'atelier.
+            return _bourg.Fallbacks.TryGetValue(id, out string old) && catalog.OwnDecorPiece(old) != null;
         }
 
         /// <summary>
@@ -41,10 +44,17 @@ namespace EdS.Game
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
             float minZ = Raw(_space.Min.Z.Raw) - BourgMargin, maxZ = Raw(_space.Max.Z.Raw) + BourgMargin;
             var walled = new System.Collections.Generic.Dictionary<string, float>();
-            foreach (BourgPiece p in _bourg.Near(minX, minZ, maxX, maxZ, 0))
+            foreach (BourgPiece near in _bourg.Near(minX, minZ, maxX, maxZ, 0))
             {
-                if (p.Covers != null && !BourgCovers(p.Covers)) continue;
+                if (near.Covers != null && !BourgCovers(near.Covers)) continue;
+                BourgPiece p = near;
                 GameObject prefab = catalog.OwnDecorPiece(p.Piece);
+                // Kit du Bourg : repli sur l'ancienne maison type, à sa propre place, quand le modèle du kit manque.
+                if (prefab == null && p.Fallback != null)
+                {
+                    p = p.Fallback.For(near);
+                    prefab = catalog.OwnDecorPiece(p.Piece);
+                }
                 if (prefab == null) continue;
                 var holder = new GameObject(prefab.name + " (Bourg)");
                 holder.transform.SetParent(_root.transform, false);
@@ -53,8 +63,12 @@ namespace EdS.Game
                 float ground = BourgModels.OnRim(p.Piece) ? RimGround(p) : Ground(x, z, (float)BourgModels.Foot(p.Piece));
                 holder.transform.position = new Vector3(x, ground + (float)p.Height, z);
                 holder.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
+                // Kit du Bourg : sols (place, rue pavée, ruelle, bordure) couchés sur la pente du sol affiché, à sa hauteur au centre ; posés au
+                // plus bas de leur pied, ils s'enterraient sur les pentes et ne laissaient voir que des coins clairs épars dans l'herbe.
+                if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, x, z, (float)p.Yaw, (float)BourgModels.Foot(p.Piece));
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                KitLod(model, p.Piece, catalog);
                 BourgOpen(holder.transform, model.transform, p.Piece);
                 // Relecture indépendante : occulteurs pour les grandes pièces seulement (tours, portes, bâtiments).
                 if (BourgModels.Occludes(p.Piece)) AddModelOccluders(model);
@@ -75,6 +89,46 @@ namespace EdS.Game
                 float ground = Ground((x0 + x1) / 2f, (z0 + z1) / 2f, 0.4f);
                 _cameraBoxes.Add(new CameraBox(x0, ground, z0, x1, ground + top, z1));
             }
+        }
+
+        /// <summary>
+        /// Kit du Bourg (décision de Damien du 25 novembre 2026) : une maison du kit reçoit sa version lointaine (« …_lod1 », même place) et
+        /// un LODGroup : détaillée de près, lointaine plus loin, rien au-delà (seuils de <see cref="BourgKit.LodHeights"/> selon la machine).
+        /// Sans version lointaine au catalogue, la maison détaillée reste seule.
+        /// </summary>
+        private static void KitLod(GameObject model, string piece, StyleCatalog catalog)
+        {
+            if (BourgKit.Find(piece) == null) return;
+            GameObject farPrefab = catalog.OwnDecorPiece(BourgKit.Far(piece));
+            if (farPrefab == null) return;
+            GameObject far = Object.Instantiate(farPrefab, model.transform.parent, false);
+            far.name = farPrefab.name;
+            foreach (Collider c in far.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            Renderer[] near = model.GetComponentsInChildren<Renderer>(), distant = far.GetComponentsInChildren<Renderer>();
+            if (near.Length == 0 || distant.Length == 0) return;
+            GameObject owner = model.transform.parent.gameObject;
+            LODGroup group = owner.GetComponent<LODGroup>();
+            if (group == null) group = owner.AddComponent<LODGroup>();
+            group.SetLODs(new[] { new LOD(0.1f, near), new LOD(0.01f, distant) });
+            group.RecalculateBounds();
+            Camera camera = Camera.main;
+            var h = BourgKit.LodHeights(group.size, DeviceQuality.Tier, camera != null ? camera.fieldOfView : 60f);
+            group.SetLODs(new[] { new LOD((float)h.Far, near), new LOD((float)h.Cull, distant) });
+        }
+
+        /// <summary>
+        /// Kit du Bourg : un sol plat de l'atelier (modules de 6 m) posé à la hauteur du sol affiché en son centre et couché sur sa pente
+        /// (normale tirée de quatre points à <paramref name="r"/> m), un peu au-dessus pour ne pas scintiller avec le terrain.
+        /// </summary>
+        private static void GroundOnSlope(Transform holder, float x, float z, float yaw, float r)
+        {
+            r = Mathf.Max(0.5f, r);
+            float east = StyleWorld.StandHeight(x + r, z), west = StyleWorld.StandHeight(x - r, z);
+            float north = StyleWorld.StandHeight(x, z + r), south = StyleWorld.StandHeight(x, z - r);
+            float centre = (StyleWorld.StandHeight(x, z) + (east + west + north + south) / 4f) / 2f;
+            Vector3 normal = new Vector3(-(east - west) / (2f * r), 1f, -(north - south) / (2f * r)).normalized;
+            holder.position = new Vector3(x, centre + 0.02f, z);
+            holder.rotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0f, yaw, 0f);
         }
 
         /// <summary>V2.30.5 : sol d'une pièce du fossé : le plus bas des deux bords (de part et d'autre de son axe, au-delà du creux).</summary>

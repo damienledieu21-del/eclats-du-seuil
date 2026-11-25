@@ -12,8 +12,9 @@ namespace EdS.Runtime
     /// </summary>
     public readonly struct BourgPiece
     {
-        public BourgPiece(string piece, double x, double z, double yaw, string? covers, double height = 0)
+        public BourgPiece(string piece, double x, double z, double yaw, string? covers, double height = 0, BourgFallback? fallback = null)
         {
+            Fallback = fallback;
             Height = height;
             Piece = piece;
             X = x;
@@ -30,6 +31,32 @@ namespace EdS.Runtime
 
         /// <summary>V2.30.5 : hauteur (m) du pivot au-dessus du sol (pièce murale : lanterne, auvent, linge, bannière, râtelier) ; 0 au sol.</summary>
         public double Height { get; }
+
+        /// <summary>
+        /// Kit du Bourg (25 novembre 2026) : pièce posée à la place de celle-ci quand son modèle manque (l'ancienne maison type de l'atelier,
+        /// à sa propre place) ; null sans repli.
+        /// </summary>
+        public BourgFallback? Fallback { get; }
+    }
+
+    /// <summary>Kit du Bourg : repli d'une pièce (ancienne maison type H01 à H12), posé à sa place et à son lacet.</summary>
+    public sealed class BourgFallback
+    {
+        public BourgFallback(string piece, double x, double z, double yaw)
+        {
+            Piece = piece;
+            X = x;
+            Z = z;
+            Yaw = yaw;
+        }
+
+        public string Piece { get; }
+        public double X { get; }
+        public double Z { get; }
+        public double Yaw { get; }
+
+        /// <summary>La pièce de repli, qui habille le même obstacle.</summary>
+        public BourgPiece For(BourgPiece kit) => new BourgPiece(Piece, X, Z, Yaw, kit.Covers, kit.Height);
     }
 
     /// <summary>
@@ -42,7 +69,14 @@ namespace EdS.Runtime
         {
             Pieces = pieces;
             Needs = needs;
+            var fallbacks = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (BourgPiece p in pieces)
+                if (p.Covers != null && p.Fallback != null) fallbacks[p.Covers] = p.Fallback.Piece;
+            Fallbacks = fallbacks;
         }
+
+        /// <summary>Kit du Bourg : obstacle → pièce de repli (l'habillage reste si elle est au catalogue alors que la pièce du kit manque).</summary>
+        public IReadOnlyDictionary<string, string> Fallbacks { get; }
 
         public IReadOnlyList<BourgPiece> Pieces { get; }
 
@@ -80,6 +114,10 @@ namespace EdS.Runtime
         /// </summary>
         public static (double X0, double X1, double Y0, double Y1, double Top)? Box(string piece)
         {
+            // Kit du Bourg (25 novembre 2026) : la maison et sa version lointaine ont la même boîte.
+            KitHouse? kit = BourgKit.Find(piece) ?? (piece != null && piece.EndsWith(BourgKit.FarSuffix, StringComparison.Ordinal)
+                ? BourgKit.Find(piece.Substring(0, piece.Length - BourgKit.FarSuffix.Length)) : null);
+            if (kit != null) return kit.Box;
             switch (piece)
             {
                 case Wall: return (-3.0, 3.0, -0.16, 2.14, 4.8);
@@ -660,9 +698,11 @@ namespace EdS.Runtime
         public const double HouseChoice = 0.55;
 
         /// <summary>
-        /// Maisons de la ville (<c>maison_ville_NN</c>, hors la grande maison) : pignon sur rue (décision de Damien pour les maisons types)
-        /// sur le petit côté de l'emprise, vers la route la plus proche des deux petits côtés ; maison type tirée (d'après l'identifiant)
-        /// parmi celles qui tiennent dans l'emprise et dont la surface vaut au moins <see cref="HouseChoice"/> de la plus grande qui tient.
+        /// Maisons de la ville (<c>maison_ville_NN</c>, hors la grande maison) : façade sur le petit côté de l'emprise, vers la route la plus
+        /// proche des deux petits côtés. Kit du Bourg (décision de Damien du 25 novembre 2026) : une maison du kit tirée du centre de
+        /// l'emprise (<see cref="BourgKit.Choose"/>), son avant au bord côté rue ; repli : la maison type de l'atelier (H01 à H12) tirée
+        /// d'après l'identifiant parmi celles qui tiennent et dont la surface vaut au moins <see cref="HouseChoice"/> de la plus grande, au
+        /// centre de l'emprise, posée si le modèle du kit manque.
         /// </summary>
         private static void HousesOf(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces,
             Dictionary<string, List<string>> needs)
@@ -672,6 +712,21 @@ namespace EdS.Runtime
                 var b = Bounds(o);
                 (int X, int Z) facing = HouseFacing(b, roads);
                 string? model = HouseModel(o.Id, b, facing);
+                KitHouse? kit = BourgKit.Choose(b, facing);
+                if (kit != null)
+                {
+                    var (right, ahead) = BourgKit.Offset(kit, b, facing);
+                    BourgPiece at = At(kit.Piece, b, facing, right, ahead, o.Id);
+                    BourgFallback? fallback = null;
+                    if (model != null)
+                    {
+                        BourgPiece old = At(model, b, facing, 0, 0, o.Id);
+                        fallback = new BourgFallback(old.Piece, old.X, old.Z, old.Yaw);
+                    }
+                    pieces.Add(new BourgPiece(at.Piece, at.X, at.Z, at.Yaw, o.Id, 0, fallback));
+                    Need(needs, o.Id, kit.Piece);
+                    continue;
+                }
                 if (model == null) continue;
                 pieces.Add(At(model, b, facing, 0, 0, o.Id));
                 Need(needs, o.Id, model);
@@ -834,10 +889,11 @@ namespace EdS.Runtime
                 double a = h.Yaw * Math.PI / 180;
                 (double fx, double fz) = (Math.Round(Math.Sin(a)), Math.Round(Math.Cos(a)));
                 double back = fx != 0 ? (hb.X1 - hb.X0) / 2 : (hb.Z1 - hb.Z0) / 2;
+                double hx = (hb.X0 + hb.X1) / 2, hz = (hb.Z0 + hb.Z1) / 2;   // kit du Bourg : la maison est avancée vers la rue, la cour part du centre
                 string yard = Yards[StyleRules.Variant(h.Covers + "/cour", Yards.Length)];
                 var yb = Box(yard)!.Value;
                 double depth = Math.Max(yb.Y1 - yb.Y0, yb.X1 - yb.X0) / 2;
-                Try(yard, h.X - fx * (back + PropClearance + 0.2 + depth), h.Z - fz * (back + PropClearance + 0.2 + depth), h.Yaw + 180);
+                Try(yard, hx - fx * (back + PropClearance + 0.2 + depth), hz - fz * (back + PropClearance + 0.2 + depth), h.Yaw + 180);
             }
             // Sols en dernier (relecture indépendante) : ni sous la fontaine, le lavoir, le parvis, le cimetière, le pilori ou l'abreuvoir.
             // Place du marché : le rectangle des étals agrandi de 3 m, pavé de modules de 6 m, bordé là où rien ne passe.
@@ -978,7 +1034,10 @@ namespace EdS.Runtime
                 case Provost: case Guardhouse: facade = 5.4; break;
                 case Stables:
                     return new[] { 5.0, 11.0, 19.0, 25.0 }.Select(x => (Round(15.0 - x), 4.6, 12.03, 1.0, 1.0)).ToList();
-                default: return Array.Empty<(double, double, double, double, double)>();
+                default:
+                    // Kit du Bourg : les fenêtres de façade de la recette (rez-de-chaussée et premier étage), 0,8 × 1,2 m.
+                    if (BourgKit.Find(piece) is KitHouse kit) return kit.Windows.Select(w => (w.X, w.Y, w.Z, 0.8, 1.2)).ToList();
+                    return Array.Empty<(double, double, double, double, double)>();
             }
             var b = Box(piece)!.Value;
             double quarter = (b.X1 - b.X0) / 4, z = facade + 0.03;
@@ -1011,7 +1070,7 @@ namespace EdS.Runtime
                 case "p13_armurier": case "p14_forgeron": return (0, -4.6);
                 case "p15_tanneur": case "p18_taverne": return (0, -5.6);
                 case "p16_apothicaire": case "p17_tailleur": return (0, -4.1);
-                default: return null;
+                default: return BourgKit.Find(piece)?.Door;
             }
         }
 
