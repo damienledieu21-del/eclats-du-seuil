@@ -75,6 +75,31 @@
         "leashRange": 12,
         "loot": "loot.echo",
         "family": "echo"
+      },
+      {
+        "creature": "rat_egout4",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout5",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout6",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_geant_egout2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.rat_geant",
+        "family": "rat_geant"
       }
     ],
     "passages": [],

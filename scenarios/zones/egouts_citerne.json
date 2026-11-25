@@ -434,7 +434,169 @@
           "aggroRange": 8,
           "encircle": true
         }
+      },
+      {
+        "id": "rat_egout4",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -18,
+          10.5
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_egout5",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -17,
+          12
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_egout6",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -19,
+          12
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_geant_egout2",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 240,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1300,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 15,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          17,
+          22
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.55,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
       }
+    ],
+    "truces": [
+      [
+        "rats",
+        "echos"
+      ]
     ],
     "commands": []
   }

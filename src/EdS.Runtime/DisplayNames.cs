@@ -74,6 +74,9 @@ namespace EdS.Runtime
             ["loup_echo_egout"] = "Loup-écho des égouts",
             ["loup_echo_bete_citerne"] = "Bête de la citerne",
             ["loup_echo_bete_citerne_enragee"] = "Bête de la citerne enragée",
+            // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts, petits et en groupe, et les rats géants.
+            ["rat_egout"] = "Rat des égouts",
+            ["rat_geant_egout"] = "Rat géant",
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
