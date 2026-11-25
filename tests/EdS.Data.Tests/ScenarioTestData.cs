@@ -192,7 +192,7 @@ internal static class ScenarioTestData
         "porte_maison_joueur" };   // V2.53.2 : et la porte de la maison du joueur (hors de l'aire d'avant)
 
     /// <summary>V2.46 : les portes des dessous (hors de l'aire d'avant) : la grotte derrière la cascade, puis la mine (V2.47.1).</summary>
-    public static readonly string[] UnderDoors = { "porte_grotte_cascade", "porte_mine_galeries", "porte_crypte_abbaye" };   // V2.47.1 : et la bouche de la mine ; V2.48.1 : et l'escalier de la crypte de l'abbaye
+    public static readonly string[] UnderDoors = { "porte_grotte_cascade", "porte_mine_galeries", "porte_crypte_abbaye", "porte_egouts_marche", "porte_egouts_deversoir" };   // V2.47.1 : et la bouche de la mine ; V2.48.1 : et l'escalier de la crypte de l'abbaye ; V2.49.1 : et les deux entrées des égouts
 
     /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits (V2.46 : ni celles des dessous).</summary>
     public static void WithoutRebuildDoors(JsonObject zone)

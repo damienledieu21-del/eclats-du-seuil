@@ -402,6 +402,14 @@
         "value": 180
       },
       {
+        "item": "item.manteau_du_passeur",
+        "value": 260
+      },
+      {
+        "item": "item.anneau_perdu_des_egouts",
+        "value": 300
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },

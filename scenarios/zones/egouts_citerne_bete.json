@@ -1,0 +1,444 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 494,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          36
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "mur_egout_citerne_entree_ouest",
+          "points": [
+            [
+              -24,
+              -4
+            ],
+            [
+              -6,
+              -4
+            ],
+            [
+              -6,
+              8
+            ],
+            [
+              -24,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "mur_egout_citerne_entree_est",
+          "points": [
+            [
+              6,
+              -4
+            ],
+            [
+              24,
+              -4
+            ],
+            [
+              24,
+              8
+            ],
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "bassin_egout_citerne",
+          "points": [
+            [
+              -8,
+              15
+            ],
+            [
+              8,
+              15
+            ],
+            [
+              8,
+              25
+            ],
+            [
+              -8,
+              25
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "pilier_egout_citerne_1",
+          "points": [
+            [
+              -12.4,
+              13.6
+            ],
+            [
+              -11.6,
+              13.6
+            ],
+            [
+              -11.6,
+              14.4
+            ],
+            [
+              -12.4,
+              14.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_citerne_2",
+          "points": [
+            [
+              11.6,
+              13.6
+            ],
+            [
+              12.4,
+              13.6
+            ],
+            [
+              12.4,
+              14.4
+            ],
+            [
+              11.6,
+              14.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_citerne_3",
+          "points": [
+            [
+              -12.4,
+              25.6
+            ],
+            [
+              -11.6,
+              25.6
+            ],
+            [
+              -11.6,
+              26.4
+            ],
+            [
+              -12.4,
+              26.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_citerne_4",
+          "points": [
+            [
+              11.6,
+              25.6
+            ],
+            [
+              12.4,
+              25.6
+            ],
+            [
+              12.4,
+              26.4
+            ],
+            [
+              11.6,
+              26.4
+            ]
+          ]
+        },
+        {
+          "id": "mur_egout_repaire_ouest",
+          "points": [
+            [
+              -24,
+              28
+            ],
+            [
+              -4,
+              28
+            ],
+            [
+              -4,
+              29.5
+            ],
+            [
+              -24,
+              29.5
+            ]
+          ]
+        },
+        {
+          "id": "mur_egout_repaire_est",
+          "points": [
+            [
+              4,
+              28
+            ],
+            [
+              24,
+              28
+            ],
+            [
+              24,
+              29.5
+            ],
+            [
+              4,
+              29.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_egout_repaire_ouest",
+          "points": [
+            [
+              -4,
+              28
+            ],
+            [
+              -3.4,
+              28
+            ],
+            [
+              -3.4,
+              29.5
+            ],
+            [
+              -4,
+              29.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_egout_repaire_est",
+          "points": [
+            [
+              3.4,
+              28
+            ],
+            [
+              4,
+              28
+            ],
+            [
+              4,
+              29.5
+            ],
+            [
+              3.4,
+              29.5
+            ]
+          ]
+        },
+        {
+          "id": "deversoir_egout_citerne",
+          "points": [
+            [
+              -24,
+              18
+            ],
+            [
+              -22.6,
+              18
+            ],
+            [
+              -22.6,
+              22
+            ],
+            [
+              -24,
+              22
+            ]
+          ]
+        },
+        {
+          "id": "tuyau_egout_citerne_1",
+          "points": [
+            [
+              22.6,
+              12
+            ],
+            [
+              24,
+              12
+            ],
+            [
+              24,
+              13.2
+            ],
+            [
+              22.6,
+              13.2
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "repaire_egout_bete",
+          "points": [
+            [
+              -6,
+              34.4
+            ],
+            [
+              6,
+              34.4
+            ],
+            [
+              6,
+              36
+            ],
+            [
+              -6,
+              36
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "loup_echo_bete_citerne",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 800,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          0,
+          32
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_echo_bete_citerne_enragee",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 550,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1400,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "vague_de_fange",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          2,
+          32
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

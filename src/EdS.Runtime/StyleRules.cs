@@ -1974,6 +1974,9 @@ namespace EdS.Runtime
             // Sous-lot V1.9.8 : Croc-Gris (ses deux formes) est un loup.
             if (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("crocgris", StringComparison.Ordinal)) return StyleSlot.Wolf;
             if (key.StartsWith("sanglier", StringComparison.Ordinal)) return StyleSlot.Boar;
+            // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts et les rats géants. Aucun rongeur dans le projet : en repli, le
+            // quadrupède le plus proche (le loup, qui a ses attaques), à petite échelle (BeastHeight). Jamais « ratelier_… » (obstacles).
+            if (IsRat(id)) return StyleSlot.Wolf;
             // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
@@ -2014,6 +2017,12 @@ namespace EdS.Runtime
             return (x + 3 * Math.Cos(angle), z + 3 * Math.Sin(angle));
         }
 
+        /// <summary>
+        /// V2.49.1 (décision de Damien du 23 novembre 2026) : un rat des égouts ou un rat géant (« rat_egout3 », « rat_geant_egout1_v2 ») :
+        /// le premier mot de l'identifiant est « rat » ; « ratelier_bois » n'en est pas un.
+        /// </summary>
+        public static bool IsRat(string id) => Regex.IsMatch(id ?? string.Empty, "^rat(_|[0-9]|$)", RegexOptions.IgnoreCase);
+
         public static bool IsBeast(StyleSlot slot) =>
             slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
 
@@ -2040,6 +2049,8 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : hauteur des modèles des bêtes paisibles (bois ou oreilles compris).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id) == StyleSlot.Stag ? 2.1 : 1.35;   // 2e vague : biches du modèle de faon
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
+            // V2.49.1 : rats des égouts (0,3 m) et rats géants (0,6 m), sur le modèle du loup en repli.
+            if (IsRat(id)) return key.StartsWith("ratgeant", StringComparison.Ordinal) ? 0.6 : 0.3;
             // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
             if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
             if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;

@@ -47,6 +47,8 @@ namespace EdS.Runtime
             ["item.coeur_de_cristal_du_seuil"] = new[] { "amulet", "crystal", "necklace" },   // V2.47.1 : la récompense du fond de la mine
             ["item.sceau_de_l_abbe"] = new[] { "ring", "seal", "signet" },   // V2.48.1 : la récompense du tombeau de l'abbé
             ["item.anneau_du_sacristain"] = new[] { "ring", "band" },   // V2.48.1 : la crypte secrète de la chapelle
+            ["item.manteau_du_passeur"] = new[] { "cloak", "cape", "mantle" },   // V2.49.1 : le passeur des contrebandiers (égouts du Bourg)
+            ["item.anneau_perdu_des_egouts"] = new[] { "ring", "band" },   // V2.49.1 (décision de Damien du 23 novembre 2026) : butin rare des rats géants
             ["item.potion_de_soin"] = new[] { "healthpotion", "redpotion", "potion" },
             // Fusion de V2.10 (récompenses uniques des concours du marché) avec V2.11.
             ["item.tablier_de_maitre"] = new[] { "apron", "belt" },
