@@ -42,8 +42,9 @@ namespace EdS.Runtime
     /// <summary>Kit du Bourg : repli d'une pièce (ancienne maison type H01 à H12), posé à sa place et à son lacet.</summary>
     public sealed class BourgFallback
     {
-        public BourgFallback(string piece, double x, double z, double yaw)
+        public BourgFallback(string piece, double x, double z, double yaw, string? when = null)
         {
+            When = when;
             Piece = piece;
             X = x;
             Z = z;
@@ -54,6 +55,12 @@ namespace EdS.Runtime
         public double X { get; }
         public double Z { get; }
         public double Yaw { get; }
+
+        /// <summary>
+        /// Pièce dont l'absence fait poser le repli (null : la pièce elle-même). Relecture de la PR #255 : la lanterne de porte d'une maison du
+        /// kit passe sur la porte de l'ancienne maison quand c'est elle qui est posée.
+        /// </summary>
+        public string? When { get; }
 
         /// <summary>La pièce de repli, qui habille le même obstacle.</summary>
         public BourgPiece For(BourgPiece kit) => new BourgPiece(Piece, X, Z, Yaw, kit.Covers, kit.Height);
@@ -1108,8 +1115,17 @@ namespace EdS.Runtime
                 // Revue Codex de la PR #204 : sur la façade du modèle posé (pas sur l'emprise de collision, qui peut être bien plus grande) :
                 // 0,25 m devant le mur, 0,9 m à droite de la porte vue de dehors (+X de Blender, donc −x dans Unity).
                 (double dx, double dy) = FrontDoor(p.Piece)!.Value;
-                (double lx, double lz) = Place(p.X, p.Z, p.Yaw, -(dx + 0.9), -dy + 0.25);
-                added.Add(new BourgPiece(WallLantern, lx, lz, p.Yaw, null, 3.5 - 1.2));
+                // Relecture de la PR #255 : devant l'encorbellement d'une maison du kit (M01, M04), pas noyée dedans.
+                double overhang = BourgKit.Find(p.Piece) is KitHouse kit && kit.Overhang > 0 ? kit.Overhang + 0.1 : 0;
+                (double lx, double lz) = Place(p.X, p.Z, p.Yaw, -(dx + 0.9), -dy + 0.25 + overhang);
+                // Repli : si la maison du kit manque, la lanterne va sur la porte de l'ancienne maison type.
+                BourgFallback? lanternFallback = null;
+                if (p.Fallback != null && FrontDoor(p.Fallback.Piece) is { } old)
+                {
+                    (double ox, double oz) = Place(p.Fallback.X, p.Fallback.Z, p.Fallback.Yaw, -(old.X + 0.9), -old.Y + 0.25);
+                    lanternFallback = new BourgFallback(WallLantern, ox, oz, p.Fallback.Yaw, p.Piece);
+                }
+                added.Add(new BourgPiece(WallLantern, lx, lz, p.Yaw, null, 3.5 - 1.2, lanternFallback));
                 if (ShopModel(p.Covers) != null && p.Covers != "maison_ville_notable")
                 {
                     (double ax, double az) = Place(p.X, p.Z, p.Yaw, -dx, -dy + 1.1);

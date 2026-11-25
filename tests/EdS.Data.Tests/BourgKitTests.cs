@@ -126,7 +126,7 @@ public class BourgKitTests
         Assert.Equal(12 * 2 + 1, Directory.GetFiles(Folder).Length);
         Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 4_000_000);
         byte[] png = File.ReadAllBytes(Path.Combine(Folder, BourgKit.Palette + ".png"));
-        // 37 familles, 73 teintes : 8 colonnes de cases de 4 px, 10 rangées (32 × 40 px).
+        // 34 familles, 76 teintes : 8 colonnes de cases de 4 px, 10 rangées (32 × 40 px).
         Assert.Equal((32, 40), V218BoulangerieTests.PngSize(png));
         foreach (KitHouse h in BourgKit.Houses)
         {
@@ -142,13 +142,41 @@ public class BourgKitTests
         }
         // La vue pose la version lointaine dans un LODGroup (seuils décroissants pour toutes les machines).
         string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Bourg.cs"));
-        Assert.Contains("KitLod(model, p.Piece, catalog);", view, StringComparison.Ordinal);
+        Assert.Contains("KitLod(model, p.Piece, catalog, panes);", view, StringComparison.Ordinal);
         Assert.Contains("AddComponent<LODGroup>()", view, StringComparison.Ordinal);
         foreach (DeviceTier tier in Enum.GetValues<DeviceTier>())
         {
             var t = BourgKit.LodHeights(12, tier, 60);
             Assert.True(t.Far > t.Cull && t.Cull > 0 && t.Far < 1, tier.ToString());
         }
+    }
+
+    [Fact]
+    public void Door_lanterns_clear_the_overhang_and_follow_the_fallback_house()
+    {
+        // Relecture de la PR #255 : lanterne avancée de l'encorbellement + 0,1 m (M01, M04) ; repli sur la porte de l'ancienne maison.
+        Assert.Equal(new[] { "kit_m01_etroite_pignon", "kit_m04_drapier" }, BourgKit.Houses.Where(h => h.Overhang > 0).Select(h => h.Piece));
+        var lanterns = Dress.Value.Pieces.Where(p => p.Piece == BourgModels.WallLantern).ToList();
+        foreach (BourgPiece h in Houses)
+        {
+            KitHouse kit = BourgKit.Find(h.Piece)!;
+            double extra = kit.Overhang > 0 ? kit.Overhang + 0.1 : 0;
+            var at = BourgModels.Place(h.X, h.Z, h.Yaw, -(kit.Door.X + 0.9), -kit.Door.Y + 0.25 + extra);
+            BourgPiece l = lanterns.Single(q => Math.Abs(q.X - at.X) < 1e-6 && Math.Abs(q.Z - at.Z) < 1e-6);
+            Assert.Null(l.Covers);
+            Assert.Equal(h.Piece, l.Fallback!.When);
+            (double dx, double dy) = BourgModels.FrontDoor(h.Fallback!.Piece)!.Value;
+            var old = BourgModels.Place(h.Fallback.X, h.Fallback.Z, h.Fallback.Yaw, -(dx + 0.9), -dy + 0.25);
+            Assert.Equal((old.X, old.Z, h.Fallback.Yaw), (l.Fallback.X, l.Fallback.Z, l.Fallback.Yaw));
+            Assert.Equal(BourgModels.WallLantern, l.Fallback.For(l).Piece);
+            Assert.Equal(l.Height, l.Fallback.For(l).Height);
+        }
+        // La palette est réglée dès son import (postprocesseur), les vitres de nuit suivent le LOD de la maison.
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsBourgKitTextures.cs"));
+        Assert.Contains("OnPreprocessTexture", editor, StringComparison.Ordinal);
+        Assert.Contains("FilterMode.Point", editor, StringComparison.Ordinal);
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Bourg.cs"));
+        Assert.Contains("nearList.AddRange(windows);", view, StringComparison.Ordinal);
     }
 
     [Fact]

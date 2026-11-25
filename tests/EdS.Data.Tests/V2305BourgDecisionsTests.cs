@@ -286,7 +286,9 @@ public class V2305BourgDecisionsTests : IDisposable
         foreach (BourgPiece h in fronts)
         {
             (double dx, double dy) = BourgModels.FrontDoor(h.Piece)!.Value;
-            var expected = BourgModels.Place(h.X, h.Z, h.Yaw, -(dx + 0.9), -dy + 0.25);
+            // Relecture de la PR #255 : devant l'encorbellement d'une maison du kit (M01, M04).
+            double overhang = BourgKit.Find(h.Piece) is KitHouse kit && kit.Overhang > 0 ? kit.Overhang + 0.1 : 0;
+            var expected = BourgModels.Place(h.X, h.Z, h.Yaw, -(dx + 0.9), -dy + 0.25 + overhang);
             Assert.Contains(lanterns, l => l.X == expected.X && l.Z == expected.Z && l.Yaw == h.Yaw);
             // Devant le mur de façade, dans le pied du modèle (élargi de la saillie de la potence) : rien ne flotte.
             var f = BourgModels.Footprint(h.Piece, h.X, h.Z, h.Yaw);
@@ -295,7 +297,8 @@ public class V2305BourgDecisionsTests : IDisposable
         BourgPiece h23 = fronts.Single(p => p.Covers == "maison_ville_23");
         var l23 = lanterns.Single(l => Math.Abs(l.X - h23.X) < 8 && Math.Abs(l.Z - h23.Z) < 8);
         double a = h23.Yaw * Math.PI / 180, ahead = (l23.X - h23.X) * Math.Sin(a) + (l23.Z - h23.Z) * Math.Cos(a);
-        Assert.Equal(-BourgModels.FrontDoor(h23.Piece)!.Value.Y + 0.25, ahead, 6);
+        double over23 = BourgKit.Find(h23.Piece)?.Overhang is double o && o > 0 ? o + 0.1 : 0;   // maison du kit en encorbellement
+        Assert.Equal(-BourgModels.FrontDoor(h23.Piece)!.Value.Y + 0.25 + over23, ahead, 6);
         Assert.True(ahead <= -BourgModels.Box(h23.Piece)!.Value.Y0 + 0.25);
     }
 }

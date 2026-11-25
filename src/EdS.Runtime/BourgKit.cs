@@ -13,8 +13,9 @@ namespace EdS.Runtime
     public sealed class KitHouse
     {
         public KitHouse(string piece, double x0, double x1, double y0, double y1, double top, bool slate, int triangles, int farTriangles,
-            (double X, double Y) door, (double X, double Y, double Z)[] windows)
+            (double X, double Y) door, (double X, double Y, double Z)[] windows, double overhang = 0)
         {
+            Overhang = overhang;
             Piece = piece;
             Box = (x0, x1, y0, y1, top);
             Slate = slate;
@@ -41,13 +42,19 @@ namespace EdS.Runtime
         /// <summary>Fenêtres de façade du rez-de-chaussée et du premier étage (repère d'Unity du modèle : x, hauteur du centre, z).</summary>
         public (double X, double Y, double Z)[] Windows { get; }
 
+        /// <summary>
+        /// Avancée (m) du premier étage sur la façade du rez-de-chaussée (encorbellement de M01 et M04) : la lanterne de porte est avancée
+        /// d'autant (relecture de la PR #255 : elle était noyée dans l'encorbellement).
+        /// </summary>
+        public double Overhang { get; }
+
         public double Width => Box.X1 - Box.X0;
         public double Depth => Box.Y1 - Box.Y0;
     }
 
     /// <summary>
     /// Kit modulaire du Bourg d'Aube (atelier <c>Bourg_Kit</c>, style validé par Damien le 25 novembre 2026) : douze maisons faites de 43 pièces,
-    /// un seul matériau à texture palette de 32 × 32 px (« bourg_kit_couleur », filtrage point), grille de 1 m, étages de 3 m. Il remplace les
+    /// un seul matériau à texture palette de 32 × 40 px (« bourg_kit_couleur », 76 teintes, filtrage point), grille de 1 m, étages de 3 m. Il remplace les
     /// maisons ordinaires du Bourg (<c>maison_ville_NN</c>) ; les bâtiments nommés gardent leur modèle. Chaque maison a une version
     /// lointaine générée depuis la même recette (LOD1, 66 à 282 triangles) et la vue lui donne un LODGroup. Affichage seulement ; sans Unity.
     /// </summary>
@@ -56,7 +63,7 @@ namespace EdS.Runtime
         /// <summary>Dossier des exports de jeu du kit (un groupe du décor de l'atelier : « bourg_kit_&lt;pièce&gt;.fbx »).</summary>
         public const string Folder = "Assets/EdS/Modeles/Decor/bourg_kit";
 
-        /// <summary>Texture palette partagée par tout le kit (32 × 32 px, une case de 4 px par teinte).</summary>
+        /// <summary>Texture palette partagée par tout le kit (32 × 40 px, une case de 4 px par teinte, 76 teintes).</summary>
         public const string Palette = "bourg_kit_couleur";
 
         /// <summary>Suffixe de la version lointaine d'une maison.</summary>
@@ -74,10 +81,10 @@ namespace EdS.Runtime
         /// <summary>Les douze maisons du kit (atelier, <c>jeu/export_jeu.json</c>).</summary>
         public static readonly IReadOnlyList<KitHouse> Houses = new[]
         {
-            new KitHouse("kit_m01_etroite_pignon", -2.58, 2.58, -5.32, 4.25, 12.1, false, 6888, 226, (-1, -4), new (double, double, double)[] { (-1, 1.6, 4.04), (1, 4.6, 4.54), (-1, 4.6, 4.54) }),
+            new KitHouse("kit_m01_etroite_pignon", -2.58, 2.58, -5.32, 4.25, 12.1, false, 6888, 226, (-1, -4), new (double, double, double)[] { (-1, 1.6, 4.04), (1, 4.6, 4.54), (-1, 4.6, 4.54) }, 0.5),
             new KitHouse("kit_m02_artisan", -3.25, 3.32, -3.7, 3.58, 10.1, false, 5136, 154, (0, -3), new (double, double, double)[] { (2, 1.6, 3.04), (-2, 1.6, 3.04), (2, 4.6, 3.04), (-2, 4.6, 3.04) }),
             new KitHouse("kit_m03_boulangerie", -4.25, 4.25, -4.3, 3.58, 10.1, false, 6352, 186, (1, -3), new (double, double, double)[] { (-3, 1.6, 3.04), (3, 4.6, 3.04), (-1, 4.6, 3.04), (-3, 4.6, 3.04) }),
-            new KitHouse("kit_m04_drapier", -3.58, 3.58, -5.53, 4.25, 13.1, false, 8510, 268, (0, -4), new (double, double, double)[] { (2, 4.6, 4.54), (0, 4.6, 4.54), (-2, 4.6, 4.54) }),
+            new KitHouse("kit_m04_drapier", -3.58, 3.58, -5.53, 4.25, 13.1, false, 8510, 268, (0, -4), new (double, double, double)[] { (2, 4.6, 4.54), (0, 4.6, 4.54), (-2, 4.6, 4.54) }, 0.5),
             new KitHouse("kit_m05_notable", -5.63, 5.63, -5.02, 4.63, 11.1, true, 9410, 236, (0, -4), new (double, double, double)[] { (4, 1.6, 4.04), (2, 1.6, 4.04), (-2, 1.6, 4.04), (-4, 1.6, 4.04) }),
             new KitHouse("kit_m06_angle", -4.63, 5.53, -5.53, 4.63, 10.16, false, 7094, 176, (-1, -4), new (double, double, double)[] { (-3, 1.6, 4.04), (3, 4.6, 4.04), (1, 4.6, 4.04), (-3, 4.6, 4.04) }),
             new KitHouse("kit_m07_taverne", -5.25, 5.32, -5.3, 4.7, 11.1, false, 9402, 282, (0, -4), new (double, double, double)[] { (4, 1.6, 4.04), (2, 1.6, 4.04), (-2, 1.6, 4.04), (-4, 1.6, 4.04) }),
