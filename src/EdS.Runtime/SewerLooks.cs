@@ -130,10 +130,45 @@ namespace EdS.Runtime
         /// </summary>
         public static (double Long, double Short)? TileOf(SewerPiece piece) => piece switch
         {
-            SewerPiece.Wall => (8.0, 1.5),
-            SewerPiece.Canal => (8.0, 4.0),
+            // Revue Codex de la PR #254 : tailles au sol mesurées sur les modèles finis (Egouts/finir_egouts.py), plus celles des fiches ; le
+            // jeu mesure les bornes réelles du modèle chargé (SpaceView.Sewer) et ne prend celles-ci que pour les tests.
+            SewerPiece.Wall => (8.0, 4.16),
+            SewerPiece.Canal => (8.0, 3.51),
             _ => null,
         };
+
+        /// <summary>
+        /// Revue Codex de la PR #254 : tuiles d'un mur ou du canal le long de son emprise [x0, x1] × [z0, z1], pour un modèle de taille au sol
+        /// <paramref name="modelLong"/> × <paramref name="modelShort"/> (bornes réelles). Le modèle est mis à l'épaisseur de l'emprise (facteur
+        /// k = épaisseur / <paramref name="modelShort"/>) ; une tuile mesure alors k × <paramref name="modelLong"/> ; leur nombre est l'arrondi de
+        /// la longueur sur cette taille (au moins 1, au plus <see cref="CryptLooks.MaxTiles"/>). Les tuiles se touchent bout à bout et couvrent
+        /// toute la longueur et toute l'épaisseur : jamais de trou ; chacune n'est étirée qu'en longueur, de 2/3 à 1,5 fois (sauf plafond du
+        /// nombre de tuiles). Vide pour une emprise ou une taille vide.
+        /// </summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> WallTiles(double x0, double z0, double x1, double z1, double modelLong, double modelShort)
+        {
+            var result = new List<(double, double, double, double)>();
+            double width = x1 - x0, depth = z1 - z0;
+            if (!(width > 0) || !(depth > 0) || !(modelLong > 0) || !(modelShort > 0)) return result;
+            bool alongX = width >= depth;
+            double length = alongX ? width : depth, thickness = alongX ? depth : width;
+            double tile = modelLong * thickness / modelShort;
+            int n = (int)Math.Max(1, Math.Min(CryptLooks.MaxTiles, Math.Round(length / tile, MidpointRounding.AwayFromZero)));
+            for (int i = 0; i < n; i++)
+            {
+                double a = (alongX ? x0 : z0) + length * i / n, b = i + 1 == n ? (alongX ? x1 : z1) : (alongX ? x0 : z0) + length * (i + 1) / n;
+                result.Add(alongX ? (a, z0, b, z1) : (x0, a, x1, b));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #254 : pose d'une tuile de <see cref="WallTiles"/> : le modèle remplit exactement la tuile (pas de plafond
+        /// d'étirement entre les axes, qui laissait des trous : un mur de 8 × 4,16 m sur une tuile de 9 × 1,5 m ne couvrait que 4,33 m), le
+        /// quart de tour mettant son long côté le long de la tuile. L'étirement en longueur est déjà borné par <see cref="WallTiles"/>.
+        /// </summary>
+        public static (bool Turn, double Sx, double Sy, double Sz) TileFit(double modelX, double modelY, double modelZ, double width, double depth, double height) =>
+            MineLooks.Fit(modelX, modelY, modelZ, width, depth, height);
 
         /// <summary>Hauteur de la voûte (m), de la passerelle (m), de l'échelle (m), de la bouche d'égout et du déversoir de la surface (m) : celles des fiches.</summary>
         public const double VaultHeight = 4.0, BridgeHeight = 1.2, LadderHeight = 4.5, ManholeHeight = 0.3, OutfallHeight = 1.5;

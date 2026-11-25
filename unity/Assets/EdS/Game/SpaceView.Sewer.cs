@@ -26,7 +26,7 @@ namespace EdS.Game
         /// quart de tour se décide avant lui, l'échelle va sur une pose alignée sur les axes du modèle (jamais au-dessus d'un enfant tourné :
         /// pas de cisaillement), puis le lacet tourne le tout et le recentrage vient en dernier.
         /// </summary>
-        private bool FitSewerModel(GameObject model, string id, float x0, float z0, float x1, float z1, float height, bool occludes, float ground = 0f, float yaw = 0f)
+        private bool FitSewerModel(GameObject model, string id, float x0, float z0, float x1, float z1, float height, bool occludes, float ground = 0f, float yaw = 0f, bool tile = false)
         {
             if (model == null) return false;
             var look = new GameObject(id + " (" + model.name + ")");
@@ -37,7 +37,8 @@ namespace EdS.Game
             look.transform.SetParent(_root.transform, false);
             if (StyleLook.VisibleBounds(look, out Bounds b) && b.size.x > 0.01f && b.size.y > 0.01f && b.size.z > 0.01f)
             {
-                var fit = SewerLooks.Fit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height);
+                // Revue Codex de la PR #254 : une tuile de mur ou de canal est remplie exactement (SewerLooks.TileFit), jamais trouée.
+                var fit = tile ? SewerLooks.TileFit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height) : SewerLooks.Fit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height);
                 if (fit.Turn) copy.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * copy.transform.localRotation;
                 pose.transform.localScale = new Vector3((float)fit.Sx, (float)fit.Sy, (float)fit.Sz);
             }
@@ -46,6 +47,26 @@ namespace EdS.Game
                 look.transform.position += new Vector3((x0 + x1) / 2f - b.center.x, ground - b.min.y, (z0 + z1) / 2f - b.center.z);
             if (occludes) AddModelOccluders(look);
             return true;
+        }
+
+        private readonly Dictionary<GameObject, Vector2> _footprints = new Dictionary<GameObject, Vector2>();
+
+        /// <summary>
+        /// Revue Codex de la PR #254 : taille au sol réelle de <paramref name="model"/> (long côté, petit côté), mesurée une fois sur une copie
+        /// aussitôt détruite ; faux si elle est vide.
+        /// </summary>
+        private bool Footprint(GameObject model, out float longSide, out float shortSide)
+        {
+            if (!_footprints.TryGetValue(model, out Vector2 size))
+            {
+                GameObject probe = Object.Instantiate(model);
+                size = StyleLook.VisibleBounds(probe, out Bounds b) ? new Vector2(Mathf.Max(b.size.x, b.size.z), Mathf.Min(b.size.x, b.size.z)) : Vector2.zero;
+                Object.DestroyImmediate(probe);
+                _footprints[model] = size;
+            }
+            longSide = size.x;
+            shortSide = size.y;
+            return longSide > 0.01f && shortSide > 0.01f;
         }
 
         /// <summary>Dessine l'obstacle <paramref name="o"/> s'il est une pièce d'égout ; faux sinon.</summary>
@@ -67,13 +88,13 @@ namespace EdS.Game
             // L'eau du canal et du bassin, au ras du sol, avec ou sans le modèle de sa margelle.
             if (SewerLooks.IsWater(piece)) _waters.Add(Prism(o.Id + " eau", points.Select(p => new Vector3(p.x, 0.04f, p.z)).ToList(), 0.04f, _water, false));
             GameObject model = CryptModel(SewerLooks.Folder, SewerLooks.ModelFor(piece));
-            var tile = SewerLooks.TileOf(piece);
-            if (model != null && tile.HasValue)
+            if (model != null && SewerLooks.TileOf(piece).HasValue && Footprint(model, out float modelLong, out float modelShort))
             {
-                // Les grands murs et le canal ne sont pas étirés : le modèle est répété en tuiles le long de l'emprise (au plus 1,5 fois sa taille).
+                // Les grands murs et le canal sont répétés en tuiles bout à bout le long de l'emprise, d'après les bornes réelles du modèle
+                // (revue Codex de la PR #254 : sans trou, étirés en longueur seulement).
                 int n = 0;
-                foreach (var t in CryptLooks.Tiles(x0, z0, x1, z1, tile.Value.Long, tile.Value.Short))
-                    FitSewerModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, SewerLooks.Occludes(piece));
+                foreach (var t in SewerLooks.WallTiles(x0, z0, x1, z1, modelLong, modelShort))
+                    FitSewerModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, SewerLooks.Occludes(piece), 0f, 0f, true);
                 return true;
             }
             if (FitSewerModel(model, o.Id, x0, z0, x1, z1, height, SewerLooks.Occludes(piece))) return true;

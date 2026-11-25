@@ -173,13 +173,13 @@ public class V2492EgoutsUnityTests
         Assert.True(Math.Max(turned.Sx, turned.Sz) <= Math.Min(turned.Sx, turned.Sz) * CryptLooks.MaxStretch + 1e-9);
         Assert.Equal((false, 1.0, 1.0, 1.0), SewerLooks.Fit(0, 1, 1, 1, 1, 1));
         Assert.Equal((false, 1.0, 1.0, 1.0), SewerLooks.Fit(1, 1, 1, 1, -1, 1));
-        // Le mur et le canal en tuiles (au plus 1,5 fois le modèle) ; la hauteur ne suit jamais l'emprise.
-        Assert.Equal((8.0, 1.5), SewerLooks.TileOf(SewerPiece.Wall));
-        Assert.Equal((8.0, 4.0), SewerLooks.TileOf(SewerPiece.Canal));
+        // Le mur et le canal en tuiles (tailles mesurées des modèles finis ; revue Codex de la PR #254) ; la hauteur ne suit jamais l'emprise.
+        Assert.Equal((8.0, 4.16), SewerLooks.TileOf(SewerPiece.Wall));
+        Assert.Equal((8.0, 3.51), SewerLooks.TileOf(SewerPiece.Canal));
         Assert.Null(SewerLooks.TileOf(SewerPiece.Basin));
-        var tiles = CryptLooks.Tiles(-16, 14, 16, 18, 8, 4);   // le tronçon central du canal
+        var tiles = SewerLooks.WallTiles(-16, 14, 16, 18, 8, 3.51);   // le tronçon central du canal
         Assert.Equal(4, tiles.Count);
-        Assert.All(tiles, t => Assert.InRange(t.MaxX - t.MinX, 8 / CryptLooks.MaxStretch, 8 * CryptLooks.MaxStretch));
+        Assert.All(tiles, t => Assert.Equal(8.0, t.MaxX - t.MinX, 9));
         Assert.Equal(CaveLooks.WallHeight, SewerLooks.HeightOf(SewerPiece.Wall));
     }
 
@@ -231,7 +231,7 @@ public class V2492EgoutsUnityTests
         Assert.Contains("CryptModel(SewerLooks.Folder, SewerLooks.ModelFor(piece))", sewer);
         Assert.Contains("SewerLooks.Occludes(piece)", sewer);                    // murs et piliers : occulteurs
         Assert.Contains("Prism(o.Id, points, height, brick, true, rockTile)", sewer);   // et leurs formes de remplacement aussi
-        Assert.Contains("CryptLooks.Tiles(", sewer);                              // grands murs et canal en tuiles
+        Assert.Contains("SewerLooks.WallTiles(", sewer);                          // grands murs et canal en tuiles, d'après le modèle mesuré
         Assert.Contains("SewerLooks.Fit(", sewer);                                // jamais étirés
         Assert.Contains("SewerLooks.Arches(space.Obstacles)", sewer);
         Assert.Contains("SewerLooks.Bridges(space.Obstacles)", sewer);
@@ -403,5 +403,54 @@ public class V2492EgoutsUnityTests
         Assert.Contains("slot == StyleSlot.Wolf && StyleRules.Voiced(actor)", game);
         string voices = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "BeastVoices.cs"));
         Assert.Contains("!StyleRules.Voiced(id)", voices);
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #254 (tour 1) : le mur fini mesure 8 × 4,16 m au sol ; tuilé sur 8 × 1,5 m puis posé sans étirement, le mur de
+    /// la salle (18 × 1,5 m) laissait 4,67 m de trou. Pour chaque mur et chaque tronçon du canal des deux niveaux, les tuiles posées
+    /// (bornes réelles du modèle) se touchent bout à bout, couvrent toute la longueur et toute l'épaisseur, et le modèle remplit chaque tuile,
+    /// étiré en longueur seulement (de 2/3 à 1,5 fois).
+    /// </summary>
+    [Fact]
+    public void Murs_et_canal_des_egouts_tuiles_sans_trou()
+    {
+        int walls = 0;
+        foreach (ZoneDefinition z in V2491EgoutsTests.Sewers.Select(id => V16TestData.Interiors.Single(x => x.Id == id)))
+            foreach (SpaceObstacle o in z.Setup.Space!.Obstacles)
+            {
+                SewerPiece piece = SewerLooks.PieceFor(o.Id);
+                if (SewerLooks.TileOf(piece) is not (double, double) model) continue;
+                double x0 = o.Points.Min(p => p.X.Raw) / 1e4, x1 = o.Points.Max(p => p.X.Raw) / 1e4, z0 = o.Points.Min(p => p.Z.Raw) / 1e4, z1 = o.Points.Max(p => p.Z.Raw) / 1e4;
+                bool alongX = x1 - x0 >= z1 - z0;
+                double length = alongX ? x1 - x0 : z1 - z0, thickness = alongX ? z1 - z0 : x1 - x0, k = thickness / model.Item2;
+                var tiles = SewerLooks.WallTiles(x0, z0, x1, z1, model.Item1, model.Item2);
+                Assert.NotEmpty(tiles);
+                double reach = alongX ? x0 : z0, covered = 0;
+                foreach (var t in tiles)
+                {
+                    double a = alongX ? t.MinX : t.MinZ, b = alongX ? t.MaxX : t.MaxZ;
+                    Assert.Equal(reach, a, 9);   // bout à bout : aucun trou
+                    reach = b;
+                    Assert.Equal(alongX ? (z0, z1) : (x0, x1), alongX ? (t.MinZ, t.MaxZ) : (t.MinX, t.MaxX));   // toute l'épaisseur
+                    // Le modèle (long côté sur X) remplit exactement la tuile : largeur et profondeur posées égales à la tuile.
+                    double w = t.MaxX - t.MinX, d = t.MaxZ - t.MinZ;
+                    var fit = SewerLooks.TileFit(model.Item1, 4.0, model.Item2, w, d, 4.0);
+                    double placedX = (fit.Turn ? model.Item2 : model.Item1) * fit.Sx, placedZ = (fit.Turn ? model.Item1 : model.Item2) * fit.Sz;
+                    Assert.Equal(w, placedX, 9);
+                    Assert.Equal(d, placedZ, 9);
+                    double stretch = (b - a) / (k * model.Item1);   // en longueur, par rapport à la mise à l'épaisseur
+                    Assert.InRange(stretch, 2.0 / 3 - 1e-9, 1.5 + 1e-9);
+                    covered += b - a;
+                }
+                Assert.Equal(alongX ? x1 : z1, reach, 9);
+                Assert.Equal(length, covered, 9);
+                walls++;
+            }
+        Assert.True(walls >= 6, walls.ToString());
+        // Le cas de la revue : le mur de la salle (18 × 1,5 m) en six tuiles de 3 m ; l'ancienne pose n'en couvrait que 2 × 4,33 m.
+        var salle = SewerLooks.WallTiles(12, 26, 30, 27.5, 8.0, 4.16);
+        Assert.Equal(6, salle.Count);
+        var old = SewerLooks.Fit(8.0, 4.0, 4.16, 9.0, 1.5, 4.0);
+        Assert.True(8.0 * old.Sx * 2 < 18 - 4.6);
     }
 }
