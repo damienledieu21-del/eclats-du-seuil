@@ -2023,6 +2023,12 @@ namespace EdS.Runtime
         /// </summary>
         public static bool IsRat(string id) => Regex.IsMatch(id ?? string.Empty, "^rat(_|[0-9]|$)", RegexOptions.IgnoreCase);
 
+        /// <summary>
+        /// V2.49.2 (demande du 25 novembre 2026) : la bête <paramref name="id"/> a-t-elle la voix de son modèle (grognement, hurlement du
+        /// loup) ? Pas les rats, même habillés en loup : aucun son de rat dans le projet, ils se taisent.
+        /// </summary>
+        public static bool Voiced(string id) => !IsRat(id);
+
         public static bool IsBeast(StyleSlot slot) =>
             slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
 

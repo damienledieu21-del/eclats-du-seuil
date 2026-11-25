@@ -342,4 +342,66 @@ public class V2492EgoutsUnityTests
         Assert.DoesNotContain("copy.transform.localRotation = Quaternion.Euler(0f, yaw", sewer);
         Assert.True(sewer.IndexOf("/// Côté Bourg (la surface)", StringComparison.Ordinal) > sewer.IndexOf("private static float GroundHigh", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// Demande du 25 novembre 2026 : le rat animé de Tripo (rat géant rigué, sa marche) habille les rats et les rats géants ; présent dans
+    /// Resources/Rats avec sa couleur et sa normale ; sans lui, le loup reste en repli (même place, même code).
+    /// </summary>
+    [Fact]
+    public void Rat_anime_present_et_loup_en_repli()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", SewerLooks.RatAssetFolder);
+        string fbx = Path.Combine(folder, SewerLooks.RatModel + ".fbx");
+        Assert.True(File.Exists(fbx), fbx);
+        Assert.True(new FileInfo(fbx).Length > 100_000, fbx);
+        Assert.True(File.Exists(Path.Combine(folder, SewerLooks.RatModel + "_couleur.jpg")));
+        Assert.True(File.Exists(Path.Combine(folder, SewerLooks.RatModel + "_normale.png")));
+        Assert.Single(Directory.GetFiles(folder, "*.fbx"));
+        Assert.EndsWith("Resources/" + SewerLooks.RatFolder.TrimEnd('/'), SewerLooks.RatAssetFolder);
+        // Le squelette et la marche sont dans le FBX (prise « …|Walk »).
+        Assert.Contains("Walk", System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(fbx)), StringComparison.Ordinal);
+        // Repli : la place reste le loup ; le jeu charge le rat, sinon le modèle de la place.
+        Assert.Equal(StyleSlot.Wolf, StyleRules.ForCombatant("rat_egout1", false));
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("Resources.Load<GameObject>(SewerLooks.RatFolder + SewerLooks.RatModel)", look);
+        Assert.Contains("rat != null ? rat : catalog.Model(slot, id)", look);
+        string style = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        Assert.Contains("RatModel(notes);", style);
+        // Le petit rat est plus gris (même modèle) ; le rat géant garde ses couleurs.
+        Assert.True(SewerLooks.IsSmallRat("rat_egout2") && SewerLooks.IsSmallRat("rat_egout5_v2"));
+        Assert.False(SewerLooks.IsSmallRat("rat_geant_egout1") || SewerLooks.IsSmallRat("loup_echo_egout1") || SewerLooks.IsSmallRat("ratelier_bois"));
+        Assert.True(SewerLooks.SmallRatTint.R < 1 && SewerLooks.SmallRatTint.B >= SewerLooks.SmallRatTint.R);
+    }
+
+    /// <summary>
+    /// Le rat n'a que sa marche : à l'arrêt, la marche figée (jamais un pas sur place) ; la morsure, un élan par le code (pas d'animation
+    /// d'attaque) ; la mort, couché sur le flanc (pas d'animation de mort).
+    /// </summary>
+    [Fact]
+    public void Rat_attente_morsure_et_mort_a_partir_de_la_marche()
+    {
+        var clips = new[] { "rat_egout_squelette|rat_egout_squelette|Walk" };
+        Assert.Equal(clips[0], StyleRules.Clip(clips, StyleMotion.Walk));
+        Assert.True(StyleRules.Loops(clips[0]));
+        Assert.Null(StyleRules.Clip(clips, StyleMotion.Idle));     // pas d'attente : la marche figée
+        Assert.Null(StyleRules.Clip(clips, StyleMotion.Attack));   // pas d'attaque : l'élan par le code (Overlay)
+        Assert.Null(StyleRules.Clip(clips, StyleMotion.Death));    // pas de mort : couché sur le flanc
+        Assert.InRange(Locomotion.StillWalkRate, 0.01, 0.1);
+        string look = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleLook.cs"));
+        Assert.Contains("_animation.SetSpeed(_walkClip, (float)Locomotion.StillWalkRate);", look);
+    }
+
+    /// <summary>Demande du 25 novembre 2026 : les rats ne grognent ni ne hurlent comme le loup (aucun son de rat dans le projet : rien).</summary>
+    [Fact]
+    public void Rats_sans_voix_de_loup()
+    {
+        Assert.False(StyleRules.Voiced("rat_egout1"));
+        Assert.False(StyleRules.Voiced("rat_geant_egout2_v3"));
+        Assert.True(StyleRules.Voiced("loup_echo_egout1"));
+        Assert.True(StyleRules.Voiced("ratelier_bois"));
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("slot == StyleSlot.Wolf && StyleRules.Voiced(actor)", game);
+        string voices = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "BeastVoices.cs"));
+        Assert.Contains("!StyleRules.Voiced(id)", voices);
+    }
 }

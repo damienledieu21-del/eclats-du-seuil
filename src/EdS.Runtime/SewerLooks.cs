@@ -256,6 +256,18 @@ namespace EdS.Runtime
             _ => null,
         };
 
+        /// <summary>
+        /// Rats des égouts (décision de Damien du 23 novembre 2026 ; modèle Tripo du 25 novembre 2026) : un seul modèle animé, le rat géant
+        /// rigué avec sa marche (<c>Resources/Rats/rat_egout</c>), pour les rats (0,3 m) et les rats géants (0,6 m) ; sans lui, le loup en repli.
+        /// </summary>
+        public const string RatFolder = "Rats/", RatModel = "rat_egout", RatAssetFolder = "Assets/EdS/Modeles/Resources/Rats";
+
+        /// <summary>Teinte du petit rat (plus gris que le rat géant), multipliée à la couleur de son modèle.</summary>
+        public static readonly (double R, double G, double B) SmallRatTint = (0.8, 0.8, 0.84);
+
+        /// <summary>Vrai pour un petit rat des égouts (pas un rat géant) : lui seul prend <see cref="SmallRatTint"/>.</summary>
+        public static bool IsSmallRat(string id) => StyleRules.IsRat(id) && !StyleRules.Key(id).StartsWith("ratgeant", StringComparison.Ordinal);
+
         /// <summary>Centre de la palissade du Bourg d'Aube (MONDE.md, sous-lot V2.30), vers lequel regarde le déversoir.</summary>
         public static readonly (double X, double Z) BourgCentre = (-1010.0, -70.0);
 

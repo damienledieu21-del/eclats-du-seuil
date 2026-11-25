@@ -244,6 +244,12 @@ namespace EdS.Runtime
         public static double Unit(uint seed, int k) => (Mix(seed, k) >> 8) / 16777216.0;
 
         /// <summary>Cadence propre de l'attente (0,88 à 1,12) : deux voisins ne respirent pas ensemble.</summary>
+        /// <summary>
+        /// V2.49.2 : cadence de la marche jouée à l'arrêt par une bête qui n'a pas d'attente (le rat de Tripo n'a que sa marche) : presque
+        /// figée (un souffle), jamais un pas sur place.
+        /// </summary>
+        public const double StillWalkRate = 0.06;
+
         public static double IdleRate(uint seed) => 0.88 + 0.24 * Unit(seed, 1);
 
         /// <summary>Instant de départ de l'attente, en part de sa durée (0 à 1).</summary>

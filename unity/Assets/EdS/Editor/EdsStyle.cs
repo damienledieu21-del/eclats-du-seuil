@@ -285,6 +285,7 @@ namespace EdS.Game.Editor
             MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), kit fait le 22 novembre 2026
             CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit fait le 22 novembre 2026
             SewerPieces(notes);   // chantier V2.49.2 : matières du kit d'égout (Resources/Egouts), quand l'atelier l'aura livré
+            RatModel(notes);   // V2.49.2 : le rat animé de Tripo (Resources/Rats), sa marche en « Legacy » et sa matière
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
@@ -685,6 +686,20 @@ namespace EdS.Game.Editor
                 .Where(p => SewerLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             foreach (string path in paths) OwnMaterial(path, notes);
             if (paths.Count > 0) notes.Add("Égouts : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(SewerLooks.NameOf)) + ").");
+        }
+
+        /// <summary>
+        /// V2.49.2 : le rat animé (<see cref="SewerLooks.RatAssetFolder"/>, modèle Tripo du 25 novembre 2026, rig quadrupède et marche) :
+        /// animations « Legacy » (la marche en boucle, jouée par le composant Animation comme les bêtes des packs), puis sa matière. Sans
+        /// dossier : rien, sans erreur (les rats gardent le loup).
+        /// </summary>
+        private static void RatModel(List<string> notes)
+        {
+            string path = SewerLooks.RatAssetFolder + "/" + SewerLooks.RatModel + ".fbx";
+            if (!(AssetImporter.GetAtPath(path) is ModelImporter)) return;
+            Legacy(path, false);
+            OwnMaterial(path, notes);
+            notes.Add("Rats : modèle animé " + SewerLooks.RatModel + " (marche « Legacy »).");
         }
 
         private static GameObject[] FeastPieces(List<string> notes)

@@ -1418,7 +1418,7 @@ namespace EdS.Game
             {
                 StyleSlot slot = StyleRules.ForCombatant(actor, false);
                 bool boss = _adventure != null && _adventure.IsBoss(actor);
-                if (slot == StyleSlot.Wolf) StyleLook.Play(Audio, StyleSound.Growl, 0.6f);
+                if (slot == StyleSlot.Wolf && StyleRules.Voiced(actor)) StyleLook.Play(Audio, StyleSound.Growl, 0.6f);   // V2.49.2 : pas les rats
                 else if (slot == StyleSlot.Boar) StyleLook.Play(Audio, StyleSound.Grunt, 0.6f);
                 else if (boss && StyleRules.AttackAnimation(attackId).Motion == StyleMotion.Cast)
                 {

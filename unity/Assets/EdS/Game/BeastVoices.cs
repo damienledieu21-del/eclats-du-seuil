@@ -49,7 +49,7 @@ namespace EdS.Game
         /// <summary>Une bête vue à cette image (place affichée, morte ou non) ; un lièvre qui se met à courir détale, avec son bruit dans l'herbe.</summary>
         public void Hear(string id, Vector3 at, bool dead, float deltaTime)
         {
-            if (id == null) return;
+            if (id == null || !StyleRules.Voiced(id)) return;   // V2.49.2 : les rats (habillés en loup en repli) ne hurlent pas
             if (!_ears.TryGetValue(id, out Ear ear))
             {
                 ear = new Ear { Slot = StyleRules.ForCombatant(id, false) };
