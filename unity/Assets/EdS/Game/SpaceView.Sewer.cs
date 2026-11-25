@@ -21,24 +21,29 @@ namespace EdS.Game
 
         /// <summary>
         /// Pose <paramref name="model"/> sur l'emprise [x0, x1] × [z0, z1] à la hauteur <paramref name="height"/>, sans l'étirer
-        /// (<see cref="SewerLooks.Fit"/>), au sol <paramref name="ground"/> ; occulteur si <paramref name="occludes"/>. Faux sans modèle.
+        /// (<see cref="SewerLooks.Fit"/>), au sol <paramref name="ground"/>, tourné de <paramref name="yaw"/> degrés ; occulteur si
+        /// <paramref name="occludes"/>. Faux sans modèle. Relecture indépendante de la PR #254 : les bornes sont mesurées sans le lacet, le
+        /// quart de tour se décide avant lui, l'échelle va sur une pose alignée sur les axes du modèle (jamais au-dessus d'un enfant tourné :
+        /// pas de cisaillement), puis le lacet tourne le tout et le recentrage vient en dernier.
         /// </summary>
         private bool FitSewerModel(GameObject model, string id, float x0, float z0, float x1, float z1, float height, bool occludes, float ground = 0f, float yaw = 0f)
         {
             if (model == null) return false;
             var look = new GameObject(id + " (" + model.name + ")");
-            GameObject copy = Object.Instantiate(model, look.transform, false);
+            var pose = new GameObject("pose");
+            pose.transform.SetParent(look.transform, false);
+            GameObject copy = Object.Instantiate(model, pose.transform, false);
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             look.transform.SetParent(_root.transform, false);
-            if (yaw != 0f) copy.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * copy.transform.localRotation;
             if (StyleLook.VisibleBounds(look, out Bounds b) && b.size.x > 0.01f && b.size.y > 0.01f && b.size.z > 0.01f)
             {
                 var fit = SewerLooks.Fit(b.size.x, b.size.y, b.size.z, x1 - x0, z1 - z0, height);
                 if (fit.Turn) copy.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * copy.transform.localRotation;
-                look.transform.localScale = new Vector3((float)fit.Sx, (float)fit.Sy, (float)fit.Sz);
-                StyleLook.VisibleBounds(look, out b);
-                look.transform.position += new Vector3((x0 + x1) / 2f - b.center.x, ground - b.min.y, (z0 + z1) / 2f - b.center.z);
+                pose.transform.localScale = new Vector3((float)fit.Sx, (float)fit.Sy, (float)fit.Sz);
             }
+            if (yaw != 0f) look.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            if (StyleLook.VisibleBounds(look, out b))
+                look.transform.position += new Vector3((x0 + x1) / 2f - b.center.x, ground - b.min.y, (z0 + z1) / 2f - b.center.z);
             if (occludes) AddModelOccluders(look);
             return true;
         }
@@ -172,15 +177,15 @@ namespace EdS.Game
                     alongX ? new Vector3(half * 2f, 0.05f, 0.05f) : new Vector3(0.05f, 0.05f, half * 2f), iron, 1f);
         }
 
-        /// <summary>
-        /// Côté Bourg (la surface) : sur les portes qui descendent aux égouts, la bouche d'égout au sol de la place du marché et le déversoir au
-        /// pied du talus, au sud du fossé, tourné vers le Bourg (<see cref="SewerLooks.SurfaceModel"/>), posés sur le sol affiché ; modèle, ou grille de fer et arche de pierre.
-        /// </summary>
         /// <summary>Hauteur la plus haute du sol affiché sous un disque de rayon <paramref name="r"/> (centre et quatre points).</summary>
         private static float GroundHigh(float x, float z, float r) =>
             Mathf.Max(StyleWorld.StandHeight(x, z), Mathf.Max(Mathf.Max(StyleWorld.StandHeight(x - r, z), StyleWorld.StandHeight(x + r, z)),
                 Mathf.Max(StyleWorld.StandHeight(x, z - r), StyleWorld.StandHeight(x, z + r))));
 
+        /// <summary>
+        /// Côté Bourg (la surface) : sur les portes qui descendent aux égouts, la bouche d'égout au sol de la place du marché et le déversoir au
+        /// pied du talus, au sud du fossé, tourné vers le Bourg (<see cref="SewerLooks.SurfaceModel"/>), posés sur le sol affiché ; modèle, ou grille de fer et arche de pierre.
+        /// </summary>
         private void SewerEntrances()
         {
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;

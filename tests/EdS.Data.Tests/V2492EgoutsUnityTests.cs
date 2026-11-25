@@ -305,4 +305,41 @@ public class V2492EgoutsUnityTests
         Assert.Contains("SewerLooks.ManholeBase(GroundHigh(", sewer);
         Assert.Contains("SewerLooks.OutfallYaw(x, z)", sewer);
     }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #254 : le déversoir tourné (lacet non nul) garde ses proportions. L'échelle de la pose est appliquée
+    /// dans les axes du modèle, puis le lacet : chaque arête du modèle garde la longueur voulue par la pose et les arêtes restent à angle
+    /// droit. L'ancien ordre (lacet sous l'échelle) cisaillait : environ 30 % de moins en X à 18,8°.
+    /// </summary>
+    [Theory]
+    [InlineData(18.8)]
+    [InlineData(-37.0)]
+    [InlineData(90.0)]
+    public void Deversoir_tourne_sans_cisaillement(double yawDegrees)
+    {
+        var fit = SewerLooks.Fit(1.73, 1.29, 2.5, SewerLooks.OutfallWidth, SewerLooks.OutfallDepth, SewerLooks.OutfallHeight);
+        Assert.False(fit.Turn);
+        double a = yawDegrees * Math.PI / 180;
+        (double X, double Z) Yaw((double X, double Z) v) => (v.X * Math.Cos(a) + v.Z * Math.Sin(a), -v.X * Math.Sin(a) + v.Z * Math.Cos(a));
+        (double X, double Z) Scale((double X, double Z) v) => (v.X * fit.Sx, v.Z * fit.Sz);
+        double Len((double X, double Z) v) => Math.Sqrt(v.X * v.X + v.Z * v.Z);
+        (double, double) ex = (1.73, 0), ez = (0, 2.5);
+        // Nouvel ordre : échelle de la pose, puis lacet de l'ensemble.
+        var nx = Yaw(Scale(ex)); var nz = Yaw(Scale(ez));
+        Assert.Equal(1.73 * fit.Sx, Len(nx), 9);
+        Assert.Equal(2.5 * fit.Sz, Len(nz), 9);
+        Assert.Equal(0.0, nx.X * nz.X + nx.Z * nz.Z, 9);   // à angle droit
+        Assert.Equal(2.5 * fit.Sz / (1.73 * fit.Sx), Len(nz) / Len(nx), 9);
+        // Ancien ordre (lacet sous l'échelle) : cisaillé dès que le lacet n'est pas un multiple de 90°.
+        var ox = Scale(Yaw(ex)); var oz = Scale(Yaw(ez));
+        if (Math.Abs(Math.Sin(2 * a)) > 0.1 && Math.Abs(fit.Sx - fit.Sz) > 1e-3)
+            Assert.NotEqual(0.0, Math.Round(ox.X * oz.X + ox.Z * oz.Z, 6));
+        // Le code Unity suit le nouvel ordre : échelle sur la pose, lacet sur l'ensemble, jamais sur la copie.
+        string sewer = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Sewer.cs"));
+        int scale = sewer.IndexOf("pose.transform.localScale = ", StringComparison.Ordinal), turn = sewer.IndexOf("look.transform.localRotation = Quaternion.Euler(0f, yaw, 0f)", StringComparison.Ordinal);
+        Assert.True(scale > 0 && turn > scale, "échelle puis lacet");
+        Assert.DoesNotContain("look.transform.localScale", sewer);
+        Assert.DoesNotContain("copy.transform.localRotation = Quaternion.Euler(0f, yaw", sewer);
+        Assert.True(sewer.IndexOf("/// Côté Bourg (la surface)", StringComparison.Ordinal) > sewer.IndexOf("private static float GroundHigh", StringComparison.Ordinal));
+    }
 }
