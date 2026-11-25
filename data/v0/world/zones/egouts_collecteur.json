@@ -82,6 +82,31 @@
         "leashRange": 14,
         "loot": "loot.bandit",
         "family": "bandit"
+      },
+      {
+        "creature": "rat_egout1",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout2",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout3",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_geant_egout1",
+        "respawnMs": 180000,
+        "leashRange": 14,
+        "loot": "loot.rat_geant",
+        "family": "rat_geant"
       }
     ],
     "passages": [],

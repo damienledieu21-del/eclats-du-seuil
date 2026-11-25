@@ -1943,6 +1943,20 @@
         "named": true
       },
       {
+        "id": "item.anneau_perdu_des_egouts",
+        "name": "Anneau perdu des égouts",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "ring",
+        "requiredLevel": 8,
+        "bonus": {
+          "maxHealth": 40,
+          "statusResistance": 15
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",
@@ -2516,6 +2530,21 @@
             "item": "item.potion_de_soin",
             "count": 1,
             "chancePercent": 20
+          }
+        ]
+      },
+      {
+        "id": "loot.rat_geant",
+        "drops": [
+          {
+            "item": "item.potion_de_soin",
+            "count": 1,
+            "chancePercent": 20
+          },
+          {
+            "item": "item.anneau_perdu_des_egouts",
+            "count": 1,
+            "chancePercent": 5
           }
         ]
       },
