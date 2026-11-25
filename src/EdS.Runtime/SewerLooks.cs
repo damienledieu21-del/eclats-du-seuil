@@ -37,7 +37,7 @@ namespace EdS.Runtime
     /// <c>Egouts/modeles.json</c>, 13 modèles, 390 crédits au plus, **non dépensés**) sont cherchés dans <see cref="AssetFolder"/> et, s'ils
     /// manquent, Unity pose une forme de remplacement. Passerelles sur l'écart entre deux tronçons du canal (<see cref="Bridges"/>), voûtes
     /// sur l'écart entre deux grilles et sur chaque passerelle (<see cref="Arches"/>), échelle aux portes qui montent (puits, bouche du marché),
-    /// jour du dehors sur les portes de la surface ; côté Bourg, la bouche d'égout au sol de la place du marché et le déversoir dans le fossé
+    /// jour du dehors sur les portes de la surface ; côté Bourg, la bouche d'égout au sol de la place du marché et le déversoir au sud du fossé
     /// (<see cref="SurfaceModel"/>). Les grands murs et le canal sont posés en tuiles (<see cref="CryptLooks.Tiles"/>), les autres pièces mises
     /// à l'échelle de leur emprise sans être étirées de plus de <see cref="CryptLooks.MaxStretch"/> (<see cref="Fit"/>). Affichage seulement.
     /// </summary>
@@ -136,10 +136,14 @@ namespace EdS.Runtime
         };
 
         /// <summary>Hauteur de la voûte (m), de la passerelle (m), de l'échelle (m), de la bouche d'égout et du déversoir de la surface (m) : celles des fiches.</summary>
-        public const double VaultHeight = 4.0, BridgeHeight = 1.2, LadderHeight = 4.5, ManholeHeight = 0.3, OutfallHeight = 2.5;
+        public const double VaultHeight = 4.0, BridgeHeight = 1.2, LadderHeight = 4.5, ManholeHeight = 0.3, OutfallHeight = 1.5;
 
-        /// <summary>Taille au sol de l'échelle (largeur le long du mur, épaisseur), de la bouche (côté) et du déversoir (largeur, profondeur), en mètres.</summary>
-        public const double LadderWidth = 1.2, LadderDepth = 0.4, ManholeSide = 1.6, OutfallWidth = 2.0, OutfallDepth = 1.5;
+        /// <summary>
+        /// Taille au sol de l'échelle (largeur le long du mur, épaisseur), de la bouche (côté) et du déversoir (largeur, profondeur), en mètres.
+        /// Déversoir de la surface (kit généré le 23 novembre 2026) : 2 × 2,9 m, 1,5 m de haut, les proportions du modèle fini (1,73 × 2,5 ×
+        /// 1,29 m) : pas d'étirement, et plus profond que large, il n'est jamais tourné d'un quart (son ouverture garde le Bourg en face).
+        /// </summary>
+        public const double LadderWidth = 1.2, LadderDepth = 0.4, ManholeSide = 1.6, OutfallWidth = 2.0, OutfallDepth = 2.9;
 
         /// <summary>
         /// Pose d'un modèle d'une seule pièce sur une emprise, comme <see cref="MineLooks.Fit"/> (quart de tour si son long côté n'est pas dans le
@@ -251,6 +255,25 @@ namespace EdS.Runtime
             "porte_egouts_deversoir" => OutfallModel,
             _ => null,
         };
+
+        /// <summary>Centre de la palissade du Bourg d'Aube (MONDE.md, sous-lot V2.30), vers lequel regarde le déversoir.</summary>
+        public static readonly (double X, double Z) BourgCentre = (-1010.0, -70.0);
+
+        /// <summary>
+        /// Lacet (degrés, sens de Unity : 0 regarde vers +Z, 90 vers +X) du déversoir posé en (<paramref name="x"/>, <paramref name="z"/>) :
+        /// son ouverture (l'avant du modèle, +Z après la finition Blender) regarde le Bourg. Demande du 23 novembre 2026.
+        /// </summary>
+        public static double OutfallYaw(double x, double z) => Math.Atan2(BourgCentre.X - x, BourgCentre.Z - z) * 180.0 / Math.PI;
+
+        /// <summary>Hauteur (m) dont le dessus de la bouche d'égout dépasse des pavés.</summary>
+        public const double ManholeProud = 0.03;
+
+        /// <summary>
+        /// Pied (m) de la bouche d'égout : son dessus dépasse de <see cref="ManholeProud"/> les pavés (<see cref="TownShapes.PavementHeight"/>)
+        /// posés sur le point le plus haut du sol sous elle (<paramref name="highestGround"/>) : jamais noyée sous les pavés, même en pente ;
+        /// le reste de son épaisseur est enfoui. Demande du 23 novembre 2026.
+        /// </summary>
+        public static double ManholeBase(double highestGround) => highestGround + TownShapes.PavementHeight + ManholeProud - ManholeHeight;
 
         /// <summary>Lumière du repaire du passeur (lanterne, chaude) et de la bête (lueur verdâtre de l'eau croupie).</summary>
         public static readonly (double R, double G, double B) LanternColor = (1.0, 0.72, 0.42), MireColor = (0.45, 0.7, 0.4);

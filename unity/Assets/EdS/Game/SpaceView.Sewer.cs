@@ -173,9 +173,14 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Côté Bourg (la surface) : sur les portes qui descendent aux égouts, la bouche d'égout au sol de la place du marché et le déversoir dans
-        /// le talus du fossé (<see cref="SewerLooks.SurfaceModel"/>), posés sur le sol affiché ; modèle, ou grille de fer et arche de pierre.
+        /// Côté Bourg (la surface) : sur les portes qui descendent aux égouts, la bouche d'égout au sol de la place du marché et le déversoir au
+        /// pied du talus, au sud du fossé, tourné vers le Bourg (<see cref="SewerLooks.SurfaceModel"/>), posés sur le sol affiché ; modèle, ou grille de fer et arche de pierre.
         /// </summary>
+        /// <summary>Hauteur la plus haute du sol affiché sous un disque de rayon <paramref name="r"/> (centre et quatre points).</summary>
+        private static float GroundHigh(float x, float z, float r) =>
+            Mathf.Max(StyleWorld.StandHeight(x, z), Mathf.Max(Mathf.Max(StyleWorld.StandHeight(x - r, z), StyleWorld.StandHeight(x + r, z)),
+                Mathf.Max(StyleWorld.StandHeight(x, z - r), StyleWorld.StandHeight(x, z + r))));
+
         private void SewerEntrances()
         {
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
@@ -189,13 +194,17 @@ namespace EdS.Game
                 bool manhole = name == SewerLooks.ManholeModel;
                 float w = (float)(manhole ? SewerLooks.ManholeSide : SewerLooks.OutfallWidth), d = (float)(manhole ? SewerLooks.ManholeSide : SewerLooks.OutfallDepth);
                 float ground = Ground(x, z, Mathf.Max(w, d) / 2f);
+                // Demande du 23 novembre 2026 : la bouche affleure au-dessus des pavés (point le plus haut du sol sous elle) ; le déversoir
+                // regarde le Bourg.
+                if (manhole) ground = (float)SewerLooks.ManholeBase(GroundHigh(x, z, Mathf.Max(w, d) / 2f));
+                float yaw = manhole ? 0f : (float)SewerLooks.OutfallYaw(x, z);
                 float height = (float)(manhole ? SewerLooks.ManholeHeight : SewerLooks.OutfallHeight);
                 if (FitSewerModel(CryptModel(SewerLooks.Folder, name), (manhole ? "Bouche d'égout (" : "Déversoir (") + door.Id + ")", x - w / 2f, z - d / 2f, x + w / 2f, z + d / 2f,
-                        height, false, ground, manhole ? 0f : 180f))
+                        height, false, ground, yaw))
                     continue;
                 if (manhole)
                 {
-                    Box("Bouche d'égout (" + door.Id + ")", new Vector3(x, ground + 0.03f, z), new Vector3(1.2f, 0.06f, 1.2f), Plain(new Color(0.14f, 0.13f, 0.12f)), 1f);
+                    Box("Bouche d'égout (" + door.Id + ")", new Vector3(x, ground + (float)SewerLooks.ManholeHeight - 0.03f, z), new Vector3(1.2f, 0.06f, 1.2f), Plain(new Color(0.14f, 0.13f, 0.12f)), 1f);
                     continue;
                 }
                 Material stone = Built(StyleSurface.Stone, new Color(0.5f, 0.48f, 0.45f), out float tile);

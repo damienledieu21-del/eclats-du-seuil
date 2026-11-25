@@ -5,6 +5,7 @@ using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.World;
+using static EdS.Data.Tests.GrandeCarteLieux;
 using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
@@ -12,7 +13,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Chantier V2.49.2 : les égouts du Bourg dans Unity. Pièces du kit d'égout par le nom des obstacles (<see cref="SewerLooks"/>), passerelles sur
 /// l'écart entre deux tronçons du canal, voûtes sur les grilles et les passerelles, échelle aux portes qui montent, bouche d'égout et déversoir
-/// côté Bourg ; modèles branchés par leur nom (kit Tripo préparé, non généré : formes simples en attendant).
+/// côté Bourg ; modèles branchés par leur nom (kit Tripo généré, validé par Damien le 23 novembre 2026 ; formes simples en repli).
 /// </summary>
 [Trait("Category", "World")]
 public class V2492EgoutsUnityTests
@@ -242,7 +243,66 @@ public class V2492EgoutsUnityTests
         Assert.DoesNotContain("#nullable", sewer);
         Assert.DoesNotContain("string?", sewer);
         Assert.DoesNotContain("GameObject?", sewer);
-        // Kit préparé, pas encore généré : aucun modèle d'égout dans Resources tant que Damien n'a pas validé la dépense.
-        Assert.False(Directory.Exists(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Modeles", "Resources", "Egouts")));
+    }
+
+    /// <summary>
+    /// Kit d'égout livré (décision de Damien du 23 novembre 2026 : 390 crédits validés, dépense faite) : les treize modèles finis dans
+    /// Blender sont dans Resources/Egouts, chacun avec sa couleur et sa normale, et reconnus par leur nom ; les formes simples restent en repli.
+    /// </summary>
+    [Fact]
+    public void Kit_d_egout_present_et_reconnu()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", SewerLooks.AssetFolder);
+        foreach (string name in SewerLooks.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, SewerLooks.NameOf(SewerLooks.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(13, SewerLooks.Models.Count);
+        Assert.Equal(SewerLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.Equal("Egouts/", SewerLooks.Folder);
+        Assert.EndsWith("Resources/" + SewerLooks.Folder.TrimEnd('/'), SewerLooks.AssetFolder);
+        // Repli : formes simples si un modèle manque (bouche, déversoir, pièces des égouts).
+        string sewer = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Sewer.cs"));
+        Assert.Contains("Box(\"Bouche d'égout (\"", sewer);
+        Assert.Contains("Box(\"Déversoir (linteau, \"", sewer);
+    }
+
+    /// <summary>Demande du 23 novembre 2026 : le déversoir regarde le Bourg (son ouverture vers le centre de la palissade).</summary>
+    [Fact]
+    public void Deversoir_tourne_vers_le_Bourg()
+    {
+        (double x, double z) = P(GrandeCarteLieux.Vallons.Value.DoorOf("porte_egouts_deversoir")!.Position);
+        double yaw = SewerLooks.OutfallYaw(x, z) * Math.PI / 180;
+        (double fx, double fz) = (Math.Sin(yaw), Math.Cos(yaw));   // avant du modèle (+Z) tourné du lacet
+        (double bx, double bz) = (SewerLooks.BourgCentre.X - x, SewerLooks.BourgCentre.Z - z);
+        double len = Math.Sqrt(bx * bx + bz * bz);
+        Assert.True((fx * bx + fz * bz) / len > 0.9999);   // face au Bourg
+        Assert.True(z < SewerLooks.BourgCentre.Z);          // au sud du Bourg : il regarde vers le nord
+        Assert.InRange(SewerLooks.OutfallYaw(x, z), 0, 45);
+        // Proportions du modèle fini (1,73 × 2,5 × 1,29 m) : jamais tourné d'un quart par la pose sans étirement.
+        Assert.False(SewerLooks.Fit(1.73, 1.29, 2.5, SewerLooks.OutfallWidth, SewerLooks.OutfallDepth, SewerLooks.OutfallHeight).Turn);
+        Assert.Equal(0.0, SewerLooks.OutfallYaw(SewerLooks.BourgCentre.X, SewerLooks.BourgCentre.Z - 10), 9);
+        Assert.Equal(90.0, SewerLooks.OutfallYaw(SewerLooks.BourgCentre.X - 10, SewerLooks.BourgCentre.Z), 9);
+    }
+
+    /// <summary>Demande du 23 novembre 2026 : la bouche d'égout n'est jamais noyée sous les pavés, même en pente.</summary>
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(12.37)]
+    [InlineData(-3.5)]
+    public void Bouche_d_egout_au_dessus_des_paves(double highest)
+    {
+        double foot = SewerLooks.ManholeBase(highest), top = foot + SewerLooks.ManholeHeight;
+        Assert.True(top > highest + TownShapes.PavementHeight, $"{top} sous les pavés");
+        Assert.Equal(SewerLooks.ManholeProud, top - highest - TownShapes.PavementHeight, 9);
+        Assert.True(foot < highest);   // le reste est enfoui : elle ne flotte pas
+        string sewer = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Sewer.cs"));
+        Assert.Contains("SewerLooks.ManholeBase(GroundHigh(", sewer);
+        Assert.Contains("SewerLooks.OutfallYaw(x, z)", sewer);
     }
 }
