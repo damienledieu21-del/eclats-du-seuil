@@ -66,6 +66,17 @@ namespace EdS.Runtime
             ["moine_echo_abbe_courrouce"] = "Abbé sans repos courroucé",
             ["moine_echo_abbe_dechire"] = "Abbé sans repos déchiré",
             ["moine_echo_sacristain"] = "Sacristain",
+            // V2.49.1 : les égouts du Bourg (contrebandiers du grand collecteur, loups-échos de la vieille citerne) et leurs chefs.
+            ["bandit_egout"] = "Contrebandier",
+            ["bandit_arc_egout"] = "Archer des contrebandiers",
+            ["bandit_chef_egout"] = "Passeur des contrebandiers",
+            ["bandit_chef_egout_aux_abois"] = "Passeur aux abois",
+            ["loup_echo_egout"] = "Loup-écho des égouts",
+            ["loup_echo_bete_citerne"] = "Bête de la citerne",
+            ["loup_echo_bete_citerne_enragee"] = "Bête de la citerne enragée",
+            // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts, petits et en groupe, et les rats géants.
+            ["rat_egout"] = "Rat des égouts",
+            ["rat_geant_egout"] = "Rat géant",
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -97,6 +108,9 @@ namespace EdS.Runtime
             ["griffe_spectrale"] = "Griffe spectrale",
             ["glas"] = "Glas",
             ["crosse"] = "Coup de crosse",
+            // V2.49.1 : les égouts du Bourg.
+            ["coup_de_gaffe"] = "Coup de gaffe",
+            ["vague_de_fange"] = "Vague de fange",
         };
 
         /// <summary>Nom à montrer pour le combattant <paramref name="id"/> (vide pour un identifiant vide).</summary>

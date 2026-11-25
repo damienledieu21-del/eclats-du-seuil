@@ -334,7 +334,9 @@ public sealed class V2126EssaiTests
         long r = (long)Math.Round(WalkPaths.DefaultRadius * 1e4);
         JsonNode story = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "story.json")))!["data"]!;
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "zones", "vallons.json")))!["data"]!;
-        var doors = zone["doors"]!.AsArray().ToDictionary(d => (string)d!["to"]!, d => ((double)d!["position"]![0]!, (double)d["position"]![1]!));
+        // V2.49.1 : deux portes mènent aux égouts (bouche du marché et déversoir) : la première par zone d'arrivée.
+        var doors = zone["doors"]!.AsArray().GroupBy(d => (string)d!["to"]!)
+            .ToDictionary(g => g.Key, g => ((double)g.First()!["position"]![0]!, (double)g.First()!["position"]![1]!));
         int walks = 0;
         foreach (JsonNode? npc in story["npcs"]!.AsArray())
         {

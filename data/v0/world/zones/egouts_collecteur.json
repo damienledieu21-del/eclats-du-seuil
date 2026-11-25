@@ -1,0 +1,165 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.egouts_collecteur",
+    "name": "Égouts du Bourg : grand collecteur",
+    "scenario": "zones/egouts_collecteur",
+    "floor": "dessous",
+    "entry": "sous_la_bouche_du_marche",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "sous_la_bouche_du_marche",
+        "name": "Sous la bouche du marché",
+        "position": [
+          -24,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "galerie_du_collecteur",
+        "name": "Galerie du collecteur",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          14
+        ],
+        "minLevel": 7
+      },
+      {
+        "id": "salle_des_contrebandiers",
+        "name": "Salle des contrebandiers",
+        "min": [
+          -30,
+          14
+        ],
+        "max": [
+          30,
+          40
+        ],
+        "minLevel": 8
+      }
+    ],
+    "populations": [
+      {
+        "creature": "bandit_egout1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_egout2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_egout1",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_egout2",
+        "respawnMs": 120000,
+        "leashRange": 14,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "rat_egout1",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout2",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout3",
+        "respawnMs": 90000,
+        "leashRange": 14,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_geant_egout1",
+        "respawnMs": 180000,
+        "leashRange": 14,
+        "loot": "loot.rat_geant",
+        "family": "rat_geant"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "passeur_des_contrebandiers",
+        "scenario": "zones/egouts_collecteur_passeur",
+        "forms": [
+          "bandit_chef_egout",
+          "bandit_chef_egout_aux_abois"
+        ],
+        "fact": "fact.passeur_des_contrebandiers.vaincu",
+        "rewards": [
+          {
+            "item": "item.manteau_du_passeur",
+            "count": 1
+          }
+        ],
+        "loot": "loot.chef_des_bandits"
+      }
+    ],
+    "doors": [
+      {
+        "id": "bouche_du_marche",
+        "name": "Place du marché",
+        "position": [
+          -24,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_egouts_marche"
+      },
+      {
+        "id": "deversoir",
+        "name": "Fossé du Bourg",
+        "position": [
+          24,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_egouts_deversoir"
+      },
+      {
+        "id": "echelle_de_la_citerne",
+        "name": "Échelle de la citerne",
+        "position": [
+          26,
+          38
+        ],
+        "to": "zone.egouts_citerne",
+        "toDoor": "echelle",
+        "kind": "puits"
+      }
+    ]
+  }
+}

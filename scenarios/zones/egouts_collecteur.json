@@ -1,0 +1,740 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 491,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "mur_egout_sud_centre",
+          "points": [
+            [
+              -16,
+              -4
+            ],
+            [
+              16,
+              -4
+            ],
+            [
+              16,
+              6
+            ],
+            [
+              -16,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "canal_egout_ouest",
+          "points": [
+            [
+              -30,
+              14
+            ],
+            [
+              -20,
+              14
+            ],
+            [
+              -20,
+              18
+            ],
+            [
+              -30,
+              18
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "canal_egout_centre",
+          "points": [
+            [
+              -16,
+              14
+            ],
+            [
+              16,
+              14
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              -16,
+              18
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "canal_egout_est",
+          "points": [
+            [
+              20,
+              14
+            ],
+            [
+              30,
+              14
+            ],
+            [
+              30,
+              18
+            ],
+            [
+              20,
+              18
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "pilier_egout_1",
+          "points": [
+            [
+              -8.4,
+              11.6
+            ],
+            [
+              -7.6,
+              11.6
+            ],
+            [
+              -7.6,
+              12.4
+            ],
+            [
+              -8.4,
+              12.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_2",
+          "points": [
+            [
+              7.6,
+              11.6
+            ],
+            [
+              8.4,
+              11.6
+            ],
+            [
+              8.4,
+              12.4
+            ],
+            [
+              7.6,
+              12.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_3",
+          "points": [
+            [
+              -8.4,
+              19.6
+            ],
+            [
+              -7.6,
+              19.6
+            ],
+            [
+              -7.6,
+              20.4
+            ],
+            [
+              -8.4,
+              20.4
+            ]
+          ]
+        },
+        {
+          "id": "pilier_egout_4",
+          "points": [
+            [
+              7.6,
+              19.6
+            ],
+            [
+              8.4,
+              19.6
+            ],
+            [
+              8.4,
+              20.4
+            ],
+            [
+              7.6,
+              20.4
+            ]
+          ]
+        },
+        {
+          "id": "mur_egout_salle_est",
+          "points": [
+            [
+              12,
+              26
+            ],
+            [
+              30,
+              26
+            ],
+            [
+              30,
+              27.5
+            ],
+            [
+              12,
+              27.5
+            ]
+          ]
+        },
+        {
+          "id": "grille_egout_salle",
+          "points": [
+            [
+              10,
+              26
+            ],
+            [
+              12,
+              26
+            ],
+            [
+              12,
+              27.5
+            ],
+            [
+              10,
+              27.5
+            ]
+          ]
+        },
+        {
+          "id": "tuyau_egout_1",
+          "points": [
+            [
+              -26,
+              18
+            ],
+            [
+              -25,
+              18
+            ],
+            [
+              -25,
+              19.5
+            ],
+            [
+              -26,
+              19.5
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "tuyau_egout_2",
+          "points": [
+            [
+              25,
+              18
+            ],
+            [
+              26,
+              18
+            ],
+            [
+              26,
+              19.5
+            ],
+            [
+              25,
+              19.5
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "caisses_egout_1",
+          "points": [
+            [
+              -12,
+              30
+            ],
+            [
+              -10,
+              30
+            ],
+            [
+              -10,
+              32
+            ],
+            [
+              -12,
+              32
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "caisses_egout_2",
+          "points": [
+            [
+              2,
+              34
+            ],
+            [
+              4.4,
+              34
+            ],
+            [
+              4.4,
+              36
+            ],
+            [
+              2,
+              36
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "caisses_egout_3",
+          "points": [
+            [
+              -27,
+              22
+            ],
+            [
+              -25,
+              22
+            ],
+            [
+              -25,
+              24
+            ],
+            [
+              -27,
+              24
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "repaire_egout_passeur",
+          "points": [
+            [
+              -29,
+              37
+            ],
+            [
+              -21,
+              37
+            ],
+            [
+              -21,
+              40
+            ],
+            [
+              -29,
+              40
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "bandit_egout1",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -8,
+          24
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_egout2",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          6,
+          31
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_arc_egout1",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          0,
+          10
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
+          "pack": false
+        }
+      },
+      {
+        "id": "bandit_arc_egout2",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          -4,
+          36
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
+          "pack": false
+        }
+      },
+      {
+        "id": "rat_egout1",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -13,
+          8
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_egout2",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -12,
+          9.5
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_egout3",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 55,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 6,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 0.8
+          }
+        ],
+        "position": [
+          -14,
+          9.5
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.3,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 6,
+          "pack": true
+        }
+      },
+      {
+        "id": "rat_geant_egout1",
+        "type": "assailant",
+        "team": "rats",
+        "initiative": 0,
+        "health": 240,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1300,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 15,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          12,
+          33
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.55,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      }
+    ],
+    "truces": [
+      [
+        "rats",
+        "bandits"
+      ]
+    ],
+    "commands": []
+  }
+}

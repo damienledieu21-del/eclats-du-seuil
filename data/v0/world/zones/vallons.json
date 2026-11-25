@@ -3475,6 +3475,26 @@
         "toDoor": "sortie"
       },
       {
+        "id": "porte_egouts_marche",
+        "name": "Bouche d'égout du marché",
+        "position": [
+          -1028,
+          -100
+        ],
+        "to": "zone.egouts_collecteur",
+        "toDoor": "bouche_du_marche"
+      },
+      {
+        "id": "porte_egouts_deversoir",
+        "name": "Déversoir des égouts",
+        "position": [
+          -1100,
+          -335
+        ],
+        "to": "zone.egouts_collecteur",
+        "toDoor": "deversoir"
+      },
+      {
         "id": "porte_tour_de_signal",
         "name": "Salle de garde de la tour de signal",
         "position": [

@@ -1,0 +1,138 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.egouts_citerne",
+    "name": "Égouts du Bourg : vieille citerne",
+    "scenario": "zones/egouts_citerne",
+    "floor": "dessous",
+    "entry": "pied_de_l_echelle",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "pied_de_l_echelle",
+        "name": "Pied de l'échelle",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "vieille_citerne",
+        "name": "Vieille citerne",
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          28
+        ],
+        "minLevel": 9
+      },
+      {
+        "id": "repaire_de_la_bete",
+        "name": "Repaire de la bête",
+        "min": [
+          -24,
+          28
+        ],
+        "max": [
+          24,
+          36
+        ],
+        "minLevel": 10
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_egout1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_egout2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_egout3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "rat_egout4",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout5",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_egout6",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "rat"
+      },
+      {
+        "creature": "rat_geant_egout2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.rat_geant",
+        "family": "rat_geant"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "bete_de_la_citerne",
+        "scenario": "zones/egouts_citerne_bete",
+        "forms": [
+          "loup_echo_bete_citerne",
+          "loup_echo_bete_citerne_enragee"
+        ],
+        "fact": "fact.bete_de_la_citerne.vaincue",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "echelle",
+        "name": "Grand collecteur",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.egouts_collecteur",
+        "toDoor": "echelle_de_la_citerne",
+        "kind": "puits"
+      }
+    ]
+  }
+}
