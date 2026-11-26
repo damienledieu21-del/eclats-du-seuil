@@ -1,0 +1,153 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 16,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.grottes_noyees_bassins",
+    "name": "Grottes noyées : bassins des roseaux",
+    "scenario": "zones/grottes_noyees_bassins",
+    "floor": "dessous",
+    "entry": "sous_les_roseaux",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "sous_les_roseaux",
+        "name": "Sous les roseaux",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "bassins_des_roseaux",
+        "name": "Bassins des roseaux",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          24
+        ],
+        "minLevel": 11
+      },
+      {
+        "id": "repaire_des_pilleurs",
+        "name": "Repaire des pilleurs d'épaves",
+        "min": [
+          -30,
+          24
+        ],
+        "max": [
+          30,
+          44
+        ],
+        "minLevel": 12
+      }
+    ],
+    "populations": [
+      {
+        "creature": "bandit_noyees1",
+        "respawnMs": 150000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_noyees2",
+        "respawnMs": 150000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_noyees1",
+        "respawnMs": 150000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "loup_echo_noyees1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_noyees2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "capitaine_des_pilleurs",
+        "scenario": "zones/grottes_noyees_bassins_capitaine",
+        "forms": [
+          "bandit_chef_noyees",
+          "bandit_chef_noyees_accule"
+        ],
+        "fact": "fact.capitaine_des_pilleurs.vaincu",
+        "rewards": [
+          {
+            "item": "item.coquille_de_souffle",
+            "count": 1
+          }
+        ],
+        "loot": "loot.chef_des_bandits"
+      }
+    ],
+    "doors": [
+      {
+        "id": "roselieres",
+        "name": "Roselières du lac",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_grottes_noyees"
+      },
+      {
+        "id": "chenal",
+        "name": "Salle des épaves",
+        "position": [
+          26,
+          41
+        ],
+        "to": "zone.grottes_noyees_epaves",
+        "toDoor": "chenal",
+        "water": {
+          "tide": true,
+          "diveMs": 12000
+        }
+      },
+      {
+        "id": "siphon",
+        "name": "Siphon de l'épave",
+        "position": [
+          -26,
+          41
+        ],
+        "to": "zone.grottes_noyees_epaves",
+        "toDoor": "siphon",
+        "water": {
+          "diveMs": 25000
+        }
+      }
+    ]
+  }
+}

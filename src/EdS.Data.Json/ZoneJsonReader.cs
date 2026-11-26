@@ -171,6 +171,15 @@ namespace EdS.Data.Json
                 ["toDoor"] = (v, p) => door.ToDoor = input.Text(v, p),
                 ["building"] = (v, p) => door.Building = input.NullableText(v, p),
                 ["kind"] = (v, p) => door.Kind = input.Text(v, p),   // chantier V2.45.1 (schéma 15) : genre de passage
+                ["water"] = (v, p) =>   // V2.50.1 (schéma 16) : passage noyé (marée, plongée)
+                {
+                    var w = new DoorWaterData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["tide"] = (wv, wp) => w.Tide = input.Boolean(wv, wp),
+                        ["diveMs"] = (wv, wp) => w.DiveMs = input.Int64(wv, wp),
+                    })) door.Water = w;
+                },
             });
             return ok ? door : null;
         }

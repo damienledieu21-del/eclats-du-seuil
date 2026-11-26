@@ -89,6 +89,14 @@ namespace EdS.Runtime
             // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts, petits et en groupe, et les rats géants.
             ["rat_egout"] = "Rat des égouts",
             ["rat_geant_egout"] = "Rat géant",
+            // V2.50.1 : les grottes noyées du lac (pilleurs d'épaves et loups-échos noyés) et leurs chefs.
+            ["bandit_noyees"] = "Pilleur d'épaves",
+            ["bandit_arc_noyees"] = "Archer des pilleurs d'épaves",
+            ["bandit_chef_noyees"] = "Capitaine des pilleurs",
+            ["bandit_chef_noyees_accule"] = "Capitaine acculé",
+            ["loup_echo_noyees"] = "Loup-écho noyé",
+            ["loup_echo_epave"] = "Écho de l'épave",
+            ["loup_echo_epave_dechaine"] = "Écho de l'épave déchaîné",
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -123,6 +131,9 @@ namespace EdS.Runtime
             // V2.49.1 : les égouts du Bourg.
             ["coup_de_gaffe"] = "Coup de gaffe",
             ["vague_de_fange"] = "Vague de fange",
+            // V2.50.1 : les grottes noyées du lac.
+            ["coup_de_harpon"] = "Coup de harpon",
+            ["lame_de_fond"] = "Lame de fond",
             // V2.50a : les galeries sous les pierres du Seuil.
             ["lance_d_eclat"] = "Lance d'éclat",
             ["morsure_de_cristal"] = "Morsure de cristal",
