@@ -168,7 +168,7 @@
           "low": true
         },
         {
-          "id": "cristaux_salle_1",
+          "id": "amas_cristal_salle_1",
           "points": [
             [
               -23,
@@ -190,7 +190,7 @@
           "low": true
         },
         {
-          "id": "cristaux_salle_2",
+          "id": "amas_cristal_salle_2",
           "points": [
             [
               21,
@@ -212,7 +212,7 @@
           "low": true
         },
         {
-          "id": "cristaux_salle_3",
+          "id": "amas_cristal_salle_3",
           "points": [
             [
               -6,

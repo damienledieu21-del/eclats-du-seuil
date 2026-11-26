@@ -254,7 +254,7 @@
           ]
         },
         {
-          "id": "cristaux_galeries_1",
+          "id": "amas_cristal_galeries_1",
           "points": [
             [
               -4,
@@ -276,7 +276,7 @@
           "low": true
         },
         {
-          "id": "cristaux_galeries_2",
+          "id": "amas_cristal_galeries_2",
           "points": [
             [
               12,
@@ -298,7 +298,7 @@
           "low": true
         },
         {
-          "id": "cristaux_galeries_3",
+          "id": "amas_cristal_galeries_3",
           "points": [
             [
               -27,

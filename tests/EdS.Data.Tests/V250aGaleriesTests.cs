@@ -88,11 +88,11 @@ public sealed class V250aGaleriesTests : IDisposable
         // tire par-dessus) ; parois, éclats géants et piliers non.
         var o1 = Gallery(0).Setup.Space!.Obstacles;
         var o2 = Gallery(1).Setup.Space!.Obstacles;
-        foreach (string part in new[] { "paroi_cristal", "gouffre_cristal", "eclat_geant", "pilier_cristal", "cristaux", "eboulis_cristal" })
+        foreach (string part in new[] { "paroi_cristal", "gouffre_cristal", "eclat_geant", "pilier_cristal", "amas_cristal", "eboulis_cristal" })
             Assert.Contains(o1, o => o.Id.StartsWith(part, StringComparison.Ordinal));
-        foreach (string part in new[] { "paroi_cristal", "eclat_geant", "pilier_cristal", "cristaux", "autel_eclats" })
+        foreach (string part in new[] { "paroi_cristal", "eclat_geant", "pilier_cristal", "amas_cristal", "autel_eclats" })
             Assert.Contains(o2, o => o.Id.StartsWith(part, StringComparison.Ordinal));
-        string[] low = { "gouffre_cristal", "cristaux", "eboulis_cristal", "autel_eclats" };
+        string[] low = { "gouffre_cristal", "amas_cristal", "eboulis_cristal", "autel_eclats" };
         string[] high = { "paroi_cristal", "eclat_geant", "pilier_cristal" };
         Assert.All(o1.Concat(o2), o => Assert.Equal(low.Any(p => o.Id.StartsWith(p, StringComparison.Ordinal)), o.Low));
         Assert.All(o1.Concat(o2), o => Assert.True(low.Concat(high).Any(p => o.Id.StartsWith(p, StringComparison.Ordinal)), o.Id));
