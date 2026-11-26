@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 14,
+  "schemaVersion": 17,
   "kind": "zone",
   "contentVersion": "0.28.0-provisoire",
   "data": {
@@ -3545,6 +3545,17 @@
         "to": "zone.maison_joueur",
         "toDoor": "sortie",
         "building": "maison_ville_86"
+      },
+      {
+        "id": "faille_de_l_envers",
+        "name": "Faille de l'Envers",
+        "position": [
+          1640,
+          -455
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_des_vallons",
+        "kind": "faille"
       }
     ],
     "chiefs": [

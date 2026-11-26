@@ -1,0 +1,419 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 551,
+    "durationMs": 3600000,
+    "zone": true,
+    "truces": [
+      [
+        "reflets",
+        "ombres"
+      ]
+    ],
+    "space": {
+      "bounds": {
+        "min": [
+          -1908,
+          -1614
+        ],
+        "max": [
+          2188,
+          1458
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "envers_arbre_mort_1",
+          "points": [
+            [
+              1619.2,
+              -430.8
+            ],
+            [
+              1620.8,
+              -430.8
+            ],
+            [
+              1620.8,
+              -429.2
+            ],
+            [
+              1619.2,
+              -429.2
+            ]
+          ]
+        },
+        {
+          "id": "envers_arbre_mort_2",
+          "points": [
+            [
+              1667.2,
+              -428.8
+            ],
+            [
+              1668.8,
+              -428.8
+            ],
+            [
+              1668.8,
+              -427.2
+            ],
+            [
+              1667.2,
+              -427.2
+            ]
+          ]
+        },
+        {
+          "id": "envers_arbre_mort_3",
+          "points": [
+            [
+              1597.2,
+              -472.8
+            ],
+            [
+              1598.8,
+              -472.8
+            ],
+            [
+              1598.8,
+              -471.2
+            ],
+            [
+              1597.2,
+              -471.2
+            ]
+          ]
+        },
+        {
+          "id": "envers_arbre_mort_4",
+          "points": [
+            [
+              1577.2,
+              -428.8
+            ],
+            [
+              1578.8,
+              -428.8
+            ],
+            [
+              1578.8,
+              -427.2
+            ],
+            [
+              1577.2,
+              -427.2
+            ]
+          ]
+        },
+        {
+          "id": "envers_ruine_inversee_1",
+          "points": [
+            [
+              1557.0,
+              -507.0
+            ],
+            [
+              1563.0,
+              -507.0
+            ],
+            [
+              1563.0,
+              -503.0
+            ],
+            [
+              1557.0,
+              -503.0
+            ]
+          ]
+        },
+        {
+          "id": "envers_ruine_inversee_2",
+          "points": [
+            [
+              1528.0,
+              -431.0
+            ],
+            [
+              1532.0,
+              -431.0
+            ],
+            [
+              1532.0,
+              -425.0
+            ],
+            [
+              1528.0,
+              -425.0
+            ]
+          ]
+        },
+        {
+          "id": "envers_eclat_noir_1",
+          "points": [
+            [
+              1624.25,
+              -482.75
+            ],
+            [
+              1625.75,
+              -482.75
+            ],
+            [
+              1625.75,
+              -481.25
+            ],
+            [
+              1624.25,
+              -481.25
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "envers_eclat_noir_2",
+          "points": [
+            [
+              1655.25,
+              -438.75
+            ],
+            [
+              1656.75,
+              -438.75
+            ],
+            [
+              1656.75,
+              -437.25
+            ],
+            [
+              1655.25,
+              -437.25
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "envers_eclat_noir_3",
+          "points": [
+            [
+              1589.25,
+              -522.75
+            ],
+            [
+              1590.75,
+              -522.75
+            ],
+            [
+              1590.75,
+              -521.25
+            ],
+            [
+              1589.25,
+              -521.25
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "envers_autel_de_l_aube",
+          "points": [
+            [
+              1655.0,
+              -478.0
+            ],
+            [
+              1657.0,
+              -478.0
+            ],
+            [
+              1657.0,
+              -476.0
+            ],
+            [
+              1655.0,
+              -476.0
+            ]
+          ],
+          "low": true
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "loup_echo_envers1",
+        "type": "assailant",
+        "team": "reflets",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1600,
+          -500
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_echo_envers2",
+        "type": "assailant",
+        "team": "reflets",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1610,
+          -410
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_echo_envers3",
+        "type": "assailant",
+        "team": "reflets",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1575,
+          -458
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "ours_reflet1",
+        "type": "assailant",
+        "team": "ombres",
+        "initiative": 0,
+        "health": 460,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          1520,
+          -470
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

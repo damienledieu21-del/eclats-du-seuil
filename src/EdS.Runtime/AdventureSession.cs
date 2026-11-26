@@ -2044,7 +2044,7 @@ namespace EdS.Runtime
         private AdventureMap BuildMap(CombatSpace space) =>
             new AdventureMap(space,
                         _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
-                        Roads(_zone),
+                        Roads(Reflected),   // V2.51 : dans l'Envers, les routes de la surface (cases en reflet)
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
@@ -2058,9 +2058,14 @@ namespace EdS.Runtime
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
                         _zone.Indoor ? null : _zone.Region,
                         // Chantier V2.46 : un dessous (la grotte de la cascade) est dessiné en grotte, à l'abri.
-                        _zone.Underground);
+                        _zone.Underground,
+                        // V2.51 : l'Envers, reflet de la région (ses routes sont celles de la surface, voir Roads).
+                        _zone.Envers);
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
+
+        /// <summary>V2.51 : la zone de la surface que la zone en cours reflète (dans l'Envers), sinon la zone en cours.</summary>
+        private ZoneDefinition Reflected => _zone.Mirror is ZoneMirror m ? _zones.FirstOrDefault(z => z.Id == m.Of) ?? _zone : _zone;
 
         /// <summary>
         /// Interface V2.1 : position du personnage en mètres pour centrer la mini-carte à chaque image, sans construire la liste des repères

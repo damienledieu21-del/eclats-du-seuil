@@ -372,7 +372,8 @@ namespace EdS.World
         /// </summary>
         public TravelRefusal CanTravel(ZoneDefinition zone, string safePoint)
         {
-            if (zone is null || zone.Sheltered || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
+            // V2.51 : le voyage rapide ne mène jamais dans l'Envers (on y entre par une faille), comme dans un dessous.
+            if (zone is null || zone.Sheltered || zone.Envers || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
             if (!IsDiscovered(zone, safePoint)) return TravelRefusal.NotDiscovered;
             if (_defeated || !Zone.Engine.View(CombatantId).IsPresent || Zone.Engine.View(CombatantId).IsDead) return TravelRefusal.Unavailable;
             if (InCombat) return TravelRefusal.InCombat;

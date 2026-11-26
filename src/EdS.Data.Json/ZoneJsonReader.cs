@@ -74,6 +74,20 @@ namespace EdS.Data.Json
                         $"scénario de zone « {name} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
                 scenario = loaded.Setup;
             }
+            // V2.51 (schéma 17) : l'aire de l'Envers part des obstacles de la zone reflétée (moins les retirés), plus les siens.
+            if (report.IsValid && scenario != null && document.SchemaVersion >= ZoneValidator.CurrentSchemaVersion && document.Data?.Floor == "envers"
+                && document.Data.Mirror is MirrorData mirror && mirror.Scenario is string mirrored && ZoneValidator.IsScenarioPath(mirrored))
+            {
+                ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, mirrored + ".json"), data, area: true);
+                if (loaded.Setup is null)
+                    report.Add("$.data.mirror.scenario", ValidationCode.InvalidValue,
+                        $"scénario reflété « {mirrored} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
+                else
+                {
+                    var removed = (mirror.Remove ?? new List<string?>()).Where(r => r != null && CombatSetup.IsValidName(r)).Select(r => r!).Distinct(StringComparer.Ordinal).ToList();
+                    scenario = ZoneValidator.Reflect(scenario, loaded.Setup, removed, report);
+                }
+            }
             // Sous-lot 12.7 : scénario des formes du chef.
             CombatSetup? bossScenario = null;
             if (report.IsValid && document.Data?.Boss?.Scenario is string bossName && ZoneValidator.IsScenarioPath(bossName))
@@ -127,6 +141,17 @@ namespace EdS.Data.Json
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
                 ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
                 ["floor"] = (v, p) => d.Floor = input.Text(v, p),   // chantier V2.45.1 (schéma 15) : étage
+                ["mirror"] = (v, p) =>   // V2.51 (schéma 17) : reflet d'une zone de l'Envers
+                {
+                    var m = new MirrorData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["of"] = (mv, mp) => m.Of = input.Text(mv, mp),
+                        ["scenario"] = (mv, mp) => m.Scenario = input.Text(mv, mp),
+                        ["remove"] = (mv, mp) => m.Remove = input.ReadLimitedList(mv, mp, ZoneMirror.MaxRemoved,
+                            n => $"{n} obstacles retirés, au plus {ZoneMirror.MaxRemoved}.", (e, ip) => input.Text(e, ip)),
+                    })) d.Mirror = m;
+                },
                 ["scaling"] = (v, p) =>   // sous-lot V1.8 (schéma 7) : zones en mélange
                 {
                     var s = new ZoneScalingData();

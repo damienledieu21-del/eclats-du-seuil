@@ -89,8 +89,8 @@ public sealed class V21JourNuitTests : IDisposable
     public void Vallons_livres_au_schema_8()
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
-        Assert.Equal((16, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal(14, Vallons.SchemaVersion);   // V2.26 : 14 (territoire) ; V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
+        Assert.Equal((17, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal(17, Vallons.SchemaVersion);   // V2.51a : 17 (faille de l'Envers) ; V2.26 : 14 (territoire) ; V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -146,7 +146,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal(v7.Zone.Setup.Combatants.Count - 2, ZoneSetups.For(v7.Zone, Array.Empty<string>(), DayPhase.Night).Combatants.Count);
         // Les intérieurs livrés restent au schéma 7.
         // V2.46 : la grotte (un dessous) est au schéma 15 ; V2.48.1 : la chapelle aussi, pour la trappe de sa crypte secrète.
-        Assert.All(V16TestData.Interiors.Where(z => !z.Underground && z.Id != "zone.chapelle"), z =>
+        Assert.All(V16TestData.Interiors.Where(z => !z.Underground && !z.Envers && z.Id != "zone.chapelle"), z =>
             Assert.Equal(ZoneValidator.OldestSchemaVersion, z.SchemaVersion));
 
         ValidationError hours = Error(ZoneMutated(root =>
@@ -167,7 +167,7 @@ public sealed class V21JourNuitTests : IDisposable
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 17 })   // V2.50.1 : 16 est la version courante
+        foreach (int version in new[] { 6, 18 })   // V2.51a : 17 est la version courante
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));

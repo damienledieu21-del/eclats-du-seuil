@@ -458,7 +458,7 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |
 |---|---|---|---|---|
-| **V2.51** | Couche de l'Envers : cases en reflet, failles qui y mènent au même point, lumière et ciel de l'Envers | M | V2.28, V2.45 | ciel de l'Envers, variantes sombres des matériaux |
+| **V2.51** | Couche de l'Envers : cases en reflet, failles qui y mènent au même point, lumière et ciel de l'Envers. **V2.51a** cœur (schéma de zone 17, `zone.envers_vallons`, première faille) ; **V2.51b** Unity (ciel, lumière, matériaux sombres, kit de 16 modèles préparé) | M | V2.28, V2.45 | ciel de l'Envers, variantes sombres des matériaux |
 | **V2.52** | Contenu de l'Envers des douze lieux, ses ennemis, secrets et passages | L | V2.51 et les lieux | versions de l'Envers des grands lieux (ruines inversées, arbre millénaire mort…) |
 
 Chaque sous-lot suit la méthode de CLAUDE.md (branche, tests touchés verts, PR en brouillon, CI verte, relecture indépendante puis Codex) ; un changement de format est versionné et documenté, avec de nouveaux journaux figés si le moteur change.

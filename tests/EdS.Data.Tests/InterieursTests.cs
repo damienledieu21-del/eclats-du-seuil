@@ -101,11 +101,12 @@ public class InterieursTests : IDisposable
         // Sous-lot V2.14 : les boutiques dans de vraies maisons (boulangerie, épicerie, herboristerie, mercerie).
         Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.souvenir_rupture", "zone.boulangerie", "zone.epicerie",
                 "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere", "zone.atelier_charron", "zone.relais_pont", "zone.foulon", "zone.grotte_cascade", "zone.mine_galeries", "zone.crypte_abbaye", "zone.egouts_collecteur", "zone.grottes_noyees_bassins", "zone.galeries_seuil", "zone.garde_du_signal", "zone.dortoir_abbaye", "zone.maison_joueur",
+                "zone.envers_vallons",   // V2.51a : l'Envers des Vallons, par la faille
                 "zone.auberge_cuisine", "zone.auberge_chambres", "zone.crypte_chapelle", "zone.archives", "zone.moulin_meules", "zone.mine_filons", "zone.crypte_tombeau", "zone.egouts_citerne", "zone.grottes_noyees_epaves", "zone.galeries_eclats", "zone.auberge_logement", "zone.mine_cristaux",
                 "zone.auberge_combles" },   // V2.47.1 : les trois niveaux de la mine ; V2.48.1 : les cryptes de l'abbaye et de la chapelle ; V2.49.1 : les égouts du Bourg   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
-        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.TerritorySchemaVersion : z.Id.StartsWith("zone.grottes_noyees", StringComparison.Ordinal) ? ZoneValidator.CurrentSchemaVersion : z.Underground || z.Id == "zone.chapelle" ? ZoneValidator.FloorsSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.50.1 : les grottes noyées au schéma 16 (eau des portes)   // V2.4 : Vallons en 9, intérieurs en 7 ; V2.46 : la grotte (dessous) au schéma courant ; V2.48.1 : la chapelle aussi (sa trappe)
+        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" || z.Envers ? ZoneValidator.CurrentSchemaVersion : z.Id.StartsWith("zone.grottes_noyees", StringComparison.Ordinal) ? ZoneValidator.WaterSchemaVersion : z.Underground || z.Id == "zone.chapelle" ? ZoneValidator.FloorsSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.51a : les Vallons (faille) et l'Envers au schéma 17 ; V2.50.1 : les grottes noyées au schéma 16 (eau des portes)   // V2.4 : Vallons en 9, intérieurs en 7 ; V2.46 : la grotte (dessous) au schéma courant ; V2.48.1 : la chapelle aussi (sa trappe)
         ZoneDefinition vallons = linked.Zones[0];
         Assert.False(vallons.Indoor);
         Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison"),
@@ -127,8 +128,9 @@ public class InterieursTests : IDisposable
             ("porte_crypte_abbaye", "zone.crypte_abbaye"),   // V2.48.1 : l'escalier de la crypte de l'abbaye
             ("porte_egouts_marche", "zone.egouts_collecteur"), ("porte_egouts_deversoir", "zone.egouts_collecteur"), ("porte_grottes_noyees", "zone.grottes_noyees_bassins"),   // V2.49.1 : les égouts du Bourg
             ("porte_galeries_seuil", "zone.galeries_seuil"),   // V2.50a : les galeries sous les pierres du Seuil
-            ("porte_dortoir_abbaye", "zone.dortoir_abbaye") }, vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)));
-        foreach (ZoneDefinition inside in linked.Zones.Skip(1).Where(z => z.Id != "zone.souvenir_rupture" && !z.Underground))
+            ("porte_dortoir_abbaye", "zone.dortoir_abbaye"),
+            ("faille_de_l_envers", "zone.envers_vallons") }, vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)));
+        foreach (ZoneDefinition inside in linked.Zones.Skip(1).Where(z => z.Id != "zone.souvenir_rupture" && !z.Underground && !z.Envers))
         {
             Assert.True(inside.Indoor);
             // Chaque pièce a sa sortie ; les archives sortent dans la guilde, la guilde a aussi la porte des archives. Lot C : la cuisine et les
@@ -156,7 +158,7 @@ public class InterieursTests : IDisposable
         }
         Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg", "Maison de la Guilde", "Souvenir de la Rupture", "Boulangerie de Firmin",
                 "Épicerie de Bertille", "Herboristerie de Sauge", "Mercerie de Margot", "Forge couverte de Maëlle", "Grange", "Moulin", "Tour de guet",
-                "Maison paysanne", "Atelier du charron", "Relais du pont", "Moulin à foulon", "Grotte de la cascade", "Mine : galeries boisées", "Crypte de l'abbaye : galerie des gisants", "Égouts du Bourg : grand collecteur", "Grottes noyées : bassins des roseaux", "Galeries du Seuil : galeries cristallines", "Salle de garde de la tour de signal", "Dortoir de l'abbaye", "Chez soi", "Cuisine de l'auberge", "Chambres de l'auberge", "Crypte de la chapelle", "Archives de la Guilde", "Étage des meules",
+                "Maison paysanne", "Atelier du charron", "Relais du pont", "Moulin à foulon", "Grotte de la cascade", "Mine : galeries boisées", "Crypte de l'abbaye : galerie des gisants", "Égouts du Bourg : grand collecteur", "Grottes noyées : bassins des roseaux", "Galeries du Seuil : galeries cristallines", "Salle de garde de la tour de signal", "Dortoir de l'abbaye", "Chez soi", "Envers des Vallons", "Cuisine de l'auberge", "Chambres de l'auberge", "Crypte de la chapelle", "Archives de la Guilde", "Étage des meules",
                 "Mine : galeries des filons", "Crypte de l'abbaye : tombeau de l'abbé", "Égouts du Bourg : vieille citerne", "Grottes noyées : salle des épaves", "Galeries du Seuil : salle des éclats géants", "Logement et dortoir de l'auberge", "Mine : cœur de cristal", "Combles de l'auberge" },   // V2.14 : les boutiques ; lot C
             linked.Zones.Skip(1).Select(z => z.Name));
         MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
@@ -252,7 +254,7 @@ public class InterieursTests : IDisposable
         ZoneDefinition souvenir = Read(ZoneJson("zone.souvenir_rupture")).Zone!;   // sous-lot V1.9.6 : la scène du souvenir
         // Zones manquantes.
         ValidationReport alone = ZoneValidator.CheckDoors(new[] { vallons });
-        Assert.Equal(27, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(28, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         ZoneDefinition[] shops = { Read(ZoneJson("zone.boulangerie")).Zone!, Read(ZoneJson("zone.epicerie")).Zone!, Read(ZoneJson("zone.herboristerie")).Zone!,
             Read(ZoneJson("zone.mercerie")).Zone! };
         // Lot C (16 novembre 2026) : les intérieurs de métier, la cuisine et les chambres de l'auberge, l'étage des meules.
@@ -263,7 +265,7 @@ public class InterieursTests : IDisposable
             "zone.grotte_cascade",   // V2.46 : la grotte de la cascade (un dessous)
             "zone.mine_galeries", "zone.mine_filons", "zone.mine_cristaux",
             "zone.crypte_abbaye", "zone.crypte_tombeau", "zone.crypte_chapelle",
-            "zone.egouts_collecteur", "zone.egouts_citerne", "zone.grottes_noyees_bassins", "zone.grottes_noyees_epaves", "zone.galeries_seuil", "zone.galeries_eclats" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();   // V2.48.1 : les cryptes   // V2.47.1 : les trois niveaux de la mine
+            "zone.egouts_collecteur", "zone.egouts_citerne", "zone.grottes_noyees_bassins", "zone.grottes_noyees_epaves", "zone.galeries_seuil", "zone.galeries_eclats", "zone.envers_vallons" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();   // V2.48.1 : les cryptes   // V2.47.1 : les trois niveaux de la mine
         ValidationReport all = ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison, guilde, archives, souvenir }.Concat(shops).Concat(trades).ToArray());
         Assert.True(all.IsValid, all.ToString());
 
@@ -379,7 +381,7 @@ public class InterieursTests : IDisposable
         Assert.False(a.Indoors);
         Assert.Equal("porte_auberge", a.DoorInReach!.Id);
         Assert.True(a.CanUseDoor);
-        Assert.Equal(26, a.Doors().Count);   // V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(27, a.Doors().Count);   // V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         long tick = a.World.Save().WorldTick;
 
         Assert.True(a.Interact());   // F : la porte (ni PNJ ni nœud à portée)
@@ -419,7 +421,7 @@ public class InterieursTests : IDisposable
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
         Assert.False(a.Map.Indoor);
-        Assert.Equal(26, a.Map.Doors.Count);   // V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(27, a.Map.Doors.Count);   // V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
     }
@@ -553,7 +555,7 @@ public class InterieursTests : IDisposable
     {
         // Chaque intérieur : de la porte, on atteint le point sûr (couloirs d'au moins 1 m entre les meubles) ; chaque meuble laisse le
         // personnage passer autour de lui ou est contre un mur.
-        foreach (ZoneDefinition inside in Linked().Zones.Skip(1))
+        foreach (ZoneDefinition inside in Linked().Zones.Skip(1).Where(z => !z.Envers))   // V2.51a : l'Envers est une région, pas un intérieur
         {
             CombatSpace space = inside.Setup.Space!;
             // Lot C (16 novembre 2026) : chaque porte (cuisine et chambres de l'auberge, étage du moulin), pas seulement la sortie.
