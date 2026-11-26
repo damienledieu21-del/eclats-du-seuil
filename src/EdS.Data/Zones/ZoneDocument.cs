@@ -134,6 +134,22 @@ namespace EdS.Data.Zones
         /// facultatif. Les deux portes qui se répondent sont du même genre.
         /// </summary>
         public string? Kind { get; set; }
+
+        /// <summary>
+        /// V2.50.1 (schéma 16, grottes noyées du lac) : passage noyé (marée, plongée) ; facultatif. Les deux portes qui se répondent ont la même
+        /// eau.
+        /// </summary>
+        public DoorWaterData? Water { get; set; }
+    }
+
+    /// <summary>V2.50.1 (schéma 16) : eau d'une porte (voir <see cref="DoorWater"/>).</summary>
+    public sealed class DoorWaterData
+    {
+        /// <summary>Noyée à marée haute seulement (à sec à marée basse) ; faux ou absent : toujours noyée.</summary>
+        public bool? Tide { get; set; }
+
+        /// <summary>Durée de la plongée quand elle est noyée (ms) ; absente : un passage noyé ne se passe pas.</summary>
+        public long? DiveMs { get; set; }
     }
 
     /// <summary>Vallons agrandis (schéma 3) : une route ou un chemin, ligne brisée de largeur constante.</summary>

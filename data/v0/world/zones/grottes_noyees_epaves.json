@@ -1,0 +1,143 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 16,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.grottes_noyees_epaves",
+    "name": "Grottes noyées : salle des épaves",
+    "scenario": "zones/grottes_noyees_epaves",
+    "floor": "dessous",
+    "entry": "au_bout_du_chenal",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "au_bout_du_chenal",
+        "name": "Au bout du chenal",
+        "position": [
+          -24,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_des_epaves",
+        "name": "Salle des épaves",
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          30
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "cale_de_l_epave",
+        "name": "Cale de l'épave",
+        "min": [
+          -30,
+          30
+        ],
+        "max": [
+          30,
+          44
+        ],
+        "minLevel": 14
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_noyees3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_noyees4",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_noyees5",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "bandit_noyees3",
+        "respawnMs": 150000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_noyees2",
+        "respawnMs": 150000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "echo_de_l_epave",
+        "scenario": "zones/grottes_noyees_epaves_echo",
+        "forms": [
+          "loup_echo_epave",
+          "loup_echo_epave_dechaine"
+        ],
+        "fact": "fact.echo_de_l_epave.vaincu",
+        "rewards": [
+          {
+            "item": "item.amulette_des_noyes",
+            "count": 1
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "chenal",
+        "name": "Bassins des roseaux",
+        "position": [
+          -24,
+          -2.5
+        ],
+        "to": "zone.grottes_noyees_bassins",
+        "toDoor": "chenal",
+        "water": {
+          "tide": true,
+          "diveMs": 12000
+        }
+      },
+      {
+        "id": "siphon",
+        "name": "Siphon des bassins",
+        "position": [
+          26,
+          20
+        ],
+        "to": "zone.grottes_noyees_bassins",
+        "toDoor": "siphon",
+        "water": {
+          "diveMs": 25000
+        }
+      }
+    ]
+  }
+}

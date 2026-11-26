@@ -410,6 +410,10 @@
         "value": 300
       },
       {
+        "item": "item.amulette_des_noyes",
+        "value": 340
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },

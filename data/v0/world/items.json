@@ -1957,6 +1957,28 @@
         "named": true
       },
       {
+        "id": "item.coquille_de_souffle",
+        "name": "Coquille de souffle",
+        "type": "material",
+        "rarity": "rare",
+        "stack": 1
+      },
+      {
+        "id": "item.amulette_des_noyes",
+        "name": "Amulette des noyés",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "neck",
+        "requiredLevel": 13,
+        "bonus": {
+          "magicResistance": 45,
+          "maxHealth": 80,
+          "statusResistance": 15
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",
