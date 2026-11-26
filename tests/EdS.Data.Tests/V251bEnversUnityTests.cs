@@ -205,4 +205,91 @@ public sealed class V251bEnversUnityTests
             if (Directory.Exists(folder)) Directory.Delete(folder, true);
         }
     }
+
+    /// <summary>
+    /// Kit Tripo du 26 novembre 2026 (14 modèles réussis sur 16, 20 crédits chacun) : finis dans Blender (un maillage, allégés, pivot au sol,
+    /// textures de 1 024 px), à plat dans <c>Resources/Envers</c> ; l'herbe morte et les racines suspendues (échouées chez Tripo) restent
+    /// dessinées par le code ; chaque pièce garde son repli.
+    /// </summary>
+    [Fact]
+    public void Kit_de_l_Envers_present_reconnu_et_repli_garde()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", EnversLook.AssetFolder);
+        Assert.Equal(14, EnversLook.Models.Count);
+        Assert.Equal(EnversLook.Models.Count, EnversLook.Models.Distinct().Count());
+        foreach (string name in EnversLook.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, EnversLook.NameOf(EnversLook.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(EnversLook.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.EndsWith("Resources/" + EnversLook.Folder.TrimEnd('/'), EnversLook.AssetFolder);
+        Assert.Null(EnversLook.NameOf(EnversLook.AssetFolder + "/eclat_noir_couleur.jpg"));
+        Assert.Null(EnversLook.NameOf(EnversLook.AssetFolder + "/herbe_morte.fbx"));   // jamais livrée : toujours par le code
+        Assert.Equal("eclat_noir", EnversLook.NameOf("Assets\\EdS\\Modeles\\Resources\\Envers\\eclat_noir.fbx"));
+        // Toutes les pièces, les formes flottantes et la faille ont un modèle livré ; le semis aussi, sauf l'herbe morte.
+        foreach (EnversPiece p in Enum.GetValues<EnversPiece>().Where(p => p != EnversPiece.None)) Assert.Contains(EnversLook.ModelFor(p)!, EnversLook.Models);
+        Assert.All(EnversLook.FloatingModels.Append(EnversLook.RiftModel), m => Assert.Contains(m, EnversLook.Models));
+        Assert.Equal(new[] { "herbe_morte", "racines_suspendues" }, EnversLook.Procedural);
+        Assert.All(EnversLook.Procedural, m => Assert.DoesNotContain(m, EnversLook.Models));
+        // La liste de l'atelier, moins les deux fiches échouées, est celle du jeu, dans l'ordre.
+        string lab = Path.Combine(Path.GetDirectoryName(Lot93UnityPackageTests.Root)!, "Eclats_du_Seuil_AssetLab", "Envers", "modeles.json");
+        if (File.Exists(lab))
+        {
+            var names = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(lab))!["modeles"]!.AsArray().Select(m => (string)m!["nom"]!).ToList();
+            Assert.Equal(EnversLook.Models, names.Where(n => !EnversLook.Procedural.Contains(n)));
+        }
+        // Repli : formes simples si un modèle manque, herbe morte et racines par le code.
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Envers.cs"));
+        foreach (string fallback in new[] { "// Formes de remplacement", "Envers flottant (rocher)", "Envers semis (herbe morte)", "Racines suspendues ", "SewerLooks.WallTiles(" })
+            Assert.Contains(fallback, code);
+    }
+
+    [Fact]
+    public void Tuiles_et_pieces_du_palier_2()
+    {
+        Assert.True(EnversLook.Tiled(EnversPiece.InvertedRuin) && EnversLook.Tiled(EnversPiece.CollapsedHouse));
+        Assert.False(EnversLook.Tiled(EnversPiece.DeadTree) || EnversLook.Tiled(EnversPiece.BlackShard));
+        Assert.Equal(EnversPiece.InvertedStatue, EnversLook.PieceFor("envers_statue_inversee_1"));
+        Assert.Equal(EnversPiece.CollapsedHouse, EnversLook.PieceFor("envers_maison_effondree_2"));
+        Assert.Equal(EnversPiece.SplitStone, EnversLook.PieceFor("envers_pierre_levee_fendue_1"));
+        Assert.Equal(EnversPiece.VioletBrazier, EnversLook.PieceFor("envers_brasier_violet_1"));
+        Assert.True(EnversLook.Glows(EnversPiece.VioletBrazier) && EnversLook.Glows(EnversPiece.DawnAltar));
+        // Tuiles sur les bornes réelles : une ruine de 20 m faite d'un modèle de 5,8 m couvre tout l'obstacle, sans trou.
+        var tiles = SewerLooks.WallTiles(0, 0, 20, 4, 5.78, 5.75);
+        Assert.Equal(0, tiles.Min(t => t.MinX), 6);
+        Assert.Equal(20, tiles.Max(t => t.MaxX), 6);
+        double covered = tiles.Sum(t => t.MaxX - t.MinX);
+        Assert.True(covered >= 20 - 1e-6);
+    }
+
+    [Fact]
+    public void Semis_au_sol_deterministe_et_selon_la_machine()
+    {
+        RegionGrid region = RegionGrid.Vallons();
+        Assert.Equal((2, 4, 10), (EnversLook.ScatterPerCell(DeviceTier.Phone), EnversLook.ScatterPerCell(DeviceTier.Modest), EnversLook.ScatterPerCell(DeviceTier.Full)));
+        var kinds = new HashSet<int>();
+        for (int c = 0; c < region.Columns; c += 3)
+            for (int r = 0; r < region.Rows; r += 3)
+            {
+                var full = EnversLook.Scatter(region, c, r, DeviceTier.Full);
+                var modest = EnversLook.Scatter(region, c, r, DeviceTier.Modest);
+                Assert.Equal(modest, full.Take(modest.Count));
+                Assert.Equal(full, EnversLook.Scatter(region, c, r, DeviceTier.Full));
+                double x0 = region.OriginX + c * RegionGrid.CellMeters, z0 = region.OriginZ + r * RegionGrid.CellMeters;
+                foreach (var s in full)
+                {
+                    Assert.InRange(s.X, x0 + 4, x0 + RegionGrid.CellMeters - 4);
+                    Assert.InRange(s.Z, z0 + 4, z0 + RegionGrid.CellMeters - 4);
+                    Assert.InRange(s.Scale, 0.7, 1.3);
+                    kinds.Add(s.Kind);
+                }
+            }
+        Assert.Equal(new[] { 0, 1, 2 }, kinds.OrderBy(k => k));
+        Assert.Equal(new[] { "souche_cendre", "champignons_lumineux", "herbe_morte" }, EnversLook.ScatterModels);
+    }
 }

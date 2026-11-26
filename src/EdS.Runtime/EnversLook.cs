@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Zones;
 using EdS.World;
 
@@ -17,6 +18,14 @@ namespace EdS.Runtime
         BlackShard,
         /// <summary>Autel de l'Aube, point sûr de l'Envers (« envers_autel_de_l_aube »).</summary>
         DawnAltar,
+        /// <summary>V2.51b (kit du 26 novembre 2026, prêt pour le V2.52) : statue pendue tête en bas (« envers_statue_inversee_… »).</summary>
+        InvertedStatue,
+        /// <summary>Maison effondrée (« envers_maison_effondree_… »).</summary>
+        CollapsedHouse,
+        /// <summary>Pierre levée fendue d'une lueur violette (« envers_pierre_levee_fendue_… »).</summary>
+        SplitStone,
+        /// <summary>Brasier aux flammes violettes (« envers_brasier_violet_… »).</summary>
+        VioletBrazier,
     }
 
     /// <summary>V2.51b : un rocher flottant du ciel de l'Envers (décor seulement, sans collision).</summary>
@@ -102,6 +111,41 @@ namespace EdS.Runtime
     /// </summary>
     public static class EnversLook
     {
+        /// <summary>Dossier des modèles dans le projet Unity : <c>&lt;nom&gt;.fbx</c>, <c>&lt;nom&gt;_couleur.jpg</c>, <c>&lt;nom&gt;_normale.png</c> à plat.</summary>
+        public const string AssetFolder = "Assets/EdS/Modeles/Resources/Envers";
+
+        /// <summary>Modèles du palier 2 et du semis au sol (voir l'AssetLab, <c>Envers/modeles.json</c>).</summary>
+        public const string StumpModel = "souche_cendre", GrassModel = "herbe_morte", MushroomModel = "champignons_lumineux", StatueModel = "statue_inversee",
+            HouseModel = "maison_effondree", RootsModel = "racines_suspendues", StoneModel = "pierre_levee_fendue", BrazierModel = "brasier_violet";
+
+        /// <summary>
+        /// Les 14 modèles livrés du kit de l'Envers (Tripo, 26 novembre 2026, 20 crédits chacun), dans l'ordre des fiches de l'atelier.
+        /// </summary>
+        public static readonly IReadOnlyList<string> Models = Array.AsReadOnly(new[]
+        {
+            "faille_envers", "arbre_mort_inverse", "rocher_flottant", "ruine_inversee", "eclat_noir", "autel_de_l_aube", StumpModel,
+            "debris_flottants", "arche_brisee_flottante", StatueModel, HouseModel, MushroomModel, StoneModel, BrazierModel,
+        });
+
+        /// <summary>
+        /// Les deux fiches que Tripo n'a pas réussies (deux échecs remboursés, décision du 26 novembre 2026) : toujours dessinées par le code
+        /// (touffes d'herbe morte en lames croisées ; racines pendues sous les rochers flottants de repli).
+        /// </summary>
+        public static readonly IReadOnlyList<string> Procedural = Array.AsReadOnly(new[] { GrassModel, RootsModel });
+
+        private static readonly System.Text.RegularExpressions.Regex AssetName =
+            new System.Text.RegularExpressions.Regex("^(?<name>[a-z_]+)\\.fbx$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>Nom du modèle du kit (« eclat_noir ») d'un chemin d'asset Unity, ou null s'il n'est pas un modèle livré du kit.</summary>
+        public static string? NameOf(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            string file = path.Replace('\\', '/');
+            int slash = file.LastIndexOf('/');
+            var m = AssetName.Match(slash >= 0 ? file.Substring(slash + 1) : file);
+            return m.Success && Models.Contains(m.Groups["name"].Value) ? m.Groups["name"].Value : null;
+        }
+
         /// <summary>Dossier des modèles du kit (sous <c>Resources</c>).</summary>
         public const string Folder = "Envers/";
 
@@ -123,6 +167,10 @@ namespace EdS.Runtime
             if (key.StartsWith("envers_ruine_inversee", StringComparison.Ordinal)) return EnversPiece.InvertedRuin;
             if (key.StartsWith("envers_eclat_noir", StringComparison.Ordinal)) return EnversPiece.BlackShard;
             if (key.StartsWith("envers_autel_de_l_aube", StringComparison.Ordinal)) return EnversPiece.DawnAltar;
+            if (key.StartsWith("envers_statue_inversee", StringComparison.Ordinal)) return EnversPiece.InvertedStatue;
+            if (key.StartsWith("envers_maison_effondree", StringComparison.Ordinal)) return EnversPiece.CollapsedHouse;
+            if (key.StartsWith("envers_pierre_levee_fendue", StringComparison.Ordinal)) return EnversPiece.SplitStone;
+            if (key.StartsWith("envers_brasier_violet", StringComparison.Ordinal)) return EnversPiece.VioletBrazier;
             return EnversPiece.None;
         }
 
@@ -132,6 +180,10 @@ namespace EdS.Runtime
             EnversPiece.InvertedRuin => RuinModel,
             EnversPiece.BlackShard => ShardModel,
             EnversPiece.DawnAltar => AltarModel,
+            EnversPiece.InvertedStatue => StatueModel,
+            EnversPiece.CollapsedHouse => HouseModel,
+            EnversPiece.SplitStone => StoneModel,
+            EnversPiece.VioletBrazier => BrazierModel,
             _ => null,
         };
 
@@ -142,11 +194,25 @@ namespace EdS.Runtime
             EnversPiece.InvertedRuin => 6.0,
             EnversPiece.BlackShard => 3.0,
             EnversPiece.DawnAltar => 1.6,
+            EnversPiece.InvertedStatue => 3.5,
+            EnversPiece.CollapsedHouse => 6.0,
+            EnversPiece.SplitStone => 4.0,
+            EnversPiece.VioletBrazier => 1.4,
             _ => 0.0,
         };
 
+        /// <summary>
+        /// Les ruines et les maisons effondrées se répètent en tuiles bout à bout le long d'un obstacle allongé, d'après les bornes réelles du
+        /// modèle (<see cref="SewerLooks.WallTiles"/> : sans trou) ; les autres pièces sont posées d'un seul tenant.
+        /// </summary>
+        public static bool Tiled(EnversPiece piece) => piece == EnversPiece.InvertedRuin || piece == EnversPiece.CollapsedHouse;
+
         /// <summary>Les grandes pièces (arbres morts, ruines) cachent le personnage : elles s'effacent en fondu (occulteurs).</summary>
-        public static bool Occludes(EnversPiece piece) => piece == EnversPiece.DeadTree || piece == EnversPiece.InvertedRuin;
+        public static bool Occludes(EnversPiece piece) => piece == EnversPiece.DeadTree || piece == EnversPiece.InvertedRuin || piece == EnversPiece.CollapsedHouse
+            || piece == EnversPiece.SplitStone || piece == EnversPiece.InvertedStatue;
+
+        /// <summary>Le brasier a sa flamme violette (lumière ponctuelle) ; couleur, intensité, portée.</summary>
+        public static bool Glows(EnversPiece piece) => piece == EnversPiece.VioletBrazier || piece == EnversPiece.DawnAltar;
 
         /// <summary>Lueur de l'autel de l'Aube (couleur, intensité, portée) : la seule lumière chaude de l'Envers.</summary>
         public static readonly (double R, double G, double B) AltarGlow = (1.0, 0.82, 0.52);
@@ -334,6 +400,43 @@ namespace EdS.Runtime
         /// <summary>Hauteur d'une forme flottante à l'instant <paramref name="seconds"/> (oscillation lente, sans état).</summary>
         public static double BobbedHeight(FloatingRock rock, double seconds) =>
             rock.Y + BobMeters * Math.Sin(2 * Math.PI * seconds / BobSeconds + rock.Phase);
+
+        // --- Semis au sol ---------------------------------------------------------------------------------------------------
+
+        /// <summary>Semis au sol par case de 128 m selon la machine (téléphone 2, PC modeste 4, PC fort 10), avant l'écart des obstacles.</summary>
+        public static int ScatterPerCell(DeviceTier tier) => tier switch
+        {
+            DeviceTier.Phone => 2,
+            DeviceTier.Modest => 4,
+            _ => 10,
+        };
+
+        /// <summary>Genres du semis : souche de cendre, champignons lumineux (modèles), herbe morte (toujours par le code).</summary>
+        public static readonly IReadOnlyList<string> ScatterModels = Array.AsReadOnly(new[] { StumpModel, MushroomModel, GrassModel });
+
+        /// <summary>
+        /// Le semis au sol de la case : places tirées par un hachage de la case (le même à chaque visite), dans la case à 4 m au moins de ses
+        /// bords ; genre 0 souche (30 %), 1 champignons (25 %), 2 herbe morte (45 %) ; taille de 0,7 à 1,3 fois celle de la fiche ; lacet.
+        /// Les places dans un obstacle ou sur une route sont écartées par le décor. Celles d'une machine plus faible sont les premières.
+        /// </summary>
+        public static IReadOnlyList<(double X, double Z, int Kind, double Scale, double Yaw)> Scatter(RegionGrid region, int column, int row, DeviceTier tier)
+        {
+            if (region is null) throw new ArgumentNullException(nameof(region));
+            if (column < 0 || column >= region.Columns) throw new ArgumentOutOfRangeException(nameof(column));
+            if (row < 0 || row >= region.Rows) throw new ArgumentOutOfRangeException(nameof(row));
+            int n = ScatterPerCell(tier);
+            var result = new List<(double, double, int, double, double)>(n);
+            double x0 = region.OriginX + (double)column * RegionGrid.CellMeters, z0 = region.OriginZ + (double)row * RegionGrid.CellMeters;
+            const double inset = 4, span = RegionGrid.CellMeters - 2 * inset;
+            for (int i = 0; i < n; i++)
+            {
+                int seed = unchecked((column * 2654435) ^ (row * 40503) ^ (i * 7919) ^ 0x5EED);
+                double pick = Hash01(seed, 21);
+                result.Add((x0 + inset + Hash01(seed, 22) * span, z0 + inset + Hash01(seed, 23) * span, pick < 0.3 ? 0 : pick < 0.55 ? 1 : 2,
+                    0.7 + 0.6 * Hash01(seed, 24), Hash01(seed, 25) * 360));
+            }
+            return result;
+        }
 
         // --- Pose des modèles --------------------------------------------------------------------------------------------
 

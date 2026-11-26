@@ -286,6 +286,7 @@ namespace EdS.Game.Editor
             CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit fait le 22 novembre 2026
             SewerPieces(notes);   // chantier V2.49.2 : matières du kit d'égout (Resources/Egouts), quand l'atelier l'aura livré
             DrownedPieces(notes);   // chantier V2.50.1b : matières du kit de grotte noyée (Resources/Noyees), quand l'atelier l'aura livré
+            EnversPieces(notes);   // chantier V2.51b : matières du kit de l'Envers (Resources/Envers)
             RatModel(notes);   // V2.49.2 : le rat animé de Tripo (Resources/Rats), sa marche en « Legacy » et sa matière
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
@@ -693,6 +694,19 @@ namespace EdS.Game.Editor
         /// Chantier V2.50.1b : le kit de grotte noyée (<see cref="DrownedLooks.AssetFolder"/>, reconnu par <see cref="DrownedLooks.NameOf"/>) :
         /// même traitement que le kit d'égout. Sans dossier (kit pas encore généré) : rien, sans erreur.
         /// </summary>
+        /// <summary>
+        /// Chantier V2.51b : le kit de l'Envers (<see cref="EnversLook.AssetFolder"/>, reconnu par <see cref="EnversLook.NameOf"/>) : même
+        /// traitement que le kit de grotte noyée. Sans dossier : rien, sans erreur (formes simples en repli).
+        /// </summary>
+        private static void EnversPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(EnversLook.AssetFolder)) return;
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { EnversLook.AssetFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => EnversLook.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            foreach (string path in paths) OwnMaterial(path, notes);
+            if (paths.Count > 0) notes.Add("Envers : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(EnversLook.NameOf)) + ").");
+        }
+
         private static void DrownedPieces(List<string> notes)
         {
             if (!AssetDatabase.IsValidFolder(DrownedLooks.AssetFolder)) return;

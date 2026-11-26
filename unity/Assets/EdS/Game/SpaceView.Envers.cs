@@ -34,12 +34,21 @@ namespace EdS.Game
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             float cx = (x0 + x1) / 2f, cz = (z0 + z1) / 2f, height = (float)EnversLook.HeightOf(piece);
             bool occludes = EnversLook.Occludes(piece);
-            if (piece == EnversPiece.DawnAltar)
+            if (EnversLook.Glows(piece))
             {
-                var glow = EnversLook.AltarGlow;
+                var glow = piece == EnversPiece.DawnAltar ? EnversLook.AltarGlow : EnversLook.RiftGlow;
                 CaveGlow(o.Id, cx, cz, new Color((float)glow.R, (float)glow.G, (float)glow.B), (float)EnversLook.AltarGlowIntensity, (float)EnversLook.AltarGlowRange);
             }
-            if (FitSewerModel(CryptModel(EnversLook.Folder, EnversLook.ModelFor(piece)), o.Id, x0, z0, x1, z1, height, occludes)) return true;
+            GameObject model = CryptModel(EnversLook.Folder, EnversLook.ModelFor(piece));
+            if (model != null && EnversLook.Tiled(piece) && Footprint(model, out float modelLong, out float modelShort))
+            {
+                // Ruines et maisons effondrées en tuiles bout à bout, d'après les bornes réelles du modèle (sans trou).
+                int n = 0;
+                foreach (var t in SewerLooks.WallTiles(x0, z0, x1, z1, modelLong, modelShort))
+                    FitSewerModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, occludes, 0f, 0f, true);
+                return true;
+            }
+            if (FitSewerModel(model, o.Id, x0, z0, x1, z1, height, occludes)) return true;
             // Formes de remplacement (kit préparé, pas encore généré).
             switch (piece)
             {
@@ -53,6 +62,14 @@ namespace EdS.Game
                     break;
                 case EnversPiece.BlackShard:
                     Prism(o.Id, points, height, Plain(new Color(0.08f, 0.06f, 0.12f)), false, 1f);
+                    break;
+                case EnversPiece.InvertedStatue:
+                case EnversPiece.SplitStone:
+                case EnversPiece.CollapsedHouse:
+                    Prism(o.Id, points, height, Plain(new Color(0.3f, 0.28f, 0.32f)), true, 2f);
+                    break;
+                case EnversPiece.VioletBrazier:
+                    Prism(o.Id, points, height, Plain(new Color(0.16f, 0.14f, 0.16f)), false, 1f);
                     break;
                 default:   // l'autel de l'Aube
                     Prism(o.Id, points, height, Plain(new Color(0.86f, 0.78f, 0.6f)), false, 1f);
@@ -107,8 +124,14 @@ namespace EdS.Game
                 int r0 = Mathf.Max(0, (int)((minZ - region.OriginZ) / RegionGrid.CellMeters)), r1 = Mathf.Min(region.Rows - 1, (int)((maxZ - region.OriginZ) / RegionGrid.CellMeters));
                 for (int r = r0; r <= r1; r++)
                     for (int c = c0; c <= c1; c++)
+                    {
                         foreach (FloatingRock rock in EnversLook.FloatingRocks(region, c, r, tier))
                             Floating(rock);
+                        foreach (var spot in EnversLook.Scatter(region, c, r, tier))
+                            if (spot.X >= minX && spot.X <= maxX && spot.Z >= minZ && spot.Z <= maxZ && !InObstacle((float)spot.X, (float)spot.Z, 1f)
+                                && TownRules.RoadAt(spot.X, spot.Z, _roads).Edge > 0.5)
+                                Scattered(spot.X, spot.Z, spot.Kind, spot.Scale, spot.Yaw);
+                    }
             }
             DarkenDecor();
             _ashMaterial = Plain(new Color(0.55f, 0.48f, 0.66f));
@@ -152,6 +175,21 @@ namespace EdS.Game
                 stone.transform.localScale = new Vector3(size, size * 0.55f, size * 0.8f);
                 stone.GetComponent<Renderer>().sharedMaterial = Plain(new Color(0.22f, 0.2f, 0.24f));
             }
+            if (rock.Model == 0 && DeviceQuality.Tier != DeviceTier.Phone)
+            {
+                // Racines suspendues (fiche E14, échouée chez Tripo : toujours par le code) : trois lames sombres sous le rocher.
+                for (int k = 0; k < 3; k++)
+                {
+                    GameObject root = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    root.name = "Racines suspendues " + k;
+                    Object.Destroy(root.GetComponent<Collider>());
+                    root.transform.SetParent(body.transform, false);
+                    float a = k * 2.1f;
+                    root.transform.localPosition = new Vector3(Mathf.Cos(a) * size * 0.2f, -size * 0.45f, Mathf.Sin(a) * size * 0.2f);
+                    root.transform.localScale = new Vector3(0.12f, size * 0.5f, 0.12f);
+                    root.GetComponent<Renderer>().sharedMaterial = Plain(new Color(0.18f, 0.15f, 0.16f));
+                }
+            }
             body.transform.SetParent(_root.transform, false);
             body.transform.rotation = Quaternion.Euler(0f, (float)rock.Yaw, 0f);
             body.transform.position = new Vector3((float)rock.X, (float)rock.Y, (float)rock.Z);
@@ -163,6 +201,48 @@ namespace EdS.Game
             float half = size / 2f;
             AddOccluder(body.transform, false, body.transform.position - new Vector3(half, half, half), body.transform.position + new Vector3(half, half, half));
             _floating.Add((body.transform, rock));
+        }
+
+        /// <summary>
+        /// Une place du semis au sol : souche de cendre ou champignons lumineux (modèles), herbe morte (fiche E08, échouée chez Tripo :
+        /// toujours par le code, deux lames croisées) ; sans ombre ni collision, posée sur le sol affiché.
+        /// </summary>
+        private void Scattered(double x, double z, int kind, double scale, double yaw)
+        {
+            float k = (float)scale;
+            float ground = Ground((float)x, (float)z, 0.3f);
+            GameObject model = kind < 2 ? CryptModel(EnversLook.Folder, EnversLook.ScatterModels[kind]) : null;
+            GameObject body;
+            if (model != null)
+            {
+                body = new GameObject("Envers semis (" + model.name + ")");
+                GameObject copy = Object.Instantiate(model, body.transform, false);
+                foreach (Collider c in body.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                copy.transform.localScale = Vector3.one * k;   // le modèle est déjà à la taille de sa fiche (finition) : l'échelle avant le lacet
+            }
+            else
+            {
+                body = new GameObject("Envers semis (herbe morte)");
+                Material grass = Plain(kind == 0 ? new Color(0.2f, 0.18f, 0.18f) : kind == 1 ? new Color(0.4f, 0.5f, 0.7f) : new Color(0.42f, 0.4f, 0.42f));
+                for (int i = 0; i < 2; i++)
+                {
+                    GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                    Object.Destroy(blade.GetComponent<Collider>());
+                    blade.transform.SetParent(body.transform, false);
+                    blade.transform.localPosition = new Vector3(0f, 0.3f * k, 0f);
+                    blade.transform.localRotation = Quaternion.Euler(0f, i * 90f, 0f);
+                    blade.transform.localScale = new Vector3(0.9f * k, 0.6f * k, 1f);
+                    blade.GetComponent<Renderer>().sharedMaterial = grass;
+                }
+            }
+            body.transform.SetParent(_root.transform, false);
+            body.transform.rotation = Quaternion.Euler(0f, (float)yaw, 0f);
+            body.transform.position = new Vector3((float)x, ground, (float)z);
+            foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>())
+            {
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
         }
 
         /// <summary>Remplace chaque matériau du décor par sa variante sombre (une copie par matériau d'origine) ; l'autel de l'Aube garde sa clarté.</summary>
