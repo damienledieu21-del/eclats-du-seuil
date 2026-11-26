@@ -1494,7 +1494,7 @@ Une deuxième couche de toute la région, **même grille et mêmes coordonnées*
 - **Première faille** : `faille_de_l_envers` au nord des terres corrompues (1 640 ; −455), près du ravin de la faille du nord ; dans l'Envers, `faille_des_vallons` au même point. Passer la faille est un passage de porte (sauvegarde, session de l'autre couche, arrivée au même point).
 - **Autel de l'Aube** (1 656 ; −470) : point sûr de l'Envers, entrée et reprise après une défaite ; découvert en y passant, jamais destination du voyage rapide.
 - **Fêlure renversée** et **Envers des terres corrompues** : niveau 24 (au-delà du Gardien du Seuil, comme les galeries). Trois reflets de loup et une ombre d'ours (équipes `reflets` et `ombres`, en trêve), toutes à plus de 12 m et hors d'aggro de la faille ; le **reflet du Gardien** (deux formes, chef dans le chemin standard `chiefs`, 4 éclats du Seuil à la première victoire).
-- Recommandations appliquées (à valider par Damien, voir la PR) : entrée et sortie par les failles, toujours ouvertes ; pas de limite de durée ; défaite : reprise à l'autel de l'Aube ; la corruption de la surface renforce l'Envers au même point ; cheval permis (l'Envers est à ciel ouvert) ; pas de saisons dans l'Envers ; son temps est celui des Vallons, montré à sa façon (V2.51b).
+- **Retenu (Damien, 26 novembre 2026, rapporté par la session principale : toutes les recommandations des PR #260 et #261)** : entrée et sortie par les failles, toujours ouvertes ; pas de limite de durée ; défaite : reprise à l'autel de l'Aube ; la corruption de la surface renforce l'Envers au même point ; cheval permis (l'Envers est à ciel ouvert) ; pas de saisons dans l'Envers ; son temps est celui des Vallons, montré à sa façon (V2.51b).
 
 ## Sauvegarde
 
