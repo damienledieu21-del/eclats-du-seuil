@@ -1980,6 +1980,21 @@
         "named": true
       },
       {
+        "id": "item.larme_du_seuil",
+        "name": "Larme du Seuil",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "relic",
+        "requiredLevel": 20,
+        "bonus": {
+          "magicResistance": 60,
+          "maxHealth": 110,
+          "statusResistance": 20
+        },
+        "named": true
+      },
+      {
         "id": "item.tablier_de_maitre",
         "name": "Tablier de maître",
         "icon": "gambison",

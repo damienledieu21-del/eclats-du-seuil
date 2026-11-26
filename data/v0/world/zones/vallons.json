@@ -3505,6 +3505,16 @@
         "toDoor": "roselieres"
       },
       {
+        "id": "porte_galeries_seuil",
+        "name": "Galeries sous les pierres",
+        "position": [
+          1572,
+          -606
+        ],
+        "to": "zone.galeries_seuil",
+        "toDoor": "sortie"
+      },
+      {
         "id": "porte_tour_de_signal",
         "name": "Salle de garde de la tour de signal",
         "position": [

@@ -101,6 +101,8 @@ namespace EdS.Runtime
             if (key.StartsWith("echo_de_la_rupture", StringComparison.Ordinal) || key.StartsWith("voix_de_la_rupture", StringComparison.Ordinal))
                 return EchoKind.Rupture;
             if (key.StartsWith("loup_blanc", StringComparison.Ordinal)) return EchoKind.WhiteWolf;
+            // V2.50a : sous les pierres levées, les loups-échos des galeries et le veilleur des éclats sortent de la source : rendu de faille, violet.
+            if (FromSeuilDepths(key)) return EchoKind.Rift;
             if (key.StartsWith("loup_echo", StringComparison.Ordinal)) return HasSuffix(key, "_ev") ? EchoKind.Rift : EchoKind.Night;
             // V2.48.1 : les moines de la crypte de l'abbaye sont des morts revenus (« moine_echo_crypte1 », l'abbé sans repos) : gris-bleu pâle.
             if (key.StartsWith("moine_echo", StringComparison.Ordinal)) return EchoKind.Returned;
@@ -108,6 +110,16 @@ namespace EdS.Runtime
             if (slainBefore) return EchoKind.Returned;
             if (afterDeath && IsBeast(key)) return EchoKind.Returned;
             return EchoKind.None;
+        }
+
+        /// <summary>
+        /// V2.50a : un loup-écho des galeries sous les pierres du Seuil (« loup_echo_galerie3 », « loup_echo_veilleur_eclats_fele_v2 ») ; pas ceux
+        /// des mines (« loup_echo_mine_galerie… »), qui restent des échos de la nuit.
+        /// </summary>
+        public static bool FromSeuilDepths(string? id)
+        {
+            string key = (id ?? string.Empty).Trim().ToLowerInvariant();
+            return key.StartsWith("loup_echo_galerie", StringComparison.Ordinal) || key.StartsWith("loup_echo_veilleur_eclats", StringComparison.Ordinal);
         }
 
         /// <summary>Vrai pour un écho, quelle que soit sa sorte.</summary>

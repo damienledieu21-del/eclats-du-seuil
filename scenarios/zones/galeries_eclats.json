@@ -1,0 +1,598 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 503,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "paroi_cristal_faille_ouest",
+          "points": [
+            [
+              -24,
+              -4
+            ],
+            [
+              -5,
+              -4
+            ],
+            [
+              -5,
+              8
+            ],
+            [
+              -24,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "paroi_cristal_faille_est",
+          "points": [
+            [
+              5,
+              -4
+            ],
+            [
+              24,
+              -4
+            ],
+            [
+              24,
+              8
+            ],
+            [
+              5,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_1",
+          "points": [
+            [
+              -11.5,
+              18.5
+            ],
+            [
+              -8.5,
+              18.5
+            ],
+            [
+              -8.5,
+              21.5
+            ],
+            [
+              -11.5,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_2",
+          "points": [
+            [
+              8.5,
+              18.5
+            ],
+            [
+              11.5,
+              18.5
+            ],
+            [
+              11.5,
+              21.5
+            ],
+            [
+              8.5,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_3",
+          "points": [
+            [
+              -11.5,
+              30.5
+            ],
+            [
+              -8.5,
+              30.5
+            ],
+            [
+              -8.5,
+              33.5
+            ],
+            [
+              -11.5,
+              33.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_4",
+          "points": [
+            [
+              8.5,
+              30.5
+            ],
+            [
+              11.5,
+              30.5
+            ],
+            [
+              11.5,
+              33.5
+            ],
+            [
+              8.5,
+              33.5
+            ]
+          ]
+        },
+        {
+          "id": "autel_eclats_coeur",
+          "points": [
+            [
+              -2,
+              24
+            ],
+            [
+              2,
+              24
+            ],
+            [
+              2,
+              28
+            ],
+            [
+              -2,
+              28
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_1",
+          "points": [
+            [
+              -23,
+              12
+            ],
+            [
+              -21,
+              12
+            ],
+            [
+              -21,
+              14
+            ],
+            [
+              -23,
+              14
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_2",
+          "points": [
+            [
+              21,
+              12
+            ],
+            [
+              23,
+              12
+            ],
+            [
+              23,
+              14
+            ],
+            [
+              21,
+              14
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_3",
+          "points": [
+            [
+              -6,
+              38
+            ],
+            [
+              6,
+              38
+            ],
+            [
+              6,
+              40
+            ],
+            [
+              -6,
+              40
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "pilier_cristal_salle_1",
+          "points": [
+            [
+              -18.8,
+              23.2
+            ],
+            [
+              -17.2,
+              23.2
+            ],
+            [
+              -17.2,
+              24.8
+            ],
+            [
+              -18.8,
+              24.8
+            ]
+          ]
+        },
+        {
+          "id": "pilier_cristal_salle_2",
+          "points": [
+            [
+              17.2,
+              23.2
+            ],
+            [
+              18.8,
+              23.2
+            ],
+            [
+              18.8,
+              24.8
+            ],
+            [
+              17.2,
+              24.8
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "loup_echo_galerie4",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -14,
+          13
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_echo_galerie5",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          14,
+          13
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_echo_galerie6",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -18,
+          33
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "ours_galerie2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 460,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          18,
+          33
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "golem_cristal_salle1",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 620,
+        "armor": 30,
+        "magicResistance": 10,
+        "target": null,
+        "firstAttackMs": 1800,
+        "intervalMs": 2400,
+        "attacks": [
+          {
+            "id": "poing_de_cristal",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.6
+          },
+          {
+            "id": "eclats_projetes",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          19
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 2.8,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 8,
+          "pack": false
+        }
+      },
+      {
+        "id": "araignee_cristal_salle1",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          17,
+          19
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
+      },
+      {
+        "id": "araignee_cristal_salle2",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          18.6,
+          20.4
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
+      }
+    ],
+    "truces": [
+      [
+        "echos",
+        "meute"
+      ],
+      [
+        "echos",
+        "cristaux"
+      ],
+      [
+        "meute",
+        "cristaux"
+      ]
+    ],
+    "commands": []
+  }
+}

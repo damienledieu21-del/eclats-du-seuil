@@ -51,6 +51,7 @@ namespace EdS.Runtime
             ["item.anneau_perdu_des_egouts"] = new[] { "ring", "band" },   // V2.49.1 (décision de Damien du 23 novembre 2026) : butin rare des rats géants
             ["item.coquille_de_souffle"] = new[] { "shell", "conch", "pearl" },   // V2.50.1 : souffle de la plongée (grottes noyées du lac)
             ["item.amulette_des_noyes"] = new[] { "amulet", "necklace", "pendant" },   // V2.50.1 : l'écho de l'épave (grottes noyées du lac)
+            ["item.larme_du_seuil"] = new[] { "crystal", "tear", "gem" },   // V2.50a : le veilleur des éclats (galeries sous les pierres du Seuil)
             ["item.potion_de_soin"] = new[] { "healthpotion", "redpotion", "potion" },
             // Fusion de V2.10 (récompenses uniques des concours du marché) avec V2.11.
             ["item.tablier_de_maitre"] = new[] { "apron", "belt" },

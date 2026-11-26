@@ -1,0 +1,469 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 504,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "paroi_cristal_faille_ouest",
+          "points": [
+            [
+              -24,
+              -4
+            ],
+            [
+              -5,
+              -4
+            ],
+            [
+              -5,
+              8
+            ],
+            [
+              -24,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "paroi_cristal_faille_est",
+          "points": [
+            [
+              5,
+              -4
+            ],
+            [
+              24,
+              -4
+            ],
+            [
+              24,
+              8
+            ],
+            [
+              5,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_1",
+          "points": [
+            [
+              -11.5,
+              18.5
+            ],
+            [
+              -8.5,
+              18.5
+            ],
+            [
+              -8.5,
+              21.5
+            ],
+            [
+              -11.5,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_2",
+          "points": [
+            [
+              8.5,
+              18.5
+            ],
+            [
+              11.5,
+              18.5
+            ],
+            [
+              11.5,
+              21.5
+            ],
+            [
+              8.5,
+              21.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_3",
+          "points": [
+            [
+              -11.5,
+              30.5
+            ],
+            [
+              -8.5,
+              30.5
+            ],
+            [
+              -8.5,
+              33.5
+            ],
+            [
+              -11.5,
+              33.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_salle_4",
+          "points": [
+            [
+              8.5,
+              30.5
+            ],
+            [
+              11.5,
+              30.5
+            ],
+            [
+              11.5,
+              33.5
+            ],
+            [
+              8.5,
+              33.5
+            ]
+          ]
+        },
+        {
+          "id": "autel_eclats_coeur",
+          "points": [
+            [
+              -2,
+              24
+            ],
+            [
+              2,
+              24
+            ],
+            [
+              2,
+              28
+            ],
+            [
+              -2,
+              28
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_1",
+          "points": [
+            [
+              -23,
+              12
+            ],
+            [
+              -21,
+              12
+            ],
+            [
+              -21,
+              14
+            ],
+            [
+              -23,
+              14
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_2",
+          "points": [
+            [
+              21,
+              12
+            ],
+            [
+              23,
+              12
+            ],
+            [
+              23,
+              14
+            ],
+            [
+              21,
+              14
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "amas_cristal_salle_3",
+          "points": [
+            [
+              -6,
+              38
+            ],
+            [
+              6,
+              38
+            ],
+            [
+              6,
+              40
+            ],
+            [
+              -6,
+              40
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "pilier_cristal_salle_1",
+          "points": [
+            [
+              -18.8,
+              23.2
+            ],
+            [
+              -17.2,
+              23.2
+            ],
+            [
+              -17.2,
+              24.8
+            ],
+            [
+              -18.8,
+              24.8
+            ]
+          ]
+        },
+        {
+          "id": "pilier_cristal_salle_2",
+          "points": [
+            [
+              17.2,
+              23.2
+            ],
+            [
+              18.8,
+              23.2
+            ],
+            [
+              18.8,
+              24.8
+            ],
+            [
+              17.2,
+              24.8
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "loup_echo_veilleur_eclats",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 1300,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          0,
+          34
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.1,
+        "speed": 4.8,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_echo_veilleur_eclats_fele",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 900,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1400,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "lance_d_eclat",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 10,
+            "telegraphMs": 1200,
+            "width": 1.2,
+            "guardable": true
+          }
+        ],
+        "position": [
+          -3,
+          34
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.1,
+        "speed": 4.8,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_echo_veilleur_eclats_dechaine",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 700,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 32,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "lance_d_eclat",
+            "rawDamage": 38,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 10,
+            "telegraphMs": 1200,
+            "width": 1.2,
+            "guardable": true
+          },
+          {
+            "id": "chant_du_seuil",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1600,
+            "radius": 6,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          3,
+          34
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.1,
+        "speed": 5.0,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

@@ -74,6 +74,18 @@ namespace EdS.Runtime
             ["loup_echo_egout"] = "Loup-écho des égouts",
             ["loup_echo_bete_citerne"] = "Bête de la citerne",
             ["loup_echo_bete_citerne_enragee"] = "Bête de la citerne enragée",
+            // V2.50a : les galeries sous les pierres du Seuil (loups-échos de la faille, ours cristallisés) et leurs chefs.
+            ["loup_echo_galerie"] = "Loup-écho des galeries",
+            ["ours_galerie"] = "Ours cristallisé",
+            // Décision de Damien du 26 novembre 2026 : créatures de cristal nouvelles.
+            ["araignee_cristal_galerie"] = "Araignée de cristal",
+            ["araignee_cristal_salle"] = "Araignée de cristal",
+            ["golem_cristal_salle"] = "Golem de cristal",
+            ["ours_cristal_eclats"] = "Ours des éclats",
+            ["ours_cristal_eclats_herisse"] = "Ours des éclats hérissé",
+            ["loup_echo_veilleur_eclats"] = "Veilleur des éclats",
+            ["loup_echo_veilleur_eclats_fele"] = "Veilleur des éclats fêlé",
+            ["loup_echo_veilleur_eclats_dechaine"] = "Veilleur des éclats déchaîné",
             // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts, petits et en groupe, et les rats géants.
             ["rat_egout"] = "Rat des égouts",
             ["rat_geant_egout"] = "Rat géant",
@@ -122,6 +134,12 @@ namespace EdS.Runtime
             // V2.50.1 : les grottes noyées du lac.
             ["coup_de_harpon"] = "Coup de harpon",
             ["lame_de_fond"] = "Lame de fond",
+            // V2.50a : les galeries sous les pierres du Seuil.
+            ["lance_d_eclat"] = "Lance d'éclat",
+            ["morsure_de_cristal"] = "Morsure de cristal",
+            ["poing_de_cristal"] = "Poing de cristal",
+            ["eclats_projetes"] = "Éclats projetés",
+            ["chant_du_seuil"] = "Chant du Seuil",
         };
 
         /// <summary>Nom à montrer pour le combattant <paramref name="id"/> (vide pour un identifiant vide).</summary>

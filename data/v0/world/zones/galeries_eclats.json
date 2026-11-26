@@ -1,0 +1,143 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.galeries_eclats",
+    "name": "Galeries du Seuil : salle des éclats géants",
+    "scenario": "zones/galeries_eclats",
+    "floor": "dessous",
+    "entry": "bord_de_la_faille",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "bord_de_la_faille",
+        "name": "Bord de la faille",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "seuil_de_la_salle",
+        "name": "Seuil de la salle",
+        "min": [
+          -24,
+          -4
+        ],
+        "max": [
+          24,
+          18
+        ],
+        "minLevel": 23
+      },
+      {
+        "id": "salle_des_eclats_geants",
+        "name": "Salle des éclats géants",
+        "min": [
+          -24,
+          18
+        ],
+        "max": [
+          24,
+          40
+        ],
+        "minLevel": 24
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_galerie4",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_galerie5",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_galerie6",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_galerie2",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "golem_cristal_salle1",
+        "respawnMs": 300000,
+        "leashRange": 12,
+        "family": "golem_cristal"
+      },
+      {
+        "creature": "araignee_cristal_salle1",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "araignee_cristal"
+      },
+      {
+        "creature": "araignee_cristal_salle2",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "araignee_cristal"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "veilleur_des_eclats",
+        "scenario": "zones/galeries_eclats_veilleur",
+        "forms": [
+          "loup_echo_veilleur_eclats",
+          "loup_echo_veilleur_eclats_fele",
+          "loup_echo_veilleur_eclats_dechaine"
+        ],
+        "fact": "fact.veilleur_des_eclats.vaincu",
+        "rewards": [
+          {
+            "item": "item.larme_du_seuil",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "faille",
+        "name": "Galeries cristallines",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.galeries_seuil",
+        "toDoor": "faille_des_eclats",
+        "kind": "faille"
+      }
+    ]
+  }
+}
