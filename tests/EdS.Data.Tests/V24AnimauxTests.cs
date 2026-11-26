@@ -265,7 +265,7 @@ public class V24AnimauxMoteurTests
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json")))!;
-        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
+        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
     }
 }
 

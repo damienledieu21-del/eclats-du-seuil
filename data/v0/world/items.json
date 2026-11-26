@@ -1959,6 +1959,7 @@
       {
         "id": "item.coquille_de_souffle",
         "name": "Coquille de souffle",
+        "icon": "eclat_de_seuil",
         "type": "material",
         "rarity": "rare",
         "stack": 1
