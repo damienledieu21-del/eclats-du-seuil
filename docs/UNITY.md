@@ -1262,6 +1262,23 @@ Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : �
 - **Rats et rats géants** (décision de Damien du 23 novembre 2026 ; modèle du 25 novembre 2026) : le **rat animé de Tripo** (`Resources/Rats/rat_egout.fbx`, rat géant rigué en quadrupède avec sa marche, préparé en « Legacy » par `EdsStyle`) habille les deux : 0,6 m pour le rat géant, 0,3 m et un peu plus gris pour le petit rat. Il n'a que sa marche : à l'arrêt, la marche **figée** (`Locomotion.StillWalkRate`), la morsure est un **élan** fait par le code, la mort le **couche sur le flanc**. Les rats ne grognent ni ne hurlent (`StyleRules.Voiced` ; aucun son de rat dans le projet). Sans le modèle, le **loup** à petite échelle reste en repli (testé).
 - **À essayer** : descendre par la bouche d'égout du marché, passer le canal par une passerelle, monter à la salle des contrebandiers, descendre l'échelle de la citerne ; ressortir par le déversoir, au sud du fossé ; voir la bouche affleurer les pavés et le déversoir ouvert vers le Bourg ; croiser les rats (petits loups en attendant leur modèle).
 
+
+## Les grottes noyées du lac (chantier V2.50.1b, 26 novembre 2026)
+
+- **Les grottes noyées** sont deux dessous dessinés par `SpaceView.Cave` (pénombre, ni pluie ni neige, ni leur son). Leurs obstacles prennent une pièce du **kit de grotte noyée** (`SpaceView.Drowned`, `DrownedLooks.PieceFor`) :
+  - paroi de calcaire, pilier de voûte basse (la voûte l'enjambe), rocher et épave : **occulteurs** ;
+  - bassin : l'eau du jeu (`StyleWorld.Water`, « EdS/Eau » ou l'eau des samples, **aucun shader nouveau**) au ras du sol ;
+  - algues et coffre englouti.
+- **Jamais étirées** : les parois sont répétées en **tuiles** d'après les bornes réelles du modèle (`SewerLooks.WallTiles`). Les autres pièces sont posées par `FitSewerModel` (échelle avant le lacet, sans cisaillement).
+- **Passages noyés** : devant chaque porte d'eau (chenal, siphon), une eau de 4 × 3 m tournée vers la paroi, à 0,8 m de la place de la porte (`DrownedLooks.PoolAt`), avec sa lueur verte et bleue et le modèle du passage. L'eau du **chenal** se montre à **marée haute seulement** (`SpaceView.Tide`, appelé à chaque image depuis `WorldSession.Tide`) ; celle du **siphon**, toujours.
+- **Marée à l'écran** : quand rien d'autre n'est à faire, l'indication du bas montre la marée (« Marée haute : elle descend dans 2 h 15 », `AdventureSession.TideHint`). Devant une porte d'eau, l'indication dit s'il faut plonger, attendre la marée basse ou trouver plus de souffle.
+- **Côté marais** : l'entrée dans les roselières, sur la porte `porte_grottes_noyees`, posée sur le sol affiché (`DrownedLooks.SurfaceModel`, `SpaceView.DrownedEntrances`). En repli : une bouche de roche entre deux touffes de roseaux.
+- **Modèles du kit** (**faits** : 12 modèles Tripo, 240 crédits réels validés par Damien le 26 novembre 2026, finis dans Blender par `finir_noyees.py` : un seul maillage, échelle de la fiche, pivot au sol, allégés à 50 %, textures de 1 024 px) : `Assets/EdS/Modeles/Resources/Noyees/<nom>.fbx` avec `<nom>_couleur.jpg` et `<nom>_normale.png` (`DrownedLooks.Models`). Les matières sont préparées par `EdsStyle.DrownedPieces`. Si un modèle manque, une forme simple le remplace.
+- **Décor** : des **stalactites** pendent au plafond (5 m) au-dessus de chaque rocher et de chaque pilier de voûte (`DrownedLooks.Stalactites`, bas à 2,5 m) ; le **repaire des pilleurs** (obstacle `repaire_noyee_pilleurs`, au nord des bassins, avec sa lanterne) et l'**ancre** (obstacle `ancre_noyee_epave`, à côté du coffre de la cale) sont des obstacles, posés comme les autres pièces.
+- **À essayer** :
+  1. entrer par les roselières (au nord du lac, à l'est des pontons, après le pont de la rivière des champs) ;
+  2. passer le chenal à pied à marée basse, puis en plongée à marée haute ;
+  3. vaincre le capitaine, puis prendre le siphon avec la coquille de souffle.
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
