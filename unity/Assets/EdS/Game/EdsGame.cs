@@ -825,6 +825,7 @@ namespace EdS.Game
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.Vines(a.World.VineNow, a.World.SeasonIndex);   // V2.44.4 : rangs de vigne en trois états, vendanges
+            _arena.Tide(a.World.Tide == EdS.World.TideLevel.High);   // V2.50.1b : l'eau des passages de marée des grottes noyées
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
@@ -888,6 +889,7 @@ namespace EdS.Game
             if (a.DoorInReach != null) return a.DoorHint;   // intérieurs ; V2.43.4 : « fermée » si le lieu n'est pas reconstruit
             if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
             if (a.WorkshopHere is string workshop) return string.Format(a.Text("text.ui.craft_hint"), workshop);
+            if (a.TideHint is string tide) return tide;   // V2.50.1b : la marée, dans les grottes noyées
             return null;
         }
 
