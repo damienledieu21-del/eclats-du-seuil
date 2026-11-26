@@ -77,6 +77,10 @@ namespace EdS.Runtime
             // V2.50a : les galeries sous les pierres du Seuil (loups-échos de la faille, ours cristallisés) et leurs chefs.
             ["loup_echo_galerie"] = "Loup-écho des galeries",
             ["ours_galerie"] = "Ours cristallisé",
+            // Décision de Damien du 26 novembre 2026 : créatures de cristal nouvelles.
+            ["araignee_cristal_galerie"] = "Araignée de cristal",
+            ["araignee_cristal_salle"] = "Araignée de cristal",
+            ["golem_cristal_salle"] = "Golem de cristal",
             ["ours_cristal_eclats"] = "Ours des éclats",
             ["ours_cristal_eclats_herisse"] = "Ours des éclats hérissé",
             ["loup_echo_veilleur_eclats"] = "Veilleur des éclats",
@@ -121,6 +125,9 @@ namespace EdS.Runtime
             ["vague_de_fange"] = "Vague de fange",
             // V2.50a : les galeries sous les pierres du Seuil.
             ["lance_d_eclat"] = "Lance d'éclat",
+            ["morsure_de_cristal"] = "Morsure de cristal",
+            ["poing_de_cristal"] = "Poing de cristal",
+            ["eclats_projetes"] = "Éclats projetés",
             ["chant_du_seuil"] = "Chant du Seuil",
         };
 

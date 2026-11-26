@@ -514,12 +514,137 @@
           "aggroRange": 9,
           "pack": false
         }
+      },
+      {
+        "id": "araignee_cristal_galerie1",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          0,
+          14.5
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
+      },
+      {
+        "id": "araignee_cristal_galerie2",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1.8,
+          15.6
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
+      },
+      {
+        "id": "araignee_cristal_galerie3",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1.8,
+          15.8
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
       }
     ],
     "truces": [
       [
         "echos",
         "meute"
+      ],
+      [
+        "echos",
+        "cristaux"
+      ],
+      [
+        "meute",
+        "cristaux"
       ]
     ],
     "commands": []

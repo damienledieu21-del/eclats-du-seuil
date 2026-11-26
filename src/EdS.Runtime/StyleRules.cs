@@ -1977,6 +1977,10 @@ namespace EdS.Runtime
             // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts et les rats géants. Aucun rongeur dans le projet : en repli, le
             // quadrupède le plus proche (le loup, qui a ses attaques), à petite échelle (BeastHeight). Jamais « ratelier_… » (obstacles).
             if (IsRat(id)) return StyleSlot.Wolf;
+            // V2.50a (décision de Damien du 26 novembre 2026) : créatures de cristal des galeries du Seuil. Sans leur modèle (kit Tripo préparé),
+            // l'araignée prend le quadrupède le plus proche (le loup) et le golem l'ours, teintés de cristal dans Unity.
+            if (IsCrystalSpider(id)) return StyleSlot.Wolf;
+            if (IsCrystalGolem(id)) return StyleSlot.Bear;
             // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
@@ -2027,7 +2031,16 @@ namespace EdS.Runtime
         /// V2.49.2 (demande du 25 novembre 2026) : la bête <paramref name="id"/> a-t-elle la voix de son modèle (grognement, hurlement du
         /// loup) ? Pas les rats, même habillés en loup : aucun son de rat dans le projet, ils se taisent.
         /// </summary>
-        public static bool Voiced(string id) => !IsRat(id);
+        public static bool Voiced(string id) => !IsRat(id) && !IsCrystalCreature(id);
+
+        /// <summary>V2.50a : une araignée de cristal des galeries (« araignee_cristal_galerie2 », « araignee_cristal_salle1_v3 »).</summary>
+        public static bool IsCrystalSpider(string id) => Key(id ?? string.Empty).StartsWith("araigneecristal", StringComparison.Ordinal);
+
+        /// <summary>V2.50a : un golem de cristal des galeries (« golem_cristal_salle1 »).</summary>
+        public static bool IsCrystalGolem(string id) => Key(id ?? string.Empty).StartsWith("golemcristal", StringComparison.Ordinal);
+
+        /// <summary>V2.50a : une créature de cristal (araignée ou golem) : ni écho, ni voix de loup ou d'ours ; teinte de cristal en repli.</summary>
+        public static bool IsCrystalCreature(string id) => IsCrystalSpider(id) || IsCrystalGolem(id);
 
         public static bool IsBeast(StyleSlot slot) =>
             slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
@@ -2057,6 +2070,9 @@ namespace EdS.Runtime
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
             // V2.49.1 : rats des égouts (0,3 m) et rats géants (0,6 m), sur le modèle du loup en repli.
             if (IsRat(id)) return key.StartsWith("ratgeant", StringComparison.Ordinal) ? 0.6 : 0.3;
+            // V2.50a : araignée de cristal (0,6 m, sur le loup en repli) et golem de cristal (2,4 m, sur l'ours en repli).
+            if (IsCrystalSpider(id)) return 0.6;
+            if (IsCrystalGolem(id)) return 2.4;
             // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
             if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
             if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;
