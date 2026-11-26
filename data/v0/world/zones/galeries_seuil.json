@@ -1,0 +1,130 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 15,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.galeries_seuil",
+    "name": "Galeries du Seuil : galeries cristallines",
+    "scenario": "zones/galeries_seuil",
+    "floor": "dessous",
+    "entry": "sous_les_pierres_levees",
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "sous_les_pierres_levees",
+        "name": "Sous les pierres levées",
+        "position": [
+          0,
+          -1
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "galeries_cristallines",
+        "name": "Galeries cristallines",
+        "min": [
+          -28,
+          -4
+        ],
+        "max": [
+          28,
+          21
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "rive_des_eclats",
+        "name": "Rive des éclats",
+        "min": [
+          -28,
+          21
+        ],
+        "max": [
+          28,
+          40
+        ],
+        "minLevel": 23
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_galerie1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_galerie2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_galerie3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_galerie1",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "ours_des_eclats",
+        "scenario": "zones/galeries_seuil_ours",
+        "forms": [
+          "ours_cristal_eclats",
+          "ours_cristal_eclats_herisse"
+        ],
+        "fact": "fact.ours_des_eclats.vaincu",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          }
+        ],
+        "loot": "loot.ours"
+      }
+    ],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Cercle des pierres levées",
+        "position": [
+          0,
+          -2.5
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_galeries_seuil"
+      },
+      {
+        "id": "faille_des_eclats",
+        "name": "Salle des éclats géants",
+        "position": [
+          22,
+          37
+        ],
+        "to": "zone.galeries_eclats",
+        "toDoor": "faille",
+        "kind": "faille"
+      }
+    ]
+  }
+}

@@ -1,0 +1,470 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 502,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -28,
+          -4
+        ],
+        "max": [
+          28,
+          40
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "paroi_cristal_entree_ouest",
+          "points": [
+            [
+              -28,
+              -4
+            ],
+            [
+              -5,
+              -4
+            ],
+            [
+              -5,
+              8
+            ],
+            [
+              -28,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "paroi_cristal_entree_est",
+          "points": [
+            [
+              5,
+              -4
+            ],
+            [
+              28,
+              -4
+            ],
+            [
+              28,
+              8
+            ],
+            [
+              5,
+              8
+            ]
+          ]
+        },
+        {
+          "id": "gouffre_cristal_ouest",
+          "points": [
+            [
+              -28,
+              18
+            ],
+            [
+              -18,
+              18
+            ],
+            [
+              -18,
+              21
+            ],
+            [
+              -28,
+              21
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "gouffre_cristal_centre",
+          "points": [
+            [
+              -14,
+              18
+            ],
+            [
+              14,
+              18
+            ],
+            [
+              14,
+              21
+            ],
+            [
+              -14,
+              21
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "gouffre_cristal_est",
+          "points": [
+            [
+              18,
+              18
+            ],
+            [
+              28,
+              18
+            ],
+            [
+              28,
+              21
+            ],
+            [
+              18,
+              21
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "eclat_geant_galeries_1",
+          "points": [
+            [
+              -23.2,
+              10.8
+            ],
+            [
+              -20.8,
+              10.8
+            ],
+            [
+              -20.8,
+              13.2
+            ],
+            [
+              -23.2,
+              13.2
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_galeries_2",
+          "points": [
+            [
+              20.8,
+              10.8
+            ],
+            [
+              23.2,
+              10.8
+            ],
+            [
+              23.2,
+              13.2
+            ],
+            [
+              20.8,
+              13.2
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_galeries_3",
+          "points": [
+            [
+              -1.5,
+              28.5
+            ],
+            [
+              1.5,
+              28.5
+            ],
+            [
+              1.5,
+              31.5
+            ],
+            [
+              -1.5,
+              31.5
+            ]
+          ]
+        },
+        {
+          "id": "eclat_geant_galeries_4",
+          "points": [
+            [
+              -25.2,
+              34.8
+            ],
+            [
+              -22.8,
+              34.8
+            ],
+            [
+              -22.8,
+              37.2
+            ],
+            [
+              -25.2,
+              37.2
+            ]
+          ]
+        },
+        {
+          "id": "pilier_cristal_galeries_1",
+          "points": [
+            [
+              -9.8,
+              24.2
+            ],
+            [
+              -8.2,
+              24.2
+            ],
+            [
+              -8.2,
+              25.8
+            ],
+            [
+              -9.8,
+              25.8
+            ]
+          ]
+        },
+        {
+          "id": "pilier_cristal_galeries_2",
+          "points": [
+            [
+              8.2,
+              24.2
+            ],
+            [
+              9.8,
+              24.2
+            ],
+            [
+              9.8,
+              25.8
+            ],
+            [
+              8.2,
+              25.8
+            ]
+          ]
+        },
+        {
+          "id": "cristaux_galeries_1",
+          "points": [
+            [
+              -4,
+              10
+            ],
+            [
+              -2,
+              10
+            ],
+            [
+              -2,
+              11.5
+            ],
+            [
+              -4,
+              11.5
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "cristaux_galeries_2",
+          "points": [
+            [
+              12,
+              34
+            ],
+            [
+              14.5,
+              34
+            ],
+            [
+              14.5,
+              36
+            ],
+            [
+              12,
+              36
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "cristaux_galeries_3",
+          "points": [
+            [
+              -27,
+              26
+            ],
+            [
+              -25,
+              26
+            ],
+            [
+              -25,
+              28
+            ],
+            [
+              -27,
+              28
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "eboulis_cristal_galeries",
+          "points": [
+            [
+              16,
+              26
+            ],
+            [
+              19,
+              26
+            ],
+            [
+              19,
+              28
+            ],
+            [
+              16,
+              28
+            ]
+          ],
+          "low": true
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "ours_cristal_eclats",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1100,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -16,
+          34
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.2,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "ours_cristal_eclats_herisse",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 650,
+        "armor": 25,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "pluie_d_eclats",
+            "rawDamage": 34,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -12,
+          33
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.2,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

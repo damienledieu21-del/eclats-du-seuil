@@ -410,6 +410,10 @@
         "value": 300
       },
       {
+        "item": "item.larme_du_seuil",
+        "value": 2400
+      },
+      {
         "item": "item.chapeau_de_lune",
         "value": 25
       },
