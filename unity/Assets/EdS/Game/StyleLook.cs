@@ -600,6 +600,10 @@ namespace EdS.Game
             HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
             // V2.49.2 : les rats prennent le rat animé de Tripo (Resources/Rats) ; sans lui, le modèle de leur place (le loup), en repli.
             GameObject rat = human == null && StyleRules.IsRat(id) ? Resources.Load<GameObject>(SewerLooks.RatFolder + SewerLooks.RatModel) : null;
+            // V2.50b (décision de Damien du 26 novembre 2026) : les créatures de cristal prennent leur modèle animé (Resources/Galeries/Creatures),
+            // traité comme celui du rat ; sans lui, le modèle de leur place (loup ou ours), teinté de cristal plus bas.
+            string crystalName = human == null ? GalleryLooks.CreatureModel(id) : null;
+            if (rat == null && crystalName != null) rat = Resources.Load<GameObject>(GalleryLooks.CreatureFolder + crystalName);
             GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : rat != null ? rat : catalog.Model(slot, id);
             if (prefab == null) return null;
             if (human is HumanLook sized) height = (float)sized.Height;
@@ -648,7 +652,14 @@ namespace EdS.Game
             // garde ses couleurs.
             // Sous-lot V2.9 : seuls les matériaux sans texture restés blancs la prennent (les bêtes de Quaternius ont leurs couleurs : pelage,
             // ventre clair, yeux, truffe) ; le loup blanc du contrat de la guilde est éclairci (sauf les yeux et la truffe, sombres).
-            if (rat != null && SewerLooks.IsSmallRat(id))
+            if (rat == null && crystalName != null && StyleRules.IsCrystalCreature(id))
+            {
+                // V2.50b : créature de cristal sur le modèle de repli (loup, ours) : toute sa couleur virée au violet du cristal.
+                var tint = new Color((float)GalleryLooks.CrystalTint.R, (float)GalleryLooks.CrystalTint.G, (float)GalleryLooks.CrystalTint.B);
+                foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, BaseColor(m) * tint);
+            }
+            else if (rat != null && SewerLooks.IsSmallRat(id))
             {
                 // V2.49.2 : le petit rat, un peu plus gris que le rat géant (même modèle).
                 var tint = new Color((float)SewerLooks.SmallRatTint.R, (float)SewerLooks.SmallRatTint.G, (float)SewerLooks.SmallRatTint.B);
@@ -678,7 +689,9 @@ namespace EdS.Game
                 }
             // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
             // Animation posé sur la racine du modèle (les chemins des os partent de là).
+            // V2.50b : une créature de cristal sur son propre modèle n'a que sa marche (ou rien, le golem statique) : pas les clips du loup ou de l'ours.
             AnimationClip[] clips = catalog.Clips(slot, id);
+            if (rat != null && crystalName != null) clips = null;
             if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
