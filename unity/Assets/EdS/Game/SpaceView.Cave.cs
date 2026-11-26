@@ -37,6 +37,7 @@ namespace EdS.Game
             _mine = MineLooks.IsMine(space.Obstacles);   // V2.47.2 : la mine de la carrière (pièces du kit de mine)
             _crypt = CryptLooks.IsCrypt(space.Obstacles);   // V2.48.2 : les cryptes de l'abbaye et de la chapelle
             _sewer = SewerLooks.IsSewer(space.Obstacles);   // V2.49.2 : les égouts du Bourg
+            _gallery = GalleryLooks.IsGallery(space.Obstacles);   // V2.50b : les galeries sous les pierres du Seuil
             StyleWorld.SetCave(true);
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             Material rock = Built(StyleSurface.Stone, new Color(0.3f, 0.29f, 0.28f), out float rockTile);
@@ -55,6 +56,7 @@ namespace EdS.Game
             foreach (SpaceObstacle o in space.Obstacles)
             {
                 CavePiece piece = CaveLooks.PieceFor(o.Id);
+                if (piece == CavePiece.None && GalleryObstacle(o, rock, rockTile)) continue;   // V2.50b : pièces des galeries cristallines
                 if (piece == CavePiece.None && SewerObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.49.2 : pièces des égouts
                 if (piece == CavePiece.None && CryptObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.48.2 : pièces des cryptes
                 if (piece == CavePiece.None && MineObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.47.2 : pièces de la mine
@@ -87,10 +89,17 @@ namespace EdS.Game
             if (_mine) MineBridges(space, wood, woodTile);   // V2.47.2 : passerelles sur la rivière souterraine
             if (_crypt) CryptArches(space, rock, rockTile);   // V2.48.2 : voûtes des passages entre deux grilles
             if (_sewer) SewerBridgesAndArches(space, rock, rockTile, wood, woodTile);   // V2.49.2 : passerelles du canal, voûtes
+            if (_gallery) GalleryBridges(space, rock, rockTile);   // V2.50b : ponts de pierre sur le gouffre
 
             // Le rideau d'eau, vu de dedans, sur les portes qui mènent dehors, tourné vers la grotte ; le jour du dehors passe à travers.
             foreach (MapDoor door in map.Doors)
             {
+                // V2.50b : dans les galeries, ni rideau d'eau : le jour des pierres levées et la faille.
+                if (_gallery)
+                {
+                    GalleryDoor(door, minX, minZ, maxX, maxZ);
+                    continue;
+                }
                 // V2.49.2 : dans les égouts, ni rideau d'eau : le jour du Bourg et l'échelle.
                 if (_sewer)
                 {

@@ -284,6 +284,7 @@ namespace EdS.Game.Editor
             catalog.Corruption = CorruptionPieces(notes);   // sous-lot V2.42.2 : modèles de la corruption (CorruptionLooks), quand l'atelier les aura livrés
             MinePieces(notes);   // chantier V2.47.2 : matières du kit de mine (Resources/Mines), kit fait le 22 novembre 2026
             CryptPieces(notes);   // chantier V2.48.2 : matières du kit de crypte (Resources/Crypte), kit fait le 22 novembre 2026
+            GalleryPieces(notes);   // chantier V2.50b : matières du kit de galeries cristallines (Resources/Galeries), quand l'atelier l'aura livré
             SewerPieces(notes);   // chantier V2.49.2 : matières du kit d'égout (Resources/Egouts), quand l'atelier l'aura livré
             RatModel(notes);   // V2.49.2 : le rat animé de Tripo (Resources/Rats), sa marche en « Legacy » et sa matière
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
@@ -673,6 +674,19 @@ namespace EdS.Game.Editor
                 .Where(p => CryptLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             foreach (string path in paths) OwnMaterial(path, notes);
             if (paths.Count > 0) notes.Add("Crypte : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(CryptLooks.NameOf)) + ").");
+        }
+
+        /// <summary>
+        /// Chantier V2.50b : le kit de galeries cristallines (<see cref="GalleryLooks.AssetFolder"/>, reconnu par <see cref="GalleryLooks.NameOf"/>) :
+        /// même traitement que les kits de grotte, de mine, de crypte et d'égout. Sans dossier (kit pas encore généré) : rien, sans erreur.
+        /// </summary>
+        private static void GalleryPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(GalleryLooks.AssetFolder)) return;
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { GalleryLooks.AssetFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => GalleryLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            foreach (string path in paths) OwnMaterial(path, notes);
+            if (paths.Count > 0) notes.Add("Galeries : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(GalleryLooks.NameOf)) + ").");
         }
 
         /// <summary>
