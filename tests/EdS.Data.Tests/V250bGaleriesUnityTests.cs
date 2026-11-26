@@ -323,7 +323,7 @@ public class V250bGaleriesUnityTests
         Assert.Contains("GalleryLooks.CrystalTint", look);
         Assert.Contains("GalleryLooks.CreatureAssetFolder", style);
         Assert.Contains("StyleRules.IsCrystalCreature(id)", look);   // la teinte de cristal seulement pour l'araignée et le golem en repli
-        Assert.Contains("rat != null && crystalName != null ? null : catalog.Clips(slot, id)", look);   // pas les clips du loup ou de l'ours
+        Assert.Contains("if (rat != null && crystalName != null) clips = null;", look);   // pas les clips du loup ou de l'ours
         string lab = Path.Combine(Path.GetDirectoryName(Lot93UnityPackageTests.Root)!, "Eclats_du_Seuil_AssetLab", "Galeries", "Creatures", "modeles.json");
         if (File.Exists(lab))
         {

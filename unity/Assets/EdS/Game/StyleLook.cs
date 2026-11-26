@@ -690,7 +690,8 @@ namespace EdS.Game
             // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
             // Animation posé sur la racine du modèle (les chemins des os partent de là).
             // V2.50b : une créature de cristal sur son propre modèle n'a que sa marche (ou rien, le golem statique) : pas les clips du loup ou de l'ours.
-            AnimationClip[] clips = rat != null && crystalName != null ? null : catalog.Clips(slot, id);
+            AnimationClip[] clips = catalog.Clips(slot, id);
+            if (rat != null && crystalName != null) clips = null;
             if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
