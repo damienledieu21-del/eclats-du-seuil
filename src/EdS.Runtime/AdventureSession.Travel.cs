@@ -48,7 +48,7 @@ namespace EdS.Runtime
         public IReadOnlyList<TravelDestination> TravelDestinations()
         {
             var list = new List<TravelDestination>();
-            foreach (ZoneDefinition zone in _zones.Where(z => !z.Sheltered))   // V2.45.2 : le voyage rapide ne mène pas au dessous
+            foreach (ZoneDefinition zone in _zones.Where(z => !z.Sheltered && !z.Envers))   // V2.45.2 : le voyage rapide ne mène pas au dessous ; V2.51a : ni dans l'Envers
                 foreach (SafePoint s in zone.SafePoints)
                 {
                     if (!World.IsDiscovered(zone, s.Id)) continue;
