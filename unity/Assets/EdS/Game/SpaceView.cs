@@ -219,6 +219,7 @@ namespace EdS.Game
             QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
             BourgDecor();   // V2.30.2 : palissade, tours et portes du Bourg fortifié (modèles de l'atelier)
             SewerEntrances();   // V2.49.2 : bouche d'égout du marché et déversoir du fossé (entrées des égouts)
+            GalleryEntrance();   // V2.50b : entrée des galeries entre les pierres levées
             DrownedEntrances();   // V2.50.1b : entrée des grottes noyées dans les roselières du marais
             _rebuildKey = null;   // V2.43.3 : décor des chantiers refait à la première relecture (Rebuilds)
             _rebuildRoot = null;
