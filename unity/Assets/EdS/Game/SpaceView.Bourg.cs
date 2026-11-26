@@ -62,7 +62,7 @@ namespace EdS.Game
                 holder.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
                 // Kit du Bourg : sols (place, rue pavée, ruelle, bordure) couchés sur la pente du sol affiché, à sa hauteur au centre ; posés au
                 // plus bas de leur pied, ils s'enterraient sur les pentes et ne laissaient voir que des coins clairs épars dans l'herbe.
-                if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, x, z, (float)p.Yaw, (float)BourgModels.Foot(p.Piece));
+                if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, p.Piece, x, z, (float)p.Yaw);
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 var panes = new System.Collections.Generic.List<Renderer>();
@@ -118,17 +118,15 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Kit du Bourg : un sol plat de l'atelier (modules de 6 m) posé à la hauteur du sol affiché en son centre et couché sur sa pente
-        /// (normale tirée de quatre points à <paramref name="r"/> m), un peu au-dessus pour ne pas scintiller avec le terrain.
+        /// Kit du Bourg : un sol plat de l'atelier (modules de 6 m) couché sur la pente du sol affiché, monté juste assez pour qu'aucun coin ne
+        /// passe sous le sol (<see cref="BourgGround.OnSlope"/>).
         /// </summary>
-        private static void GroundOnSlope(Transform holder, float x, float z, float yaw, float r)
+        private static void GroundOnSlope(Transform holder, string piece, float x, float z, float yaw)
         {
-            r = Mathf.Max(0.5f, r);
-            float east = StyleWorld.StandHeight(x + r, z), west = StyleWorld.StandHeight(x - r, z);
-            float north = StyleWorld.StandHeight(x, z + r), south = StyleWorld.StandHeight(x, z - r);
-            float centre = (StyleWorld.StandHeight(x, z) + (east + west + north + south) / 4f) / 2f;
-            Vector3 normal = new Vector3(-(east - west) / (2f * r), 1f, -(north - south) / (2f * r)).normalized;
-            holder.position = new Vector3(x, centre + 0.02f, z);
+            // Revue Codex de la PR #255 : calcul pur et testé (BourgGround.OnSlope) ; ici, seulement la pose.
+            var pose = BourgGround.OnSlope((px, pz) => StyleWorld.StandHeight((float)px, (float)pz), piece, x, z, yaw);
+            Vector3 normal = new Vector3((float)pose.Nx, (float)pose.Ny, (float)pose.Nz);
+            holder.position = new Vector3(x, (float)pose.Y, z);
             holder.rotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0f, yaw, 0f);
         }
 

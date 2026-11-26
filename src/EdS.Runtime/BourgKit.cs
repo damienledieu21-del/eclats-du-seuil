@@ -157,3 +157,55 @@ namespace EdS.Runtime
             pieces.Select(p => Find(p.Piece)).Where(h => h != null).Sum(h => far ? h!.FarTriangles : h!.Triangles);
     }
 }
+
+namespace EdS.Runtime
+{
+    /// <summary>
+    /// Kit du Bourg (revue Codex de la PR #255) : pose d'un sol plat de l'atelier (place, rue pavée, ruelle, bordure) sur le sol affiché,
+    /// sans Unity. Le module est couché sur la pente (gradient pris à <c>r</c> m de part et d'autre de son centre) et monté juste assez pour
+    /// qu'aucun coin ni milieu de bord ne passe sous le sol, plus <see cref="Clearance"/>. Avant, posé au plus bas de son pied, il
+    /// s'enterrait sur les pentes (les « dalles blanches » éparses dans l'herbe).
+    /// </summary>
+    public static class BourgGround
+    {
+        /// <summary>Marge (m) au-dessus du sol (pas de scintillement avec le terrain).</summary>
+        public const double Clearance = 0.02;
+
+        /// <summary>
+        /// Hauteur du pivot et normale (unitaire, y &gt; 0, tournée vers l'aval) du module <paramref name="piece"/> posé en
+        /// (<paramref name="x"/>, <paramref name="z"/>) au lacet <paramref name="yaw"/>, sur le sol <paramref name="height"/>.
+        /// </summary>
+        public static (double Y, double Nx, double Ny, double Nz) OnSlope(Func<double, double, double> height, string piece, double x, double z, double yaw)
+        {
+            double r = Math.Max(0.5, BourgModels.Foot(piece));
+            double east = height(x + r, z), west = height(x - r, z), north = height(x, z + r), south = height(x, z - r);
+            double gx = (east - west) / (2 * r), gz = (north - south) / (2 * r);
+            double centre = (height(x, z) + (east + west + north + south) / 4) / 2;
+            // Coins et milieux des bords du pied du modèle : le plan ne passe sous le sol nulle part.
+            double lift = 0;
+            foreach (var (px, pz) in Outline(piece, x, z, yaw))
+                lift = Math.Max(lift, height(px, pz) - (centre + gx * (px - x) + gz * (pz - z)));
+            double n = Math.Sqrt(gx * gx + 1 + gz * gz);
+            return (centre + lift + Clearance, -gx / n, 1 / n, -gz / n);
+        }
+
+        /// <summary>Hauteur du plan posé (<see cref="OnSlope"/>) au point (<paramref name="px"/>, <paramref name="pz"/>).</summary>
+        public static double PlaneAt((double Y, double Nx, double Ny, double Nz) pose, double x, double z, double px, double pz) =>
+            pose.Y - (pose.Nx * (px - x) + pose.Nz * (pz - z)) / pose.Ny;
+
+        /// <summary>Les quatre coins et les quatre milieux des bords du pied du modèle (boîte de <see cref="BourgModels.Box"/>), ou son centre.</summary>
+        public static IEnumerable<(double X, double Z)> Outline(string piece, double x, double z, double yaw)
+        {
+            var b = BourgModels.Box(piece);
+            if (b == null)
+            {
+                yield return (x, z);
+                yield break;
+            }
+            var v = b.Value;
+            double mx = (v.X0 + v.X1) / 2, my = (v.Y0 + v.Y1) / 2;
+            foreach (var (bx, by) in new[] { (v.X0, v.Y0), (v.X1, v.Y0), (v.X0, v.Y1), (v.X1, v.Y1), (mx, v.Y0), (mx, v.Y1), (v.X0, my), (v.X1, my) })
+                yield return BourgModels.Place(x, z, yaw, -bx, -by);
+        }
+    }
+}

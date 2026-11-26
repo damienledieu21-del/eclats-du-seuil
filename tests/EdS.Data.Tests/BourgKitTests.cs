@@ -180,6 +180,44 @@ public class BourgKitTests
     }
 
     [Fact]
+    public void Flat_ground_pieces_lie_on_the_slope_never_buried()
+    {
+        // Revue Codex de la PR #255 : pose pure des sols de l'atelier (BourgGround.OnSlope).
+        foreach (string piece in new[] { BourgModels.Paving, BourgModels.Street, BourgModels.Lane, BourgModels.Curb })
+            foreach (double yaw in new[] { 0.0, 37.0, 90.0, -126.87 })
+            {
+                // Terrain plat : hauteur exacte (+ marge), aucune inclinaison.
+                var flat = BourgGround.OnSlope((x, z) => 12.5, piece, 100, -40, yaw);
+                Assert.Equal(12.5 + BourgGround.Clearance, flat.Y, 9);
+                Assert.Equal((0.0, 1.0, 0.0), (flat.Nx, flat.Ny, flat.Nz));
+                // Plan incliné (monte vers +x et +z) : normale unitaire, vers le haut, tournée vers l'aval ; le module suit le plan.
+                Func<double, double, double> plane = (x, z) => 3 + 0.2 * x - 0.1 * z;
+                var tilted = BourgGround.OnSlope(plane, piece, 10, 20, yaw);
+                Assert.Equal(1, tilted.Nx * tilted.Nx + tilted.Ny * tilted.Ny + tilted.Nz * tilted.Nz, 9);
+                Assert.True(tilted.Ny > 0 && tilted.Nx < 0 && tilted.Nz > 0, piece + " " + tilted);
+                Assert.Equal(0.2, -tilted.Nx / tilted.Ny, 9);   // pente le long de x
+                Assert.Equal(-0.1, -tilted.Nz / tilted.Ny, 9);
+                Assert.Equal(plane(10, 20) + BourgGround.Clearance, tilted.Y, 5);   // coins arrondis au micromètre (BourgModels.Place)
+                // Sol bosselé : aucun coin ni milieu de bord sous le sol au-delà de la marge, et pas de module qui flotte plus que la bosse.
+                Func<double, double, double> bumpy = (x, z) => 0.15 * x + 0.4 * Math.Sin(x * 0.7) * Math.Cos(z * 0.5);
+                foreach (var (cx, cz) in new[] { (0.0, 0.0), (3.3, -7.1), (-12.0, 5.5) })
+                {
+                    var pose = BourgGround.OnSlope(bumpy, piece, cx, cz, yaw);
+                    Assert.True(pose.Ny > 0);
+                    foreach (var (px, pz) in BourgGround.Outline(piece, cx, cz, yaw))
+                    {
+                        double above = BourgGround.PlaneAt(pose, cx, cz, px, pz) - bumpy(px, pz);
+                        Assert.True(above >= BourgGround.Clearance - 1e-9, piece + " coin sous le sol de " + (-above));
+                        Assert.True(above <= 1.7, piece + " flotte de " + above);
+                    }
+                }
+            }
+        // Huit points de contrôle (coins et milieux des bords) pour un sol, le centre seul pour une pièce sans boîte.
+        Assert.Equal(8, BourgGround.Outline(BourgModels.Paving, 0, 0, 0).Count());
+        Assert.Single(BourgGround.Outline("inconnue", 0, 0, 0));
+    }
+
+    [Fact]
     public void Bourg_triangles_stay_reasonable_from_afar()
     {
         int near = BourgKit.Triangles(Dress.Value.Pieces, false), far = BourgKit.Triangles(Dress.Value.Pieces, true);
