@@ -232,6 +232,46 @@ public class V250bGaleriesUnityTests
         Assert.True(pose.Base < 0);
     }
 
+    /// <summary>
+    /// Relecture indépendante des PR #256 et #258 : le sol plein de la grotte recouvrait le gouffre enfoncé. Le sol des galeries est découpé
+    /// autour de chaque tronçon : les morceaux ne se chevauchent pas, couvrent tout le sol hors du gouffre et rien du gouffre ; les ponts
+    /// franchissent donc un vrai creux.
+    /// </summary>
+    [Fact]
+    public void Sol_decoupe_autour_du_gouffre()
+    {
+        var space = Zone("zone.galeries_seuil").Setup.Space!;
+        double minX = space.Min.X.Raw / 1e4 - 2, minZ = space.Min.Z.Raw / 1e4 - 2, maxX = space.Max.X.Raw / 1e4 + 2, maxZ = space.Max.Z.Raw / 1e4 + 2;
+        var holes = GalleryLooks.ChasmHoles(space.Obstacles);
+        Assert.Equal(new[] { (-28.0, 18.0, -18.0, 21.0), (-14.0, 18.0, 14.0, 21.0), (18.0, 18.0, 28.0, 21.0) }, holes.OrderBy(h => h.MinX));
+        var floor = GalleryLooks.FloorPieces(minX, minZ, maxX, maxZ, holes);
+        Assert.All(floor, f => Assert.True(f.MaxX > f.MinX && f.MaxZ > f.MinZ));
+        double area = floor.Sum(f => (f.MaxX - f.MinX) * (f.MaxZ - f.MinZ));
+        double holeArea = holes.Sum(h => (h.MaxX - h.MinX) * (h.MaxZ - h.MinZ));
+        Assert.Equal((maxX - minX) * (maxZ - minZ) - holeArea, area, 6);   // tout le sol hors des trous…
+        for (int i = 0; i < floor.Count; i++)                                // …sans chevauchement…
+            for (int j = i + 1; j < floor.Count; j++)
+                Assert.False(floor[i].MinX < floor[j].MaxX && floor[j].MinX < floor[i].MaxX && floor[i].MinZ < floor[j].MaxZ && floor[j].MinZ < floor[i].MaxZ);
+        foreach (var f in floor)                                             // …et rien dans le gouffre
+            Assert.DoesNotContain(holes, h => f.MinX < h.MaxX && h.MinX < f.MaxX && f.MinZ < h.MaxZ && h.MinZ < f.MaxZ);
+        // Le milieu de chaque pont (écart entre deux tronçons) reste du sol ; le milieu d'un tronçon, non.
+        foreach (var b in GalleryLooks.Bridges(space.Obstacles))
+            Assert.Contains(floor, f => f.MinX <= (b.MinX + b.MaxX) / 2 && (b.MinX + b.MaxX) / 2 <= f.MaxX && f.MinZ <= 19.5 && 19.5 <= f.MaxZ);
+        Assert.DoesNotContain(floor, f => f.MinX <= 0 && 0 <= f.MaxX && f.MinZ < 19.5 && 19.5 < f.MaxZ);
+        // Sans trou : le sol entier ; un trou qui dépasse est rogné ; emprise vide : rien.
+        Assert.Equal(new[] { (0.0, 0.0, 4.0, 4.0) }, GalleryLooks.FloorPieces(0, 0, 4, 4, Array.Empty<(double, double, double, double)>()));
+        Assert.Equal(16 - 4, GalleryLooks.FloorPieces(0, 0, 4, 4, new[] { (-1.0, -1.0, 2.0, 2.0) }).Sum(f => (f.MaxX - f.MinX) * (f.MaxZ - f.MinZ)), 9);
+        Assert.Empty(GalleryLooks.FloorPieces(0, 0, 0, 4, null!));
+        Assert.Single(GalleryLooks.FloorPieces(0, 0, 4, 4, null!));
+        // La salle n'a pas de gouffre : un seul morceau ; Unity découpe le sol des galeries seulement.
+        var salle = Zone("zone.galeries_eclats").Setup.Space!;
+        Assert.Single(GalleryLooks.FloorPieces(-26, -6, 26, 42, GalleryLooks.ChasmHoles(salle.Obstacles)));
+        string cave = Unity("Assets", "EdS", "Game", "SpaceView.Cave.cs"), gallery = Unity("Assets", "EdS", "Game", "SpaceView.Gallery.cs");
+        Assert.Contains("GalleryLooks.FloorPieces(minX - 2f, minZ - 2f, maxX + 2f, maxZ + 2f, GalleryLooks.ChasmHoles(space.Obstacles))", cave);
+        Assert.True(cave.IndexOf("_gallery = GalleryLooks.IsGallery", StringComparison.Ordinal) < cave.IndexOf("GalleryLooks.FloorPieces(", StringComparison.Ordinal));
+        Assert.Contains("ChasmPit(o.Id, x0, z0, x1, z1, rock, rockTile)", gallery);
+    }
+
     [Fact]
     public void Pont_de_pierre_en_dalles_cote_a_cote_sans_trou()
     {

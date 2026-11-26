@@ -46,7 +46,16 @@ namespace EdS.Game
             Material wood = Built(StyleSurface.Wood, new Color(0.4f, 0.28f, 0.18f), out float woodTile);
 
             // Sol de roche, un peu plus grand que l'aire ; tout autour, la roche monte (on ne voit jamais le vide).
-            Box("Sol de la grotte", new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f), new Vector3(maxX - minX + 4f, 0.1f, maxZ - minZ + 4f), dark, rockTile);
+            // V2.50b (relecture indépendante des PR #256 et #258) : dans les galeries, le sol est découpé autour du gouffre, qui reste un creux.
+            if (_gallery)
+            {
+                int piece = 0;
+                foreach (var f in GalleryLooks.FloorPieces(minX - 2f, minZ - 2f, maxX + 2f, maxZ + 2f, GalleryLooks.ChasmHoles(space.Obstacles)))
+                    Box("Sol de la grotte (" + (++piece) + ")", new Vector3((float)(f.MinX + f.MaxX) / 2f, -0.05f, (float)(f.MinZ + f.MaxZ) / 2f),
+                        new Vector3((float)(f.MaxX - f.MinX), 0.1f, (float)(f.MaxZ - f.MinZ)), dark, rockTile);
+            }
+            else
+                Box("Sol de la grotte", new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f), new Vector3(maxX - minX + 4f, 0.1f, maxZ - minZ + 4f), dark, rockTile);
             float h = (float)CaveLooks.WallHeight;
             RockWall("Roche ouest", new Vector3(minX - 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);
             RockWall("Roche est", new Vector3(maxX + 1f, h / 2f, (minZ + maxZ) / 2f), new Vector3(2f, h, maxZ - minZ + 4f), rock, rockTile);

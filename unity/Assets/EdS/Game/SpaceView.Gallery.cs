@@ -14,7 +14,7 @@ namespace EdS.Game
     /// genre faille, jour du dehors à la porte de la surface (<see cref="GalleryDoor"/>) ; côté surface, l'entrée entre les pierres levées
     /// (<see cref="GalleryEntrance"/>). Modèles pris dans <c>Resources/Galeries/&lt;nom&gt;</c> (<see cref="GalleryLooks.Models"/>) et posés
     /// par <see cref="FitSewerModel"/> (échelle sur une pose alignée sur les axes du modèle, lacet au-dessus : jamais d'échelle non uniforme
-    /// au-dessus d'un enfant tourné) ; en repli (kit préparé, pas encore généré), des formes simples.
+    /// au-dessus d'un enfant tourné) ; en repli (si un modèle du kit manque), des formes simples.
     /// </summary>
     public sealed partial class SpaceView
     {
@@ -32,6 +32,7 @@ namespace EdS.Game
             float cx = (x0 + x1) / 2f, cz = (z0 + z1) / 2f, height = (float)GalleryLooks.HeightOf(piece);
             var glow = GalleryLooks.GlowOf(piece);
             if (glow.Intensity > 0) CaveGlow(o.Id, cx, cz, GalleryGlowColor, (float)glow.Intensity, (float)glow.Range);
+            if (piece == GalleryPiece.Chasm) ChasmPit(o.Id, x0, z0, x1, z1, rock, rockTile);
             GameObject model = CryptModel(GalleryLooks.Folder, GalleryLooks.ModelFor(piece));
             if (model != null && GalleryLooks.TileOf(piece).HasValue && Footprint(model, out float modelLong, out float modelShort))
             {
@@ -63,9 +64,7 @@ namespace EdS.Game
                     GiantShardShape(o.Id, cx, cz, Mathf.Min(x1 - x0, z1 - z0) / 2f, height, crystal);
                     break;
                 case GalleryPiece.Chasm:
-                    // Un creux sombre : le fond posé sous le sol, deux lèvres de roche le long des grands côtés.
-                    float depth = (float)GalleryLooks.ChasmDepth;
-                    Prism(o.Id + " (fond)", points.Select(p => new Vector3(p.x, -depth, p.z)).ToList(), 0.05f, Plain(new Color(0.03f, 0.02f, 0.05f)), false);
+                    // Le creux (fond et parois) est déjà posé (ChasmPit) ; deux lèvres de roche le long des grands côtés.
                     bool alongX = x1 - x0 >= z1 - z0;
                     if (alongX)
                     {
@@ -90,6 +89,21 @@ namespace EdS.Game
                     break;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Le creux du gouffre, sous le sol découpé (<see cref="GalleryLooks.FloorPieces"/>) : un fond sombre à <see cref="GalleryLooks.ChasmDepth"/>
+        /// sous le sol et quatre parois de roche jusqu'au sol, pour ne jamais voir le vide ; la lueur violette vient du fond. Posé avec ou sans le modèle.
+        /// </summary>
+        private void ChasmPit(string id, float x0, float z0, float x1, float z1, Material rock, float rockTile)
+        {
+            float depth = (float)GalleryLooks.ChasmDepth, cx = (x0 + x1) / 2f, cz = (z0 + z1) / 2f;
+            Material shadow = Tinted(rock, new Color(0.12f, 0.1f, 0.16f), "roche du gouffre");
+            Box(id + " (fond)", new Vector3(cx, -depth - 0.05f, cz), new Vector3(x1 - x0, 0.1f, z1 - z0), Plain(new Color(0.03f, 0.02f, 0.05f)), 1f);
+            Box(id + " (paroi sud)", new Vector3(cx, -depth / 2f, z0 + 0.05f), new Vector3(x1 - x0, depth, 0.1f), shadow, rockTile);
+            Box(id + " (paroi nord)", new Vector3(cx, -depth / 2f, z1 - 0.05f), new Vector3(x1 - x0, depth, 0.1f), shadow, rockTile);
+            Box(id + " (paroi ouest)", new Vector3(x0 + 0.05f, -depth / 2f, cz), new Vector3(0.1f, depth, z1 - z0), shadow, rockTile);
+            Box(id + " (paroi est)", new Vector3(x1 - 0.05f, -depth / 2f, cz), new Vector3(0.1f, depth, z1 - z0), shadow, rockTile);
         }
 
         /// <summary>Forme de remplacement d'un éclat géant : trois prismes de cristal effilés (cylindres à quatre pans), le plus haut au centre.</summary>

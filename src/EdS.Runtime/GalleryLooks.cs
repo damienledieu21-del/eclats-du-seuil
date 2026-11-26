@@ -30,8 +30,8 @@ namespace EdS.Runtime
     /// <summary>
     /// Chantier V2.50b (galeries sous les pierres du Seuil, PLAN_GRANDE_CARTE.md, ligne V2.50) : rendu des galeries, sans Unity. Les obstacles
     /// prennent une pièce du kit de galeries cristallines par le début de leur identifiant (« eclat_geant_salle_2 » : un éclat géant) ; les
-    /// modèles (kit Tripo préparé dans l'atelier, <c>Galeries/modeles.json</c>, 11 modèles, 330 crédits au plus, **non dépensés**) sont cherchés
-    /// dans <see cref="AssetFolder"/> et, s'ils manquent, Unity pose une forme simple. Ponts de pierre sur l'écart entre deux tronçons du gouffre
+    /// modèles (kit Tripo lancé par Damien le 26 novembre 2026, <c>Galeries/modeles.json</c>, 11 modèles, 220 crédits réels, finis par
+    /// <c>Galeries/finir_galeries.py</c>) sont pris dans <see cref="AssetFolder"/> et, si l'un manque, Unity pose une forme simple. Ponts de pierre sur l'écart entre deux tronçons du gouffre
     /// (<see cref="Bridges"/>), faille contre la paroi aux portes de genre faille (<see cref="RiftAt"/>), jour du dehors aux portes de la surface ;
     /// côté surface, l'entrée entre les pierres levées (<see cref="SurfaceModel"/>). La paroi et le gouffre sont posés en tuiles
     /// (<see cref="SewerLooks.WallTiles"/>, d'après les bornes réelles du modèle), les autres pièces sans être étirées
@@ -130,6 +130,45 @@ namespace EdS.Runtime
         /// <see cref="ChasmDepth"/> sous le sol et ses lèvres à <see cref="ChasmLip"/> au-dessus : on voit le creux d'en haut, jamais un bloc.
         /// </summary>
         public static (double Base, double Height) ChasmPose() => (-ChasmDepth, ChasmDepth + ChasmLip);
+
+        /// <summary>
+        /// Relecture indépendante des PR #256 et #258 : le sol plein de la grotte (<c>SpaceView.Cave</c>) recouvrait le gouffre enfoncé, qu'on ne
+        /// voyait plus comme un creux. Rectangles du sol [x0, x1] × [z0, z1] privé des trous <paramref name="holes"/> (les tronçons du gouffre,
+        /// rognés au sol) : découpe en bandes (abscisses et ordonnées de tous les bords), cases hors des trous réunies le long de X. Les
+        /// rectangles ne se chevauchent pas, couvrent tout le sol hors des trous et rien dedans. Sans trou : le sol entier.
+        /// </summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> FloorPieces(double x0, double z0, double x1, double z1,
+            IEnumerable<(double MinX, double MinZ, double MaxX, double MaxZ)> holes)
+        {
+            var result = new List<(double, double, double, double)>();
+            if (!(x1 > x0) || !(z1 > z0)) return result;
+            var cut = (holes ?? Array.Empty<(double, double, double, double)>())
+                .Select(h => (MinX: Math.Max(x0, h.MinX), MinZ: Math.Max(z0, h.MinZ), MaxX: Math.Min(x1, h.MaxX), MaxZ: Math.Min(z1, h.MaxZ)))
+                .Where(h => h.MaxX > h.MinX && h.MaxZ > h.MinZ).ToList();
+            var xs = cut.SelectMany(h => new[] { h.MinX, h.MaxX }).Concat(new[] { x0, x1 }).Distinct().OrderBy(v => v).ToList();
+            var zs = cut.SelectMany(h => new[] { h.MinZ, h.MaxZ }).Concat(new[] { z0, z1 }).Distinct().OrderBy(v => v).ToList();
+            for (int j = 0; j + 1 < zs.Count; j++)
+            {
+                double za = zs[j], zb = zs[j + 1];
+                int i = 0;
+                while (i + 1 < xs.Count)
+                {
+                    bool Hole(int c) => cut.Any(h => h.MinX <= xs[c] && xs[c + 1] <= h.MaxX && h.MinZ <= za && zb <= h.MaxZ);
+                    if (Hole(i)) { i++; continue; }
+                    int k = i;
+                    while (k + 2 < xs.Count && !Hole(k + 1)) k++;
+                    result.Add((xs[i], za, xs[k + 1], zb));
+                    i = k + 1;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Trous du sol des galeries : l'emprise de chaque tronçon du gouffre parmi <paramref name="obstacles"/>.</summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> ChasmHoles(IEnumerable<SpaceObstacle> obstacles) =>
+            (obstacles ?? Array.Empty<SpaceObstacle>()).Where(o => o != null && PieceFor(o.Id) == GalleryPiece.Chasm && o.Points.Count > 0)
+                .Select(o => (o.Points.Min(p => p.X.Raw) / 10000.0, o.Points.Min(p => p.Z.Raw) / 10000.0, o.Points.Max(p => p.X.Raw) / 10000.0, o.Points.Max(p => p.Z.Raw) / 10000.0))
+                .ToList();
 
         /// <summary>
         /// Dalles d'un pont de pierre sur l'emprise [x0, x1] × [z0, z1] (le pont franchit le gouffre selon Z) pour un modèle de taille au sol
@@ -258,7 +297,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Créatures de cristal (décision de Damien du 26 novembre 2026) : dossier de leurs modèles animés dans Unity
-        /// (<c>Resources/Galeries/Creatures/&lt;nom&gt;</c>, kit Tripo préparé dans l'atelier <c>Galeries/Creatures</c>).
+        /// (<c>Resources/Galeries/Creatures/&lt;nom&gt;</c>, générées le 26 novembre 2026, finies par <c>Galeries/Creatures/finir_creatures.py</c>).
         /// </summary>
         public const string CreatureFolder = "Galeries/Creatures/", CreatureAssetFolder = "Assets/EdS/Modeles/Resources/Galeries/Creatures";
 
