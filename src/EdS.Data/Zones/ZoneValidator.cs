@@ -1275,7 +1275,25 @@ namespace EdS.Data.Zones
             // formes de départ du chef (« boss ») et des autres chefs (décision de Damien du 21 novembre 2026 : « créatures »).
             // V2.51 : de même dans l'Envers (toutes ses portes), et près de toute faille, à la surface aussi (on arrive par elle).
             string where = floor == ZoneFloor.Underground ? "dans un dessous" : floor == ZoneFloor.Envers ? "dans l'Envers" : "près d'une faille";
-            List<Door> guarded = floor == ZoneFloor.Underground || floor == ZoneFloor.Envers ? doors : doors.Where(x => x.Kind == DoorKind.Rift).ToList();
+            // Relecture indépendante des PR #260 et #261 : à la surface, la règle des failles ne vaut qu'à partir du schéma 17 (un document 15
+            // ou 16 n'est pas refusé à tort) ; une faille (schéma 17) demande plus : au-delà de la garde des portes (12 m, CanUseDoor) et
+            // hors d'aggro de bord à bord.
+            List<Door> guarded = floor == ZoneFloor.Underground || floor == ZoneFloor.Envers ? doors
+                : schema17 ? doors.Where(x => x.Kind == DoorKind.Rift).ToList() : new List<Door>();
+            string? Refused(AssailantSetup creature, GroundVector at, Door door)
+            {
+                if (schema17 && door.Kind == DoorKind.Rift)
+                {
+                    Fixed reach = RiftClearance;
+                    if (creature.Behavior?.AggroRange is Fixed aggro && creature.Placement is CombatantPlacement p)
+                    {
+                        Fixed edge = checked(p.Radius + RiftCharacterRadius + aggro);
+                        if (edge > reach) reach = edge;
+                    }
+                    return AtMost(at, door.Position, reach) ? $"à {reach} m ou moins (garde de la faille, aggro de bord à bord compris)" : null;
+                }
+                return Closer(at, door.Position, MinDoorClearance) ? $"à moins de {MinDoorClearance} m" : null;
+            }
             if (guarded.Count > 0)
             {
                 var bosses = new List<(Boss Boss, string Path)>();
@@ -1285,18 +1303,18 @@ namespace EdS.Data.Zones
                 foreach ((Boss each, string bossPath) in bosses)
                     for (int f = 0; f < each.Forms.Count; f++)
                         foreach (Door door in guarded)
-                            if (each.Forms[f].Placement is CombatantPlacement at && Closer(at.Position, door.Position, MinDoorClearance))
+                            if (each.Forms[f].Placement is CombatantPlacement at && Refused(each.Forms[f], at.Position, door) is string why)
                                 report.Add(bossPath + $".forms[{f}]", ValidationCode.OutOfRange,
-                                    $"{where}, la forme « {each.Forms[f].Id} » du chef « {each.Id} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                                    $"{where}, la forme « {each.Forms[f].Id} » du chef « {each.Id} » part {why} de la porte « {door.Id} ».");
                 for (int i = 0; i < populations.Count; i++)
                 {
                     if (!(populations[i].Template.Placement is CombatantPlacement start)) continue;
                     foreach (Door door in guarded)
-                        if (Closer(start.Position, door.Position, MinDoorClearance))
+                        if (Refused(populations[i].Template, start.Position, door) is string why)
                         {
                             int index = d.Populations!.FindIndex(x => x?.Creature == populations[i].Creature);
                             report.Add($"$.data.populations[{index}].creature", ValidationCode.OutOfRange,
-                                $"{where}, « {populations[i].Creature} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                                $"{where}, « {populations[i].Creature} » part {why} de la porte « {door.Id} ».");
                         }
                 }
             }
@@ -1499,6 +1517,22 @@ namespace EdS.Data.Zones
                 }
             }
             return report;
+        }
+
+        /// <summary>
+        /// Relecture indépendante des PR #260 et #261 : garde d'une faille (schéma 17) : une créature part à plus de 12 m (CanUseDoor refuse
+        /// la porte tant qu'un ennemi vivant est à 12 m ou moins), et hors d'aggro de bord à bord (rayon, personnage, portée d'aggro).
+        /// </summary>
+        public static readonly Fixed RiftClearance = Fixed.FromInt(12);
+
+        /// <summary>V2.51a : rayon du plus gros personnage, pour l'aggro de bord à bord près d'une faille.</summary>
+        public static readonly Fixed RiftCharacterRadius = Fixed.Parse("0.9");
+
+        /// <summary>V2.51a : les deux points sont à <paramref name="distance"/> ou moins l'un de l'autre (calcul exact sur les entiers).</summary>
+        public static bool AtMost(GroundVector a, GroundVector b, Fixed distance)
+        {
+            long dx = checked(a.X.Raw - b.X.Raw), dz = checked(a.Z.Raw - b.Z.Raw);
+            return checked(dx * dx + dz * dz) <= checked(distance.Raw * distance.Raw);
         }
 
         /// <summary>Chantier V2.45.1 : les deux points sont à moins de <paramref name="distance"/> l'un de l'autre (calcul exact sur les entiers).</summary>

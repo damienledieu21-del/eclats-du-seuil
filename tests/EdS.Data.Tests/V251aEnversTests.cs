@@ -203,9 +203,9 @@ public sealed class V251aEnversTests : IDisposable
     }
 
     [Theory]
-    [InlineData(1648.0, true)]      // un reflet à 8 m pile de la faille : accepté par le validateur (8 m)
-    [InlineData(1647.9999, false)]  // juste en deçà : refusé, au chemin de sa population
-    public void Frontiere_huit_metres_a_la_faille_dans_l_Envers(double x, bool valid)
+    [InlineData(1652.0001, true)]   // un reflet juste au-delà de 12 m de la faille : accepté (garde de CanUseDoor, relecture des PR #260 et #261)
+    [InlineData(1652.0, false)]     // à 12 m pile : refusé, au chemin de sa population
+    public void Frontiere_douze_metres_a_la_faille_dans_l_Envers(double x, bool valid)
     {
         string dir = CopyScenarios(s => Combatant(s, "loup_echo_envers1")["position"] = new JsonArray(x, -455.0));
         ZoneLoadResult r = Read(ZoneJson("zone.envers_vallons"), dir);
@@ -215,9 +215,9 @@ public sealed class V251aEnversTests : IDisposable
     }
 
     [Theory]
-    [InlineData(-447.0, true)]
-    [InlineData(-447.0001, false)]
-    public void Frontiere_huit_metres_pour_la_seconde_forme_du_reflet(double z, bool valid)
+    [InlineData(-442.9999, true)]   // 12,0001 m : au-delà de la garde et de l'aggro de bord à bord (1,1 + 0,9 + 10 = 12 m)
+    [InlineData(-443.0, false)]
+    public void Frontiere_douze_metres_pour_la_seconde_forme_du_reflet(double z, bool valid)
     {
         string dir = CopyScenarios(s => Combatant(s, "loup_echo_reflet_gardien_brise")["position"] = new JsonArray(1640.0, z), "envers_vallons_reflet");
         // La forme posée près de la faille sort du petit espace du scénario du chef : on l'élargit.
@@ -228,6 +228,40 @@ public sealed class V251aEnversTests : IDisposable
         ZoneLoadResult r = Read(ZoneJson("zone.envers_vallons"), dir);
         if (valid) Assert.DoesNotContain(r.Report.Errors, e => e.Path == "$.data.chiefs[0].forms[1]");
         else Assert.Contains(r.Report.Errors, e => e.Path == "$.data.chiefs[0].forms[1]" && e.Message.Contains("porte « faille_des_vallons »", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Aggro_de_bord_a_bord_au_dela_de_douze_metres_refusee()
+    {
+        // Un reflet à 15 m de la faille, mais d'aggro 14 m : son bord d'aggro touche la faille (0,6 + 0,9 + 14 = 15,5 m) : refusé.
+        string dir = CopyScenarios(s =>
+        {
+            JsonObject c = Combatant(s, "loup_echo_envers1");
+            c["position"] = new JsonArray(1655.0, -455.0);
+            c["behavior"]!["aggroRange"] = 14;
+        });
+        ZoneLoadResult r = Read(ZoneJson("zone.envers_vallons"), dir);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Message.Contains("aggro", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_la_surface_la_regle_des_failles_attend_le_schema_17()
+    {
+        // Un document de schéma 16 avec une faille près d'une créature n'est pas refusé par la règle des failles (elle vient au schéma 17).
+        Population pop = Vallons.Populations.First(p => p.Template.Placement != null);
+        foreach ((double dx, double dz) in new[] { (7.9, 0.0), (-7.9, 0.0), (0.0, 7.9), (0.0, -7.9) })
+        {
+            JsonObject root = ZoneJson("zone.vallons");
+            root["schemaVersion"] = 16;
+            JsonObject door = root["data"]!["doors"]!.AsArray().Single(d => (string)d!["id"]! == "faille_de_l_envers")!.AsObject();
+            (double x, double z) = P(pop.Template.Placement!.Position);
+            door["position"] = new JsonArray(Math.Round(x + dx, 4), Math.Round(z + dz, 4));
+            ZoneLoadResult r = Read(root);
+            if (r.Report.Errors.Any(e => e.Path.StartsWith("$.data.doors", StringComparison.Ordinal))) continue;
+            Assert.DoesNotContain(r.Report.Errors, e => e.Message.StartsWith("près d'une faille", StringComparison.Ordinal));
+            return;
+        }
+        Assert.Fail("aucune place libre pour l'essai");
     }
 
     [Fact]
@@ -435,5 +469,93 @@ public sealed class V251aEnversTests : IDisposable
         WorldSave written = SaveStore.Read(save).Save!;
         Assert.Equal("zone.envers_vallons", written.Zone);
         Assert.Equal("autel_de_l_aube", written.Resume?.SafePoint);
+    }
+
+    // --- Relecture indépendante des PR #260 et #261 : mort dans l'Envers, sauvegarde avec corruption, voyage rapide ---------------
+
+    private (string Data, string Scenarios) CopyAll(Action<string, string>? edit = null)
+    {
+        string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
+        foreach ((string from, string to) in new[] { (DataDirectory, data), (Scenarios, scenarios) })
+            foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+            {
+                string target = Path.Combine(to, Path.GetRelativePath(from, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target, true);
+            }
+        edit?.Invoke(data, scenarios);
+        return (data, scenarios);
+    }
+
+    [Fact]
+    public void Mort_dans_l_Envers_puis_reprise_a_l_autel_de_l_Aube()
+    {
+        // Un reflet mortel (dégâts énormes, aggro 30 m) à 25 m de l'autel, à plus de 31,5 m de la faille.
+        (string data, string scenarios) = CopyAll((d, sc) =>
+        {
+            string path = Path.Combine(sc, "zones", "envers_vallons.json");
+            JsonObject s = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            JsonObject wolf = Combatant(s, "loup_echo_envers1");
+            wolf["position"] = new JsonArray(1640.0, -490.0);
+            wolf["behavior"]!["aggroRange"] = 30;
+            foreach (JsonNode? a in wolf["attacks"]!.AsArray()) a!["rawDamage"] = 100000;
+            File.WriteAllText(path, s.ToJsonString());
+            string zone = ZoneJsonReader.PathIn(d, "zone.envers_vallons");   // sa laisse couvre l'écart jusqu'à l'autel
+            JsonObject z = JsonNode.Parse(File.ReadAllText(zone))!.AsObject();
+            z["data"]!["populations"]![0]!["leashRange"] = 60;
+            File.WriteAllText(zone, z.ToJsonString());
+        });
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.envers_vallons", 0, 0, Array.Empty<string>(), V11TestData.Hero()));
+        AdventureSession a = V11TestData.Adventure(save, data, scenarios);
+        for (int i = 0; i < 2400 && !a.World.IsDefeated; i++) a.Advance(0.05);
+        Assert.True(a.World.IsDefeated);
+        Assert.True(a.Continue());
+        a.Advance(0.05);
+        Assert.False(a.World.IsDefeated);
+        Assert.Equal("zone.envers_vallons", a.World.Definition!.Id);   // on reste dans l'Envers
+        Assert.Equal("Autel de l'Aube", a.LastSafePoint);
+        Assert.InRange(Dist(P(a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value), (1656, -470)), 0, 8.0);
+        WorldSave written = SaveStore.Read(save).Save!;
+        Assert.Equal(("zone.envers_vallons", "autel_de_l_aube"), (written.Zone, written.Resume?.SafePoint));
+    }
+
+    [Fact]
+    public void Sauvegarde_dans_l_Envers_avec_une_corruption_active()
+    {
+        // Le même personnage relancé dans l'Envers au jour 0 et au jour 9 : les reflets sous une terre corrompue sont plus forts au jour 9.
+        CorruptionBook book = CorruptionJsonReader.Read(File.ReadAllText(CorruptionJsonReader.PathIn(DataDirectory)), Vallons, V11TestData.ItemsCatalog,
+            V11TestData.ScenariosDirectory, ShippedData).Book!;
+        var clock = new WorldClock(50);
+        long TickOf(long day) => day * (clock.DayLengthMs / clock.TickMilliseconds);
+        Population wolf = Envers.Populations.Single(p => p.Creature == "loup_echo_envers2");
+        long percent(long day) => CorruptionRules.StrengthAt(book, CorruptionRules.CorruptedSince(book, SavedCorruption.Empty), clock.At(TickOf(day)).Day,
+            wolf.Template.Placement!.Position, 0);
+        Assert.True(percent(9) > 100, $"{percent(9)} %");
+        long Health(long day)
+        {
+            string save = Path.Combine(_folder, "partie_" + day, "sauvegarde.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+            SaveStore.Write(save, new WorldSave("zone.envers_vallons", TickOf(day), 0, Array.Empty<string>(), V11TestData.Hero()));
+            AdventureSession a = V11TestData.Adventure(save);
+            Assert.Equal("zone.envers_vallons", a.World.Definition!.Id);
+            return a.World.Definition.Populations.Single(p => p.Creature == "loup_echo_envers2").Template.Health!.Value;
+        }
+        long day0 = Health(0), day9 = Health(9);
+        Assert.True(day9 > day0, $"{day0} puis {day9}");
+        // Une créature loin de toute terre corrompue (l'ombre d'ours, plus à l'ouest) peut rester la même ; la partie se charge sans erreur.
+    }
+
+    [Fact]
+    public void Le_voyage_rapide_ne_propose_jamais_l_autel_de_l_Aube()
+    {
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.envers_vallons", 0, 0, new[] { "zone.envers_vallons/safe/autel_de_l_aube" }, V11TestData.Hero()));
+        AdventureSession a = V11TestData.Adventure(save);
+        Assert.True(a.World.IsDiscovered(Envers, "autel_de_l_aube"));
+        Assert.DoesNotContain(a.TravelDestinations(), d => d.Zone == "zone.envers_vallons");
+        Assert.Equal(TravelRefusal.UnknownPlace, a.CanTravel("zone.envers_vallons", "autel_de_l_aube"));
     }
 }
