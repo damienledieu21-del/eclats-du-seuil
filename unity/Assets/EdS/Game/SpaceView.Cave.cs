@@ -38,6 +38,7 @@ namespace EdS.Game
             _crypt = CryptLooks.IsCrypt(space.Obstacles);   // V2.48.2 : les cryptes de l'abbaye et de la chapelle
             _sewer = SewerLooks.IsSewer(space.Obstacles);   // V2.49.2 : les égouts du Bourg
             _gallery = GalleryLooks.IsGallery(space.Obstacles);   // V2.50b : les galeries sous les pierres du Seuil
+            _drowned = DrownedLooks.IsDrowned(space.Obstacles);   // V2.50.1b : les grottes noyées du lac
             StyleWorld.SetCave(true);
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
             Material rock = Built(StyleSurface.Stone, new Color(0.3f, 0.29f, 0.28f), out float rockTile);
@@ -66,6 +67,7 @@ namespace EdS.Game
             {
                 CavePiece piece = CaveLooks.PieceFor(o.Id);
                 if (piece == CavePiece.None && GalleryObstacle(o, rock, rockTile)) continue;   // V2.50b : pièces des galeries cristallines
+                if (piece == CavePiece.None && DrownedObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.50.1b : pièces des grottes noyées
                 if (piece == CavePiece.None && SewerObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.49.2 : pièces des égouts
                 if (piece == CavePiece.None && CryptObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.48.2 : pièces des cryptes
                 if (piece == CavePiece.None && MineObstacle(o, rock, rockTile, wood, woodTile)) continue;   // V2.47.2 : pièces de la mine
@@ -99,6 +101,7 @@ namespace EdS.Game
             if (_crypt) CryptArches(space, rock, rockTile);   // V2.48.2 : voûtes des passages entre deux grilles
             if (_sewer) SewerBridgesAndArches(space, rock, rockTile, wood, woodTile);   // V2.49.2 : passerelles du canal, voûtes
             if (_gallery) GalleryBridges(space, rock, rockTile);   // V2.50b : ponts de pierre sur le gouffre
+            if (_drowned) DrownedStalactites(space, rock, rockTile);   // V2.50.1b : stalactites au plafond des grottes noyées
 
             // Le rideau d'eau, vu de dedans, sur les portes qui mènent dehors, tourné vers la grotte ; le jour du dehors passe à travers.
             foreach (MapDoor door in map.Doors)
@@ -107,6 +110,12 @@ namespace EdS.Game
                 if (_gallery)
                 {
                     GalleryDoor(door, minX, minZ, maxX, maxZ);
+                    continue;
+                }
+                // V2.50.1b : dans les grottes noyées, ni rideau d'eau : le jour du marais et les passages noyés.
+                if (_drowned)
+                {
+                    DrownedDoor(door, minX, minZ, maxX, maxZ, rock, rockTile);
                     continue;
                 }
                 // V2.49.2 : dans les égouts, ni rideau d'eau : le jour du Bourg et l'échelle.

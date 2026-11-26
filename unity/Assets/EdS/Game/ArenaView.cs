@@ -75,6 +75,9 @@ namespace EdS.Game
 
         /// <summary>V2.44.4 : état de la vigne des coteaux (rangs, grappes, objets de vendange).</summary>
         public void Vines(EdS.Data.Seasons.VineState? state, int season) => _space?.Vines(state, season);
+
+        /// <summary>V2.50.1b : la marée du lac, pour l'eau des passages de marée des grottes noyées.</summary>
+        public void Tide(bool high) => _space?.Tide(high);
         private IReadOnlyList<ConvexPolygon> _obstacles;
         private GameObject _defaultGround;
         private readonly Dictionary<string, Vector3> _from = new Dictionary<string, Vector3>();

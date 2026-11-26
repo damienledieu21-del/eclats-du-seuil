@@ -45,8 +45,12 @@ namespace EdS.Runtime
         /// </summary>
         public DoorKind Kind { get; }
 
-        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false, DoorKind kind = DoorKind.Door)
+        /// <summary>V2.50.1b : eau de la porte (passage noyé : marée, plongée), ou null. Affichage seulement (l'eau devant le passage).</summary>
+        public DoorWater? Water { get; }
+
+        public MapDoor(string id, string name, string? building, double x, double z, bool outside = false, DoorKind kind = DoorKind.Door, DoorWater? water = null)
         {
+            Water = water;
             Outside = outside;
             Kind = kind;
             Id = id ?? throw new ArgumentNullException(nameof(id));
