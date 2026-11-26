@@ -262,12 +262,26 @@ namespace EdS.Runtime
         /// </summary>
         public const string CreatureFolder = "Galeries/Creatures/", CreatureAssetFolder = "Assets/EdS/Modeles/Resources/Galeries/Creatures";
 
-        /// <summary>Modèles des créatures de cristal (codes C01 et C02 de l'atelier ; C03, le veilleur en cristal, n'est pas encore branché).</summary>
-        public const string SpiderModel = "araignee_cristal", GolemModel = "golem_cristal";
+        /// <summary>
+        /// Modèles des créatures de cristal (codes C01 à C03 de l'atelier, générés le 26 novembre 2026, 155 crédits réels) : l'araignée (rig
+        /// octopode et marche), le golem (**statique** : sa marche bipède a échoué chez Tripo, remboursée, sans nouvel essai) et le veilleur en
+        /// cristal (rig quadrupède et marche), que prennent les trois formes du veilleur des éclats.
+        /// </summary>
+        public const string SpiderModel = "araignee_cristal", GolemModel = "golem_cristal", WatcherModel = "veilleur_cristal";
 
-        /// <summary>Modèle animé de la créature <paramref name="id"/> : l'araignée ou le golem de cristal ; null pour toute autre.</summary>
+        /// <summary>Les trois modèles, dans l'ordre des codes de l'atelier.</summary>
+        public static readonly IReadOnlyList<string> CreatureModels = new[] { SpiderModel, GolemModel, WatcherModel };
+
+        /// <summary>Vrai si le modèle <paramref name="name"/> a sa marche (« Walk ») : l'araignée et le veilleur ; le golem est statique.</summary>
+        public static bool CreatureWalks(string name) => name == SpiderModel || name == WatcherModel;
+
+        /// <summary>
+        /// Modèle de la créature <paramref name="id"/> : l'araignée ou le golem de cristal, ou le veilleur en cristal pour les formes du veilleur
+        /// des éclats (« loup_echo_veilleur_eclats_fele_v2 ») ; null pour toute autre.
+        /// </summary>
         public static string? CreatureModel(string id) =>
-            StyleRules.IsCrystalSpider(id) ? SpiderModel : StyleRules.IsCrystalGolem(id) ? GolemModel : null;
+            StyleRules.IsCrystalSpider(id) ? SpiderModel : StyleRules.IsCrystalGolem(id) ? GolemModel
+            : StyleRules.Key(id ?? string.Empty).StartsWith("loupechoveilleureclats", StringComparison.Ordinal) ? WatcherModel : null;
 
         /// <summary>Teinte de cristal (violet pâle) multipliée à la couleur du modèle de repli (loup, ours) d'une créature de cristal.</summary>
         public static readonly (double R, double G, double B) CrystalTint = (0.75, 0.6, 1.0);

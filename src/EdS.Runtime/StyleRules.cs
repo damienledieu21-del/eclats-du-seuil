@@ -2073,6 +2073,8 @@ namespace EdS.Runtime
             // V2.50a : araignée de cristal (0,6 m, sur le loup en repli) et golem de cristal (2,4 m, sur l'ours en repli).
             if (IsCrystalSpider(id)) return 0.6;
             if (IsCrystalGolem(id)) return 2.4;
+            // V2.50b : le veilleur des éclats (chef, sur le veilleur en cristal), massif comme Croc-Gris.
+            if (key.StartsWith("loupechoveilleureclats", StringComparison.Ordinal)) return 1.4;
             // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
             if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
             if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;

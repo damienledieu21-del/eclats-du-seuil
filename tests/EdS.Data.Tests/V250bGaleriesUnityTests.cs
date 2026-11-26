@@ -305,6 +305,9 @@ public class V250bGaleriesUnityTests
         Assert.Equal(GalleryLooks.SpiderModel, GalleryLooks.CreatureModel("araignee_cristal_salle1_v2"));
         Assert.Equal(GalleryLooks.GolemModel, GalleryLooks.CreatureModel("golem_cristal_salle1"));
         Assert.Null(GalleryLooks.CreatureModel("loup_echo_galerie1"));
+        Assert.Equal(GalleryLooks.WatcherModel, GalleryLooks.CreatureModel("loup_echo_veilleur_eclats"));
+        Assert.Equal(GalleryLooks.WatcherModel, GalleryLooks.CreatureModel("loup_echo_veilleur_eclats_dechaine_v2"));
+        Assert.Null(GalleryLooks.CreatureModel("loup_echo_gardien_cristaux"));
         Assert.Null(GalleryLooks.CreatureModel("ours_galerie1"));
         Assert.Null(GalleryLooks.CreatureModel("rat_egout1"));
         Assert.StartsWith(GalleryLooks.AssetFolder + "/", GalleryLooks.CreatureAssetFolder + "/");
@@ -319,14 +322,49 @@ public class V250bGaleriesUnityTests
         Assert.Contains("Resources.Load<GameObject>(GalleryLooks.CreatureFolder + crystalName)", look);
         Assert.Contains("GalleryLooks.CrystalTint", look);
         Assert.Contains("GalleryLooks.CreatureAssetFolder", style);
+        Assert.Contains("StyleRules.IsCrystalCreature(id)", look);   // la teinte de cristal seulement pour l'araignée et le golem en repli
+        Assert.Contains("rat != null && crystalName != null ? null : catalog.Clips(slot, id)", look);   // pas les clips du loup ou de l'ours
         string lab = Path.Combine(Path.GetDirectoryName(Lot93UnityPackageTests.Root)!, "Eclats_du_Seuil_AssetLab", "Galeries", "Creatures", "modeles.json");
         if (File.Exists(lab))
         {
             var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(lab))!;
             Assert.Equal(new[] { GalleryLooks.SpiderModel, GalleryLooks.GolemModel, "veilleur_cristal" }, root["modeles"]!.AsArray().Select(m => (string)m!["nom"]!));
             Assert.Equal(195, (int)root["cout_total"]!);
-            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(lab)!, "etat.json")));   // rien de soumis
         }
+    }
+
+    /// <summary>
+    /// Créatures de cristal générées le 26 novembre 2026 (155 crédits réels), finies dans Blender (Galeries/Creatures/finir_creatures.py) :
+    /// l'araignée et le veilleur avec leur marche, le golem statique (sa marche bipède a échoué chez Tripo, remboursée). Elles sont dans
+    /// Resources/Galeries/Creatures avec leur couleur et leur normale ; sans elles, le repli (loup, ours teintés ; loup-écho du veilleur) reste.
+    /// </summary>
+    [Fact]
+    public void Creatures_de_cristal_presentes_marche_et_golem_statique()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", GalleryLooks.CreatureAssetFolder);
+        Assert.Equal(new[] { "araignee_cristal", "golem_cristal", "veilleur_cristal" }, GalleryLooks.CreatureModels);
+        foreach (string name in GalleryLooks.CreatureModels)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.InRange(new FileInfo(fbx).Length, 10_000, 2_000_000);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            // La marche est dans le FBX (nom de prise « Walk », que le jeu reconnaît) ; le golem n'a aucune animation.
+            bool walk = File.ReadAllBytes(fbx).AsSpan().IndexOf("Walk"u8) >= 0;
+            Assert.Equal(GalleryLooks.CreatureWalks(name), walk);
+        }
+        Assert.Equal(GalleryLooks.CreatureModels.Count, Directory.GetFiles(folder, "*.fbx").Length);
+        Assert.False(GalleryLooks.CreatureWalks(GalleryLooks.GolemModel));
+        // Toutes les formes du veilleur prennent le veilleur en cristal ; il reste un écho de faille (rendu violet), plus massif.
+        foreach (Boss chief in Zone("zone.galeries_eclats").Chiefs)
+            foreach (var form in chief.Forms)
+            {
+                Assert.Equal(GalleryLooks.WatcherModel, GalleryLooks.CreatureModel(form.Id));
+                Assert.Equal(EchoKind.Rift, EchoLooks.Of(form.Id));
+                Assert.Equal(1.4, StyleRules.BeastHeight(form.Id));
+                Assert.False(StyleRules.IsCrystalCreature(form.Id));   // pas teinté en repli : le loup-écho de faille
+            }
     }
 
     [Fact]

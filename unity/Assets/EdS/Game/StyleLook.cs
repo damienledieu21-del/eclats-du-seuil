@@ -652,7 +652,7 @@ namespace EdS.Game
             // garde ses couleurs.
             // Sous-lot V2.9 : seuls les matériaux sans texture restés blancs la prennent (les bêtes de Quaternius ont leurs couleurs : pelage,
             // ventre clair, yeux, truffe) ; le loup blanc du contrat de la guilde est éclairci (sauf les yeux et la truffe, sombres).
-            if (rat == null && crystalName != null)
+            if (rat == null && crystalName != null && StyleRules.IsCrystalCreature(id))
             {
                 // V2.50b : créature de cristal sur le modèle de repli (loup, ours) : toute sa couleur virée au violet du cristal.
                 var tint = new Color((float)GalleryLooks.CrystalTint.R, (float)GalleryLooks.CrystalTint.G, (float)GalleryLooks.CrystalTint.B);
@@ -689,7 +689,8 @@ namespace EdS.Game
                 }
             // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
             // Animation posé sur la racine du modèle (les chemins des os partent de là).
-            AnimationClip[] clips = catalog.Clips(slot, id);
+            // V2.50b : une créature de cristal sur son propre modèle n'a que sa marche (ou rien, le golem statique) : pas les clips du loup ou de l'ours.
+            AnimationClip[] clips = rat != null && crystalName != null ? null : catalog.Clips(slot, id);
             if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
