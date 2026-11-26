@@ -60,7 +60,7 @@ public class V2451EtagesTests
     [Fact]
     public void Versions_et_bornes()
     {
-        Assert.Equal((15, 14, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.TerritorySchemaVersion, ZoneValidator.RegionSchemaVersion));
+        Assert.Equal((16, 14, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.TerritorySchemaVersion, ZoneValidator.RegionSchemaVersion));
         Assert.Equal((64, 16, 256), (ZoneValidator.MaxDoors, ZoneValidator.MaxDoorsBefore15, ZoneValidator.MaxLinkedZones));
         Assert.Equal((512, 256, 32, 16), (ZoneValidator.MaxRegionDoors, ZoneValidator.MaxRegionDoorsBefore15, ZoneValidator.MaxDoorsPerCell, ZoneValidator.MaxDoorsPerCellBefore15));
         Assert.Equal(Fixed.FromInt(8), ZoneValidator.MinDoorClearance);

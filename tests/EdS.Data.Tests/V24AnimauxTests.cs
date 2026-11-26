@@ -72,7 +72,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire", "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
-        Assert.Equal((15, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((16, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class V24AnimauxMoteurTests
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json")))!;
-        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
+        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
     }
 }
 
@@ -559,7 +559,7 @@ public class V24AnimauxMondeTests
         });
         Assert.True(v8.IsValid, v8.Report.ToString());
         Assert.All(v8.Zone!.Populations, p => Assert.Null(p.Weather));
-        AssertError(ZoneMutated(r => r["schemaVersion"] = 16), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(ZoneMutated(r => r["schemaVersion"] = 17), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Fact]

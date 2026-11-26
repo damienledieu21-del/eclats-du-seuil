@@ -1,0 +1,380 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 502,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -30,
+          -4
+        ],
+        "max": [
+          30,
+          44
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "mur_noyee_sud_ouest",
+          "points": [
+            [
+              -30,
+              -4
+            ],
+            [
+              -4,
+              -4
+            ],
+            [
+              -4,
+              6
+            ],
+            [
+              -30,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "mur_noyee_sud_est",
+          "points": [
+            [
+              4,
+              -4
+            ],
+            [
+              30,
+              -4
+            ],
+            [
+              30,
+              6
+            ],
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        {
+          "id": "bassin_noyee_centre",
+          "points": [
+            [
+              -6,
+              10
+            ],
+            [
+              6,
+              10
+            ],
+            [
+              6,
+              16
+            ],
+            [
+              -6,
+              16
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "rocher_noyee_1",
+          "points": [
+            [
+              -22,
+              24
+            ],
+            [
+              -18,
+              24
+            ],
+            [
+              -18,
+              28
+            ],
+            [
+              -22,
+              28
+            ]
+          ]
+        },
+        {
+          "id": "rocher_noyee_2",
+          "points": [
+            [
+              18,
+              24
+            ],
+            [
+              22,
+              24
+            ],
+            [
+              22,
+              28
+            ],
+            [
+              18,
+              28
+            ]
+          ]
+        },
+        {
+          "id": "algues_noyee_1",
+          "points": [
+            [
+              -28,
+              30
+            ],
+            [
+              -24,
+              30
+            ],
+            [
+              -24,
+              32
+            ],
+            [
+              -28,
+              32
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "algues_noyee_2",
+          "points": [
+            [
+              24,
+              30
+            ],
+            [
+              28,
+              30
+            ],
+            [
+              28,
+              32
+            ],
+            [
+              24,
+              32
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "epave_noyee_barque",
+          "points": [
+            [
+              8,
+              30
+            ],
+            [
+              14,
+              30
+            ],
+            [
+              14,
+              33
+            ],
+            [
+              8,
+              33
+            ]
+          ]
+        },
+        {
+          "id": "coffre_noyee_1",
+          "points": [
+            [
+              -14,
+              32
+            ],
+            [
+              -12.8,
+              32
+            ],
+            [
+              -12.8,
+              33
+            ],
+            [
+              -14,
+              33
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "voute_noyee_pilier_1",
+          "points": [
+            [
+              -12.4,
+              8.6
+            ],
+            [
+              -11.6,
+              8.6
+            ],
+            [
+              -11.6,
+              9.4
+            ],
+            [
+              -12.4,
+              9.4
+            ]
+          ]
+        },
+        {
+          "id": "voute_noyee_pilier_2",
+          "points": [
+            [
+              11.6,
+              8.6
+            ],
+            [
+              12.4,
+              8.6
+            ],
+            [
+              12.4,
+              9.4
+            ],
+            [
+              11.6,
+              9.4
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [
+      {
+        "id": "bandit_chef_noyees",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 700,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.4,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          38
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "bandit_chef_noyees_accule",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 450,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.4,
+            "holdPosition": true
+          },
+          {
+            "id": "coup_de_harpon",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 6,
+            "telegraphMs": 1100,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          2,
+          38
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}
