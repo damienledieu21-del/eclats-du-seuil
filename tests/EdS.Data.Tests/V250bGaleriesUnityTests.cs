@@ -186,9 +186,80 @@ public class V250bGaleriesUnityTests
                 tiled++;
             }
         Assert.Equal(2 + 3 + 2, tiled);   // deux parois et trois tronçons du gouffre ; deux parois dans la salle
-        Assert.Equal((8.0, 1.5), GalleryLooks.TileOf(GalleryPiece.Wall));
-        Assert.Equal((8.0, 3.0), GalleryLooks.TileOf(GalleryPiece.Chasm));
+        Assert.Equal((8.0, 3.12), GalleryLooks.TileOf(GalleryPiece.Wall));   // mesurées sur les modèles finis
+        Assert.Equal((7.7, 5.06), GalleryLooks.TileOf(GalleryPiece.Chasm));
         Assert.Null(GalleryLooks.TileOf(GalleryPiece.GiantShard));
+    }
+
+    /// <summary>
+    /// Kit de décor généré par Damien le 26 novembre 2026 (G01 à G11, 220 crédits réels), fini dans Blender (Galeries/finir_galeries.py :
+    /// un maillage, allégé de moitié, pivot au sol, textures de 1024 px) : les onze modèles sont dans Resources/Galeries, chacun avec sa couleur
+    /// et sa normale, reconnus par leur nom ; les formes simples restent en repli si l'un manque.
+    /// </summary>
+    [Fact]
+    public void Kit_de_galeries_present_et_reconnu()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", GalleryLooks.AssetFolder);
+        foreach (string name in GalleryLooks.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.InRange(new FileInfo(fbx).Length, 10_000, 2_000_000);   // allégé (les GLB bruts font 3 à 5 Mo)
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, GalleryLooks.NameOf(GalleryLooks.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(11, GalleryLooks.Models.Count);
+        Assert.Equal(GalleryLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.EndsWith("Resources/" + GalleryLooks.Folder.TrimEnd('/'), GalleryLooks.AssetFolder);
+        // Repli : formes simples si un modèle manque.
+        string gallery = Unity("Assets", "EdS", "Game", "SpaceView.Gallery.cs");
+        Assert.Contains("GiantShardShape(o.Id, cx, cz", gallery);
+        Assert.Contains("Box(\"Pont de pierre (dalle)\"", gallery);
+        Assert.Contains("Box(\"Faille (\"", gallery);
+        Assert.Contains("Box(\"Entrée des galeries (\"", gallery);
+        Assert.Contains("GalleryLooks.ChasmPose()", gallery);
+        Assert.Contains("GalleryLooks.BridgeSlabs(", gallery);
+    }
+
+    [Fact]
+    public void Gouffre_enfonce_dans_le_sol_levres_au_ras()
+    {
+        var pose = GalleryLooks.ChasmPose();
+        Assert.Equal(-GalleryLooks.ChasmDepth, pose.Base);
+        Assert.Equal(GalleryLooks.ChasmLip, pose.Base + pose.Height, 9);   // le haut du modèle juste au-dessus du sol
+        Assert.InRange(GalleryLooks.ChasmLip, 0.05, 0.3);
+        Assert.True(pose.Base < 0);
+    }
+
+    [Fact]
+    public void Pont_de_pierre_en_dalles_cote_a_cote_sans_trou()
+    {
+        // Le modèle fini : une passerelle de 4 × 0,89 m ; le pont de 4 m de large (écart du gouffre) et 4 m de long (3 + deux débords).
+        foreach (var gap in GalleryLooks.Bridges(Zone("zone.galeries_seuil").Setup.Space!.Obstacles))
+        {
+            var span = GalleryLooks.BridgeSpan(gap);
+            var slabs = GalleryLooks.BridgeSlabs(span.MinX, span.MinZ, span.MaxX, span.MaxZ, 4.0, 0.89);
+            Assert.Equal(4, slabs.Count);
+            double reach = span.MinX;
+            foreach (var t in slabs)
+            {
+                Assert.Equal(reach, t.MinX, 9);   // côte à côte : aucun trou
+                reach = t.MaxX;
+                Assert.Equal((span.MinZ, span.MaxZ), (t.MinZ, t.MaxZ));   // toute la longueur
+                double stretch = (t.MaxX - t.MinX) / (0.89 * (t.MaxZ - t.MinZ) / 4.0);
+                Assert.InRange(stretch, 2.0 / 3 - 1e-9, 1.5 + 1e-9);
+                // Posée par TileFit : le modèle tourné d'un quart (long côté selon Z) remplit exactement la dalle.
+                var fit = SewerLooks.TileFit(4.0, 0.64, 0.89, t.MaxX - t.MinX, t.MaxZ - t.MinZ, GalleryLooks.BridgeHeight);
+                Assert.True(fit.Turn);
+                Assert.Equal(t.MaxX - t.MinX, 0.89 * fit.Sx, 9);
+                Assert.Equal(t.MaxZ - t.MinZ, 4.0 * fit.Sz, 9);
+            }
+            Assert.Equal(span.MaxX, reach, 9);
+        }
+        Assert.Single(GalleryLooks.BridgeSlabs(0, 0, 0.5, 4, 4.0, 0.89));
+        Assert.Empty(GalleryLooks.BridgeSlabs(0, 0, 0, 4, 4.0, 0.89));
+        Assert.Empty(GalleryLooks.BridgeSlabs(0, 0, 4, 4, 0, 0.89));
     }
 
     [Fact]

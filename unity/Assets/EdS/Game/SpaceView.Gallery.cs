@@ -36,9 +36,17 @@ namespace EdS.Game
             if (model != null && GalleryLooks.TileOf(piece).HasValue && Footprint(model, out float modelLong, out float modelShort))
             {
                 // La paroi et le gouffre en tuiles bout à bout, d'après les bornes réelles du modèle : sans trou, étirées en longueur seulement.
+                // Le gouffre (un creux profond) est enfoncé dans le sol, ses lèvres au ras du sol (GalleryLooks.ChasmPose).
+                float baseY = 0f;
+                if (piece == GalleryPiece.Chasm)
+                {
+                    var pose = GalleryLooks.ChasmPose();
+                    baseY = (float)pose.Base;
+                    height = (float)pose.Height;
+                }
                 int n = 0;
                 foreach (var t in SewerLooks.WallTiles(x0, z0, x1, z1, modelLong, modelShort))
-                    FitSewerModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, GalleryLooks.Occludes(piece), 0f, 0f, true);
+                    FitSewerModel(model, o.Id + " (tuile " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, height, GalleryLooks.Occludes(piece), baseY, 0f, true);
                 return true;
             }
             if (FitSewerModel(model, o.Id, x0, z0, x1, z1, height, GalleryLooks.Occludes(piece))) return true;
@@ -114,7 +122,15 @@ namespace EdS.Game
             {
                 var span = GalleryLooks.BridgeSpan(gap);
                 float x0 = (float)span.MinX, x1 = (float)span.MaxX, z0 = (float)span.MinZ, z1 = (float)span.MaxZ;
-                if (!FitSewerModel(CryptModel(GalleryLooks.Folder, GalleryLooks.BridgeModel), "Pont de pierre", x0, z0, x1, z1, (float)GalleryLooks.BridgeHeight, false, -0.8f))
+                // Le modèle est une passerelle étroite : posé en dalles côte à côte sur toute la largeur, chacune remplie exactement (bornes réelles).
+                GameObject bridge = CryptModel(GalleryLooks.Folder, GalleryLooks.BridgeModel);
+                if (bridge != null && Footprint(bridge, out float bridgeLong, out float bridgeShort))
+                {
+                    int n = 0;
+                    foreach (var t in GalleryLooks.BridgeSlabs(x0, z0, x1, z1, bridgeLong, bridgeShort))
+                        FitSewerModel(bridge, "Pont de pierre (dalle " + (++n) + ")", (float)t.MinX, (float)t.MinZ, (float)t.MaxX, (float)t.MaxZ, (float)GalleryLooks.BridgeHeight, false, -0.8f, 0f, true);
+                }
+                else
                     Box("Pont de pierre (dalle)", new Vector3((x0 + x1) / 2f, 0.05f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.2f, z1 - z0), basalt, rockTile);
                 // La voûte de roche prend appui de part et d'autre du pont (un demi-mètre de chaque côté) ; occulteur.
                 FitSewerModel(CryptModel(GalleryLooks.Folder, GalleryLooks.VaultModel), "Voûte de cristal", x0 - 0.5f, (float)gap.MinZ, x1 + 0.5f, (float)gap.MaxZ, (float)GalleryLooks.VaultHeight, true);

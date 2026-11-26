@@ -113,13 +113,42 @@ namespace EdS.Runtime
         /// </summary>
         public static (double Long, double Short)? TileOf(GalleryPiece piece) => piece switch
         {
-            GalleryPiece.Wall => (8.0, 1.5),
-            GalleryPiece.Chasm => (8.0, 3.0),
+            // Tailles au sol mesurées sur les modèles finis (Galeries/finir_galeries.py, 26 novembre 2026) ; le jeu mesure les bornes réelles.
+            GalleryPiece.Wall => (8.0, 3.12),
+            GalleryPiece.Chasm => (7.7, 5.06),
             _ => null,
         };
 
         /// <summary>Le gouffre est un creux : sa forme de remplacement est posée sous le sol, à cette profondeur (m), la lueur au fond.</summary>
         public const double ChasmDepth = 1.5;
+
+        /// <summary>Hauteur (m) dont les lèvres du modèle du gouffre dépassent du sol.</summary>
+        public const double ChasmLip = 0.15;
+
+        /// <summary>
+        /// Pose du modèle du gouffre (un creux profond, ouvert vers le haut, généré le 26 novembre 2026) : enfoncé dans le sol, son pied à
+        /// <see cref="ChasmDepth"/> sous le sol et ses lèvres à <see cref="ChasmLip"/> au-dessus : on voit le creux d'en haut, jamais un bloc.
+        /// </summary>
+        public static (double Base, double Height) ChasmPose() => (-ChasmDepth, ChasmDepth + ChasmLip);
+
+        /// <summary>
+        /// Dalles d'un pont de pierre sur l'emprise [x0, x1] × [z0, z1] (le pont franchit le gouffre selon Z) pour un modèle de taille au sol
+        /// <paramref name="modelLong"/> × <paramref name="modelShort"/> (bornes réelles ; le modèle généré est une passerelle étroite de
+        /// 4 × 0,89 m) : chaque dalle couvre toute la longueur, le modèle mis à l'échelle de cette longueur ; il en faut assez, côte à côte, pour
+        /// toute la largeur, chacune étirée en largeur de 2/3 à 1,5 fois au plus (sauf plafond <see cref="CryptLooks.MaxTiles"/>) : jamais de
+        /// trou entre deux dalles. Vide pour une emprise ou une taille vide.
+        /// </summary>
+        public static IReadOnlyList<(double MinX, double MinZ, double MaxX, double MaxZ)> BridgeSlabs(double x0, double z0, double x1, double z1, double modelLong, double modelShort)
+        {
+            var result = new List<(double, double, double, double)>();
+            double width = x1 - x0, length = z1 - z0;
+            if (!(width > 0) || !(length > 0) || !(modelLong > 0) || !(modelShort > 0)) return result;
+            double slab = modelShort * length / modelLong;
+            int n = (int)Math.Max(1, Math.Min(CryptLooks.MaxTiles, Math.Round(width / slab, MidpointRounding.AwayFromZero)));
+            for (int i = 0; i < n; i++)
+                result.Add((x0 + width * i / n, z0, i + 1 == n ? x1 : x0 + width * (i + 1) / n, z1));
+            return result;
+        }
 
         /// <summary>Lueur d'une pièce (couleur violette des cristaux du Seuil, intensité, portée en m) ; intensité 0 : aucune lumière.</summary>
         public static (double Intensity, double Range) GlowOf(GalleryPiece piece) => piece switch
