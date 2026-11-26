@@ -264,4 +264,42 @@ public sealed class V2501bNoyeesUnityTests
         Assert.Contains("CryptModel(DrownedLooks.Folder, DrownedLooks.StalactiteModel)", drowned);
         Assert.Contains("DrownedLooks.LanternIntensity", drowned);   // la lanterne du repaire
     }
+
+    /// <summary>Revue Codex de la PR #259 (P3) : la margelle de repli des bassins entoure l'eau sans jamais la couvrir.</summary>
+    [Fact]
+    public void Margelle_de_repli_autour_de_l_eau_sans_la_couvrir()
+    {
+        int basins = 0;
+        foreach (ZoneDefinition z in Caves)
+            foreach (SpaceObstacle o in z.Setup.Space!.Obstacles.Where(o => DrownedLooks.PieceFor(o.Id) == DrownedPiece.Basin))
+            {
+                (double x0, double z0, double x1, double z1) = Box(o);
+                var rims = DrownedLooks.BasinRim(x0, z0, x1, z1);
+                Assert.Equal(4, rims.Count);
+                double minX = double.MaxValue, minZ = double.MaxValue, maxX = double.MinValue, maxZ = double.MinValue, area = 0;
+                foreach (var r in rims)
+                {
+                    double rx0 = r.Cx - r.Sx / 2, rx1 = r.Cx + r.Sx / 2, rz0 = r.Cz - r.Sz / 2, rz1 = r.Cz + r.Sz / 2;
+                    // Aucune bordure n'empiète sur l'eau (recouvrement d'aire nul).
+                    double ox = Math.Min(rx1, x1) - Math.Max(rx0, x0), oz = Math.Min(rz1, z1) - Math.Max(rz0, z0);
+                    Assert.False(ox > 1e-9 && oz > 1e-9, o.Id);
+                    (minX, minZ, maxX, maxZ) = (Math.Min(minX, rx0), Math.Min(minZ, rz0), Math.Max(maxX, rx1), Math.Max(maxZ, rz1));
+                    area += r.Sx * r.Sz;
+                }
+                // Elles ferment l'anneau autour de l'eau : bornes de l'eau élargies de la margelle, aire de l'anneau exacte (sans chevauchement ni trou).
+                double w = DrownedLooks.RimWidth;
+                Assert.Equal(x0 - w, minX, 9);
+                Assert.Equal(z0 - w, minZ, 9);
+                Assert.Equal(x1 + w, maxX, 9);
+                Assert.Equal(z1 + w, maxZ, 9);
+                Assert.Equal((x1 - x0 + 2 * w) * (z1 - z0 + 2 * w) - (x1 - x0) * (z1 - z0), area, 9);
+                basins++;
+            }
+        Assert.Equal(2, basins);
+        // Plus haute que l'eau (0,08 m), mais seulement sur son pourtour.
+        Assert.True(DrownedLooks.RimHeight > 0.08);
+        string drowned = Unity("Assets", "EdS", "Game", "SpaceView.Drowned.cs");
+        Assert.Contains("DrownedLooks.BasinRim(x0, z0, x1, z1)", drowned);
+        Assert.DoesNotContain("(margelle)\"", drowned);
+    }
 }

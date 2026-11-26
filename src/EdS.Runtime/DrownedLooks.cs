@@ -144,6 +144,26 @@ namespace EdS.Runtime
         /// <summary>Bas de la grappe de stalactites (m) : elle pend du plafond.</summary>
         public static double StalactiteBase => CeilingHeight - StalactiteHeight;
 
+        /// <summary>Margelle d'un bassin en repli : largeur et hauteur de ses bordures (m).</summary>
+        public const double RimWidth = 0.15, RimHeight = 0.12;
+
+        /// <summary>
+        /// Revue Codex de la PR #259 (P3) : margelle de repli du bassin [<paramref name="x0"/>, <paramref name="x1"/>] ×
+        /// [<paramref name="z0"/>, <paramref name="z1"/>] : quatre bordures (centre et taille au sol) posées tout autour, à l'extérieur de
+        /// l'emprise, jamais sur l'eau (une boîte pleine la cachait).
+        /// </summary>
+        public static IReadOnlyList<(double Cx, double Cz, double Sx, double Sz)> BasinRim(double x0, double z0, double x1, double z1)
+        {
+            double w = RimWidth, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, lx = x1 - x0 + 2 * w, lz = z1 - z0;
+            return new[]
+            {
+                (cx, z0 - w / 2, lx, w),   // sud (coins compris)
+                (cx, z1 + w / 2, lx, w),   // nord (coins compris)
+                (x0 - w / 2, cz, w, lz),   // ouest
+                (x1 + w / 2, cz, w, lz),   // est
+            };
+        }
+
         /// <summary>Longueur de l'eau d'un passage noyé (m), de la porte vers la paroi, et sa largeur (m).</summary>
         public const double PoolLength = 3.0, PoolWidth = 4.0;
 

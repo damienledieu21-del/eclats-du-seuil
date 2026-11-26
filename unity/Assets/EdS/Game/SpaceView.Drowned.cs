@@ -76,7 +76,11 @@ namespace EdS.Game
                     Prism(o.Id, points, height, limestone, true, rockTile);
                     break;
                 case DrownedPiece.Basin:
-                    Box(o.Id + " (margelle)", new Vector3(cx, 0.08f, cz), new Vector3(x1 - x0 + 0.3f, 0.06f, z1 - z0 + 0.3f), limestone, rockTile);
+                    // Revue Codex de la PR #259 (P3) : la margelle n'est faite que de bordures, autour de l'eau (une boîte pleine la cachait).
+                    int side = 0;
+                    float rimHeight = (float)DrownedLooks.RimHeight;
+                    foreach (var rim in DrownedLooks.BasinRim(x0, z0, x1, z1))
+                        Box(o.Id + " (margelle " + (++side) + ")", new Vector3((float)rim.Cx, rimHeight / 2f, (float)rim.Cz), new Vector3((float)rim.Sx, rimHeight, (float)rim.Sz), limestone, rockTile);
                     break;
                 case DrownedPiece.Algae:
                     Prism(o.Id, points, height, Plain(new Color(0.16f, 0.3f, 0.18f)), false, 1f);
