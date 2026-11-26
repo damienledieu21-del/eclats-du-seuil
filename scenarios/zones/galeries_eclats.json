@@ -448,12 +448,149 @@
           "aggroRange": 9,
           "pack": false
         }
+      },
+      {
+        "id": "golem_cristal_salle1",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 620,
+        "armor": 30,
+        "magicResistance": 10,
+        "target": null,
+        "firstAttackMs": 1800,
+        "intervalMs": 2400,
+        "attacks": [
+          {
+            "id": "poing_de_cristal",
+            "rawDamage": 24,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.6
+          },
+          {
+            "id": "eclats_projetes",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          19
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.0,
+        "speed": 2.8,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 8,
+          "pack": false
+        }
+      },
+      {
+        "id": "araignee_cristal_salle1",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          17,
+          19
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
+      },
+      {
+        "id": "araignee_cristal_salle2",
+        "type": "assailant",
+        "team": "cristaux",
+        "initiative": 0,
+        "health": 120,
+        "armor": 5,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1000,
+        "intervalMs": 1300,
+        "attacks": [
+          {
+            "id": "morsure_de_cristal",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          18.6,
+          20.4
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4.2,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "pack": true
+        }
       }
     ],
     "truces": [
       [
         "echos",
         "meute"
+      ],
+      [
+        "echos",
+        "cristaux"
+      ],
+      [
+        "meute",
+        "cristaux"
       ]
     ],
     "commands": []

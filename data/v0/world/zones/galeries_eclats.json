@@ -82,6 +82,24 @@
         "leashRange": 10,
         "loot": "loot.ours",
         "family": "ours"
+      },
+      {
+        "creature": "golem_cristal_salle1",
+        "respawnMs": 300000,
+        "leashRange": 12,
+        "family": "golem_cristal"
+      },
+      {
+        "creature": "araignee_cristal_salle1",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "araignee_cristal"
+      },
+      {
+        "creature": "araignee_cristal_salle2",
+        "respawnMs": 90000,
+        "leashRange": 12,
+        "family": "araignee_cristal"
       }
     ],
     "passages": [],

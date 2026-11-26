@@ -209,7 +209,7 @@ public sealed class V250aGaleriesTests : IDisposable
                     Assert.True(edge > aggro.Raw / 1e4 + 0.5, $"{z.Id} / {d.Id} : {c.Id} à {edge:0.###} m de bord à bord");
                     pairs++;
                 }
-        Assert.Equal((3 + 1 + 2) * 2 + (3 + 1 + 3) * 1, pairs);   // galeries : 3 échos, un ours, 2 formes, 2 portes ; salle : 3 échos, un ours, 3 formes, 1 porte
+        Assert.Equal((3 + 1 + 3 + 2) * 2 + (3 + 1 + 3 + 3) * 1, pairs);   // galeries : 3 échos, un ours, 3 araignées, 2 formes, 2 portes ; salle : 3 échos, un ours, un golem et 2 araignées, 3 formes, 1 porte
     }
 
     private ZoneLoadResult WithScenario(string zone, string scenario, Action<JsonObject> edit, Action<JsonObject>? editZone = null)
@@ -354,7 +354,7 @@ public sealed class V250aGaleriesTests : IDisposable
     [Fact]
     public void Apparences_et_noms_des_creatures_des_galeries()
     {
-        var all = All.Value.SelectMany(Fighters).Select(c => c.Id).ToList();
+        var all = All.Value.SelectMany(Fighters).Select(c => c.Id).Where(id => !StyleRules.IsCrystalCreature(id)).ToList();
         var wolves = all.Where(id => id.StartsWith("loup_echo", StringComparison.Ordinal)).ToList();
         var bears = all.Where(id => id.StartsWith("ours", StringComparison.Ordinal)).ToList();
         Assert.Equal(all.Count, wolves.Count + bears.Count);
@@ -392,11 +392,53 @@ public sealed class V250aGaleriesTests : IDisposable
     public void Echos_et_ours_en_treve_sur_chaque_niveau()
     {
         // Revue Codex de la PR #245 : deux équipes ennemies d'une même zone demandent une trêve.
+        // Décision de Damien du 26 novembre 2026 : les créatures de cristal (équipe « cristaux ») s'y ajoutent ; trois équipes, trois trêves.
         foreach (ZoneDefinition z in All.Value)
         {
-            Assert.Equal(new[] { "echos", "meute" }, Fighters(z).Select(c => c.Team).Distinct().OrderBy(t => t, StringComparer.Ordinal));
-            Assert.Equal(new[] { ("echos", "meute") }, z.Setup.Truces.Select(t => (t.A, t.B)));
+            Assert.Equal(new[] { "cristaux", "echos", "meute" }, Fighters(z).Select(c => c.Team).Distinct().OrderBy(t => t, StringComparer.Ordinal));
+            Assert.Equal(new[] { ("echos", "meute"), ("echos", "cristaux"), ("meute", "cristaux") }, z.Setup.Truces.Select(t => (t.A, t.B)));
         }
+    }
+
+    /// <summary>
+    /// Décision de Damien du 26 novembre 2026 (« existant + nouvelles créatures ») : araignées de cristal (en groupe) sur les deux niveaux et un
+    /// golem de cristal dans la salle. Sans leur modèle, l'araignée prend le loup et le golem l'ours, à leur taille ; ni écho (même revenus),
+    /// ni voix ; leurs noms et leurs attaques sont écrits.
+    /// </summary>
+    [Fact]
+    public void Creatures_de_cristal_araignees_et_golem()
+    {
+        var spiders = All.Value.Select(z => z.Setup.Combatants.OfType<AssailantSetup>().Where(c => StyleRules.IsCrystalSpider(c.Id)).ToList()).ToList();
+        var golems = All.Value.Select(z => z.Setup.Combatants.OfType<AssailantSetup>().Where(c => StyleRules.IsCrystalGolem(c.Id)).ToList()).ToList();
+        Assert.Equal(new[] { 3, 2 }, spiders.Select(l => l.Count));
+        Assert.Equal(new[] { 0, 1 }, golems.Select(l => l.Count));
+        AssailantSetup golem = golems[1].Single();
+        Assert.All(spiders.SelectMany(l => l), a => Assert.True(a.Behavior!.Pack && a.Health < golem.Health && a.Placement!.Radius < golem.Placement!.Radius && a.Team == "cristaux", a.Id));
+        Assert.Equal("cristaux", golem.Team);
+        // En groupe : chaque araignée à 2,5 m au plus d'une autre de son niveau.
+        foreach (var level in spiders)
+            Assert.All(level, a => Assert.Contains(level, o => o != a && Dist(P(o.Placement!.Position), P(a.Placement!.Position)) <= 2.5));
+        foreach (string id in spiders.SelectMany(l => l).Select(c => c.Id).Concat(new[] { golem.Id, "araignee_cristal_salle2_v3", "golem_cristal_salle1_v2" }))
+        {
+            bool isGolem = StyleRules.IsCrystalGolem(id);
+            Assert.Equal(isGolem ? StyleSlot.Bear : StyleSlot.Wolf, StyleRules.ForCombatant(id, false));
+            Assert.Equal(isGolem ? 2.4 : 0.6, StyleRules.BeastHeight(id));
+            Assert.Equal(EchoKind.None, EchoLooks.Of(id));
+            Assert.Equal(EchoKind.None, EchoLooks.Of(id, afterDeath: true));
+            Assert.False(EchoLooks.FromSeuilDepths(id));
+            Assert.False(StyleRules.Voiced(id));
+            Assert.Equal(0, StyleRules.Cubs(id));
+            Assert.False(StyleRules.IsRat(id));
+            Assert.Equal(isGolem ? "Golem de cristal" : "Araignée de cristal", DisplayNames.Of(id));
+        }
+        Assert.Equal("araignee", StyleRules.CharacterOf("araignee_cristal_galerie1"));   // jamais un personnage : la place est une bête
+        Assert.Equal("Morsure de cristal", DisplayNames.Attack("morsure_de_cristal"));
+        Assert.Equal("Poing de cristal", DisplayNames.Attack("poing_de_cristal"));
+        Assert.Equal("Éclats projetés", DisplayNames.Attack("eclats_projetes"));
+        Assert.True(StyleRules.Voiced("loup_echo_galerie1"));
+        Assert.False(StyleRules.IsCrystalCreature("cristaux_seuil_1"));
+        // Sans butin (comme les rats) : les éclats restent la récompense des chefs.
+        Assert.All(All.Value.SelectMany(z => z.Populations).Where(p => StyleRules.IsCrystalCreature(p.Creature)), p => Assert.Null(p.Loot));
     }
 
     [Fact]
