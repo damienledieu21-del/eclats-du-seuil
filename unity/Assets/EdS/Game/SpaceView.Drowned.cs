@@ -43,6 +43,12 @@ namespace EdS.Game
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             float cx = (x0 + x1) / 2f, cz = (z0 + z1) / 2f, height = (float)DrownedLooks.HeightOf(piece);
             bool occludes = DrownedLooks.Occludes(piece);
+            if (piece == DrownedPiece.Lair)
+            {
+                // Le repaire des pilleurs a sa lanterne, avec ou sans son modèle.
+                var lantern = DrownedLooks.LanternColor;
+                CaveGlow(o.Id, cx, cz, new Color((float)lantern.R, (float)lantern.G, (float)lantern.B), (float)DrownedLooks.LanternIntensity, (float)DrownedLooks.LanternRange);
+            }
             if (DrownedLooks.IsWater(piece)) _waters.Add(Prism(o.Id + " eau", points.Select(p => new Vector3(p.x, 0.04f, p.z)).ToList(), 0.04f, _water, false));
             GameObject model = CryptModel(DrownedLooks.Folder, DrownedLooks.ModelFor(piece));
             if (model != null && DrownedLooks.Tiled(piece) && Footprint(model, out float modelLong, out float modelShort))
@@ -78,11 +84,30 @@ namespace EdS.Game
                 case DrownedPiece.Wreck:
                     Prism(o.Id, points, height, Tinted(wood, new Color(0.45f, 0.5f, 0.42f), "bois noyé"), true, woodTile);
                     break;
+                case DrownedPiece.Anchor:
+                    Prism(o.Id, points, height, Plain(new Color(0.3f, 0.18f, 0.12f)), false, 1f);
+                    break;
                 default:   // coffre englouti
                     Prism(o.Id, points, height, wood, false, woodTile);
                     break;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Les stalactites pendues au plafond au-dessus des rochers et des piliers (<see cref="DrownedLooks.Stalactites"/>) : modèle, sinon un
+        /// cône de roche renversé. Décor seulement, au-dessus des têtes.
+        /// </summary>
+        private void DrownedStalactites(CombatSpace space, Material rock, float rockTile)
+        {
+            GameObject model = CryptModel(DrownedLooks.Folder, DrownedLooks.StalactiteModel);
+            float side = (float)DrownedLooks.StalactiteSide, h = (float)DrownedLooks.StalactiteHeight, bottom = (float)DrownedLooks.StalactiteBase;
+            foreach (var spot in DrownedLooks.Stalactites(space.Obstacles))
+            {
+                float x = (float)spot.X, z = (float)spot.Z;
+                if (FitSewerModel(model, "Stalactites (" + spot.Id + ")", x - side / 2f, z - side / 2f, x + side / 2f, z + side / 2f, h, false, bottom)) continue;
+                Box("Stalactites (" + spot.Id + ")", new Vector3(x, bottom + h * 0.75f, z), new Vector3(0.5f, h / 2f, 0.5f), rock, rockTile);
+            }
         }
 
         /// <summary>

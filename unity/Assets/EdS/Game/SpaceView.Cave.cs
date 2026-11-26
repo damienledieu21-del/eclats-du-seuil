@@ -89,6 +89,7 @@ namespace EdS.Game
             if (_mine) MineBridges(space, wood, woodTile);   // V2.47.2 : passerelles sur la rivière souterraine
             if (_crypt) CryptArches(space, rock, rockTile);   // V2.48.2 : voûtes des passages entre deux grilles
             if (_sewer) SewerBridgesAndArches(space, rock, rockTile, wood, woodTile);   // V2.49.2 : passerelles du canal, voûtes
+            if (_drowned) DrownedStalactites(space, rock, rockTile);   // V2.50.1b : stalactites au plafond des grottes noyées
 
             // Le rideau d'eau, vu de dedans, sur les portes qui mènent dehors, tourné vers la grotte ; le jour du dehors passe à travers.
             foreach (MapDoor door in map.Doors)

@@ -211,4 +211,57 @@ public sealed class V2501bNoyeesUnityTests
         Assert.Contains("DrownedPieces(notes);", style);
         Assert.Empty(Directory.GetFiles(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets"), "*Noyee*.shader", SearchOption.AllDirectories));
     }
+
+    /// <summary>Kit Tripo du 26 novembre 2026 (240 crédits) : les 12 modèles finis dans Blender, à plat dans <c>Resources/Noyees</c>.</summary>
+    [Fact]
+    public void Kit_de_grotte_noyee_present_et_reconnu_avec_repli()
+    {
+        string folder = Path.Combine(Lot93UnityPackageTests.Root, "unity", DrownedLooks.AssetFolder);
+        foreach (string name in DrownedLooks.Models)
+        {
+            string fbx = Path.Combine(folder, name + ".fbx");
+            Assert.True(File.Exists(fbx), fbx);
+            Assert.True(new FileInfo(fbx).Length > 10_000, fbx);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
+            Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
+            Assert.Equal(name, DrownedLooks.NameOf(DrownedLooks.AssetFolder + "/" + name + ".fbx"));
+        }
+        Assert.Equal(DrownedLooks.Models.Count, Directory.GetFiles(folder, "*.fbx").Length);   // rien d'autre, rien d'oublié
+        Assert.EndsWith("Resources/" + DrownedLooks.Folder.TrimEnd('/'), DrownedLooks.AssetFolder);
+        // Repli : formes simples si un modèle manque (pièces, passage noyé, stalactites, entrée des roselières).
+        string drowned = Unity("Assets", "EdS", "Game", "SpaceView.Drowned.cs");
+        foreach (string fallback in new[] { "// Formes de remplacement.", "Box(\"Passage noyé (voûte, \"", "Box(\"Stalactites (\"", "Box(\"Grottes noyées (bouche, \"" })
+            Assert.Contains(fallback, drowned);
+    }
+
+    [Fact]
+    public void Stalactites_repaire_et_ancre_dans_le_decor()
+    {
+        ZoneDefinition[] caves = Caves.ToArray();
+        // Le repaire des pilleurs au nord des bassins, l'ancre à côté du coffre de la cale de l'épave : des obstacles, pas du décor traversable.
+        Assert.Single(caves[0].Setup.Space!.Obstacles, o => DrownedLooks.PieceFor(o.Id) == DrownedPiece.Lair);
+        Assert.Single(caves[1].Setup.Space!.Obstacles, o => DrownedLooks.PieceFor(o.Id) == DrownedPiece.Anchor);
+        Assert.Equal((DrownedLooks.LairModel, DrownedLooks.AnchorModel), (DrownedLooks.ModelFor(DrownedPiece.Lair), DrownedLooks.ModelFor(DrownedPiece.Anchor)));
+        Assert.False(DrownedLooks.Occludes(DrownedPiece.Lair) || DrownedLooks.Occludes(DrownedPiece.Anchor));
+        foreach (ZoneDefinition z in caves)
+        {
+            var obstacles = z.Setup.Space!.Obstacles;
+            var spots = DrownedLooks.Stalactites(obstacles);
+            Assert.Equal(obstacles.Count(o => DrownedLooks.PieceFor(o.Id) is DrownedPiece.Rock or DrownedPiece.Vault), spots.Count);
+            foreach (var spot in spots)
+            {
+                (double x0, double z0, double x1, double z1) = Box(obstacles.Single(o => o.Id == spot.Id));
+                Assert.Equal(((x0 + x1) / 2, (z0 + z1) / 2), (spot.X, spot.Z));
+            }
+            Assert.True(spots.Count >= 3, z.Id);
+        }
+        // Pendues au plafond, au-dessus des têtes (2,5 m) ; le plafond au-dessus du haut des parois des rochers.
+        Assert.Equal(2.5, DrownedLooks.StalactiteBase);
+        Assert.True(DrownedLooks.CeilingHeight >= DrownedLooks.HeightOf(DrownedPiece.Rock));
+        Assert.Empty(DrownedLooks.Stalactites(Array.Empty<SpaceObstacle>()));
+        string cave = Unity("Assets", "EdS", "Game", "SpaceView.Cave.cs"), drowned = Unity("Assets", "EdS", "Game", "SpaceView.Drowned.cs");
+        Assert.Contains("if (_drowned) DrownedStalactites(space, rock, rockTile);", cave);
+        Assert.Contains("CryptModel(DrownedLooks.Folder, DrownedLooks.StalactiteModel)", drowned);
+        Assert.Contains("DrownedLooks.LanternIntensity", drowned);   // la lanterne du repaire
+    }
 }

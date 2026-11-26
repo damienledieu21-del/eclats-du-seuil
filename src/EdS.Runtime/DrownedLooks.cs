@@ -32,6 +32,12 @@ namespace EdS.Runtime
 
         /// <summary>Coffre englouti (bas).</summary>
         Chest = 7,
+
+        /// <summary>Repaire des pilleurs d'épaves (caisses, filets, lanternes) : sa lumière.</summary>
+        Lair = 8,
+
+        /// <summary>Ancre rouillée de l'épave.</summary>
+        Anchor = 9,
     }
 
     /// <summary>
@@ -63,6 +69,7 @@ namespace EdS.Runtime
         {
             ("mur_noyee", DrownedPiece.Wall), ("voute_noyee", DrownedPiece.Vault), ("bassin_noyee", DrownedPiece.Basin), ("rocher_noyee", DrownedPiece.Rock),
             ("algues_noyee", DrownedPiece.Algae), ("epave_noyee", DrownedPiece.Wreck), ("coffre_noyee", DrownedPiece.Chest),
+            ("repaire_noyee", DrownedPiece.Lair), ("ancre_noyee", DrownedPiece.Anchor),
         };
 
         /// <summary>Ce que dessine l'obstacle <paramref name="obstacleId"/> (identifiant exact ou suivi de « _… »), <see cref="DrownedPiece.None"/> sinon.</summary>
@@ -84,6 +91,8 @@ namespace EdS.Runtime
             DrownedPiece.Algae => AlgaeModel,
             DrownedPiece.Wreck => WreckModel,
             DrownedPiece.Chest => ChestModel,
+            DrownedPiece.Lair => LairModel,
+            DrownedPiece.Anchor => AnchorModel,
             _ => null,
         };
 
@@ -104,6 +113,8 @@ namespace EdS.Runtime
             DrownedPiece.Algae => 1.2,
             DrownedPiece.Wreck => 2.5,
             DrownedPiece.Chest => 0.8,
+            DrownedPiece.Lair => 2.2,
+            DrownedPiece.Anchor => 3.0,
             _ => 0.0,
         };
 
@@ -112,6 +123,26 @@ namespace EdS.Runtime
 
         /// <summary>Vrai si l'un des obstacles est une pièce de grotte noyée : le dessous est une grotte noyée (ni rideau d'eau, ni autre kit).</summary>
         public static bool IsDrowned(IEnumerable<SpaceObstacle> obstacles) => obstacles != null && obstacles.Any(o => o != null && PieceFor(o.Id) != DrownedPiece.None);
+
+        /// <summary>Lanterne du repaire des pilleurs (couleur de 0 à 1), intensité et portée (m).</summary>
+        public static readonly (double R, double G, double B) LanternColor = (1.0, 0.72, 0.4);
+
+        public const double LanternIntensity = 1.4, LanternRange = 7.0;
+
+        /// <summary>Plafond des grottes noyées (m) : les stalactites y pendent ; leur hauteur, celle de leur fiche (m).</summary>
+        public const double CeilingHeight = 5.0, StalactiteHeight = 2.5, StalactiteSide = 2.0;
+
+        /// <summary>
+        /// Stalactites : une grappe au plafond au-dessus de chaque rocher et de chaque pilier de voûte (centre de l'emprise), dans l'ordre des
+        /// obstacles. Décor seulement (au-dessus des têtes : <see cref="CeilingHeight"/> moins <see cref="StalactiteHeight"/>).
+        /// </summary>
+        public static IReadOnlyList<(string Id, double X, double Z)> Stalactites(IEnumerable<SpaceObstacle> obstacles) =>
+            (obstacles ?? Enumerable.Empty<SpaceObstacle>()).Where(o => o != null && (PieceFor(o.Id) == DrownedPiece.Rock || PieceFor(o.Id) == DrownedPiece.Vault))
+                .Select(o => (o.Id, (o.Points.Min(p => p.X.Raw) + o.Points.Max(p => p.X.Raw)) / 2e4, (o.Points.Min(p => p.Z.Raw) + o.Points.Max(p => p.Z.Raw)) / 2e4))
+                .ToList();
+
+        /// <summary>Bas de la grappe de stalactites (m) : elle pend du plafond.</summary>
+        public static double StalactiteBase => CeilingHeight - StalactiteHeight;
 
         /// <summary>Longueur de l'eau d'un passage noyé (m), de la porte vers la paroi, et sa largeur (m).</summary>
         public const double PoolLength = 3.0, PoolWidth = 4.0;

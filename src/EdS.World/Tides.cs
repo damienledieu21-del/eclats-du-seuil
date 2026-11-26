@@ -34,8 +34,9 @@ namespace EdS.World
     /// (<see cref="WorldClock"/>, jamais d'une horloge réelle) : basse pendant <see cref="HalfCycleMinutes"/> minutes du monde, haute pendant
     /// autant, et ainsi de suite, la même chaque jour (basse de 0 h à 3 h, de 6 h à 9 h, de 12 h à 15 h, de 18 h à 21 h). Quand le lac est
     /// gelé (glace praticable, saisons), la glace retient l'eau : la marée reste basse. Le souffle du personnage vaut
-    /// <see cref="BaseBreathMs"/>, plus <see cref="ShellBonusMs"/> s'il porte la <see cref="ShellItem"/> dans son sac. Valeurs provisoires,
-    /// recommandations signalées à Damien dans la PR du V2.50.1.
+    /// <see cref="BaseBreathMs"/>, plus <see cref="ShellBonusMs"/> s'il porte la <see cref="ShellItem"/> dans son sac. Décisions de Damien du
+    /// 26 novembre 2026 : marée de 3 h, souffle de 15 s (30 s avec la coquille), refus avant de plonger s'il manque d'air, marée basse figée
+    /// quand le lac gèle.
     /// </summary>
     public static class Tides
     {
