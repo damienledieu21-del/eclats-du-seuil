@@ -805,6 +805,18 @@ namespace EdS.Game.Editor
                 importer.maxTextureSize = OwnTextureSize;
                 changed = true;
             }
+            // Kit du Bourg (25 novembre 2026) : la texture palette (32 × 32 px, une case de 4 px par teinte) reste nette et entière :
+            // filtrage point, sans mipmaps (elles mêleraient les cases voisines au loin), sans compression, bords serrés.
+            if (Path.GetFileNameWithoutExtension(path) == BourgKit.Palette
+                && (importer.filterMode != FilterMode.Point || importer.mipmapEnabled || importer.textureCompression != TextureImporterCompression.Uncompressed
+                    || importer.wrapMode != TextureWrapMode.Clamp))
+            {
+                importer.filterMode = FilterMode.Point;
+                importer.mipmapEnabled = false;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                changed = true;
+            }
             if (changed) importer.SaveAndReimport();
         }
 

@@ -24,9 +24,12 @@ namespace EdS.Game
             if (_bourg == null || !_bourg.Needs.TryGetValue(id, out System.Collections.Generic.IReadOnlyList<string> needs)) return false;
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return false;
+            bool all = true;
             foreach (string piece in needs)
-                if (catalog.OwnDecorPiece(piece) == null) return false;
-            return true;
+                if (catalog.OwnDecorPiece(piece) == null) all = false;
+            if (all) return true;
+            // Kit du Bourg (25 novembre 2026) : une maison du kit absente laisse l'ancienne maison type de l'atelier.
+            return _bourg.Fallbacks.TryGetValue(id, out string old) && catalog.OwnDecorPiece(old) != null;
         }
 
         /// <summary>
@@ -41,9 +44,13 @@ namespace EdS.Game
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
             float minZ = Raw(_space.Min.Z.Raw) - BourgMargin, maxZ = Raw(_space.Max.Z.Raw) + BourgMargin;
             var walled = new System.Collections.Generic.Dictionary<string, float>();
-            foreach (BourgPiece p in _bourg.Near(minX, minZ, maxX, maxZ, 0))
+            foreach (BourgPiece near in _bourg.Near(minX, minZ, maxX, maxZ, 0))
             {
-                if (p.Covers != null && !BourgCovers(p.Covers)) continue;
+                if (near.Covers != null && !BourgCovers(near.Covers)) continue;
+                BourgPiece p = near;
+                // Kit du Bourg : repli sur l'ancienne maison type, à sa propre place, quand le modèle du kit manque ; sa lanterne de porte
+                // suit (BourgFallback.When : la maison dont elle dépend).
+                if (p.Fallback != null && catalog.OwnDecorPiece(p.Fallback.When ?? p.Piece) == null) p = p.Fallback.For(near);
                 GameObject prefab = catalog.OwnDecorPiece(p.Piece);
                 if (prefab == null) continue;
                 var holder = new GameObject(prefab.name + " (Bourg)");
@@ -53,12 +60,17 @@ namespace EdS.Game
                 float ground = BourgModels.OnRim(p.Piece) ? RimGround(p) : Ground(x, z, (float)BourgModels.Foot(p.Piece));
                 holder.transform.position = new Vector3(x, ground + (float)p.Height, z);
                 holder.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
+                // Kit du Bourg : sols (place, rue pavée, ruelle, bordure) couchés sur la pente du sol affiché, à sa hauteur au centre ; posés au
+                // plus bas de leur pied, ils s'enterraient sur les pentes et ne laissaient voir que des coins clairs épars dans l'herbe.
+                if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, p.Piece, x, z, (float)p.Yaw);
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                var panes = new System.Collections.Generic.List<Renderer>();
                 BourgOpen(holder.transform, model.transform, p.Piece);
                 // Relecture indépendante : occulteurs pour les grandes pièces seulement (tours, portes, bâtiments).
                 if (BourgModels.Occludes(p.Piece)) AddModelOccluders(model);
-                BourgNight(p, holder.transform, model);
+                BourgNight(p, holder.transform, model, panes);
+                KitLod(model, p.Piece, catalog, panes);
                 // V2.30.3 : un bâtiment habillé arrête la caméra à son emprise (comme un modèle de l'atelier), jusqu'au haut de ses pièces.
                 if (p.Covers != null && Blocks(TownRules.BuildingFor(p.Covers)) && TownRules.BuildingFor(p.Covers) != StyleBuilding.None)
                 {
@@ -77,6 +89,47 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>
+        /// Kit du Bourg (décision de Damien du 25 novembre 2026) : une maison du kit reçoit sa version lointaine (« …_lod1 », même place) et
+        /// un LODGroup : détaillée de près, lointaine plus loin, rien au-delà (seuils de <see cref="BourgKit.LodHeights"/> selon la machine).
+        /// Sans version lointaine au catalogue, la maison détaillée reste seule.
+        /// </summary>
+        private static void KitLod(GameObject model, string piece, StyleCatalog catalog, System.Collections.Generic.List<Renderer> windows)
+        {
+            if (BourgKit.Find(piece) == null) return;
+            GameObject farPrefab = catalog.OwnDecorPiece(BourgKit.Far(piece));
+            if (farPrefab == null) return;
+            GameObject far = Object.Instantiate(farPrefab, model.transform.parent, false);
+            far.name = farPrefab.name;
+            foreach (Collider c in far.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            // Relecture de la PR #255 : les vitres de nuit de la maison (sous le support) s'effacent avec la maison détaillée.
+            var nearList = new System.Collections.Generic.List<Renderer>(model.GetComponentsInChildren<Renderer>());
+            nearList.AddRange(windows);
+            Renderer[] near = nearList.ToArray(), distant = far.GetComponentsInChildren<Renderer>();
+            if (near.Length == 0 || distant.Length == 0) return;
+            GameObject owner = model.transform.parent.gameObject;
+            LODGroup group = owner.GetComponent<LODGroup>();
+            if (group == null) group = owner.AddComponent<LODGroup>();
+            group.SetLODs(new[] { new LOD(0.1f, near), new LOD(0.01f, distant) });
+            group.RecalculateBounds();
+            Camera camera = Camera.main;
+            var h = BourgKit.LodHeights(group.size, DeviceQuality.Tier, camera != null ? camera.fieldOfView : 60f);
+            group.SetLODs(new[] { new LOD((float)h.Far, near), new LOD((float)h.Cull, distant) });
+        }
+
+        /// <summary>
+        /// Kit du Bourg : un sol plat de l'atelier (modules de 6 m) couché sur la pente du sol affiché, monté juste assez pour qu'aucun coin ne
+        /// passe sous le sol (<see cref="BourgGround.OnSlope"/>).
+        /// </summary>
+        private static void GroundOnSlope(Transform holder, string piece, float x, float z, float yaw)
+        {
+            // Revue Codex de la PR #255 : calcul pur et testé (BourgGround.OnSlope) ; ici, seulement la pose.
+            var pose = BourgGround.OnSlope((px, pz) => StyleWorld.StandHeight((float)px, (float)pz), piece, x, z, yaw);
+            Vector3 normal = new Vector3((float)pose.Nx, (float)pose.Ny, (float)pose.Nz);
+            holder.position = new Vector3(x, (float)pose.Y, z);
+            holder.rotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0f, yaw, 0f);
+        }
+
         /// <summary>V2.30.5 : sol d'une pièce du fossé : le plus bas des deux bords (de part et d'autre de son axe, au-delà du creux).</summary>
         private static float RimGround(BourgPiece p)
         {
@@ -93,7 +146,7 @@ namespace EdS.Game
         /// porte faite par le code, sur la façade de son modèle (<see cref="BourgModels.DoorLanternOf"/>) ; les fenêtres de façade d'un bâtiment habillé (entre ses volets « Volet_…_G » et « …_D », rez-de-chaussée
         /// et premier étage côté rue, deux au plus) prennent le fond de fenêtre qui s'allume la nuit.
         /// </summary>
-        private void BourgNight(BourgPiece p, Transform holder, GameObject model)
+        private void BourgNight(BourgPiece p, Transform holder, GameObject model, System.Collections.Generic.List<Renderer> windows)
         {
             float a = (float)p.Yaw * Mathf.Deg2Rad;
             (int X, int Z) facing = (Mathf.RoundToInt(Mathf.Sin(a)), Mathf.RoundToInt(Mathf.Cos(a)));
@@ -125,7 +178,7 @@ namespace EdS.Game
                 Vector3 c = (left.bounds.center + r.bounds.center) / 2f;
                 float width = Mathf.Max(0.4f, Vector3.Distance(left.bounds.center, r.bounds.center) - 0.5f);
                 Vector3 size = facing.X != 0 ? new Vector3(0.06f, 1f, width) : new Vector3(width, 1f, 0.06f);
-                Box(p.Covers + " (fenêtre " + lit + ")", c, size, WindowGlass(), 1f);
+                Pane(Box(p.Covers + " (fenêtre " + lit + ")", c, size, WindowGlass(), 1f), holder, windows);
                 lit++;
             }
             // Revue Codex de la PR #204 : un modèle sans volets séparés (boutiques, prévôt, corps de garde, écuries) : ses fenêtres de façade.
@@ -134,8 +187,17 @@ namespace EdS.Game
                 {
                     Vector3 c = holder.TransformPoint(new Vector3((float)w.X, (float)w.Y, (float)w.Z));
                     Vector3 size = facing.X != 0 ? new Vector3(0.06f, (float)w.Height, (float)w.Width) : new Vector3((float)w.Width, (float)w.Height, 0.06f);
-                    Box(p.Covers + " (fenêtre " + lit++ + ")", c, size, WindowGlass(), 1f);
+                    Pane(Box(p.Covers + " (fenêtre " + lit++ + ")", c, size, WindowGlass(), 1f), holder, windows);
                 }
+        }
+
+        /// <summary>Relecture de la PR #255 : une vitre de nuit rangée sous le support du bâtiment (même place), son rendu gardé pour le LOD.</summary>
+        private static void Pane(GameObject pane, Transform holder, System.Collections.Generic.List<Renderer> windows)
+        {
+            if (pane == null) return;
+            pane.transform.SetParent(holder, true);
+            Renderer r = pane.GetComponent<Renderer>();
+            if (r != null) windows.Add(r);
         }
 
         /// <summary>Vantaux tournés autour de leur charnière (repère du support), herse levée.</summary>
