@@ -304,7 +304,14 @@ namespace EdS.Game
             else
             {
                 StyleMotion motion = StyleRules.Motion(0.0, false, false, guarding, wander);
-                Play(motion == StyleMotion.Idle ? IdleClip() : Pick(motion), motion, 0.3f);
+                string still = motion == StyleMotion.Idle ? IdleClip() : Pick(motion);
+                // V2.49.2 : une bête sans attente (le rat de Tripo n'a que sa marche) fige sa marche à l'arrêt, sans pas sur place.
+                if (_beast && still == null && motion == StyleMotion.Idle && Gaits() && _walkClip != null)
+                {
+                    Play(_walkClip, StyleMotion.Idle, 0.3f);
+                    _animation.SetSpeed(_walkClip, (float)Locomotion.StillWalkRate);
+                }
+                else Play(still, motion, 0.3f);
             }
             if (_beast) Overlay(dead);
             else if (!dead) Lean(deltaTime);
@@ -591,7 +598,9 @@ namespace EdS.Game
             // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
             // modèle du catalogue, comme avant.
             HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
-            GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : catalog.Model(slot, id);
+            // V2.49.2 : les rats prennent le rat animé de Tripo (Resources/Rats) ; sans lui, le modèle de leur place (le loup), en repli.
+            GameObject rat = human == null && StyleRules.IsRat(id) ? Resources.Load<GameObject>(SewerLooks.RatFolder + SewerLooks.RatModel) : null;
+            GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : rat != null ? rat : catalog.Model(slot, id);
             if (prefab == null) return null;
             if (human is HumanLook sized) height = (float)sized.Height;
             else if (slot == StyleSlot.Character && catalog.Character(id) is CharacterLook character && character.Height > 0f) height = character.Height;
@@ -630,7 +639,7 @@ namespace EdS.Game
             look.transform.localScale = new Vector3(k / s.x, k / s.y, k / s.z);
             // Les pieds au sol : le bas de la capsule est à 1 m sous son centre (à l'échelle de hauteur du corps).
             look.transform.localPosition = new Vector3(0f, -1f - bottom * k / s.y, 0f);
-            look.transform.localRotation = Quaternion.Euler(0f, catalog.Yaw(slot, id), 0f);
+            look.transform.localRotation = Quaternion.Euler(0f, rat != null ? 0f : catalog.Yaw(slot, id), 0f);   // le rat regarde déjà devant lui
             Renderer own = body.GetComponent<Renderer>();
             if (own != null) own.enabled = false;
             // Essai du 26 octobre 2026 : les loups et les sangliers des packs n'ont pas de texture (couleur unique ou couleurs de sommets que
@@ -639,7 +648,14 @@ namespace EdS.Game
             // garde ses couleurs.
             // Sous-lot V2.9 : seuls les matériaux sans texture restés blancs la prennent (les bêtes de Quaternius ont leurs couleurs : pelage,
             // ventre clair, yeux, truffe) ; le loup blanc du contrat de la guilde est éclairci (sauf les yeux et la truffe, sombres).
-            if (slot == StyleSlot.Wolf || slot == StyleSlot.Boar)
+            if (rat != null && SewerLooks.IsSmallRat(id))
+            {
+                // V2.49.2 : le petit rat, un peu plus gris que le rat géant (même modèle).
+                var tint = new Color((float)SewerLooks.SmallRatTint.R, (float)SewerLooks.SmallRatTint.G, (float)SewerLooks.SmallRatTint.B);
+                foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, BaseColor(m) * tint);
+            }
+            else if (rat == null && (slot == StyleSlot.Wolf || slot == StyleSlot.Boar))
             {
                 bool white = slot == StyleSlot.Wolf && StyleRules.Key(id ?? "").StartsWith("loupblanc", System.StringComparison.Ordinal);
                 foreach (Renderer r in look.GetComponentsInChildren<Renderer>())

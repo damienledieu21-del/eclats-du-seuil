@@ -218,6 +218,7 @@ namespace EdS.Game
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
             QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
             BourgDecor();   // V2.30.2 : palissade, tours et portes du Bourg fortifié (modèles de l'atelier)
+            SewerEntrances();   // V2.49.2 : bouche d'égout du marché et déversoir du fossé (entrées des égouts)
             _rebuildKey = null;   // V2.43.3 : décor des chantiers refait à la première relecture (Rebuilds)
             _rebuildRoot = null;
             _rebuildOccluders.Clear();
