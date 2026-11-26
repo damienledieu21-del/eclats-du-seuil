@@ -1058,8 +1058,36 @@ namespace EdS.Runtime
         /// </summary>
         public string? DoorHint => DoorInReach is Door door
             ? string.Format(Text(World.DoorAwaitsRebuild(door.Id) ? "text.ui.rebuild.door_closed_hint"
-                : World.DoorAwaitsHome(door.Id) ? "text.ui.home.door_closed_hint" : "text.ui.door_hint"), door.Name)
+                : World.DoorAwaitsHome(door.Id) ? "text.ui.home.door_closed_hint" : WaterHintKey(World.DoorWaterPass(door.Id))), door.Name,
+                Seconds(door.Water?.DiveMs ?? 0), Seconds(World.BreathMs))
             : null;
+
+        /// <summary>V2.50.1 : clé de l'indication devant une porte, selon son eau (à sec : « passer la porte »).</summary>
+        private static string WaterHintKey(WaterPass pass) => pass switch
+        {
+            WaterPass.Dive => "text.ui.tide.dive_hint",
+            WaterPass.Drowned => "text.ui.tide.drowned_hint",
+            WaterPass.NoBreath => "text.ui.tide.no_breath_hint",
+            _ => "text.ui.door_hint",
+        };
+
+        /// <summary>V2.50.1 : secondes entières d'une durée en millisecondes (arrondi à l'inférieur).</summary>
+        private static long Seconds(long ms) => ms / 1000;
+
+        /// <summary>
+        /// V2.50.1 (grottes noyées du lac) : la marée, en mots (« Marée basse : elle monte dans 1 h 20 »), dans une zone qui a une porte
+        /// d'eau ; null ailleurs. Quand le lac est gelé, la marée reste basse.
+        /// </summary>
+        public string? TideHint
+        {
+            get
+            {
+                if (!_zone.Doors.Any(d => d.Water != null)) return null;
+                bool low = World.Tide == TideLevel.Low;
+                if (!(World.TideTurnsIn is int minutes)) return Text("text.ui.tide.frozen");
+                return string.Format(Text(low ? "text.ui.tide.low" : "text.ui.tide.high"), minutes / 60, (minutes % 60).ToString("00", System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
 
         public bool CanUseDoor => DoorInReach != null && Dialogue is null && !MustContinue
             && !CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any();
@@ -1096,9 +1124,24 @@ namespace EdS.Runtime
                 Say("text.ui.home.door_closed");
                 return false;
             }
+            // V2.50.1 (grottes noyées du lac) : un passage noyé à cette marée se passe en plongée si le souffle suffit ; sinon il est refusé
+            // avant de plonger, sans rien changer (option recommandée à Damien : ni perte de PV ni défaite).
+            WaterPass water = World.DoorWaterPass(door.Id);
+            if (water == WaterPass.Drowned)
+            {
+                Say("text.ui.tide.drowned", door.Name);
+                return false;
+            }
+            if (water == WaterPass.NoBreath)
+            {
+                Say("text.ui.tide.no_breath", Seconds(door.Water!.DiveMs!.Value), Seconds(World.BreathMs));
+                return false;
+            }
             // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
             if (InScene) return LeaveScene();
-            return Pass(door);
+            if (!Pass(door)) return false;
+            if (water == WaterPass.Dive) Say("text.ui.tide.dove", Seconds(door.Water!.DiveMs!.Value));
+            return true;
         }
 
         /// <summary>Portes qui se montrent et se passent à pied : toutes, sauf celles qui mènent à une scène (sous-lot V1.9.6).</summary>

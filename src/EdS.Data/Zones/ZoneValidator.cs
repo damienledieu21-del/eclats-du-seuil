@@ -317,9 +317,13 @@ namespace EdS.Data.Zones
         /// <summary>Chantier V2.45.1 (schéma 15) : genre de passage (porte, escalier, puits, trappe, faille) ; une porte d'avant est une porte.</summary>
         public DoorKind Kind { get; }
 
-        internal Door(string id, string name, GroundVector position, string to, string toDoor, string? building, DoorKind kind = DoorKind.Door)
+        /// <summary>V2.50.1 (schéma 16, grottes noyées du lac) : passage noyé (marée, plongée), ou null (passage à sec).</summary>
+        public DoorWater? Water { get; }
+
+        internal Door(string id, string name, GroundVector position, string to, string toDoor, string? building, DoorKind kind = DoorKind.Door, DoorWater? water = null)
         {
             Kind = kind;
+            Water = water;
             Id = id;
             Name = name;
             Position = position;
@@ -327,6 +331,37 @@ namespace EdS.Data.Zones
             ToDoor = toDoor;
             Building = building;
         }
+    }
+
+    /// <summary>
+    /// V2.50.1 (schéma 16, grottes noyées du lac, décidées au sujet 27) : eau d'une porte. Noyée à marée haute seulement (<see cref="Tide"/>,
+    /// à sec à marée basse) ou toujours ; quand elle est noyée, elle se passe en plongée de <see cref="DiveMs"/> si le souffle du personnage
+    /// suffit, et pas du tout sans durée de plongée. Les deux portes qui se répondent ont la même eau.
+    /// </summary>
+    public sealed class DoorWater : IEquatable<DoorWater>
+    {
+        /// <summary>Plongée la plus courte et la plus longue (ms) ; multiple de <see cref="DiveStepMs"/>.</summary>
+        public const long MinDiveMs = 1_000, MaxDiveMs = 120_000, DiveStepMs = 1_000;
+
+        /// <summary>Noyée à marée haute seulement ; faux : toujours noyée.</summary>
+        public bool Tide { get; }
+
+        /// <summary>Durée de la plongée quand elle est noyée (ms), ou null : un passage noyé ne se passe pas.</summary>
+        public long? DiveMs { get; }
+
+        internal DoorWater(bool tide, long? diveMs)
+        {
+            Tide = tide;
+            DiveMs = diveMs;
+        }
+
+        public bool Equals(DoorWater? other) => other != null && other.Tide == Tide && other.DiveMs == DiveMs;
+
+        public override bool Equals(object? obj) => Equals(obj as DoorWater);
+
+        public override int GetHashCode() => unchecked((Tide ? 1 : 0) * 397 ^ (DiveMs ?? -1).GetHashCode());
+
+        public override string ToString() => (Tide ? "marée" : "toujours noyée") + (DiveMs is long ms ? $", plongée de {ms} ms" : ", sans plongée");
     }
 
     /// <summary>
@@ -631,8 +666,12 @@ namespace EdS.Data.Zones
         /// lue (sans eux). Version 15 (chantier V2.45.1, étages) : <c>floor</c> facultatif (« surface » ou « dessous », voir
         /// <see cref="ZoneFloor"/>), <c>kind</c> facultatif sur une porte (voir <see cref="DoorKind"/>) et bornes des portes relevées
         /// (<see cref="MaxDoors"/>, <see cref="MaxRegionDoors"/>, <see cref="MaxDoorsPerCell"/>) ; la version 14 est encore lue (sans eux, avec les
-        /// bornes d'avant).</remarks>
-        public const int CurrentSchemaVersion = 15;
+        /// bornes d'avant). Version 16 (V2.50.1, grottes noyées du lac) : <c>water</c> facultatif sur une porte (voir <see cref="DoorWater"/> :
+        /// <c>tide</c>, <c>diveMs</c>) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle).</remarks>
+        public const int CurrentSchemaVersion = 16;
+
+        /// <summary>V2.50.1 : version des étages et des genres de porte (V2.45.1), encore lue.</summary>
+        public const int FloorsSchemaVersion = 15;
 
         /// <summary>Chantier V2.45.1 : version du territoire des populations et des secteurs (V2.26), encore lue.</summary>
         public const int TerritorySchemaVersion = 14;
@@ -759,6 +798,7 @@ namespace EdS.Data.Zones
                 || document.SchemaVersion == SpreadSchemaVersion   // sous-lot V2.25.3 : la version 12 aussi (sans région)
                 || document.SchemaVersion == RegionSchemaVersion   // sous-lot V2.26 : la version 13 aussi (sans territoire)
                 || document.SchemaVersion == TerritorySchemaVersion   // chantier V2.45.1 : la version 14 aussi (sans étage)
+                || document.SchemaVersion == FloorsSchemaVersion   // V2.50.1 : la version 15 aussi (sans eau aux portes)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -769,7 +809,8 @@ namespace EdS.Data.Zones
             bool schema12 = document.SchemaVersion >= SpreadSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
             bool schema13 = document.SchemaVersion >= RegionSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
             bool schema14 = document.SchemaVersion >= TerritorySchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
-            bool schema15 = document.SchemaVersion >= CurrentSchemaVersion;   // chantier V2.45.1 : étages, genres de porte, bornes relevées
+            bool schema15 = document.SchemaVersion >= FloorsSchemaVersion;   // chantier V2.45.1 : étages, genres de porte, bornes relevées
+            bool schema16 = document.SchemaVersion >= CurrentSchemaVersion;   // V2.50.1 : eau des portes (marée, plongée)
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -799,7 +840,7 @@ namespace EdS.Data.Zones
             ZoneFloor floor = ZoneFloor.Surface;
             if (d.Floor != null)
             {
-                if (!schema15) report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage d'une zone : schéma {CurrentSchemaVersion} attendu.");
+                if (!schema15) report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage d'une zone : schéma {FloorsSchemaVersion} attendu.");
                 else if (d.Floor == "dessous") floor = ZoneFloor.Underground;
                 else if (d.Floor != "surface") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « {d.Floor} » inconnu : « surface » ou « dessous » attendu.");
                 if (floor == ZoneFloor.Underground && d.Indoor == true)
@@ -1064,13 +1105,25 @@ namespace EdS.Data.Zones
                     DoorKind kind = DoorKind.Door;
                     if (door.Kind != null)
                     {
-                        if (!schema15) { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre d'une porte : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        if (!schema15) { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre d'une porte : schéma {FloorsSchemaVersion} attendu."); ok = false; }
                         else if (ParseDoorKind(door.Kind) is DoorKind k) kind = k;
                         else { report.Add(path + ".kind", ValidationCode.InvalidValue, $"genre de porte « {door.Kind} » inconnu : « porte », « escalier », « puits », « trappe » ou « faille » attendu."); ok = false; }
                     }
+                    // V2.50.1 (schéma 16) : eau de la porte (marée, plongée).
+                    DoorWater? water = null;
+                    if (door.Water is DoorWaterData wd)
+                    {
+                        bool tide = wd.Tide ?? false;
+                        if (!schema16) { report.Add(path + ".water", ValidationCode.InvalidValue, $"eau d'une porte : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        else if (wd.DiveMs is long dive && (dive < DoorWater.MinDiveMs || dive > DoorWater.MaxDiveMs || dive % DoorWater.DiveStepMs != 0))
+                        { report.Add(path + ".water.diveMs", ValidationCode.OutOfRange, $"plongée de {dive} ms : de {DoorWater.MinDiveMs} à {DoorWater.MaxDiveMs} ms, multiple de {DoorWater.DiveStepMs}, attendue."); ok = false; }
+                        else if (!tide && wd.DiveMs is null)
+                        { report.Add(path + ".water.diveMs", ValidationCode.MissingField, "un passage toujours noyé (sans « tide ») se passe en plongée : durée de la plongée attendue."); ok = false; }
+                        else water = new DoorWater(tide, wd.DiveMs);
+                    }
                     if (ok)
                     {
-                        doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building, kind));
+                        doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building, kind, water));
                         doorIndices.Add(i);
                     }
                 }
@@ -1363,6 +1416,10 @@ namespace EdS.Data.Zones
                 else if (back.Kind != door.Kind)
                     report.Add(path + ".kind", ValidationCode.InvalidValue,
                         $"{z.Id}, porte « {door.Id} » ({KindName(door.Kind)}) : la porte « {back.Id} » de {target.Id} qui lui répond est un autre genre ({KindName(back.Kind)}).");
+                // V2.50.1 : un passage noyé l'est des deux côtés, de la même façon (marée, durée de la plongée).
+                else if (!Equals(back.Water, door.Water))
+                    report.Add(path + ".water", ValidationCode.InvalidValue,
+                        $"{z.Id}, porte « {door.Id} » ({door.Water?.ToString() ?? "à sec"}) : la porte « {back.Id} » de {target.Id} qui lui répond a une autre eau ({back.Water?.ToString() ?? "à sec"}).");
             }
             return report;
         }

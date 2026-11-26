@@ -3495,6 +3495,16 @@
         "toDoor": "deversoir"
       },
       {
+        "id": "porte_grottes_noyees",
+        "name": "Grottes noyées du lac",
+        "position": [
+          420,
+          -846
+        ],
+        "to": "zone.grottes_noyees_bassins",
+        "toDoor": "roselieres"
+      },
+      {
         "id": "porte_galeries_seuil",
         "name": "Galeries sous les pierres",
         "position": [
