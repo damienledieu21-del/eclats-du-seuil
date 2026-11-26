@@ -401,6 +401,63 @@ namespace EdS.Runtime
         public static double BobbedHeight(FloatingRock rock, double seconds) =>
             rock.Y + BobMeters * Math.Sin(2 * Math.PI * seconds / BobSeconds + rock.Phase);
 
+        // --- Chargement par cases autour de la caméra --------------------------------------------------------------------
+
+        /// <summary>
+        /// Relecture indépendante des PR #260 et #261 (le PC de Damien saccade déjà) : rayon (m) autour de la caméra où les formes flottantes et
+        /// le semis de l'Envers sont construits, selon la machine (téléphone 128, PC modeste 192, PC fort 320) ; au-delà de ce rayon plus
+        /// <see cref="StreamKeepMargin"/>, ils sont défaits.
+        /// </summary>
+        public static double StreamRadius(DeviceTier tier) => tier switch
+        {
+            DeviceTier.Phone => 128,
+            DeviceTier.Modest => 192,
+            _ => 320,
+        };
+
+        /// <summary>Marge (m) gardée au-delà du rayon avant de défaire une case (hystérésis : pas d'allers-retours à la lisière).</summary>
+        public const double StreamKeepMargin = 64;
+
+        /// <summary>Cases construites au plus par image (le reste attend les images suivantes).</summary>
+        public const int StreamCellsPerFrame = 2;
+
+        /// <summary>Distance (m) du point (<paramref name="x"/>, <paramref name="z"/>) au carré de la case (0 dedans).</summary>
+        public static double CellDistance(RegionGrid region, int column, int row, double x, double z)
+        {
+            if (region is null) throw new ArgumentNullException(nameof(region));
+            double x0 = region.OriginX + (double)column * RegionGrid.CellMeters, z0 = region.OriginZ + (double)row * RegionGrid.CellMeters;
+            double dx = x < x0 ? x0 - x : x > x0 + RegionGrid.CellMeters ? x - x0 - RegionGrid.CellMeters : 0;
+            double dz = z < z0 ? z0 - z : z > z0 + RegionGrid.CellMeters ? z - z0 - RegionGrid.CellMeters : 0;
+            return Math.Sqrt(dx * dx + dz * dz);
+        }
+
+        /// <summary>
+        /// Les cases de la grille à <paramref name="radius"/> m au plus du point (bornées à la grille), la plus proche d'abord (puis par rangée
+        /// et colonne) : celles à construire autour de la caméra. Fonction pure.
+        /// </summary>
+        public static IReadOnlyList<(int Column, int Row)> CellsNear(RegionGrid region, double x, double z, double radius)
+        {
+            if (region is null) throw new ArgumentNullException(nameof(region));
+            if (!(radius >= 0)) throw new ArgumentOutOfRangeException(nameof(radius));
+            int c0 = Math.Max(0, (int)Math.Floor((x - radius - region.OriginX) / RegionGrid.CellMeters));
+            int c1 = Math.Min(region.Columns - 1, (int)Math.Floor((x + radius - region.OriginX) / RegionGrid.CellMeters));
+            int r0 = Math.Max(0, (int)Math.Floor((z - radius - region.OriginZ) / RegionGrid.CellMeters));
+            int r1 = Math.Min(region.Rows - 1, (int)Math.Floor((z + radius - region.OriginZ) / RegionGrid.CellMeters));
+            var cells = new List<(int, int, double)>();
+            for (int r = r0; r <= r1; r++)
+                for (int c = c0; c <= c1; c++)
+                {
+                    double d = CellDistance(region, c, r, x, z);
+                    if (d <= radius) cells.Add((c, r, d));
+                }
+            cells.Sort((a, b) => a.Item3 != b.Item3 ? a.Item3.CompareTo(b.Item3) : a.Item2 != b.Item2 ? a.Item2.CompareTo(b.Item2) : a.Item1.CompareTo(b.Item1));
+            return cells.Select(t => (t.Item1, t.Item2)).ToList();
+        }
+
+        /// <summary>Une case construite reste tant qu'elle est à moins du rayon plus <see cref="StreamKeepMargin"/> de la caméra.</summary>
+        public static bool CellKept(RegionGrid region, int column, int row, double x, double z, double radius) =>
+            CellDistance(region, column, row, x, z) <= radius + StreamKeepMargin;
+
         // --- Semis au sol ---------------------------------------------------------------------------------------------------
 
         /// <summary>Semis au sol par case de 128 m selon la machine (téléphone 2, PC modeste 4, PC fort 10), avant l'écart des obstacles.</summary>

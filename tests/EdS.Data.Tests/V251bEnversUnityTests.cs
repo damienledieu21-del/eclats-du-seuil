@@ -292,4 +292,61 @@ public sealed class V251bEnversUnityTests
         Assert.Equal(new[] { 0, 1, 2 }, kinds.OrderBy(k => k));
         Assert.Equal(new[] { "souche_cendre", "champignons_lumineux", "herbe_morte" }, EnversLook.ScatterModels);
     }
+
+    // --- Relecture indépendante des PR #260 et #261 ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Performances (le PC de Damien saccade déjà) : formes flottantes et semis construits seulement par case autour de la caméra, plus sur
+    /// toute l'aire (768 cases) ; au plus deux cases par image ; défaites au-delà du rayon plus 64 m.
+    /// </summary>
+    [Fact]
+    public void Cases_construites_seulement_autour_de_la_camera()
+    {
+        RegionGrid region = RegionGrid.Vallons();
+        Assert.Equal((128.0, 192.0, 320.0), (EnversLook.StreamRadius(DeviceTier.Phone), EnversLook.StreamRadius(DeviceTier.Modest), EnversLook.StreamRadius(DeviceTier.Full)));
+        Assert.Equal(2, EnversLook.StreamCellsPerFrame);
+        foreach (DeviceTier tier in new[] { DeviceTier.Phone, DeviceTier.Modest, DeviceTier.Full })
+        {
+            var near = EnversLook.CellsNear(region, 1640, -455, EnversLook.StreamRadius(tier));
+            Assert.InRange(near.Count, 1, 40);
+            Assert.All(near, c => Assert.True(EnversLook.CellDistance(region, c.Column, c.Row, 1640, -455) <= EnversLook.StreamRadius(tier)));
+            // La plus proche d'abord : la case de la caméra.
+            Assert.Equal(region.CellOf(new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.FromInt(1640), EdS.Domain.Numerics.Fixed.FromInt(-455))),
+                new RegionCell(near[0].Column, near[0].Row));
+            var d = near.Select(c => EnversLook.CellDistance(region, c.Column, c.Row, 1640, -455)).ToList();
+            Assert.Equal(d.OrderBy(x => x), d);
+            if (tier == DeviceTier.Modest)
+            {
+                // PC modeste : au plus une vingtaine de cases, donc au plus 40 formes flottantes et 80 semis (contre 1 536 et 3 072 sur l'aire).
+                Assert.InRange(near.Count, 9, 20);
+                Assert.True(near.Count * EnversLook.FloatingPerCell(tier) <= 40 && near.Count * EnversLook.ScatterPerCell(tier) <= 80);
+            }
+        }
+        // Bornée à la grille (coin de la région).
+        Assert.All(EnversLook.CellsNear(region, -1908, -1614, 300), c => Assert.True(c.Column >= 0 && c.Row >= 0));
+        Assert.Empty(EnversLook.CellsNear(region, -9000, -9000, 100));
+        // Hystérésis : une case juste sortie du rayon reste, défaite au-delà de 64 m de plus.
+        Assert.True(EnversLook.CellKept(region, 0, 0, -1908 - 200, -1614, 192));
+        Assert.False(EnversLook.CellKept(region, 0, 0, -1908 - 257, -1614, 192));
+        Assert.Throws<ArgumentOutOfRangeException>(() => EnversLook.CellsNear(region, 0, 0, -1));
+        // Le décor les construit au fil des images, plus d'un bloc au chargement.
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Envers.cs"));
+        Assert.Contains("EnversLook.CellsNear(_enversRegion, camera.x, camera.z, radius)", code);
+        Assert.Contains("EnversLook.CellKept(", code);
+        Assert.DoesNotContain("for (int c = c0; c <= c1; c++)", code);
+    }
+
+    /// <summary>L'autel de l'Aube, les brasiers et les failles (modèle, enfants compris, et lame « EdS/Faille ») gardent leur clarté.</summary>
+    [Fact]
+    public void Autel_et_failles_jamais_assombris()
+    {
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Envers.cs"));
+        Assert.Contains("KeepBrightFrom(first);   // la faille garde sa lumière", code);
+        Assert.Contains("if (drawn && EnversLook.Glows(EnversLook.PieceFor(o.Id))) KeepBrightFrom(first);", code);
+        Assert.Contains("if (KeptBright(renderer.transform)) continue;", code);
+        Assert.Contains("for (Transform at = t; at != null && at != _root.transform; at = at.parent)", code);   // en remontant les parents
+        Assert.DoesNotContain("StartsWith(\"envers_autel\"", code);
+        Assert.True(EnversLook.Glows(EnversPiece.DawnAltar) && EnversLook.Glows(EnversPiece.VioletBrazier));
+        Assert.False(EnversLook.Glows(EnversPiece.DeadTree));
+    }
 }

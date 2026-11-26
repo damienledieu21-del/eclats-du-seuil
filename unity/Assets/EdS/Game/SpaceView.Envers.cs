@@ -25,8 +25,40 @@ namespace EdS.Game
         private Material _ashMaterial;
         private Material _riftMaterial;
 
-        /// <summary>Dessine l'obstacle <paramref name="o"/> s'il est une retouche de l'Envers ; faux sinon.</summary>
+        /// <summary>
+        /// Relecture indépendante des PR #260 et #261 : racines posées qui gardent leur clarté (l'autel de l'Aube, les brasiers, les failles et
+        /// leur lame « EdS/Faille ») : leurs renderers, même enfants d'un modèle, ne sont jamais assombris.
+        /// </summary>
+        private readonly HashSet<Transform> _keepBright = new HashSet<Transform>();
+
+        /// <summary>Relecture des PR #260 et #261 : formes flottantes et semis construits par case autour de la caméra (clé : rangée × 64 + colonne).</summary>
+        private readonly Dictionary<int, GameObject> _enversCells = new Dictionary<int, GameObject>();
+        private RegionGrid _enversRegion;
+        private float _enversMinX, _enversMinZ, _enversMaxX, _enversMaxZ;
+
+        /// <summary>Marque comme gardant leur clarté les enfants du décor posés depuis le rang <paramref name="first"/>.</summary>
+        private void KeepBrightFrom(int first)
+        {
+            for (int i = first; i < _root.transform.childCount; i++) _keepBright.Add(_root.transform.GetChild(i));
+        }
+
+        private bool KeptBright(Transform t)
+        {
+            for (Transform at = t; at != null && at != _root.transform; at = at.parent)
+                if (_keepBright.Contains(at)) return true;
+            return false;
+        }
+
+        /// <summary>Dessine l'obstacle <paramref name="o"/> s'il est une retouche de l'Envers ; faux sinon. L'autel et les brasiers gardent leur clarté.</summary>
         private bool EnversObstacle(SpaceObstacle o)
+        {
+            int first = _root.transform.childCount;
+            bool drawn = EnversObstacleDrawn(o);
+            if (drawn && EnversLook.Glows(EnversLook.PieceFor(o.Id))) KeepBrightFrom(first);
+            return drawn;
+        }
+
+        private bool EnversObstacleDrawn(SpaceObstacle o)
         {
             EnversPiece piece = EnversLook.PieceFor(o.Id);
             if (piece == EnversPiece.None) return false;
@@ -87,11 +119,20 @@ namespace EdS.Game
             foreach (MapDoor door in _doors)
             {
                 if (door.Kind != DoorKind.Rift) continue;
+                int first = _root.transform.childCount;
+                RiftDoor(door);
+                KeepBrightFrom(first);   // la faille garde sa lumière (jamais assombrie)
+            }
+        }
+
+        private void RiftDoor(MapDoor door)
+        {
+            {
                 float x = (float)door.X, z = (float)door.Z, half = (float)EnversLook.RiftWidth / 2f, height = (float)EnversLook.RiftHeight;
                 var glow = EnversLook.RiftGlow;
                 CaveGlow(door.Id, x, z, new Color((float)glow.R, (float)glow.G, (float)glow.B), (float)EnversLook.RiftGlowIntensity, (float)EnversLook.RiftGlowRange);
                 float ground = Ground(x, z, 0.4f);
-                if (FitSewerModel(CryptModel(EnversLook.Folder, EnversLook.RiftModel), door.Id, x - half, z - 0.5f, x + half, z + 0.5f, height, false, ground)) continue;
+                if (FitSewerModel(CryptModel(EnversLook.Folder, EnversLook.RiftModel), door.Id, x - half, z - 0.5f, x + half, z + 0.5f, height, false, ground)) return;
                 if (_riftMaterial == null)
                 {
                     Shader shader = Shader.Find("EdS/Faille");
@@ -117,22 +158,13 @@ namespace EdS.Game
         {
             StyleWorld.SetEnvers(true);
             DeviceTier tier = DeviceQuality.Tier;
-            if (map.Region is RegionGrid region)
-            {
-                double minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
-                int c0 = Mathf.Max(0, (int)((minX - region.OriginX) / RegionGrid.CellMeters)), c1 = Mathf.Min(region.Columns - 1, (int)((maxX - region.OriginX) / RegionGrid.CellMeters));
-                int r0 = Mathf.Max(0, (int)((minZ - region.OriginZ) / RegionGrid.CellMeters)), r1 = Mathf.Min(region.Rows - 1, (int)((maxZ - region.OriginZ) / RegionGrid.CellMeters));
-                for (int r = r0; r <= r1; r++)
-                    for (int c = c0; c <= c1; c++)
-                    {
-                        foreach (FloatingRock rock in EnversLook.FloatingRocks(region, c, r, tier))
-                            Floating(rock);
-                        foreach (var spot in EnversLook.Scatter(region, c, r, tier))
-                            if (spot.X >= minX && spot.X <= maxX && spot.Z >= minZ && spot.Z <= maxZ && !InObstacle((float)spot.X, (float)spot.Z, 1f)
-                                && TownRules.RoadAt(spot.X, spot.Z, _roads).Edge > 0.5)
-                                Scattered(spot.X, spot.Z, spot.Kind, spot.Scale, spot.Yaw);
-                    }
-            }
+            // Relecture des PR #260 et #261 : les formes flottantes et le semis ne sont plus construits sur toute l'aire (768 cases) mais par
+            // case autour de la caméra, au fil des images (EnversFrame, EnversLook.CellsNear).
+            _enversRegion = map.Region;
+            _enversMinX = Raw(space.Min.X.Raw);
+            _enversMinZ = Raw(space.Min.Z.Raw);
+            _enversMaxX = Raw(space.Max.X.Raw);
+            _enversMaxZ = Raw(space.Max.Z.Raw);
             DarkenDecor();
             _ashMaterial = Plain(new Color(0.55f, 0.48f, 0.66f));
             for (int i = 0; i < EnversLook.MaxAsh(tier); i++)
@@ -152,7 +184,7 @@ namespace EdS.Game
         }
 
         /// <summary>Une forme flottante : le modèle, à la taille voulue d'après ses bornes réelles, sinon un rocher aplati ; sans ombre.</summary>
-        private void Floating(FloatingRock rock)
+        private void Floating(FloatingRock rock, Transform parent)
         {
             GameObject model = CryptModel(EnversLook.Folder, EnversLook.FloatingModels[rock.Model]);
             GameObject body;
@@ -190,7 +222,7 @@ namespace EdS.Game
                     root.GetComponent<Renderer>().sharedMaterial = Plain(new Color(0.18f, 0.15f, 0.16f));
                 }
             }
-            body.transform.SetParent(_root.transform, false);
+            body.transform.SetParent(parent, false);
             body.transform.rotation = Quaternion.Euler(0f, (float)rock.Yaw, 0f);
             body.transform.position = new Vector3((float)rock.X, (float)rock.Y, (float)rock.Z);
             foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>())
@@ -207,7 +239,7 @@ namespace EdS.Game
         /// Une place du semis au sol : souche de cendre ou champignons lumineux (modèles), herbe morte (fiche E08, échouée chez Tripo :
         /// toujours par le code, deux lames croisées) ; sans ombre ni collision, posée sur le sol affiché.
         /// </summary>
-        private void Scattered(double x, double z, int kind, double scale, double yaw)
+        private void Scattered(double x, double z, int kind, double scale, double yaw, Transform parent)
         {
             float k = (float)scale;
             float ground = Ground((float)x, (float)z, 0.3f);
@@ -235,7 +267,7 @@ namespace EdS.Game
                     blade.GetComponent<Renderer>().sharedMaterial = grass;
                 }
             }
-            body.transform.SetParent(_root.transform, false);
+            body.transform.SetParent(parent, false);
             body.transform.rotation = Quaternion.Euler(0f, (float)yaw, 0f);
             body.transform.position = new Vector3((float)x, ground, (float)z);
             foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>())
@@ -248,9 +280,15 @@ namespace EdS.Game
         /// <summary>Remplace chaque matériau du décor par sa variante sombre (une copie par matériau d'origine) ; l'autel de l'Aube garde sa clarté.</summary>
         private void DarkenDecor()
         {
-            foreach (Renderer renderer in _root.GetComponentsInChildren<Renderer>(true))
+            DarkenUnder(_root);
+        }
+
+        /// <summary>Assombrit les renderers sous <paramref name="root"/>, sauf ceux des racines qui gardent leur clarté (en remontant les parents).</summary>
+        private void DarkenUnder(GameObject root)
+        {
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
             {
-                if (renderer.gameObject.name.StartsWith("envers_autel", System.StringComparison.Ordinal)) continue;
+                if (KeptBright(renderer.transform)) continue;
                 Material[] shared = renderer.sharedMaterials;
                 if (shared == null) continue;
                 bool changed = false;
@@ -286,6 +324,8 @@ namespace EdS.Game
         public void EnversFrame(Vector3 camera, float seconds, float density)
         {
             if (!_envers) return;
+            StreamCells(camera);
+            _floating.RemoveAll(f => f.Body == null);
             foreach ((Transform body, FloatingRock rock) in _floating)
                 if (body != null) body.position = new Vector3((float)rock.X, (float)EnversLook.BobbedHeight(rock, seconds), (float)rock.Z);
             int shown = Mathf.Clamp(Mathf.RoundToInt(_ash.Count * density / 1.5f), 0, _ash.Count);
@@ -302,8 +342,61 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>
+        /// Construit les cases proches de la caméra qui manquent (au plus <see cref="EnversLook.StreamCellsPerFrame"/> par image, la plus
+        /// proche d'abord) et défait celles qui sont sorties du rayon plus la marge, avec leurs occulteurs.
+        /// </summary>
+        private void StreamCells(Vector3 camera)
+        {
+            if (_enversRegion == null) return;
+            double radius = EnversLook.StreamRadius(DeviceQuality.Tier);
+            var gone = new List<int>();
+            foreach (KeyValuePair<int, GameObject> cell in _enversCells)
+                if (!EnversLook.CellKept(_enversRegion, cell.Key % 64, cell.Key / 64, camera.x, camera.z, radius)) gone.Add(cell.Key);
+            foreach (int key in gone)
+            {
+                GameObject cell = _enversCells[key];
+                _enversCells.Remove(key);
+                if (cell == null) continue;
+                // Les occulteurs de ses formes flottantes partent avec elle (leurs copies en fondu sont rendues), avant la destruction.
+                foreach (Occluder o in _occluders.Where(o => o.Transform != null && o.Transform.IsChildOf(cell.transform)).ToList())
+                {
+                    ReleaseFade(o);
+                    _occluders.Remove(o);
+                }
+                Object.Destroy(cell);
+            }
+            int built = 0;
+            foreach ((int column, int row) in EnversLook.CellsNear(_enversRegion, camera.x, camera.z, radius))
+            {
+                if (built >= EnversLook.StreamCellsPerFrame) break;
+                int key = row * 64 + column;
+                if (_enversCells.ContainsKey(key)) continue;
+                _enversCells[key] = BuildCell(column, row);
+                built++;
+            }
+        }
+
+        /// <summary>Les formes flottantes et le semis d'une case (fonctions pures), sous une racine de case, assombris.</summary>
+        private GameObject BuildCell(int column, int row)
+        {
+            var cell = new GameObject("Envers case c" + column + "_r" + row);
+            cell.transform.SetParent(_root.transform, false);
+            DeviceTier tier = DeviceQuality.Tier;
+            foreach (FloatingRock rock in EnversLook.FloatingRocks(_enversRegion, column, row, tier)) Floating(rock, cell.transform);
+            foreach (var spot in EnversLook.Scatter(_enversRegion, column, row, tier))
+                if (spot.X >= _enversMinX && spot.X <= _enversMaxX && spot.Z >= _enversMinZ && spot.Z <= _enversMaxZ && !InObstacle((float)spot.X, (float)spot.Z, 1f)
+                    && TownRules.RoadAt(spot.X, spot.Z, _roads).Edge > 0.5)
+                    Scattered(spot.X, spot.Z, spot.Kind, spot.Scale, spot.Yaw, cell.transform);
+            DarkenUnder(cell);
+            return cell;
+        }
+
         private void ReleaseEnvers()
         {
+            _enversCells.Clear();
+            _keepBright.Clear();
+            _enversRegion = null;
             foreach (Material m in _darkMaterials.Values)
                 if (m != null) Object.Destroy(m);
             _darkMaterials.Clear();
