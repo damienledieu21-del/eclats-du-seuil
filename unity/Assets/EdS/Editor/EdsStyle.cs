@@ -687,6 +687,15 @@ namespace EdS.Game.Editor
                 .Where(p => GalleryLooks.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             foreach (string path in paths) OwnMaterial(path, notes);
             if (paths.Count > 0) notes.Add("Galeries : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(GalleryLooks.NameOf)) + ").");
+            // Décision de Damien du 26 novembre 2026 : les créatures de cristal animées (marche « Legacy », comme le rat), quand l'atelier les aura livrées.
+            foreach (string creature in new[] { GalleryLooks.SpiderModel, GalleryLooks.GolemModel })
+            {
+                string path = GalleryLooks.CreatureAssetFolder + "/" + creature + ".fbx";
+                if (!(AssetImporter.GetAtPath(path) is ModelImporter)) continue;
+                Legacy(path, false);
+                OwnMaterial(path, notes);
+                notes.Add("Galeries : créature animée " + creature + " (marche « Legacy »).");
+            }
         }
 
         /// <summary>

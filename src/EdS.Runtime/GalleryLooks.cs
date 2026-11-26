@@ -226,5 +226,21 @@ namespace EdS.Runtime
         /// marches (l'avant du modèle, +Z) descendent vers le centre du cercle.
         /// </summary>
         public static double EntranceYaw(double x, double z) => Math.Atan2(CircleCentre.X - x, CircleCentre.Z - z) * 180.0 / Math.PI;
+
+        /// <summary>
+        /// Créatures de cristal (décision de Damien du 26 novembre 2026) : dossier de leurs modèles animés dans Unity
+        /// (<c>Resources/Galeries/Creatures/&lt;nom&gt;</c>, kit Tripo préparé dans l'atelier <c>Galeries/Creatures</c>).
+        /// </summary>
+        public const string CreatureFolder = "Galeries/Creatures/", CreatureAssetFolder = "Assets/EdS/Modeles/Resources/Galeries/Creatures";
+
+        /// <summary>Modèles des créatures de cristal (codes C01 et C02 de l'atelier ; C03, le veilleur en cristal, n'est pas encore branché).</summary>
+        public const string SpiderModel = "araignee_cristal", GolemModel = "golem_cristal";
+
+        /// <summary>Modèle animé de la créature <paramref name="id"/> : l'araignée ou le golem de cristal ; null pour toute autre.</summary>
+        public static string? CreatureModel(string id) =>
+            StyleRules.IsCrystalSpider(id) ? SpiderModel : StyleRules.IsCrystalGolem(id) ? GolemModel : null;
+
+        /// <summary>Teinte de cristal (violet pâle) multipliée à la couleur du modèle de repli (loup, ours) d'une créature de cristal.</summary>
+        public static readonly (double R, double G, double B) CrystalTint = (0.75, 0.6, 1.0);
     }
 }

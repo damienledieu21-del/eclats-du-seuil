@@ -88,13 +88,12 @@ public class V250bGaleriesUnityTests
         foreach (string id in V250aGaleriesTests.Galleries)
             foreach (SpaceObstacle o in Zone(id).Setup.Space!.Obstacles)
                 Assert.Equal(!o.Low, GalleryLooks.Occludes(GalleryLooks.PieceFor(o.Id)));
-        // La liste de l'atelier : 11 modèles nommés comme dans le jeu, à 30 crédits, 330 au plus (aucun lancé).
+        // La liste de l'atelier : 11 modèles nommés comme dans le jeu, à 30 crédits, 330 au plus (lancé par Damien le 26 novembre 2026).
         string lab = Path.Combine(Path.GetDirectoryName(Lot93UnityPackageTests.Root)!, "Eclats_du_Seuil_AssetLab", "Galeries", "modeles.json");
         if (File.Exists(lab))
         {
             var names = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(lab))!["modeles"]!.AsArray().Select(m => (string)m!["nom"]!).ToList();
             Assert.Equal(GalleryLooks.Models, names);
-            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(lab)!, "etat.json")));   // rien de soumis
         }
     }
 
@@ -221,6 +220,42 @@ public class V250bGaleriesUnityTests
             Assert.True(GalleryLooks.IsGallery(a.Map.Obstacles));
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    /// <summary>
+    /// Décision de Damien du 26 novembre 2026 : créatures de cristal. Leur modèle animé est cherché dans Resources/Galeries/Creatures ; sans
+    /// lui, le modèle de leur place (loup pour l'araignée, ours pour le golem), teinté de cristal. La liste de l'atelier : trois modèles animés,
+    /// 65 crédits chacun (30 + 25 + 10), 195 au plus, aucun lancé.
+    /// </summary>
+    [Fact]
+    public void Creatures_de_cristal_modele_anime_et_repli_teinte()
+    {
+        Assert.Equal(GalleryLooks.SpiderModel, GalleryLooks.CreatureModel("araignee_cristal_galerie2"));
+        Assert.Equal(GalleryLooks.SpiderModel, GalleryLooks.CreatureModel("araignee_cristal_salle1_v2"));
+        Assert.Equal(GalleryLooks.GolemModel, GalleryLooks.CreatureModel("golem_cristal_salle1"));
+        Assert.Null(GalleryLooks.CreatureModel("loup_echo_galerie1"));
+        Assert.Null(GalleryLooks.CreatureModel("ours_galerie1"));
+        Assert.Null(GalleryLooks.CreatureModel("rat_egout1"));
+        Assert.StartsWith(GalleryLooks.AssetFolder + "/", GalleryLooks.CreatureAssetFolder + "/");
+        Assert.Equal("Galeries/Creatures/", GalleryLooks.CreatureFolder);
+        Assert.Null(GalleryLooks.NameOf(GalleryLooks.CreatureAssetFolder + "/golem_cristal.fbx"));   // pas une pièce du décor
+        var t = GalleryLooks.CrystalTint;
+        Assert.True(t.B > t.R && t.R > t.G);   // violet
+        // Chaque créature de cristal des galeries a son modèle.
+        foreach (string id in V250aGaleriesTests.Galleries.SelectMany(z => Zone(z).Setup.Combatants).Select(c => c.Id).Where(StyleRules.IsCrystalCreature))
+            Assert.NotNull(GalleryLooks.CreatureModel(id));
+        string look = Unity("Assets", "EdS", "Game", "StyleLook.cs"), style = Unity("Assets", "EdS", "Editor", "EdsStyle.cs");
+        Assert.Contains("Resources.Load<GameObject>(GalleryLooks.CreatureFolder + crystalName)", look);
+        Assert.Contains("GalleryLooks.CrystalTint", look);
+        Assert.Contains("GalleryLooks.CreatureAssetFolder", style);
+        string lab = Path.Combine(Path.GetDirectoryName(Lot93UnityPackageTests.Root)!, "Eclats_du_Seuil_AssetLab", "Galeries", "Creatures", "modeles.json");
+        if (File.Exists(lab))
+        {
+            var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(lab))!;
+            Assert.Equal(new[] { GalleryLooks.SpiderModel, GalleryLooks.GolemModel, "veilleur_cristal" }, root["modeles"]!.AsArray().Select(m => (string)m!["nom"]!));
+            Assert.Equal(195, (int)root["cout_total"]!);
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(lab)!, "etat.json")));   // rien de soumis
+        }
     }
 
     [Fact]
