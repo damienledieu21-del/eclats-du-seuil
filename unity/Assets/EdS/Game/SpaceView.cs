@@ -151,6 +151,7 @@ namespace EdS.Game
             else _fields = new List<StyleField>();
             _root = new GameObject("Décor");
             _root.transform.SetParent(parent, false);
+            _envers = map != null && map.Envers;   // V2.51b : l'Envers, reflet de la surface
             // Sous-lot V2.24 : relief affiché d'après la carte de la zone (plat dans une pièce ou sans carte) ; le moteur reste plat.
             StyleWorld.UseRelief(map);   // revue Codex de la PR #144 : plat sans terrain peint
             _treeMap = map;   // V2.25.4 : lieux de la zone, pour l'essence des arbres de l'atelier
@@ -225,8 +226,8 @@ namespace EdS.Game
             _rebuildOccluders.Clear();
             Pavements();
             Fields();
-            Villagers(map);   // essai réaliste 8 : les villageois du bourg
-            Livestock(map);   // sous-lot V2.9 (2e vague) : vaches, chevaux, chiens, corbeaux, cris de la ferme
+            if (!_envers) Villagers(map);   // essai réaliste 8 : les villageois du bourg (V2.51b : personne dans l'Envers)
+            if (!_envers) Livestock(map);   // sous-lot V2.9 (2e vague) : vaches, chevaux, chiens, corbeaux, cris de la ferme
             NightDecor(space, map);   // sous-lot V2.1 : lanternes, réverbères, feux follets, hiboux
             WeatherDecor();   // sous-lot V2.2 : flaques le long des chemins
             Plants(space);
@@ -235,6 +236,8 @@ namespace EdS.Game
             Bridge(space);
             Roof(space);
             if (terrain) Grass(space);
+            RiftDoors();   // V2.51b : les failles, des deux côtés
+            if (_envers) EnversDecor(space, map);   // V2.51b : formes flottantes, matériaux sombres, cendres, lumière de l'Envers
             // Essai réaliste 4 : la rivière reflète ce qui l'entoure (sonde prise une fois, tout le décor posé).
             if (_waters.Count > 0)
             {
@@ -417,6 +420,7 @@ namespace EdS.Game
         private void ObstacleShape(SpaceObstacle obstacle)
         {
             string id = obstacle.Id;
+            if (_envers && EnversObstacle(obstacle)) return;   // V2.51b : arbres morts, ruines inversées, éclats noirs, autel de l'Aube
             List<Vector3> points = obstacle.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
             // Relecture indépendante de la PR #167 : gorge et ravins de la surface étendue, en creux de roche sombre (prisme bas, non occultant).
             if (StyleRules.Ravine(id))
@@ -2213,6 +2217,7 @@ namespace EdS.Game
             ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
             ReleaseHome();   // V2.53.3 : matériaux de la maison du joueur
             ReleaseVines();   // V2.44.4 : matériaux des rangs de vigne
+            ReleaseEnvers();   // V2.51b : variantes sombres des matériaux, lumière de l'Envers
             if (_ice != null && _ice != _water) Object.Destroy(_ice);   // V2.44.3 (revue Codex de la PR #232) : copie de l'eau qui gèle
             Object.Destroy(_root);
         }

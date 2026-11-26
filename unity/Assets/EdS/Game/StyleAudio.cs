@@ -102,6 +102,31 @@ namespace EdS.Game
         /// </summary>
         public bool Assault { get; set; }
 
+        /// <summary>
+        /// V2.51b : la partie est dans l'Envers : les nappes du monde (campagne, forêt, rivière, pluie) se taisent, le bourdon grave de
+        /// l'Envers (fait par le code, <see cref="EnversLook.Drone"/>) monte ; la musique est celle du Seuil (AdventureSession.Mood).
+        /// </summary>
+        public bool Envers { get; set; }
+
+        private AudioSource _drone;
+
+        private void DroneVolume(float level, float deltaTime)
+        {
+            if (_drone == null)
+            {
+                if (level <= 0f) return;
+                const int rate = 22050;
+                float[] samples = EnversLook.Drone(rate);
+                AudioClip clip = AudioClip.Create("Bourdon de l'Envers", samples.Length, 1, rate, false);
+                clip.SetData(samples, 0);
+                _drone = Source(_root, "Ambiance de l'Envers");
+                _drone.clip = clip;
+                _drone.volume = 0f;
+                _drone.Play();
+            }
+            _drone.volume = Mathf.MoveTowards(_drone.volume, level, deltaTime * 0.5f);
+        }
+
         public void Update(AdventureMood mood, bool paused, float deltaTime)
         {
             float now = Time.time;
@@ -141,6 +166,8 @@ namespace EdS.Game
             }
 
             float ambience = Hushed ? 0f : _catalog.AmbienceVolume * (paused ? 0.5f : 1f);
+            DroneVolume(Envers ? ambience * 0.8f : 0f, deltaTime);   // V2.51b : le bourdon de l'Envers
+            if (Envers) ambience = 0f;   // V2.51b : ni oiseaux, ni rivière, ni pluie dans l'Envers
             foreach (KeyValuePair<StyleAmbience, AudioSource> layer in _ambience)
             {
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.
@@ -185,6 +212,7 @@ namespace EdS.Game
         {
             foreach (AudioSource source in _music.Values) source.Stop();
             foreach (AudioSource source in _ambience.Values) source.Stop();
+            if (_drone != null) Object.Destroy(_drone.clip);   // V2.51b : le bourdon fait par le code
             Object.Destroy(_root);
         }
     }
