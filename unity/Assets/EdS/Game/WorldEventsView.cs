@@ -305,7 +305,7 @@ namespace EdS.Game
             _burst.spatialBlend = at.HasValue ? 1f : 0f;
             if (at.HasValue) _burst.transform.position = at.Value;
             _burst.maxDistance = Hearing(2f);
-            _burst.PlayOneShot(clip, volume * Volume);
+            _burst.PlayOneShot(clip, volume * Volume * SoundMixer.Gain(SoundBus.Effects));   // V2.54 : mixage
             return true;
         }
 

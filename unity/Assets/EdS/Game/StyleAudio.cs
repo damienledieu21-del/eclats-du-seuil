@@ -14,10 +14,15 @@ namespace EdS.Game
     /// pas sur le bord d'un lieu). Les ambiances (oiseaux, vent, rivière) tournent en boucle, leur volume suit la rivière et le combat
     /// (<see cref="StyleRules.AmbienceVolume"/>). Volumes réglables dans le catalogue. Sans catalogue, ou sans musique ni ambiance, rien ne
     /// joue.
+    /// V2.54 (passe son des Vallons) : toujours créée, même sans catalogue ; la musique d'un lieu et d'un moment
+    /// (<see cref="SoundRules.Music"/> : souterrains, Envers, nuit, hiver, combat sous terre), ses replis (<see cref="SoundRules.MusicChain"/>)
+    /// et la durée de chaque fondu (<see cref="SoundRules.FadeSeconds"/>) ; les nappes des milieux (marais, grotte, égouts, galeries, grottes
+    /// noyées, Envers, sous l'eau, rafales : <see cref="SoundRules.BedVolume"/>), le fichier du catalogue sinon la synthèse
+    /// (<see cref="SoundMixer.Bed"/>), faite au premier besoin ; volumes de la musique et de l'ambiance du mixage (<see cref="SoundMixer"/>).
     /// </summary>
     public sealed class StyleAudio
     {
-        private const float CrossFade = 2.5f;
+        private float _crossFade = 2.5f;
         private const float CombatLinger = 6f;
 
         /// <summary>Temps (s) passé dans un autre lieu avant que la musique du lieu change.</summary>
@@ -39,7 +44,7 @@ namespace EdS.Game
             _root.transform.SetParent(parent, false);
             foreach (StyleMusic kind in System.Enum.GetValues(typeof(StyleMusic)))
             {
-                AudioClip clip = catalog.MusicClip(kind);
+                AudioClip clip = catalog != null ? catalog.MusicClip(kind) : null;
                 if (clip == null) continue;
                 AudioSource source = Source(_root, "Musique " + kind);
                 source.clip = clip;
@@ -52,8 +57,8 @@ namespace EdS.Game
                 if (kind == StyleAmbience.Thunder) continue;
                 // Sous-lot V2.11 : les braises du four sont un son posé sur le four de Firmin (WorldMarkers), pas une nappe.
                 if (kind == StyleAmbience.Bakery) continue;
-                AudioClip clip = catalog.AmbienceClip(kind);
-                if (clip == null) continue;
+                AudioClip clip = catalog != null ? catalog.AmbienceClip(kind) : null;
+                if (clip == null) continue;   // V2.54 : une nappe de milieu sans fichier est faite au premier besoin (Bed)
                 AudioSource source = Source(_root, "Ambiance " + kind);
                 source.clip = clip;
                 source.volume = 0f;
@@ -64,14 +69,11 @@ namespace EdS.Game
             }
         }
 
-        /// <summary>Musique et ambiance de l'aventure, ou null sans catalogue, ni musique, ni ambiance.</summary>
-        public static StyleAudio Create(Transform parent)
-        {
-            StyleCatalog catalog = StyleCatalog.Loaded;
-            if (catalog == null) return null;
-            bool any = catalog.Music != null && catalog.Music.Length > 0 || catalog.Ambiences != null && catalog.Ambiences.Length > 0;
-            return any ? new StyleAudio(catalog, parent) : null;
-        }
+        /// <summary>Musique et ambiance de l'aventure (V2.54 : toujours, même sans catalogue : les nappes de synthèse jouent alors seules).</summary>
+        public static StyleAudio Create(Transform parent) => new StyleAudio(StyleCatalog.Loaded, parent);
+
+        private float MusicVolume => _catalog != null ? _catalog.MusicVolume : 0.5f;
+        private float AmbienceVolume => _catalog != null ? _catalog.AmbienceVolume : 0.6f;
 
         private static AudioSource Source(GameObject root, string name)
         {
@@ -108,23 +110,32 @@ namespace EdS.Game
         /// </summary>
         public bool Envers { get; set; }
 
-        private AudioSource _drone;
+        /// <summary>V2.54 : le milieu sonore (<see cref="AdventureSession.SoundBiomeHere"/>).</summary>
+        public SoundBiome Biome { get; set; }
 
-        private void DroneVolume(float level, float deltaTime)
+        /// <summary>V2.54 : c'est l'hiver (musique d'exploration de l'hiver).</summary>
+        public bool Winter { get; set; }
+
+        /// <summary>V2.54 : le personnage est sous l'eau (plongée) : tout s'étouffe, la nappe sous l'eau joue seule.</summary>
+        public bool Underwater { get; set; }
+
+        /// <summary>V2.54 : le volume d'une nappe de milieu ; sa source (fichier du catalogue ou synthèse) est faite au premier besoin.</summary>
+        private void BedVolume(StyleAmbience kind, float level, float deltaTime)
         {
-            if (_drone == null)
+            if (!_ambience.TryGetValue(kind, out AudioSource source))
             {
                 if (level <= 0f) return;
-                const int rate = 22050;
-                float[] samples = EnversLook.Drone(rate);
-                AudioClip clip = AudioClip.Create("Bourdon de l'Envers", samples.Length, 1, rate, false);
-                clip.SetData(samples, 0);
-                _drone = Source(_root, "Ambiance de l'Envers");
-                _drone.clip = clip;
-                _drone.volume = 0f;
-                _drone.Play();
+                AudioClip clip = SoundMixer.Bed(kind);
+                if (clip == null) return;
+                source = Source(_root, "Nappe " + kind + " (synthèse)");
+                source.clip = clip;
+                source.volume = 0f;
+                source.time = clip.length * (0.13f * (int)kind % 1f);
+                source.Play();
+                _ambience[kind] = source;
             }
-            _drone.volume = Mathf.MoveTowards(_drone.volume, level, deltaTime * 0.5f);
+            if (!source.isPlaying) source.Play();
+            source.volume = Mathf.MoveTowards(source.volume, level, deltaTime * 0.5f);
         }
 
         public void Update(AdventureMood mood, bool paused, float deltaTime)
@@ -136,11 +147,12 @@ namespace EdS.Game
             // Sous-lot V2.9.2 : l'auberge (« The Old Tower Inn »), le bourg la nuit (« Night Town »), les attaques (« Determined Pursuit »).
             // Sous-lot V2.11 (5e vague) : « Song of the Forge » près de la forge le jour, la musique de la crypte dans une crypte ; le bourg en
             // fête (réglage « Human Festival ») a sa foule. Sous-lot V2.10 : la musique des fêtes du jeu (mood.Places, sans le réglage).
-            AmbiencePlace places = mood.Places | (_catalog.HumanFestival ? AmbiencePlace.Festival : AmbiencePlace.None);
-            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (places & AmbiencePlace.Threshold) != 0, Story,
+            AmbiencePlace places = mood.Places | (_catalog != null && _catalog.HumanFestival ? AmbiencePlace.Festival : AmbiencePlace.None);
+            StyleMusic placeMusic = StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (places & AmbiencePlace.Threshold) != 0, Story,
                 mood.Night, (places & AmbiencePlace.TavernInside) != 0, Assault, mood.Indoors ? double.PositiveInfinity : mood.ForgeDistance,
-                (places & AmbiencePlace.Crypt) != 0, mood.Places));
-            if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
+                (places & AmbiencePlace.Crypt) != 0, mood.Places);
+            StyleMusic wanted = Available(SoundRules.Music(placeMusic, Biome, mood.Night, Winter));   // V2.54 : lieu et moment
+            if (_playing is null || SoundRules.IsFight(wanted) || _playing is StyleMusic now0 && SoundRules.IsFight(now0))
                 Switch(wanted);
             else if (wanted != _playing)
             {
@@ -154,8 +166,9 @@ namespace EdS.Game
             }
             else _candidate = null;
 
-            float level = Hushed ? 0f : _catalog.MusicVolume * (paused ? 0.5f : 1f);
-            float step = level > 0f ? level * deltaTime / CrossFade : Hushed ? _catalog.MusicVolume * deltaTime / CrossFade + 0.0001f : 1f;
+            // V2.54 : volume de la musique du mixage ; étouffée sous l'eau.
+            float level = Hushed ? 0f : MusicVolume * SoundMixer.Gain(SoundBus.Music) * (paused ? 0.5f : 1f) * (Underwater ? 0.35f : 1f);
+            float step = level > 0f ? level * deltaTime / _crossFade : Hushed ? MusicVolume * deltaTime / _crossFade + 0.0001f : 1f;
             foreach (KeyValuePair<StyleMusic, AudioSource> music in _music)
             {
                 AudioSource source = music.Value;
@@ -165,11 +178,16 @@ namespace EdS.Game
                 if (target <= 0f && source.volume <= 0f && source.isPlaying) source.Pause();
             }
 
-            float ambience = Hushed ? 0f : _catalog.AmbienceVolume * (paused ? 0.5f : 1f);
-            DroneVolume(Envers ? ambience * 0.8f : 0f, deltaTime);   // V2.51b : le bourdon de l'Envers
-            if (Envers) ambience = 0f;   // V2.51b : ni oiseaux, ni rivière, ni pluie dans l'Envers
+            float ambience = Hushed ? 0f : AmbienceVolume * SoundMixer.Gain(SoundBus.Ambience) * (paused ? 0.5f : 1f);
+            // V2.54 : les nappes des milieux (le bourdon de l'Envers de la V2.51b en est une), faites au premier besoin.
+            SoundBiome biome = Envers ? SoundBiome.Envers : Biome;
+            for (StyleAmbience bed = StyleAmbience.Marsh; bed <= StyleAmbience.Gusts; bed++)
+                BedVolume(bed, ambience * (float)SoundRules.BedVolume(bed, biome, fighting, Underwater, mood.Night, mood.Rain), deltaTime);
+            // V2.51b, V2.54 : ni oiseaux, ni rivière, ni pluie dans l'Envers, sous terre (hors crypte) ni sous l'eau.
+            if (SoundRules.MutesWorld(biome, Underwater)) ambience = 0f;
             foreach (KeyValuePair<StyleAmbience, AudioSource> layer in _ambience)
             {
+                if (SoundRules.IsBed(layer.Key)) continue;
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.
                 if (!layer.Value.isPlaying) layer.Value.Play();
                 // Sous-lot V2.9 (2e vague) : marché, taverne, forge, feu de camp, campagne et forêt suivent le lieu et l'heure du monde.
@@ -184,10 +202,10 @@ namespace EdS.Game
         /// <summary>La musique voulue, ou la suivante qui existe : le Gardien sans musique prend celle du combat, le reste celle de l'exploration.</summary>
         private StyleMusic Available(StyleMusic wanted)
         {
-            if (_music.ContainsKey(wanted)) return wanted;
             // Sous-lot V2.9.2 : le Gardien et les attaques prennent le combat, le bourg la nuit et l'auberge la musique du village.
-            if (StyleRules.MusicFallback(wanted) is StyleMusic next && _music.ContainsKey(next)) return next;
-            if (wanted == StyleMusic.Story && _playing is StyleMusic current && current != StyleMusic.Combat && current != StyleMusic.Boss) return current;
+            // V2.54 : toute la chaîne des replis (galeries → grottes → crypte, Envers → Seuil, nuit → exploration…).
+            if (SoundRules.MusicChain(wanted, _music.ContainsKey) is StyleMusic found) return found;
+            if (wanted == StyleMusic.Story && _playing is StyleMusic current && !SoundRules.IsFight(current)) return current;
             return StyleMusic.Exploration;
         }
 
@@ -195,9 +213,10 @@ namespace EdS.Game
         {
             _candidate = null;
             if (wanted == _playing) return;
+            _crossFade = (float)SoundRules.FadeSeconds(_playing, wanted);   // V2.54 : 1 s vers le combat, 4 s pour en sortir, 5 s pour l'Envers
             _playing = wanted;
             if (!_music.TryGetValue(wanted, out AudioSource source)) return;
-            bool fromStart = wanted == StyleMusic.Combat || wanted == StyleMusic.Boss;
+            bool fromStart = SoundRules.IsFight(wanted);
             if (source.isPlaying && source.volume > 0f) return;   // encore audible (fondu de sortie) : elle remonte d'où elle est
             if (fromStart || source.time <= 0f)
             {
@@ -212,7 +231,6 @@ namespace EdS.Game
         {
             foreach (AudioSource source in _music.Values) source.Stop();
             foreach (AudioSource source in _ambience.Values) source.Stop();
-            if (_drone != null) Object.Destroy(_drone.clip);   // V2.51b : le bourdon fait par le code
             Object.Destroy(_root);
         }
     }

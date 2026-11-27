@@ -955,11 +955,19 @@ namespace EdS.Game
         /// Joue un son de l'essai (rien sans catalogue ou sans ce son). Essai réaliste 7 : une variante différente à chaque fois quand le
         /// catalogue en a plusieurs.
         /// </summary>
+        /// <remarks>
+        /// V2.54 (passe son) : sans fichier, le bruitage de synthèse (<see cref="SoundMixer.Synth"/>) ; volume des effets du mixage ; limite
+        /// de voix et salves (<see cref="SoundMixer.TryStart"/>).
+        /// </remarks>
         public static void Play(AudioSource source, StyleSound sound, float volume = 0.8f)
         {
+            if (source == null) return;
             StyleCatalog catalog = StyleCatalog.Loaded;
-            AudioClip clip = catalog != null ? catalog.Sound(sound, _variant++) : null;
-            if (source != null && clip != null) source.PlayOneShot(clip, volume);
+            int variant = _variant++;
+            AudioClip clip = catalog != null ? catalog.Sound(sound, variant) : null;
+            if (clip == null) clip = SoundMixer.Synth(sound, variant);
+            if (clip == null || !SoundMixer.TryStart(sound, clip.length)) return;
+            source.PlayOneShot(clip, volume * SoundMixer.Gain(SoundBus.Effects));
         }
     }
 }

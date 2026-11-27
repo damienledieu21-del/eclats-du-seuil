@@ -29,7 +29,12 @@ namespace EdS.Game
         /// À chaque image : <paramref name="feet"/> (place du personnage), <paramref name="forest"/> (dans la forêt), <paramref name="walking"/>
         /// (il marche lui-même : ni pause, ni scène) ; <paramref name="arena"/> donne le sol.
         /// </summary>
-        public void Update(ArenaView arena, Vector3 feet, bool forest, bool walking, float deltaTime)
+        /// <remarks>
+        /// V2.54 (passe son) : <paramref name="biome"/> et <paramref name="snow"/> (neige au sol, 0 à 1) choisissent le sol
+        /// (<see cref="SoundRules.Step"/> : pierre sous terre, eau dans les grottes noyées, boue au marais, neige, plancher) ; sans fichier ni
+        /// catalogue, le pas de synthèse.
+        /// </remarks>
+        public void Update(ArenaView arena, Vector3 feet, bool forest, bool walking, float deltaTime, SoundBiome biome, double snow)
         {
             _pool.Update();
             if (!walking || deltaTime <= 0f || arena == null)
@@ -58,9 +63,10 @@ namespace EdS.Game
             if (_walked < length) return;
             _walked = 0f;
             StyleCatalog catalog = StyleCatalog.Loaded;
-            if (catalog == null || catalog.StepVolume <= 0f) return;
-            StyleSound sound = arena.StepSound(feet, forest);
-            _pool.Play(sound, _steps++, feet - Vector3.up, 0.5f, catalog.StepVolume, 0.4f, false);
+            float volume = catalog != null ? catalog.StepVolume : 0.45f;
+            if (volume <= 0f) return;
+            StyleSound sound = SoundRules.Step(arena.StepSound(feet, forest), biome, snow, false);
+            _pool.Play(sound, _steps++, feet - Vector3.up, 0.5f, volume, 0.4f, false);
         }
     }
 }

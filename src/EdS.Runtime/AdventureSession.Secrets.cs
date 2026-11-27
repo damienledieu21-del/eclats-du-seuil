@@ -26,6 +26,9 @@ namespace EdS.Runtime
         /// pas du tout. Une stèle déjà lue se relit ; un coffre déjà vidé le dit. Faux, avec un message et sans rien changer, si la fouille est
         /// refusée (pas de secret à portée, combat, sac plein, registre plein).
         /// </summary>
+        /// <summary>V2.54 (passe son) : coffres ouverts depuis le début de la session (affichage seulement : le bruit du coffre ; non sauvegardé).</summary>
+        public int ChestsOpened { get; private set; }
+
         public bool OpenSecret()
         {
             if (!(SecretInReach is ZoneSecret secret) || Dialogue != null) return false;
@@ -36,6 +39,7 @@ namespace EdS.Runtime
                 case SecretRefusal.None:
                     // Revue Codex de la PR #262 (P2) : objets et clé du registre changés hors des événements du tick : à la prochaine sauvegarde.
                     _dirty = true;
+                    if (secret.Kind != SecretKind.Lore) ChestsOpened++;   // V2.54 : le bruit du coffre
                     Say(secret.Text);
                     foreach ((string item, int count) in given) Say("text.ui.item_given", ItemName(item), count);
                     return true;

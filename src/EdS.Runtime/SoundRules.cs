@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace EdS.Runtime
 {
@@ -60,7 +61,7 @@ namespace EdS.Runtime
         /// « mine_… », « grottes_noyees_… », « grotte_… », « envers_… » ; un étage <paramref name="envers"/> ; un intérieur), puis les lieux
         /// du dehors (<paramref name="places"/>, <paramref name="placeIds"/> : marais, altitude, forêt, bourg, lac), sinon le plein air.
         /// </summary>
-        public static SoundBiome BiomeOf(string? zoneId, bool indoor, bool underground, bool envers, AmbiencePlace places, string[]? placeIds)
+        public static SoundBiome BiomeOf(string? zoneId, bool indoor, bool underground, bool envers, AmbiencePlace places, IReadOnlyList<string>? placeIds)
         {
             string zone = zoneId ?? string.Empty;
             if (envers || Starts(zone, "envers")) return SoundBiome.Envers;
@@ -74,8 +75,9 @@ namespace EdS.Runtime
             if ((places & AmbiencePlace.Crypt) != 0) return SoundBiome.Crypt;
             bool marsh = false, heights = false;
             if (placeIds != null)
-                foreach (string id in placeIds)
+                for (int i = 0; i < placeIds.Count; i++)
                 {
+                    string id = placeIds[i];
                     marsh |= IsMarsh(id);
                     heights |= IsHeights(id);
                 }

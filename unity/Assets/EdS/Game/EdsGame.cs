@@ -158,6 +158,41 @@ namespace EdS.Game
 
         /// <summary>Relecture de l'essai 7 : lieu et combat pour la musique, relus quatre fois par seconde.</summary>
         private AdventureMood _mood;
+
+        // V2.54 (passe son) : milieu sonore, hiver, neige au sol, plongée en cours, coffres et plongées déjà entendus.
+        private SoundBiome _biome;
+        private bool _winter;
+        private float _snow;
+        private float _underwaterUntil = -1f;
+        private bool _emergePending;
+        private int _heardDives = -1, _heardChests = -1;
+
+        /// <summary>
+        /// V2.54 (passe son) : les bruits des actions du monde : un coffre ouvert, une plongée (la nappe sous l'eau le temps du passage, puis
+        /// la remontée et le souffle). Les compteurs de la session sont relus à chaque image ; une nouvelle session repart de ses valeurs.
+        /// </summary>
+        private void SoundEvents(AdventureSession a)
+        {
+            if (_heardDives < 0 || _heardDives > a.Dives) _heardDives = a.Dives;
+            if (_heardChests < 0 || _heardChests > a.ChestsOpened) _heardChests = a.ChestsOpened;
+            if (a.ChestsOpened > _heardChests)
+            {
+                _heardChests = a.ChestsOpened;
+                StyleLook.Play(Audio, StyleSound.ChestOpen, 0.8f);
+            }
+            if (a.Dives > _heardDives)
+            {
+                _heardDives = a.Dives;
+                StyleLook.Play(Audio, StyleSound.Dive, 0.9f);
+                _underwaterUntil = Time.time + 1.8f;
+                _emergePending = true;
+            }
+            else if (_emergePending && Time.time >= _underwaterUntil)
+            {
+                _emergePending = false;
+                StyleLook.Play(Audio, StyleSound.Emerge, 0.8f);
+            }
+        }
         private float _moodAge = 99f;
         private int _shownQuests, _shownLoot;
         private string _startupError;
@@ -404,6 +439,8 @@ namespace EdS.Game
                 _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
                 PaintedMap.Forget();
                 if (_shownZone != null) _fade = 1f;
+                // V2.54 (passe son) : une porte passée s'entend (une plongée a son propre bruit).
+                if (_shownZone != null && _adventure.Dives == _heardDives) StyleLook.Play(Audio, StyleSound.DoorOpen, 0.7f);
             }
             _shownZone = _adventure.CurrentZone;
             // Sous-lot V1.1 : un voyage rapide passe aussi par un fondu au noir.
@@ -842,9 +879,10 @@ namespace EdS.Game
             if (_arena.Player != null)
             {
                 _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || _loading.Active || a.InScene ? 0f : Time.deltaTime);
-                if (_footsteps == null && StyleCatalog.Loaded != null) _footsteps = new Footsteps(_camera.Camera.transform);
-                _footsteps?.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
-                    !_paused && !a.InScene, Time.deltaTime);
+                // V2.54 (passe son) : des pas même sans catalogue (pas de synthèse), selon le milieu et la neige.
+                if (_footsteps == null) _footsteps = new Footsteps(_camera.Camera.transform);
+                _footsteps.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
+                    !_paused && !a.InScene && Time.time >= _underwaterUntil, Time.deltaTime, _biome, _snow);
             }
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
@@ -855,7 +893,15 @@ namespace EdS.Game
                 {
                     _mood = a.Mood().WithRain(_weatherLook.Rain);   // relecture de la PR #101 : la pluie montrée (essai forcé compris)
                     _moodAge = 0f;
+                    // V2.54 (passe son) : le milieu sonore, l'hiver et la neige au sol.
+                    _biome = a.SoundBiomeHere(_mood.Places);
+                    _winter = a.WardrobeSeason == WardrobeSeason.Winter;
+                    _snow = a.Sheltered ? 0f : a.SeasonShown.Snow;
                 }
+                SoundEvents(a);
+                _music.Biome = _biome;
+                _music.Winter = _winter;
+                _music.Underwater = Time.time < _underwaterUntil;
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
                 _music.Story = a.InScene;   // sous-lot V2.9 (2e vague) : la musique des scènes de l'histoire
                 _music.Assault = Assault(a);   // sous-lot V2.9.2 : pillage ou faille en cours
@@ -1802,7 +1848,11 @@ namespace EdS.Game
         private void Show(CombatFeedback feedback)
         {
             // Essai de style : un son par retour de combat (rien sans catalogue).
-            if (feedback.Kind == FeedbackKind.DamageTaken) StyleLook.Play(Audio, StyleSound.Hit, 0.6f);
+            if (feedback.Kind == FeedbackKind.DamageTaken)
+            {
+                StyleLook.Play(Audio, StyleSound.Hit, 0.6f);
+                if (_combat != null && feedback.CombatantId == _combat.PlayerId) StyleLook.Play(Audio, StyleSound.Hurt, 0.45f);   // V2.54 : le héros encaisse
+            }
             else if (feedback.Kind == FeedbackKind.Blocked) StyleLook.Play(Audio, StyleSound.Block);
             else if (feedback.Kind == FeedbackKind.PerfectParry) StyleLook.Play(Audio, StyleSound.Parry, 1f);
             else if (feedback.Kind == FeedbackKind.Died) StyleLook.Play(Audio, StyleSound.Death);

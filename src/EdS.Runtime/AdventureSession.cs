@@ -1142,9 +1142,16 @@ namespace EdS.Runtime
             // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
             if (InScene) return LeaveScene();
             if (!Pass(door)) return false;
-            if (water == WaterPass.Dive) Say("text.ui.tide.dove", Seconds(door.Water!.DiveMs!.Value));
+            if (water == WaterPass.Dive)
+            {
+                Dives++;   // V2.54 : la plongée s'entend
+                Say("text.ui.tide.dove", Seconds(door.Water!.DiveMs!.Value));
+            }
             return true;
         }
+
+        /// <summary>V2.54 (passe son) : passages noyés franchis en plongée depuis le début de la session (affichage seulement ; non sauvegardé).</summary>
+        public int Dives { get; private set; }
 
         /// <summary>Portes qui se montrent et se passent à pied : toutes, sauf celles qui mènent à une scène (sous-lot V1.9.6).</summary>
         private IEnumerable<Door> VisibleDoors => _zone.Doors.Where(d => _story.SceneIn(d.To) is null);
@@ -2282,6 +2289,21 @@ namespace EdS.Runtime
             foreach (GroundVector q in water.Points) points.Add((q.X.Raw / 10000.0, q.Z.Raw / 10000.0));
             _waterShapes[water] = points;
             return points;
+        }
+
+        private readonly List<string> _soundPlaces = new List<string>();
+
+        /// <summary>
+        /// V2.54 (passe son) : le milieu sonore où se trouve le personnage (<see cref="SoundRules.BiomeOf"/>) d'après la zone et les lieux qui
+        /// le contiennent ; <paramref name="places"/> : les ambiances de lieu de <see cref="Mood"/>. Affichage seulement.
+        /// </summary>
+        public SoundBiome SoundBiomeHere(AmbiencePlace places)
+        {
+            _soundPlaces.Clear();
+            if (Me is GroundVector p)
+                foreach (Place pl in _zone.Places)
+                    if (pl.Contains(p)) _soundPlaces.Add(pl.Id);
+            return SoundRules.BiomeOf(_zone.Id, _zone.Indoor, _zone.Underground, _zone.Envers, places, _soundPlaces);
         }
 
         public AdventureMood Mood()

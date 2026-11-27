@@ -233,7 +233,7 @@ namespace EdS.Game
                 _thunderAt = -1f;
                 StyleCatalog catalog = StyleCatalog.Loaded;
                 // Revue Codex de la PR #101 : le volume d'ambiance du catalogue, sans plancher (0 : muet), comme la pluie.
-                float volume = (catalog != null ? catalog.AmbienceVolume : 0.8f) * _thunderVolume * (paused ? 0.5f : 1f);
+                float volume = (catalog != null ? catalog.AmbienceVolume : 0.8f) * _thunderVolume * (paused ? 0.5f : 1f) * SoundMixer.Gain(SoundBus.Ambience);   // V2.54 : mixage
                 _thunderSource.pitch = 0.9f + Mathf.Repeat(now * 3.1f, 0.25f);
                 if (_thunderClip != null) _thunderSource.PlayOneShot(_thunderClip, volume);
             }
@@ -243,7 +243,7 @@ namespace EdS.Game
             {
                 StyleCatalog catalog = StyleCatalog.Loaded;
                 float target = hushed ? 0f : (float)StyleRules.AmbienceVolume(StyleAmbience.Rain, double.NaN, false, false, indoors, 0, rain)
-                    * (catalog != null ? catalog.AmbienceVolume : 0.6f) * (paused ? 0.5f : 1f);
+                    * (catalog != null ? catalog.AmbienceVolume : 0.6f) * (paused ? 0.5f : 1f) * SoundMixer.Gain(SoundBus.Ambience);
                 _rainSource.volume = Mathf.MoveTowards(_rainSource.volume, target, deltaTime * 0.4f);
                 if (_rainSource.volume > 0.001f && !_rainSource.isPlaying) _rainSource.Play();
                 else if (_rainSource.volume <= 0.001f && target <= 0f && _rainSource.isPlaying) _rainSource.Pause();
