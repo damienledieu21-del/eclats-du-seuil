@@ -241,6 +241,7 @@ namespace EdS.Game
             if (terrain) Grass(space);
             RiftDoors();   // V2.51b : les failles, des deux côtés
             if (_envers) EnversDecor(space, map);   // V2.51b : formes flottantes, matériaux sombres, cendres, lumière de l'Envers
+            SmallCasters();   // V2.53 : les petits objets ne projettent plus d'ombre sur une machine allégée
             // Essai réaliste 4 : la rivière reflète ce qui l'entoure (sonde prise une fois, tout le décor posé).
             if (_waters.Count > 0)
             {
@@ -1995,6 +1996,23 @@ namespace EdS.Game
             _roofMax += Vector3.up * lift;
         }
 
+        /// <summary>
+        /// V2.53 (audit des performances, docs/PERFS.md) : sur un PC modeste ou un téléphone, les petits objets du décor (moins de
+        /// <see cref="PerfRules.SmallCaster"/> m : bougies, gobelets, cailloux, petites caisses) ne projettent plus d'ombre ; chacun était
+        /// redessiné dans chaque cascade de la carte d'ombres. Les corps animés gardent la leur. Rien ne change sur le PC complet.
+        /// </summary>
+        private void SmallCasters()
+        {
+            DeviceTier tier = DeviceQuality.Tier;
+            if (!PerfRules.Reduced(tier)) return;
+            foreach (MeshRenderer r in _root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.On) continue;
+                Vector3 size = r.bounds.size;
+                if (!PerfRules.CastsShadow(size.x, size.y, size.z, tier)) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+
         // --- Coupe des décors qui cachent le joueur --------------------------------------------------------------------------
 
         /// <summary>
@@ -2012,8 +2030,14 @@ namespace EdS.Game
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
             StyleWorld.AnimateWater(Time.time);   // essai réaliste : les vagues de la rivière glissent
             bool underRoof = _hasRoof && player.x >= _roofMin.x && player.x <= _roofMax.x && player.z >= _roofMin.z && player.z <= _roofMax.z;
-            foreach (Occluder o in _occluders)
+            // V2.53 (audit des performances) : boîte des segments caméra-corps ; un décor au repos (entier, pas au-dessus, pas de toit)
+            // dont la boîte ne la touche pas est sauté sans appel à Unity (des milliers de pièces par image dans le Bourg).
+            var reach = OccluderRules.Reach((camera.x, camera.y, camera.z), (player.x, player.y, player.z));
+            for (int i = 0; i < _occluders.Count; i++)
             {
+                Occluder o = _occluders[i];
+                if (!o.Overhead && !underRoof && o.Cut >= 1f
+                    && !OccluderRules.Overlap((o.Min.x, o.Min.y, o.Min.z), (o.Max.x, o.Max.y, o.Max.z), reach.Min, reach.Max)) continue;
                 if (o.Transform == null) continue;
                 // V1.10 (essai 10) : un décor au-dessus atteint par la caméra, ou le toit sous lequel on se tient, disparaît ; un décor entre
                 // la caméra et le corps (bas des jambes, milieu ou tête : avant, la tête seule) cache le joueur.
@@ -2031,13 +2055,18 @@ namespace EdS.Game
                 // Décor sans matériau qui sache devenir transparent (shader d'un pack) : coupe d'avant, abaissé ou retiré.
                 float height = o.Max.y - o.Min.y;
                 float target = !masks ? 1f : o.Lower && height > CutHeight ? CutHeight / height : CutHeight;
+                float before = o.Cut;
                 o.Cut = Mathf.MoveTowards(o.Cut, target, deltaTime * 4f);
+                // V2.53 : rien n'est réécrit dans Unity sans changement (avant : une écriture par décor et par image).
                 if (o.Lower)
                 {
-                    Vector3 s = o.Transform.localScale;
-                    o.Transform.localScale = new Vector3(s.x, o.Cut, s.z);
+                    if (o.Cut != before)
+                    {
+                        Vector3 s = o.Transform.localScale;
+                        o.Transform.localScale = new Vector3(s.x, o.Cut, s.z);
+                    }
                 }
-                else if (o.Renderer != null) o.Renderer.enabled = o.Cut > 0.5f;
+                else if (o.Renderer != null && o.Renderer.enabled != o.Cut > 0.5f) o.Renderer.enabled = o.Cut > 0.5f;
             }
         }
 
