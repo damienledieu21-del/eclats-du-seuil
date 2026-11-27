@@ -412,6 +412,13 @@ public class V28CheminsGrilleTests
             {
                 region = false;   // budget refusé par ce système : repli sans région, contrôlé par les compteurs seuls
             }
+            catch (InvalidOperationException)
+            {
+                // « The NoGCRegion mode was already in progress » : une région précédente, terminée par une collecte, n'a pas été close
+                // (l'état interne du moteur d'exécution ne se réinitialise que par EndNoGCRegion). On la clôt puis on retente une fois.
+                try { GC.EndNoGCRegion(); } catch (InvalidOperationException) { }
+                try { region = GC.TryStartNoGCRegion(8_000_000); } catch (Exception e) when (e is InvalidOperationException || e is ArgumentOutOfRangeException) { region = false; }
+            }
             try
             {
                 int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
@@ -422,8 +429,10 @@ public class V28CheminsGrilleTests
             }
             finally
             {
-                if (region && System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.NoGCRegion)
+                if (region)
                 {
+                    // Toujours appeler EndNoGCRegion, même si une collecte a déjà quitté la région (le mode n'est alors plus NoGCRegion) :
+                    // sans cet appel l'état interne reste « en cours » et le TryStart suivant lève InvalidOperationException.
                     try
                     {
                         GC.EndNoGCRegion();
