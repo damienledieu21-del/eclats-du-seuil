@@ -69,15 +69,18 @@ namespace EdS.Net
             var done = new TaskCompletionSource<TcpNetConnection>();
             new Thread(() =>
             {
-                var client = new TcpClient();
+                TcpClient? client = null;
                 try
                 {
+                    client = new TcpClient();
                     client.Connect(host, port);
                     done.TrySetResult(new TcpNetConnection(client, maxReceivePayload, maxSendPayload));
                 }
                 catch (Exception e)
                 {
-                    client.Dispose();
+                    // Aucune exception ne sort d'un fil (elle arrêterait le processus) : toute erreur, y compris à la création du client,
+                    // est transmise à la tâche.
+                    try { client?.Dispose(); } catch (Exception) { }
                     done.TrySetException(e);
                 }
             }) { IsBackground = true, Name = "EdS.Net connexion " + host + ":" + port }.Start();
