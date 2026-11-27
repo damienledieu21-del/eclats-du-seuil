@@ -137,7 +137,7 @@ public sealed class V252bEnversLieuxUnityTests
         }
         Assert.Equal(EnversLieux.HoundModel, EnversLieux.CreatureModel("chien_reflet2_v2"));
         Assert.True(EnversLieux.CreatureWalks(EnversLieux.HoundModel));
-        Assert.False(EnversLieux.CreatureWalks(EnversLieux.WraithModel));
+        Assert.True(EnversLieux.CreatureWalks(EnversLieux.WraithModel));   // V2.55 : bras et robe qui ondulent (Walk, Idle)
         foreach (string id in new[] { "moine_echo_crypte1", "chien1", "loup_echo_envers1", "bandit_reflet2", "ours_reflet_brunot" })
             Assert.Null(EnversLieux.CreatureModel(id));
         Assert.Equal(2.2, EnversLieux.WraithHeight("moine_reflet_abbe_courrouce"));
@@ -178,6 +178,10 @@ public sealed class V252bEnversLieuxUnityTests
         {
             Assert.True(File.Exists(Path.Combine(creatures, name + ".fbx")), name);
             Assert.True(File.Exists(Path.Combine(creatures, name + "_couleur.jpg")), name);
+            // V2.55 : les deux ont leur marche dans le FBX (prise « Walk ») ; le spectre aussi son attente (« Idle »).
+            byte[] bytes = File.ReadAllBytes(Path.Combine(creatures, name + ".fbx"));
+            Assert.Equal(EnversLieux.CreatureWalks(name), bytes.AsSpan().IndexOf("Walk"u8) >= 0);
+            if (name == EnversLieux.WraithModel) Assert.True(bytes.AsSpan().IndexOf("Idle"u8) >= 0);
         }
         Assert.EndsWith("Resources/" + EnversLieux.Folder.TrimEnd('/'), EnversLieux.AssetFolder);
         Assert.EndsWith("Resources/" + EnversLieux.CreatureFolder.TrimEnd('/'), EnversLieux.CreatureAssetFolder);

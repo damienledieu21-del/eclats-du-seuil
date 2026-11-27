@@ -33,10 +33,10 @@ namespace EdS.Runtime
         /// <summary>Coffre englouti (bas).</summary>
         Chest = 7,
 
-        /// <summary>Repaire des pilleurs d'épaves (caisses, filets, lanternes) : sa lumière.</summary>
+        /// <summary>Repaire des pilleurs d'épaves (caisses, filets, lanternes) : sa lumière (occulteur depuis V2.55).</summary>
         Lair = 8,
 
-        /// <summary>Ancre rouillée de l'épave.</summary>
+        /// <summary>Ancre rouillée de l'épave (occulteur depuis V2.55).</summary>
         Anchor = 9,
     }
 
@@ -98,7 +98,8 @@ namespace EdS.Runtime
 
         /// <summary>Les pièces hautes cachent le personnage : enregistrées comme occulteurs (fondues ou coupées comme les autres murs).</summary>
         public static bool Occludes(DrownedPiece piece) =>
-            piece == DrownedPiece.Wall || piece == DrownedPiece.Vault || piece == DrownedPiece.Rock || piece == DrownedPiece.Wreck;
+            piece == DrownedPiece.Wall || piece == DrownedPiece.Vault || piece == DrownedPiece.Rock || piece == DrownedPiece.Wreck
+            || piece == DrownedPiece.Anchor || piece == DrownedPiece.Lair;   // V2.55 : l'ancre (3 m) et le repaire (2,2 m) cachaient le héros
 
         /// <summary>Eau (bassin) : posée au ras du sol.</summary>
         public static bool IsWater(DrownedPiece piece) => piece == DrownedPiece.Basin;

@@ -1427,3 +1427,12 @@ Détail, inventaire, liste des fichiers à produire et chiffrage : [SONS.md](SON
 - **PC modeste** : au plus 24 bruitages à la fois (16 sur téléphone) ; les pas cèdent avant les coups, la mort et les portes passent toujours.
 
 Ce que tu vérifies : marcher du pré à la forêt, au col, aux pilotis du marais, puis descendre aux égouts, à la grotte de la cascade, aux galeries et aux grottes noyées (plonger) et passer dans l'Envers : la musique et la nappe changent en fondu, sans coupure ; les pas changent de sol ; un combat sous terre a sa musique ; ouvrir un coffre ; régler chaque volume à 0 puis à 100 %.
+
+## Défauts des kits récents (branche `v2.55-defauts`, 27 novembre 2026)
+
+Contrôlés sur des rendus Blender (Workbench, sans écran : face, côté, dessus, oblique), sans dépense Tripo :
+
+- **Éclat noir** (`Envers/eclat_noir`) : pas couché mais trapu chez Tripo ; mis aux côtés de sa fiche, 1,5 × 1,5 × 3 m (`finir_envers.py`, `ETIRER`).
+- **Ancre de l'épave** (`Noyees/ancre_noyee`) : penchée à ~45° ; redressée par calcul (`finir_noyees.py`, `REDRESSER`), 2,26 × 0,61 × 3 m. L'ancre et le repaire sont occulteurs (`DrownedLooks.Occludes`).
+- **Gouffre des galeries** : le modèle est un bloc plein de 8 m qui bouchait le creux ; il n'est plus chargé (`GalleryLooks.ModelFor(Chasm)` nul) : fond, parois, lueur et lèvres procéduraux.
+- **Golem de cristal** et **spectre reflet** : animations faites dans Blender par script sur leur squelette Tripo (`atelier/eds_marche_procedurale.py`) : marche lourde et attente du golem ; bras et traîne de la robe qui ondulent pour le spectre, qui flotte toujours par le code (`EnversFloat`). Prises « Walk » et « Idle », importées en « Legacy » comme les autres créatures (`CreatureWalks` vrai). Après la mise à jour, relancer **Éclats du Seuil → Préparer l'essai de style** pour que les deux FBX passent en « Legacy ».
