@@ -367,7 +367,7 @@ public class V197VillageTests
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
         Assert.Equal(56, book.Npcs.Count);   // V2.53.2 : Maître Bertin ;   // V2.43.2b : les cinq PNJ des lieux reconstruits ; fêtes d'Orsédia (F3) : le forain des fêtes ; lot C (17 novembre 2026) : Baudouin, Aveline, Perrine et Huguet ; V2.30.5 : six marchands du Bourg et la famille Vaudry ;   // V2.14 : Bastien, Margot, Gisèle et Ilario, puis Lucie, Tiphaine et Jeannot (employés) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
-        Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        Assert.Equal((23, 23), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));   // V2.57 : la voix du moulin (quatre chez Albe, une chez Odile)
     }
 
     [Fact]
