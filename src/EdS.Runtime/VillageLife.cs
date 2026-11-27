@@ -201,12 +201,22 @@ namespace EdS.Runtime
         /// <summary>Trajet court (m) : en dessous, on va tout droit (une place à côté de l'autre).</summary>
         public const double DirectDistance = 24;
 
-        /// <summary>Trajets gardés au plus (au-delà, la mémoire est vidée : jamais de croissance sans borne).</summary>
+        /// <summary>
+        /// Trajets gardés au plus par défaut (relecture indépendante de la PR #268 : au-delà, on oublie le plus ancien quart, pas tout d'un
+        /// coup : les trajets de la journée en cours restent).
+        /// </summary>
         public const int MaxCached = 4096;
 
-        public VillageRoads(IReadOnlyList<StyleRoad>? roads)
+        private readonly int _maxCached;
+        private readonly Queue<(long, long, long, long)> _order = new Queue<(long, long, long, long)>();
+
+        public VillageRoads(IReadOnlyList<StyleRoad>? roads, int maxCached = MaxCached)
         {
-            var list = (roads ?? Array.Empty<StyleRoad>()).OrderBy(r => r.Id, StringComparer.Ordinal).ToList();
+            if (maxCached < 1) throw new ArgumentOutOfRangeException(nameof(maxCached));
+            _maxCached = maxCached;
+            // Relecture de la PR #268 : une route sans assez de points (ou absente) est ignorée, jamais une erreur.
+            var list = (roads ?? Array.Empty<StyleRoad>()).Where(r => r != null && r.Points != null && r.Points.Count >= 2)
+                .OrderBy(r => r.Id, StringComparer.Ordinal).ToList();
             var firstOf = new List<int>();
             foreach (StyleRoad r in list)
             {
@@ -251,6 +261,32 @@ namespace EdS.Runtime
         }
 
         public int NodeCount => _nodes.Count;
+
+        /// <summary>Trajets gardés en ce moment.</summary>
+        public int CachedCount => _cache.Count;
+
+        /// <summary>Nombre de morceaux de réseau non reliés entre eux (0 sans route ; 1 : tout se rejoint).</summary>
+        public int Components()
+        {
+            var seen = new bool[_nodes.Count];
+            int parts = 0;
+            for (int i = 0; i < _nodes.Count; i++)
+            {
+                if (seen[i]) continue;
+                parts++;
+                var stack = new Stack<int>();
+                stack.Push(i);
+                seen[i] = true;
+                while (stack.Count > 0)
+                    foreach (int j in _links[stack.Pop()])
+                        if (!seen[j])
+                        {
+                            seen[j] = true;
+                            stack.Push(j);
+                        }
+            }
+            return parts;
+        }
 
         private int Node((double X, double Z) p)
         {
@@ -302,13 +338,26 @@ namespace EdS.Runtime
         /// Trajet de (<paramref name="fromX"/>, <paramref name="fromZ"/>) à (<paramref name="toX"/>, <paramref name="toZ"/>) : tout droit s'il
         /// est court ou sans route ; sinon on rejoint la route, on la suit, on la quitte. Le premier point est le départ, le dernier l'arrivée.
         /// </summary>
-        public IReadOnlyList<(double X, double Z)> Route(double fromX, double fromZ, double toX, double toZ)
+        public IReadOnlyList<(double X, double Z)> Route(double fromX, double fromZ, double toX, double toZ) => Route(fromX, fromZ, toX, toZ, true);
+
+        /// <summary>
+        /// Comme <see cref="Route(double, double, double, double)"/> ; <paramref name="remember"/> faux : le trajet n'est pas gardé (départ
+        /// quelconque, comme le corps d'un habitant qui rattrape sa place : il ne remplirait la mémoire que de trajets d'une seule fois).
+        /// </summary>
+        public IReadOnlyList<(double X, double Z)> Route(double fromX, double fromZ, double toX, double toZ, bool remember)
         {
             var key = (Key(fromX), Key(fromZ), Key(toX), Key(toZ));
             if (_cache.TryGetValue(key, out var cached)) return cached;
             var path = Build((fromX, fromZ), (toX, toZ));
-            if (_cache.Count >= MaxCached) _cache.Clear();
+            if (!remember) return path;
+            if (_cache.Count >= _maxCached)
+            {
+                // Éviction partielle : le plus ancien quart (au moins un trajet).
+                int drop = Math.Max(1, _maxCached / 4);
+                for (int i = 0; i < drop && _order.Count > 0; i++) _cache.Remove(_order.Dequeue());
+            }
             _cache[key] = path;
+            _order.Enqueue(key);
             return path;
         }
 
@@ -449,6 +498,12 @@ namespace EdS.Runtime
     /// </summary>
     public static class VillageLife
     {
+        /// <summary>
+        /// Distance (m) gardée entre une place d'habitant et celles des PNJ, des marchands du décor et de la foule du marché (relecture de la
+        /// PR #268 : deux corps l'un dans l'autre).
+        /// </summary>
+        public const double AvoidDistance = 1.5;
+
         /// <summary>Au plus d'habitants par carte (une maison en donne d'un à trois).</summary>
         public const int MaxResidents = 480;
 
@@ -460,9 +515,10 @@ namespace EdS.Runtime
         /// <summary>
         /// Habitants de la carte <paramref name="map"/> (sa carte entière : les routines ne dépendent pas de la fenêtre chargée) : d'un à trois
         /// par maison (adulte ; parfois un second adulte, un enfant, un ancien), leur métier d'après la maison (forge, boulangerie, échoppe,
-        /// mine, bergerie) ou tiré, leurs places. Aucun dans un intérieur.
+        /// mine, bergerie) ou tiré, leurs places. Aucun dans un intérieur. Leurs places restent à <see cref="AvoidDistance"/> m au moins des
+        /// points <paramref name="avoid"/> (PNJ, marchands du décor, foule du marché), comme des murs.
         /// </summary>
-        public static VillageWorld World(AdventureMap map, IReadOnlyList<StyleField>? fields)
+        public static VillageWorld World(AdventureMap map, IReadOnlyList<StyleField>? fields, IReadOnlyList<(double X, double Z)>? avoid = null)
         {
             if (map is null) throw new ArgumentNullException(nameof(map));
             AdventureMap whole = map.Whole;
@@ -479,6 +535,7 @@ namespace EdS.Runtime
             var stalls = boxes.Where(b => b.Kind == StyleBuilding.Stall).ToList();
             var barns = boxes.Where(b => b.Kind == StyleBuilding.Barn).ToList();
             var fieldList = (fields ?? Array.Empty<StyleField>()).ToList();
+            var avoidList = (avoid ?? Array.Empty<(double X, double Z)>()).ToList();
             var covers = inns.Concat(chapels).Concat(stalls).Concat(barns).OrderBy(b => b.Id, StringComparer.Ordinal).ToList();
             var all = boxes;
 
@@ -521,6 +578,13 @@ namespace EdS.Runtime
                             blocked = true;
                             break;
                         }
+                    if (!blocked && avoidList.Count > 0)
+                        foreach (var a0 in avoidList)
+                            if ((a0.X - x) * (a0.X - x) + (a0.Z - z) * (a0.Z - z) < AvoidDistance * AvoidDistance)
+                            {
+                                blocked = true;
+                                break;
+                            }
                     if (!blocked) return (x, z);
                     // On s'écarte de plus en plus, autour de la place voulue (au bord de la carte, la porte peut donner dehors).
                     double a = StyleRules.Variant(salt + "/libre" + k, 360) * Math.PI / 180;
@@ -906,9 +970,17 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Où est l'habitant <paramref name="r"/> à la minute <paramref name="minute"/> (avec sa fraction) : parti de la place du créneau
-        /// précédent au début du créneau en cours, il suit le trajet par les routes (<see cref="VillageRoads.Route"/>) à son allure, puis se
-        /// tient à sa place (caché s'il est entré : maison, salle de l'auberge). Fonction pure : même minute, même contexte, même réponse.
+        /// Créneaux remontés pour trouver d'où part un trajet (relecture indépendante de la PR #268) : un trajet plus long que son créneau
+        /// n'est pas fini quand le suivant commence ; le suivant part alors de là où il en était (jamais de saut à travers les maisons),
+        /// en remontant au plus ce nombre de créneaux (au-delà, la place du créneau d'avant est tenue pour atteinte).
+        /// </summary>
+        public const int LegDepth = 3;
+
+        /// <summary>
+        /// Où est l'habitant <paramref name="r"/> à la minute <paramref name="minute"/> (avec sa fraction) : parti, au début du créneau en cours,
+        /// de là où son trajet précédent l'avait mené (la place du créneau précédent s'il l'a atteinte), il suit le trajet par les routes
+        /// (<see cref="VillageRoads.Route(double, double, double, double)"/>) à son allure, puis se tient à sa place (caché s'il est entré :
+        /// maison, salle de l'auberge). Fonction pure : même minute, même contexte, même réponse.
         /// </summary>
         public static LifePose At(VillageWorld world, Resident r, double minute, VillageContext c)
         {
@@ -917,16 +989,51 @@ namespace EdS.Runtime
             double m = double.IsNaN(minute) || double.IsInfinity(minute) ? 0 : ((minute % 1440) + 1440) % 1440;
             var day = world.DayOf(r, c);
             int i = SlotAt(day, (int)Math.Floor(m));
-            LifeSpot to = day[i].Spot, from = day[(i + day.Count - 1) % day.Count].Spot;
             double elapsed = m - day[i].Start;
             if (elapsed < 0) elapsed += 1440;
-            if (Math.Abs(from.X - to.X) < 0.05 && Math.Abs(from.Z - to.Z) < 0.05)
+            var (fx, fz, _) = Departure(world, r, day, i, c, LegDepth);
+            return Walk(world, r, fx, fz, day[i].Spot, elapsed, c);
+        }
+
+        /// <summary>Durée (minutes) du créneau <paramref name="i"/> (jusqu'au début du suivant, minuit passé compris).</summary>
+        public static int Duration(IReadOnlyList<LifeSlot> day, int i)
+        {
+            int next = day[(i + 1) % day.Count].Start, start = day[i].Start;
+            int d = next - start;
+            return d <= 0 ? d + 1440 : d;
+        }
+
+        /// <summary>Point de départ du créneau <paramref name="i"/> : où en était le trajet du créneau précédent à sa fin.</summary>
+        private static (double X, double Z, bool Arrived) Departure(VillageWorld world, Resident r, IReadOnlyList<LifeSlot> day, int i, VillageContext c, int depth)
+        {
+            int p = (i + day.Count - 1) % day.Count;
+            LifeSpot prev = day[p].Spot;
+            if (depth <= 0 || day.Count < 2) return (prev.X, prev.Z, true);
+            var (fx, fz, _) = Departure(world, r, day, p, c, depth - 1);
+            LifePose end = Walk(world, r, fx, fz, prev, Duration(day, p), c);
+            return (end.X, end.Z, !end.Moving);
+        }
+
+        private static LifePose Walk(VillageWorld world, Resident r, double fromX, double fromZ, LifeSpot to, double elapsed, VillageContext c)
+        {
+            if (Math.Abs(fromX - to.X) < 0.05 && Math.Abs(fromZ - to.Z) < 0.05)
                 return new LifePose(to.X, to.Z, to.Yaw, to.Activity, to.Place, false, to.Indoors);
-            var path = world.Roads.Route(from.X, from.Z, to.X, to.Z);
+            var path = world.Roads.Route(fromX, fromZ, to.X, to.Z);
             double walked = elapsed * c.MetersPerMinute * r.Pace;
             if (walked >= VillageRoads.Length(path)) return new LifePose(to.X, to.Z, to.Yaw, to.Activity, to.Place, false, to.Indoors);
             var (x, z, yaw) = VillageRoads.Along(path, walked);
             return new LifePose(x, z, yaw, VillagerActivity.Walk, to.Place, true, false);
+        }
+
+        /// <summary>
+        /// Minutes de marche du trajet du créneau <paramref name="i"/> (depuis la place du créneau précédent, par les routes, à l'allure de
+        /// l'habitant) : pour vérifier qu'il tient dans son créneau.
+        /// </summary>
+        public static double TravelMinutes(VillageWorld world, Resident r, IReadOnlyList<LifeSlot> day, int i, VillageContext c)
+        {
+            LifeSpot from = day[(i + day.Count - 1) % day.Count].Spot, to = day[i].Spot;
+            if (Math.Abs(from.X - to.X) < 0.05 && Math.Abs(from.Z - to.Z) < 0.05) return 0;
+            return VillageRoads.Length(world.Roads.Route(from.X, from.Z, to.X, to.Z)) / (c.MetersPerMinute * r.Pace);
         }
 
         // ---------------------------------------------------------------------------------------------------------------- autour de la caméra
@@ -949,29 +1056,41 @@ namespace EdS.Runtime
         /// <see cref="VillageWorld.Residents"/> ; <paramref name="poses"/> reçoit la pose de chacun (même ordre).
         /// </summary>
         public static IReadOnlyList<int> Near(VillageWorld world, double minute, VillageContext c, double x, double z, double radius, int cap,
-            IList<LifePose>? poses = null)
+            IList<LifePose>? poses = null) => Pick(world, minute, c, x, z, radius, cap, null, poses);
+
+        /// <summary>
+        /// Marge (m) de sortie (relecture indépendante de la PR #268) : un habitant déjà montré le reste jusqu'au rayon plus cette marge ; un
+        /// nouveau n'entre qu'au rayon. Pas d'apparitions et de disparitions en boucle à la lisière.
+        /// </summary>
+        public const double KeepMargin = 15;
+
+        /// <summary>
+        /// Comme <see cref="Near"/>, avec hystérésis : ceux de <paramref name="current"/> (déjà montrés) restent tant qu'ils sont dehors à moins
+        /// de <paramref name="radius"/> + <see cref="KeepMargin"/> m, et passent avant les nouveaux ; puis les nouveaux, dans le rayon, les plus
+        /// proches d'abord ; <paramref name="cap"/> au plus en tout.
+        /// </summary>
+        public static IReadOnlyList<int> Pick(VillageWorld world, double minute, VillageContext c, double x, double z, double radius, int cap,
+            ICollection<int>? current, IList<LifePose>? poses = null)
         {
             if (world is null) throw new ArgumentNullException(nameof(world));
-            var found = new List<(double D, int I, LifePose P)>();
+            poses?.Clear();
             if (cap <= 0 || !(radius > 0)) return Array.Empty<int>();
-            double r2 = radius * radius;
+            var found = new List<(bool Kept, double D, int I, LifePose P)>();
+            double outer = radius + KeepMargin;
             for (int i = 0; i < world.Residents.Count; i++)
             {
                 Resident r = world.Residents[i];
                 // Tri rapide : loin de toutes ses places (marge des détours par les routes), il ne peut pas être là.
                 double bx = Math.Max(0, Math.Max(r.MinX - x, x - r.MaxX)), bz = Math.Max(0, Math.Max(r.MinZ - z, z - r.MaxZ));
-                if (Math.Sqrt(bx * bx + bz * bz) > radius + RouteMargin) continue;
+                if (Math.Sqrt(bx * bx + bz * bz) > outer + RouteMargin) continue;
                 LifePose p = At(world, r, minute, c);
                 if (p.Hidden) continue;
                 double d = (p.X - x) * (p.X - x) + (p.Z - z) * (p.Z - z);
-                if (d <= r2) found.Add((d, i, p));
+                bool kept = current != null && current.Contains(i);
+                if (d <= (kept ? outer * outer : radius * radius)) found.Add((kept, d, i, p));
             }
-            var chosen = found.OrderBy(f => f.D).ThenBy(f => world.Residents[f.I].Id, StringComparer.Ordinal).Take(cap).ToList();
-            if (poses != null)
-            {
-                poses.Clear();
-                foreach (var f in chosen) poses.Add(f.P);
-            }
+            var chosen = found.OrderBy(f => f.Kept ? 0 : 1).ThenBy(f => f.D).ThenBy(f => world.Residents[f.I].Id, StringComparer.Ordinal).Take(cap).ToList();
+            if (poses != null) foreach (var f in chosen) poses.Add(f.P);
             return chosen.Select(f => f.I).ToList();
         }
 

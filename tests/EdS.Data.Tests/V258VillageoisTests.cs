@@ -5,6 +5,7 @@ namespace EdS.Data.Tests;
 
 /// <summary>V2.58 : villageois vivants dans le Bourg et les hameaux des Vallons (routines pures, routes, autour de la caméra, petites vies).</summary>
 [Trait("Category", "World")]
+[Collection("V258 villageois")]   // un seul monde partagé (ses mémoires ne sont pas faites pour plusieurs fils)
 public class V258VillageoisTests
 {
     private static readonly Lazy<(AdventureMap Map, VillageWorld World)> Region = new(() =>
@@ -25,6 +26,11 @@ public class V258VillageoisTests
 
     private static VillageWorld World => Region.Value.World;
     private static AdventureMap Map => Region.Value.Map;
+    internal static VillageWorld SharedWorld => Region.Value.World;
+    internal static AdventureMap SharedMap => Region.Value.Map;
+
+    /// <summary>Morceaux du réseau des routes des Vallons (figé par la relecture de la PR #268).</summary>
+    internal const int ValleyRoadParts = 3;
 
     private static VillageContext Plain(WardrobeSeason season = WardrobeSeason.Spring, bool rain = false, bool feast = false, bool market = false) =>
         new(season, rain, feast, market);
@@ -279,5 +285,117 @@ public class V258VillageoisTests
         Assert.Equal("Seated_Chat", TownModels.VillagerClip(clips, VillagerActivity.Sit, 0));
         Assert.Equal("Drink", TownModels.VillagerClip(clips, VillagerActivity.Drink, 0));
         Assert.Equal("Idle", TownModels.VillagerClip(new[] { "Idle", "Walk" }, VillagerActivity.Dance, 0));
+    }
+}
+
+/// <summary>V2.58, relecture indépendante de la PR #268 : mémoire des trajets, routes vides ou non reliées, trajets et créneaux, hystérésis, places des PNJ.</summary>
+[Trait("Category", "World")]
+[Collection("V258 villageois")]
+public class V258RelectureTests
+{
+    private static VillageWorld World => V258VillageoisTests.SharedWorld;
+    private static AdventureMap Map => V258VillageoisTests.SharedMap;
+    private static readonly VillageContext Spring = new(WardrobeSeason.Spring, false, false, false);
+
+    [Fact]
+    public void The_route_memory_forgets_its_oldest_quarter_not_everything()
+    {
+        var roads = new VillageRoads(Map.Roads, 8);
+        var homes = World.Residents.Where(r => !r.Hamlet).GroupBy(r => r.House).Select(g => g.First().Home).Take(12).ToList();
+        var first = roads.Route(homes[0].X, homes[0].Z, -500, -500);
+        for (int i = 1; i < 8; i++) roads.Route(homes[i].X, homes[i].Z, -500, -500);
+        Assert.Equal(8, roads.CachedCount);
+        var last = roads.Route(homes[8].X, homes[8].Z, -500, -500);   // plein : le plus ancien quart (2) est oublié, pas tout
+        Assert.Equal(7, roads.CachedCount);
+        Assert.Same(last, roads.Route(homes[8].X, homes[8].Z, -500, -500));
+        Assert.NotSame(first, roads.Route(homes[0].X, homes[0].Z, -500, -500));   // le plus ancien a été oublié, puis refait à l'identique
+        Assert.Equal(first, roads.Route(homes[0].X, homes[0].Z, -500, -500));
+        int before = roads.CachedCount;
+        roads.Route(homes[11].X + 0.37, homes[11].Z, 300, 300, false);   // pas gardé
+        Assert.Equal(before, roads.CachedCount);
+        for (int i = 0; i < 200; i++) roads.Route(i, 0, -500, -500);
+        Assert.InRange(roads.CachedCount, 1, 8);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new VillageRoads(Map.Roads, 0));
+    }
+
+    [Fact]
+    public void No_road_or_unlinked_roads_never_break_a_walk()
+    {
+        foreach (var none in new[] { null, new List<StyleRoad>() })
+        {
+            var empty = new VillageRoads(none);
+            Assert.Equal(0, empty.NodeCount);
+            Assert.Equal(0, empty.Components());
+            Assert.Equal(2, empty.Route(0, 0, 400, 400).Count);
+        }
+        var apart = new VillageRoads(new[]
+        {
+            new StyleRoad("a", new[] { (0.0, 0.0), (100.0, 0.0) }, 3, false),
+            new StyleRoad("b", new[] { (0.0, 500.0), (100.0, 500.0) }, 3, false),
+        });
+        Assert.Equal(2, apart.Components());
+        var path = apart.Route(50, 10, 50, 490);   // d'une route à l'autre, non reliées : tout droit
+        Assert.Equal(new[] { (50.0, 10.0), (50.0, 490.0) }, path);
+        // Les routes des Vallons : trois morceaux (comptés et figés : une route isolée de plus se verrait ici).
+        Assert.Equal(V258VillageoisTests.ValleyRoadParts, World.Roads.Components());
+    }
+
+    [Fact]
+    public void A_walk_longer_than_its_slot_goes_on_from_where_it_was_never_through_houses()
+    {
+        int tooLong = 0, total = 0;
+        foreach (WardrobeSeason season in new[] { WardrobeSeason.Spring, WardrobeSeason.Winter })
+            foreach (bool feast in new[] { false, true })
+            {
+                var c = new VillageContext(season, false, feast, false);
+                foreach (Resident r in World.Residents)
+                {
+                    var day = VillageLife.Day(r, c);
+                    for (int i = 0; i < day.Count; i++)
+                    {
+                        total++;
+                        if (VillageLife.TravelMinutes(World, r, day, i, c) > VillageLife.Duration(day, i)) tooLong++;
+                        // Au changement de créneau, pas de saut : il repart de là où il était.
+                        double start = day[i].Start;
+                        LifePose before = VillageLife.At(World, r, start - 0.02, c), after = VillageLife.At(World, r, start + 0.02, c);
+                        double jump = Math.Sqrt((before.X - after.X) * (before.X - after.X) + (before.Z - after.Z) * (before.Z - after.Z));
+                        Assert.True(jump <= c.MetersPerMinute * r.Pace * 0.05 + 0.05, r.Id + " à " + start + " : " + jump + " m");
+                    }
+                }
+            }
+        // Presque tous les trajets tiennent dans leur créneau (les autres repartent de là où ils en étaient, testé ci-dessus).
+        Assert.True(tooLong * 50 < total, tooLong + " trajets plus longs que leur créneau sur " + total);
+    }
+
+    [Fact]
+    public void A_shown_resident_stays_until_the_outer_radius()
+    {
+        Resident anchor = World.Residents.First(r => !r.Hamlet);
+        double x = anchor.Market.X, z = anchor.Market.Z, minute = 11 * 60;
+        var poses = new List<LifePose>();
+        var wide = VillageLife.Near(World, minute, Spring, x, z, 60 + VillageLife.KeepMargin - 0.5, 400, poses);
+        int edge = -1;
+        for (int k = 0; k < wide.Count; k++)
+        {
+            double d = Math.Sqrt((poses[k].X - x) * (poses[k].X - x) + (poses[k].Z - z) * (poses[k].Z - z));
+            if (d > 60.5) { edge = wide[k]; break; }
+        }
+        Assert.True(edge >= 0, "un habitant entre 60 et 75 m");
+        Assert.DoesNotContain(edge, VillageLife.Pick(World, minute, Spring, x, z, 60, 400, null));
+        Assert.Contains(edge, VillageLife.Pick(World, minute, Spring, x, z, 60, 400, new HashSet<int> { edge }));
+        // Les déjà montrés passent avant les nouveaux quand la place manque.
+        Assert.Equal(new[] { edge }, VillageLife.Pick(World, minute, Spring, x, z, 60, 1, new HashSet<int> { edge }));
+    }
+
+    [Fact]
+    public void Residents_keep_clear_of_the_villagers_npcs_and_merchants_given()
+    {
+        var avoid = World.Residents.Where(r => !r.Hamlet).Take(40).Select(r => (r.Market.X, r.Market.Z)).ToList();
+        var world = VillageLife.World(Map, Map.AreaFields(Map.Roads), avoid);
+        foreach (Resident r in world.Residents)
+            foreach (LifeSpot s in new[] { r.Home, r.Market, r.Feast, r.Play })
+                foreach (var a in avoid)
+                    Assert.True((a.X - s.X) * (a.X - s.X) + (a.Z - s.Z) * (a.Z - s.Z) >= VillageLife.AvoidDistance * VillageLife.AvoidDistance - 1e-9,
+                        r.Id + " " + s.Place);
     }
 }

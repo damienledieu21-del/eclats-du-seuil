@@ -15,6 +15,7 @@ namespace EdS.Game
         private sealed class ResidentBody
         {
             public Resident Data;
+            public int Index;
             public Transform Body;
             public StyleBody Look;
             public float Height = 1f;
@@ -27,6 +28,10 @@ namespace EdS.Game
             public string Bubble;
             public float BubbleUntil;
             public bool Seen;
+            /// <summary>Relecture de la PR #268 : trajet de rattrapage par les routes (sa place a changé sous ses pieds), et où il en est.</summary>
+            public IReadOnlyList<(double X, double Z)> Chase;
+            public int ChaseStep;
+            public double ChaseToX, ChaseToZ;
         }
 
         /// <summary>Habitants de la région (gardés d'une vue à l'autre : même carte entière, mêmes habitants).</summary>
@@ -38,6 +43,10 @@ namespace EdS.Game
         private readonly List<LifePose> _lifePoses = new List<LifePose>();
         private readonly List<ResidentBody> _lifeShown = new List<ResidentBody>();
         private readonly List<string> _lifeGone = new List<string>();
+        /// <summary>Relecture de la PR #268 : habitants que rien n'a pu habiller (jamais réessayés : pas de corps créé puis détruit à chaque image).</summary>
+        private readonly HashSet<string> _lifeFailed = new HashSet<string>();
+        /// <summary>Indices des habitants qui ont un corps (hystérésis du choix, <see cref="VillageLife.Pick"/>).</summary>
+        private readonly HashSet<int> _lifeCurrent = new HashSet<int>();
         private IReadOnlyList<int> _lifeNear = new int[0];
         private float _lifeNextPick;
         private double _lifeMinute = -1;
@@ -70,7 +79,11 @@ namespace EdS.Game
             AdventureMap whole = map.Whole;
             if (_lifeWorld == null || !ReferenceEquals(_lifeWorldOf, whole))
             {
-                _lifeWorld = VillageLife.World(whole, whole.AreaFields(_roads));
+                // Relecture de la PR #268 : loin des PNJ des pièces et des villageois du décor (marchands des étals compris).
+                var avoid = new List<(double X, double Z)>();
+                for (int i = 0; i < whole.Speakers.Count; i++) avoid.Add((whole.Speakers[i].X, whole.Speakers[i].Z));
+                for (int i = 0; i < _villagers.Count; i++) avoid.Add((_villagers[i].Data.X, _villagers[i].Data.Z));
+                _lifeWorld = VillageLife.World(whole, whole.AreaFields(_roads), avoid);
                 _lifeWorldOf = whole;
             }
             _life = _lifeWorld;
@@ -87,28 +100,37 @@ namespace EdS.Game
             {
                 _lifeNextPick = Time.time + ResidentsPickSeconds;
                 DeviceTier tier = DeviceQuality.Tier;
-                _lifeNear = VillageLife.Near(_life, _lifeMinute, _lifeContext, camera.x, camera.z, VillageLife.Radius(tier), VillageLife.Cap(tier, DeviceQuality.Light));
+                _lifeCurrent.Clear();
+                foreach (ResidentBody b in _residentBodies.Values) _lifeCurrent.Add(b.Index);
+                _lifeNear = VillageLife.Pick(_life, _lifeMinute, _lifeContext, camera.x, camera.z, VillageLife.Radius(tier),
+                    VillageLife.Cap(tier, DeviceQuality.Light), _lifeCurrent);
                 foreach (ResidentBody b in _residentBodies.Values) b.Seen = false;
-                foreach (int i in _lifeNear)
-                    if (_residentBodies.TryGetValue(_life.Residents[i].Id, out ResidentBody kept)) kept.Seen = true;
+                for (int k = 0; k < _lifeNear.Count; k++)
+                    if (_residentBodies.TryGetValue(_life.Residents[_lifeNear[k]].Id, out ResidentBody kept)) kept.Seen = true;
                 _lifeGone.Clear();
                 foreach (KeyValuePair<string, ResidentBody> kv in _residentBodies)
                     if (!kv.Value.Seen) _lifeGone.Add(kv.Key);
-                foreach (string id in _lifeGone)
+                for (int k = 0; k < _lifeGone.Count; k++)
                 {
-                    ResidentBody gone = _residentBodies[id];
-                    _residentBodies.Remove(id);
+                    ResidentBody gone = _residentBodies[_lifeGone[k]];
+                    _residentBodies.Remove(_lifeGone[k]);
                     if (gone.Body != null) Object.Destroy(gone.Body.gameObject);
                 }
             }
             int built = 0;
-            foreach (int i in _lifeNear)
+            for (int k = 0; k < _lifeNear.Count && built < ResidentsBuiltPerFrame; k++)
             {
-                Resident r = _life.Residents[i];
-                if (_residentBodies.ContainsKey(r.Id) || built >= ResidentsBuiltPerFrame) continue;
+                Resident r = _life.Residents[_lifeNear[k]];
+                if (_residentBodies.ContainsKey(r.Id) || _lifeFailed.Contains(r.Id)) continue;
                 ResidentBody made = DressResident(r);
                 built++;
-                if (made != null) _residentBodies[r.Id] = made;
+                if (made == null)
+                {
+                    _lifeFailed.Add(r.Id);
+                    continue;
+                }
+                made.Index = _lifeNear[k];
+                _residentBodies[r.Id] = made;
             }
             _lifeShown.Clear();
             _lifePoses.Clear();
@@ -168,14 +190,40 @@ namespace EdS.Game
             float aim = (float)pose.Yaw;
             if (far > 2.5f && deltaTime > 0f)
             {
-                // Rattrapage au pas (jamais de saut) : sa journée a changé de place sous ses pieds.
+                // Rattrapage au pas, par les routes (relecture de la PR #268 : jamais à travers les maisons) : sa journée a changé de place
+                // sous ses pieds (l'averse vient de tomber, la fête commence). Trajet refait si sa place a bougé de plus de 3 m.
                 if (pose.Hidden) show = true;   // il rentre : on le voit marcher jusqu'à la porte
-                float step = Mathf.Min(far, WalkSpeed * 1.3f * (float)b.Data.Pace * deltaTime);
-                gx = at.x + dx / far * step;
-                gz = at.z + dz / far * step;
+                if (b.Chase == null || b.ChaseStep >= b.Chase.Count || (b.ChaseToX - pose.X) * (b.ChaseToX - pose.X) + (b.ChaseToZ - pose.Z) * (b.ChaseToZ - pose.Z) > 9.0)
+                {
+                    b.Chase = _life.Roads.Route(at.x, at.z, pose.X, pose.Z, false);
+                    b.ChaseStep = 1;
+                    b.ChaseToX = pose.X;
+                    b.ChaseToZ = pose.Z;
+                }
+                float step = WalkSpeed * 1.3f * (float)b.Data.Pace * deltaTime;
+                float nx = at.x, nz = at.z;
+                while (step > 0f && b.ChaseStep < b.Chase.Count)
+                {
+                    float tx = (float)b.Chase[b.ChaseStep].X - nx, tz = (float)b.Chase[b.ChaseStep].Z - nz;
+                    float left = Mathf.Sqrt(tx * tx + tz * tz);
+                    if (left <= step)
+                    {
+                        nx += tx;
+                        nz += tz;
+                        step -= left;
+                        b.ChaseStep++;
+                        continue;
+                    }
+                    nx += tx / left * step;
+                    nz += tz / left * step;
+                    aim = (float)StyleRules.FaceYaw(0, 0, tx, tz);
+                    step = 0f;
+                }
+                gx = nx;
+                gz = nz;
                 moving = true;
-                aim = (float)StyleRules.FaceYaw(0, 0, dx, dz);
             }
+            else b.Chase = null;
             if (show != b.Body.gameObject.activeSelf) b.Body.gameObject.SetActive(show);
             if (!show) return;
             b.Body.position = new Vector3(gx, b.Height + StyleWorld.StandHeight(gx, gz), gz);
@@ -226,7 +274,7 @@ namespace EdS.Game
 
         private static void Say(ResidentBody b, string text)
         {
-            b.Bubble = text;
+            b.Bubble = "« " + text + " »";   // relecture de la PR #268 : la chaîne est faite une fois, pas à chaque image
             b.BubbleUntil = Time.time + BubbleSeconds;
         }
 
@@ -234,13 +282,14 @@ namespace EdS.Game
         public void ResidentBubbles(Camera camera, Vector3 player, HudView hud)
         {
             if (camera == null || hud == null) return;
-            foreach (ResidentBody b in _lifeShown)
+            for (int i = 0; i < _lifeShown.Count; i++)
             {
+                ResidentBody b = _lifeShown[i];
                 if (b.Bubble == null || Time.time >= b.BubbleUntil || b.Body == null) continue;
                 Vector3 at = b.Body.position;
                 float dx = at.x - player.x, dz = at.z - player.z;
                 if (dx * dx + dz * dz > 18f * 18f) continue;
-                hud.Label(camera.WorldToScreenPoint(at + Vector3.up * (1.15f * b.Height)), "« " + b.Bubble + " »", new Color(1f, 0.95f, 0.82f));
+                hud.Label(camera.WorldToScreenPoint(at + Vector3.up * (1.15f * b.Height)), b.Bubble, new Color(1f, 0.95f, 0.82f));
             }
         }
     }

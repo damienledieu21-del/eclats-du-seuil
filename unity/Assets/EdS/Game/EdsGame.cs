@@ -799,8 +799,8 @@ namespace EdS.Game
             HumanBodies.Feast = a.FeastNumber;   // sous-lot F6 : aux teintes de la fête d'Orsédia en cours
             StyleWorld.SetFeast(a.FeastMood);   // sous-lot F6 : l'ambiance de la fête (lumière, brume, lanternes), dehors
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
-            // V2.58 : les habitants suivent leur journée ; 1,1 m/s, en mètres par minute du monde (une journée du monde dure DayLengthMs).
-            _arena.Residents(a.WorldMinute(), a.WardrobeSeason, a.Festive, a.MarketCrowdShown, 1.1 * a.World.Zone.Clock.DayLengthMs / 1440.0 / 1000.0);
+            // V2.58 : les habitants suivent leur journée (minute avec la fraction du tick : marche sans à-coups, relecture de la PR #268) ; 1,1 m/s, en mètres par minute du monde (une journée du monde dure DayLengthMs).
+            _arena.Residents(a.WorldMinute(a.Combat.TickProgress), a.WardrobeSeason, a.Festive, a.MarketCrowdShown, 1.1 * a.World.Zone.Clock.DayLengthMs / 1440.0 / 1000.0);
             // Sous-lot V2.14 : la foule du grand jour de marché ; ses places ne sont calculées qu'une fois montrée (le premier jour de marché vu).
             bool crowd = a.MarketCrowdShown;
             if (crowd || _crowdAsked) _arena.MarketCrowd(crowd && !_crowdAsked ? a.MarketCrowd() : null, crowd);
