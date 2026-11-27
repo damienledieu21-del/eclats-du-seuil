@@ -823,7 +823,7 @@ namespace EdS.Game
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
-            _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
+            _arena.Season(EnversLook.DecorSeason(a.InEnvers, (int)a.WardrobeSeason));   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde ; V2.51b : l'automne mort dans l'Envers
             _arena.Vines(a.World.VineNow, a.World.SeasonIndex);   // V2.44.4 : rangs de vigne en trois états, vendanges
             _arena.Tide(a.World.Tide == EdS.World.TideLevel.High);   // V2.50.1b : l'eau des passages de marée des grottes noyées
             // V2.51b : l'Envers : lumière qui respire avec la minute du monde, formes flottantes, cendres d'après le temps de la surface.

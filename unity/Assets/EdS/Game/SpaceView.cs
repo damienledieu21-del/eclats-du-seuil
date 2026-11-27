@@ -152,6 +152,8 @@ namespace EdS.Game
             _root = new GameObject("Décor");
             _root.transform.SetParent(parent, false);
             _envers = map != null && map.Envers;   // V2.51b : l'Envers, reflet de la surface
+            // Revue Codex de la PR #261 (P2) : le feuillage est construit d'emblée à l'automne mort de l'Envers (avant sa copie sombre).
+            if (_envers) _worldSeason = AtelierTrees.Season(EnversLook.DecorSeason(true, _worldSeason));
             // Sous-lot V2.24 : relief affiché d'après la carte de la zone (plat dans une pièce ou sans carte) ; le moteur reste plat.
             StyleWorld.UseRelief(map);   // revue Codex de la PR #144 : plat sans terrain peint
             _treeMap = map;   // V2.25.4 : lieux de la zone, pour l'essence des arbres de l'atelier

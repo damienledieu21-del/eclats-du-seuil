@@ -48,7 +48,7 @@ namespace EdS.Game
         private float _shownTreeGlow = -1f;
 
         /// <summary>Saison du monde (0 à 3), donnée par la partie à chaque image ; l'été sans partie.</summary>
-        public void Season(int season) => _worldSeason = AtelierTrees.Season(season);
+        public void Season(int season) => _worldSeason = AtelierTrees.Season(EnversLook.DecorSeason(_envers, season));   // V2.51b : l'automne mort dans l'Envers
 
         /// <summary>Saison montrée aux arbres (forcée par le menu d'essai, sinon celle du monde).</summary>
         private int ShownSeason => AtelierTrees.Shown(ForcedSeason, _worldSeason);

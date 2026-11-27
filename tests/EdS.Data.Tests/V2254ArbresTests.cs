@@ -278,7 +278,7 @@ public class V2254ArbresTests : IDisposable
         Assert.Equal(new[] { false, false, true, false }, Enumerable.Range(0, 4).Select(AtelierTrees.GroundLeaves));
         Assert.Equal("chene_feuillage_automne_couleur", AtelierTrees.LeafTexture(TreeEssence.Chene, 2));
         // La partie donne la saison du monde ; le menu d'essai la force ; le feuillage, les imposteurs et les feuilles au sol suivent.
-        Assert.Contains("_arena.Season((int)a.WardrobeSeason);", File.ReadAllText(Path.Combine(Game, "EdsGame.cs")), StringComparison.Ordinal);
+        Assert.Contains("_arena.Season(EnversLook.DecorSeason(a.InEnvers, (int)a.WardrobeSeason));", File.ReadAllText(Path.Combine(Game, "EdsGame.cs")), StringComparison.Ordinal);   // V2.51b : l'automne mort dans l'Envers
         string trial = File.ReadAllText(Path.Combine(Editor, "EdsSeasonTrial.cs"));
         foreach (string s in new[] { "printemps", "été", "automne", "hiver", "saison du monde" })
             Assert.Contains("Essai des saisons : " + s, trial, StringComparison.Ordinal);

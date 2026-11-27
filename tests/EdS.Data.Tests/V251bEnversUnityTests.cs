@@ -349,4 +349,27 @@ public sealed class V251bEnversUnityTests
         Assert.True(EnversLook.Glows(EnversPiece.DawnAltar) && EnversLook.Glows(EnversPiece.VioletBrazier));
         Assert.False(EnversLook.Glows(EnversPiece.DeadTree));
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #261 (P2) : dans l'Envers, le décor (feuillage, imposteurs, feuilles au sol) prend l'automne mort quelle que soit
+    /// la saison réelle ; dehors, la saison réelle ; les tenues gardent la saison réelle.
+    /// </summary>
+    [Fact]
+    public void Arbres_de_l_Envers_a_l_automne_mort_toute_l_annee()
+    {
+        for (int season = 0; season < 4; season++)
+        {
+            Assert.Equal(2, EnversLook.DecorSeason(true, season));
+            Assert.Equal(season, EnversLook.DecorSeason(false, season));
+            Assert.True(AtelierTrees.GroundLeaves(AtelierTrees.Season(EnversLook.DecorSeason(true, season))));   // feuilles mortes au sol, même en été
+        }
+        Assert.Equal(EnversLook.Season.Season, EnversLook.DecorSeason(true, 3));
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("_arena.Season(EnversLook.DecorSeason(a.InEnvers, (int)a.WardrobeSeason));", game);
+        Assert.Contains("HumanBodies.GameSeason = a.WardrobeSeason;", game);   // les tenues : saison réelle
+        string trees = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Trees.cs"));
+        Assert.Contains("AtelierTrees.Season(EnversLook.DecorSeason(_envers, season))", trees);
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("if (_envers) _worldSeason = AtelierTrees.Season(EnversLook.DecorSeason(true, _worldSeason));", view);
+    }
 }

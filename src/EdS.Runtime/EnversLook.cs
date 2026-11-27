@@ -290,6 +290,13 @@ namespace EdS.Runtime
         /// <summary>Saison montrée dans l'Envers : aucune neige, aucune glace, un automne mort figé, teinte gris-violet.</summary>
         public static SeasonLook Season => new SeasonLook(0.42f, 0.36f, 0.5f, 0.75f, 0f, 0f, 2, 0f);
 
+        /// <summary>
+        /// Revue Codex de la PR #261 (P2) : saison d'affichage du décor (feuillage des arbres, imposteurs, feuilles au sol) : dans l'Envers,
+        /// toujours l'automne mort de <see cref="Season"/> ; ailleurs, la saison réelle <paramref name="season"/> (0 printemps … 3 hiver). Les
+        /// tenues des personnages gardent la saison réelle (cette règle ne les touche pas).
+        /// </summary>
+        public static int DecorSeason(bool envers, int season) => envers ? Season.Season : season;
+
         // --- Temps ---------------------------------------------------------------------------------------------------------
 
         /// <summary>
