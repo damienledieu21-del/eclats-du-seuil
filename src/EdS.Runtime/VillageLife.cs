@@ -141,7 +141,20 @@ namespace EdS.Runtime
             Play = play;
             Porch = porch;
             Hamlet = hamlet;
+            var spots = new List<LifeSpot> { home, work, market, shelter, feast, play, porch };
+            if (tavern is LifeSpot t) spots.Add(t);
+            if (chapel is LifeSpot ch) spots.Add(ch);
+            MinX = spots.Min(p => p.X);
+            MinZ = spots.Min(p => p.Z);
+            MaxX = spots.Max(p => p.X);
+            MaxZ = spots.Max(p => p.Z);
         }
+
+        /// <summary>Boîte de toutes ses places (ses trajets passent par les routes entre elles : à peine au-delà).</summary>
+        public double MinX { get; }
+        public double MinZ { get; }
+        public double MaxX { get; }
+        public double MaxZ { get; }
 
         public string Id { get; }
         public string House { get; }
@@ -466,6 +479,7 @@ namespace EdS.Runtime
             var stalls = boxes.Where(b => b.Kind == StyleBuilding.Stall).ToList();
             var barns = boxes.Where(b => b.Kind == StyleBuilding.Barn).ToList();
             var fieldList = (fields ?? Array.Empty<StyleField>()).ToList();
+            var covers = inns.Concat(chapels).Concat(stalls).Concat(barns).OrderBy(b => b.Id, StringComparer.Ordinal).ToList();
             var all = boxes;
 
             (double X, double Z, double Yaw) Front(Box b, double step)
@@ -562,7 +576,7 @@ namespace EdS.Runtime
                 LifeSpot ShelterOf(string salt)
                 {
                     // Sous l'auvent le plus proche (auberge, chapelle, étal, grange) à moins de 70 m ; sinon on rentre.
-                    Box? s = Nearest(inns.Concat(chapels).Concat(stalls).Concat(barns).OrderBy(b => b.Id, StringComparer.Ordinal).ToList(), dx, dz, 70);
+                    Box? s = Nearest(covers, dx, dz, 70);
                     if (s == null) return home.With(LifePlace.Shelter, VillagerActivity.Idle, true);
                     var f = Front(s, 0.6);
                     var (x, z) = Free(f.X + (StyleRules.Variant(salt + "/abri", 5) - 2) * 0.7, f.Z + (StyleRules.Variant(salt + "/abri2", 5) - 2) * 0.7, salt);
@@ -669,20 +683,22 @@ namespace EdS.Runtime
         /// <summary>
         /// Modèle du kit des villageois (Tripo, préparé le 27 novembre 2026, pas lancé : décision de Damien « pas maintenant ») qui irait à cet
         /// habitant : la vue le prend s'il est au catalogue, sinon <see cref="Resident.Character"/> (repli : rien à retoucher le jour où il arrive).
+        /// Un seul mot de lettres (le catalogue ne garde que le premier mot d'un identifiant, <see cref="StyleRules.CharacterOf"/>) :
+        /// « habitant » suivi du nom du modèle du kit sans ses tirets bas (V01_paysan : « habitantpaysan », V03_vieil_homme : « habitantvieilhomme »).
         /// </summary>
         public static string ModelOf(VillagerTrade trade, string id)
         {
             bool woman = StyleRules.Variant(id + "/femme", 2) == 0;
             return trade switch
             {
-                VillagerTrade.Baker => "villageois/V07_boulanger",
-                VillagerTrade.Smith => "villageois/V08_forgeron",
-                VillagerTrade.Merchant => "villageois/V09_marchande",
-                VillagerTrade.Farmer => woman ? "villageois/V02_paysanne" : "villageois/V10_fermier",
-                VillagerTrade.Elder => woman ? "villageois/V04_vieille_femme" : "villageois/V03_vieil_homme",
-                VillagerTrade.Child => woman ? "villageois/V06_fillette" : "villageois/V05_garcon",
-                VillagerTrade.Washer => "villageois/V02_paysanne",
-                _ => woman ? "villageois/V02_paysanne" : "villageois/V01_paysan",
+                VillagerTrade.Baker => "habitantboulanger",
+                VillagerTrade.Smith => "habitantforgeron",
+                VillagerTrade.Merchant => "habitantmarchande",
+                VillagerTrade.Farmer => woman ? "habitantpaysanne" : "habitantfermier",
+                VillagerTrade.Elder => woman ? "habitantvieillefemme" : "habitantvieilhomme",
+                VillagerTrade.Child => woman ? "habitantfillette" : "habitantgarcon",
+                VillagerTrade.Washer => "habitantpaysanne",
+                _ => woman ? "habitantpaysanne" : "habitantpaysan",
             };
         }
 
@@ -924,6 +940,9 @@ namespace EdS.Runtime
         /// <summary>Rayon (m) autour de la caméra où les habitants sont construits : téléphone 45, PC modeste 60, PC complet 90.</summary>
         public static double Radius(DeviceTier tier) => tier == DeviceTier.Phone ? 45 : tier == DeviceTier.Modest ? 60 : 90;
 
+        /// <summary>Marge (m) des détours par les routes au-delà de la boîte des places d'un habitant (tri rapide de <see cref="Near"/>).</summary>
+        public const double RouteMargin = 120;
+
         /// <summary>
         /// Les habitants à montrer : ceux qui sont dehors (pas rentrés) dans le rayon <paramref name="radius"/> autour de (<paramref name="x"/>,
         /// <paramref name="z"/>), les plus proches d'abord, <paramref name="cap"/> au plus ; à égalité, par identifiant. Indices dans
@@ -939,6 +958,9 @@ namespace EdS.Runtime
             for (int i = 0; i < world.Residents.Count; i++)
             {
                 Resident r = world.Residents[i];
+                // Tri rapide : loin de toutes ses places (marge des détours par les routes), il ne peut pas être là.
+                double bx = Math.Max(0, Math.Max(r.MinX - x, x - r.MaxX)), bz = Math.Max(0, Math.Max(r.MinZ - z, z - r.MaxZ));
+                if (Math.Sqrt(bx * bx + bz * bz) > radius + RouteMargin) continue;
                 LifePose p = At(world, r, minute, c);
                 if (p.Hidden) continue;
                 double d = (p.X - x) * (p.X - x) + (p.Z - z) * (p.Z - z);

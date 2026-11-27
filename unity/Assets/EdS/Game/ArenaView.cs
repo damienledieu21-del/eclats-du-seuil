@@ -853,6 +853,13 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.3 : la minute du monde, pour les allers-retours des villageois du décor.</summary>
         public void Village(int minute) => _space?.Village(minute);
 
+        /// <summary>V2.58 : la journée des habitants (minute avec sa fraction, saison, fête, jour de marché, allure en m par minute du monde).</summary>
+        public void Residents(double minute, WardrobeSeason season, bool festive, bool marketDay, double metersPerMinute) =>
+            _space?.Residents(minute, season, festive, marketDay, metersPerMinute);
+
+        /// <summary>V2.58 : saluts et répliques des habitants proches.</summary>
+        public void ResidentBubbles(Camera camera, Vector3 player, HudView hud) => _space?.ResidentBubbles(camera, player, hud);
+
         /// <summary>Sous-lot V2.14 : la foule du grand jour de marché (montrée pendant le marché seulement).</summary>
         public void MarketCrowd(System.Collections.Generic.IReadOnlyList<StyleVillager> spots, bool shown) => _space?.MarketCrowd(spots, shown);
 

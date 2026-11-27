@@ -1290,6 +1290,13 @@ Décision de Damien du 19 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 undecies : �
   1. entrer par les roselières (au nord du lac, à l'est des pontons, après le pont de la rivière des champs) ;
   2. passer le chenal à pied à marée basse, puis en plongée à marée haute ;
   3. vaincre le capitaine, puis prendre le siphon avec la coquille de souffle.
+## Villageois vivants (chantier V2.58, 27 novembre 2026)
+
+Règles et journées : [MONDE.md](MONDE.md#villageois-vivants-chantier-v258-27-novembre-2026). Dans le jeu (`SpaceView.Residents.cs`) : dans les Vallons, les habitants **les plus proches de la caméra** reçoivent un corps (personnage du catalogue de leur métier : paysan, boulanger, forgeron, marchand ; enfants à 72 %), 10 au plus en qualité Basse (le PC de Damien), 18 en Moyenne, 28 en Haute ; ils suivent leur journée sur les routes, rentrent chez eux (ils disparaissent à leur porte), s'abritent sous l'averse, vont sur la place les jours de fête. Ils regardent le joueur qui passe, le saluent (la phrase s'affiche au-dessus d'eux, comme les noms des PNJ) et bavardent entre eux.
+
+- **À vérifier** : entrer dans le Bourg vers 8 h (marchands à l'étal, enfants sur la place), vers 12 h 30 (presque personne : ils mangent), vers 20 h (terrasse de l'auberge), la nuit (rues vides), sous une averse (sous les auvents), un jour de fête (la place pleine) ; passer près d'un habitant arrêté (il se tourne et salue) ; changer la qualité (le nombre d'habitants suit, après relance).
+- **Modèles du kit des villageois** (Tripo, préparés, non lancés) : s'ils arrivent au catalogue sous les identifiants `habitantpaysan`, `habitantpaysanne`, `habitantvieilhomme`, `habitantvieillefemme`, `habitantgarcon`, `habitantfillette`, `habitantboulanger`, `habitantforgeron`, `habitantmarchande`, `habitantfermier` (V01 à V10 du kit), ils sont pris sans retouche ; sinon, le repli est le personnage existant du métier.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

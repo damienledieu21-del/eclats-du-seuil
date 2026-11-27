@@ -53,7 +53,8 @@ public class V258VillageoisTests
         Assert.Equal(residents.Select(r => (r.Id, r.Trade, r.Home.X, r.Work.Z, r.Model, r.Character)),
             again.Residents.Select(r => (r.Id, r.Trade, r.Home.X, r.Work.Z, r.Model, r.Character)));
         // Repli : le modèle du kit (pas encore livré) a toujours un personnage existant derrière lui.
-        Assert.All(residents, r => Assert.StartsWith("villageois/V", r.Model));
+        Assert.All(residents, r => Assert.Equal(r.Model, StyleRules.CharacterOf(r.Model)));   // un seul mot : le catalogue le retrouve
+        Assert.All(residents, r => Assert.StartsWith("habitant", r.Model));
         Assert.All(residents, r => Assert.Contains(r.Character, new[] { "paysan", "boulanger", "forgeron", "marchand", "fidele" }));
     }
 
