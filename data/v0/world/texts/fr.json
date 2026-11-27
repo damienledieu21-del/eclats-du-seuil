@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.48.0-provisoire",
+  "contentVersion": "0.49.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -24,7 +24,7 @@
       "text.v252.secret.stele_de_la_rosace": "La rosace de l'Envers ne laisse pas entrer la lumière : elle la garde. « Celui qui attend », dit le verre brisé, « attend de l'autre côté. »",
       "text.v252.secret.coffre_des_pontons_noirs": "Sous les pontons de l'Envers, l'eau est un ciel noir. Un coffre y flotte, attaché par une corde qui descend vers le haut.",
       "text.v252.secret.stele_des_noyes": "« Le lac rend ce qu'il prend, mais dans l'Envers. » Une liste de barques, et pour chacune, le nom de celui qui ne l'a pas ramenée.",
-      "text.v252.secret.stele_du_cercle": "Les pierres levées de l'Envers sont fendues du même côté, comme si quelque chose était sorti d'elles en même temps. Il y a douze pierres, et douze failles.",
+      "text.v252.secret.stele_du_cercle": "Les pierres levées de l'Envers sont fendues du même côté, comme si quelque chose était sorti d'elles en même temps. Il y a douze pierres, et quatorze failles : deux de trop, comme si l'Envers avait appris à compter seul.",
       "text.v252.secret.coffre_de_la_felure": "Au bord de la fêlure, un coffre que les reflets n'osent pas toucher. L'autel de l'Aube l'éclaire juste assez.",
       "text.v252.secret.stele_du_pont_brise": "Le pont de l'Envers s'arrête au milieu du vide. Au-delà, la Forêt des Murmures a son propre envers, et il murmure plus fort.",
       "text.v252.secret.stele_du_col": "Ici, la neige tombe vers le haut. Le col de l'Envers est ouvert toute l'année : c'est le retour qui est fermé.",

@@ -87,7 +87,7 @@ public sealed class V252aEnversLieuxTests : IDisposable
             // Au moins un secret dans son emprise.
             Assert.Contains(Envers.Secrets, s => place.Contains(s.Position));
         }
-        // L'ordre des niveaux de la surface est gardé (Recommandation, question à Damien dans la PR) : l'Envers d'un lieu plus dur à la surface
+        // L'ordre des niveaux de la surface est gardé (retenu par Damien le 27 novembre 2026) : l'Envers d'un lieu plus dur à la surface
         // n'est jamais plus facile, sauf l'entrée de la V2.51 (les terres corrompues, à 24).
         (string Envers, string Surface)[] pairs =
         {
@@ -477,6 +477,70 @@ public sealed class V252aEnversLieuxTests : IDisposable
         Assert.Equal(SecretRefusal.BagFull, w.OpenSecret("coffre_de_la_felure"));
         Assert.False(w.IsSecretOpened("coffre_de_la_felure"));
         Assert.Equal(before, SaveJsonReader.Write(w.Save()));
+    }
+
+    private WorldSession SessionAtAltar(Action<string, string>? edit = null, IEnumerable<string>? consumed = null)
+    {
+        (string data, string scenarios) = CopyAll("coffre_de_la_felure", (1656, -468.5));
+        edit?.Invoke(data, scenarios);
+        ZoneDefinition zone = Read(JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(data, "zone.envers_vallons")))!.AsObject(), scenarios).Zone!;
+        var w = new WorldSession(new WorldSave(zone.Id, 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey).ToArray(), V11TestData.Hero()),
+            zone, ShippedData, Progression, Items);
+        w.Step();
+        return w;
+    }
+
+    [Theory]
+    [InlineData(1, true)]    // une place de plus que la réserve des morts possibles : la fouille passe
+    [InlineData(0, false)]   // juste la réserve : refus atomique (RegistryFull), rien ne change
+    public void Coffre_refuse_registre_plein_sans_rien_changer(int spare, bool opens)
+    {
+        WorldSession w = SessionAtAltar();
+        for (int i = 0; i < SaveValidator.MaxConsumed && w.RegistryRoom - w.DeathReserve > spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D6}"));
+        Assert.Equal(spare, w.RegistryRoom - w.DeathReserve);
+        int before = w.Inventory.Count("item.eclat_de_seuil"), room = w.RegistryRoom;
+        SecretRefusal refusal = w.OpenSecret("coffre_de_la_felure");
+        if (opens)
+        {
+            Assert.Equal(SecretRefusal.None, refusal);
+            Assert.Equal(before + 3, w.Inventory.Count("item.eclat_de_seuil"));
+            Assert.Equal(room - 1, w.RegistryRoom);
+            return;
+        }
+        Assert.Equal(SecretRefusal.RegistryFull, refusal);
+        Assert.Equal((before, room, false), (w.Inventory.Count("item.eclat_de_seuil"), w.RegistryRoom, w.IsSecretOpened("coffre_de_la_felure")));
+    }
+
+    [Fact]
+    public void Coffre_refuse_en_combat_sans_rien_changer()
+    {
+        // Un reflet posé à 8 m de l'autel (à plus de 12 m de la faille), qui engage le personnage.
+        WorldSession w = SessionAtAltar((data, scenarios) =>
+        {
+            string path = Path.Combine(scenarios, "zones", "envers_vallons.json");
+            JsonObject s = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            JsonObject wolf = Combatant(s, "loup_echo_envers1");
+            wolf["position"] = new JsonArray(1664.0, -470.0);
+            File.WriteAllText(path, s.ToJsonString());
+        });
+        for (int i = 0; i < 200 && !w.InCombat; i++) w.Step();
+        Assert.True(w.InCombat);
+        int before = w.Inventory.Count("item.eclat_de_seuil");
+        Assert.Equal(SecretRefusal.InCombat, w.OpenSecret("coffre_de_la_felure"));
+        Assert.Equal(before, w.Inventory.Count("item.eclat_de_seuil"));
+        Assert.False(w.IsSecretOpened("coffre_de_la_felure"));
+    }
+
+    [Fact]
+    public void Partie_reprise_avec_un_coffre_deja_fouille()
+    {
+        // Une sauvegarde qui porte déjà la clé du coffre : il ne redonne rien, la stèle voisine se lit toujours.
+        WorldSession w = SessionAtAltar(consumed: new[] { "zone.envers_vallons/secret/coffre_de_la_felure" });
+        Assert.True(w.IsSecretOpened("coffre_de_la_felure"));
+        int before = w.Inventory.Count("item.eclat_de_seuil");
+        Assert.Equal(SecretRefusal.AlreadyOpened, w.OpenSecret("coffre_de_la_felure"));
+        Assert.Equal(before, w.Inventory.Count("item.eclat_de_seuil"));
+        Assert.False(w.IsSecretOpened("stele_du_cercle"));
     }
 
     [Fact]

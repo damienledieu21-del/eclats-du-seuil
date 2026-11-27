@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 17,
   "kind": "zone",
-  "contentVersion": "0.28.0-provisoire",
+  "contentVersion": "0.29.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
