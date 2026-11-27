@@ -372,4 +372,61 @@ public sealed class V251bEnversUnityTests
         string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
         Assert.Contains("if (_envers) _worldSeason = AtelierTrees.Season(EnversLook.DecorSeason(true, _worldSeason));", view);
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #261 (2e tour) : la saison figée de l'Envers a une transition terminée : aucune saison d'avant (l'été) ne se mêle
+    /// au feuillage, ni au premier décor ni quand il est reconstruit (changement de secteur : SeasonView montre déjà la saison).
+    /// </summary>
+    [Fact]
+    public void Saison_figee_sans_transition_meme_au_decor_reconstruit()
+    {
+        SeasonLook shown = EnversLook.Season;
+        Assert.Equal(1f, shown.Blend);
+        for (int real = 0; real < 4; real++)
+        {
+            int season = AtelierTrees.Season(EnversLook.DecorSeason(true, real));
+            for (int build = 0; build < 3; build++)   // premier décor, puis deux reconstructions avec la même saison montrée
+                Assert.Equal(-1, AtelierTrees.FadingFrom(-1, true, shown.Season, shown.Blend, season));
+        }
+        // Ailleurs, la règle d'avant ne change pas : pendant une vraie transition, la saison d'avant fond ; terminée ou forcée, aucune.
+        Assert.Equal(1, AtelierTrees.FadingFrom(-1, true, 2, 0.4f, 2));
+        Assert.Equal(-1, AtelierTrees.FadingFrom(-1, true, 2, 1f, 2));
+        Assert.Equal(-1, AtelierTrees.FadingFrom(3, true, 2, 0.4f, 2));
+        Assert.Equal(-1, AtelierTrees.FadingFrom(-1, false, 2, 0.4f, 2));
+        string trees = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Trees.cs"));
+        Assert.Contains("AtelierTrees.FadingFrom(ForcedSeason, SeasonView.HasLook, SeasonView.Shown.Season, SeasonView.Shown.Blend, season)", trees);
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #261 (2e tour) : les formes flottantes sont posées au-dessus du relief affiché (le plus haut sous leur emprise),
+    /// oscillation comprise ; l'occulteur couvre toute l'oscillation au-dessus du sol local.
+    /// </summary>
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(35.0)]
+    [InlineData(180.0)]   // le col
+    public void Formes_flottantes_au_dessus_du_relief(double baseHeight)
+    {
+        RegionGrid region = RegionGrid.Vallons();
+        // Un relief en pente (2 m par mètre vers l'est) : le plus haut est à un coin est de l'emprise.
+        double Height(double x, double z) => baseHeight + 0.2 * (x - 1500);
+        foreach (FloatingRock rock in EnversLook.FloatingRocks(region, 13, 4, DeviceTier.Full))
+        {
+            double ground = EnversLook.FloatingGround(rock, Height);
+            Assert.Equal(Height(rock.X + rock.Size / 2, rock.Z), ground, 9);
+            for (double t = 0; t < EnversLook.BobSeconds; t += 0.5)
+            {
+                double y = EnversLook.FloatingAltitude(rock, ground, t);
+                Assert.True(y - rock.Size / 2 >= ground + EnversLook.MinFloatHeight - EnversLook.MaxFloatSize / 2 - EnversLook.BobMeters - 1e-9);
+                Assert.True(y - rock.Size / 2 > ground);   // jamais sous terre, même au plus bas
+                var (min, max) = EnversLook.FloatingBounds(rock, ground);
+                Assert.InRange(y - rock.Size / 2, min - 1e-9, max);
+                Assert.InRange(y + rock.Size / 2, min, max + 1e-9);
+            }
+        }
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.Envers.cs"));
+        Assert.Contains("EnversLook.FloatingGround(rock, (x, z) => StyleWorld.StandHeight((float)x, (float)z))", code);
+        Assert.Contains("EnversLook.FloatingAltitude(rock, floor, seconds)", code);
+        Assert.Contains("EnversLook.FloatingBounds(rock, ground)", code);
+    }
 }

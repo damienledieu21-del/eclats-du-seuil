@@ -20,7 +20,7 @@ namespace EdS.Game
     {
         private bool _envers;
         private readonly Dictionary<Material, Material> _darkMaterials = new Dictionary<Material, Material>();
-        private readonly List<(Transform Body, FloatingRock Rock)> _floating = new List<(Transform, FloatingRock)>();
+        private readonly List<(Transform Body, FloatingRock Rock, float Ground)> _floating = new List<(Transform, FloatingRock, float)>();
         private readonly List<Transform> _ash = new List<Transform>();
         private Material _ashMaterial;
         private Material _riftMaterial;
@@ -224,15 +224,18 @@ namespace EdS.Game
             }
             body.transform.SetParent(parent, false);
             body.transform.rotation = Quaternion.Euler(0f, (float)rock.Yaw, 0f);
-            body.transform.position = new Vector3((float)rock.X, (float)rock.Y, (float)rock.Z);
+            // Revue Codex de la PR #261 (2e tour) : au-dessus du relief affiché (collines, col), le plus haut sous son emprise.
+            float ground = (float)EnversLook.FloatingGround(rock, (x, z) => StyleWorld.StandHeight((float)x, (float)z));
+            body.transform.position = new Vector3((float)rock.X, (float)EnversLook.FloatingAltitude(rock, ground, 0), (float)rock.Z);
             foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>())
             {
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 renderer.receiveShadows = false;
             }
             float half = size / 2f;
-            AddOccluder(body.transform, false, body.transform.position - new Vector3(half, half, half), body.transform.position + new Vector3(half, half, half));
-            _floating.Add((body.transform, rock));
+            var span = EnversLook.FloatingBounds(rock, ground);   // toute l'oscillation, au-dessus du sol local
+            AddOccluder(body.transform, false, new Vector3((float)rock.X - half, (float)span.Min, (float)rock.Z - half), new Vector3((float)rock.X + half, (float)span.Max, (float)rock.Z + half));
+            _floating.Add((body.transform, rock, ground));
         }
 
         /// <summary>
@@ -326,8 +329,8 @@ namespace EdS.Game
             if (!_envers) return;
             StreamCells(camera);
             _floating.RemoveAll(f => f.Body == null);
-            foreach ((Transform body, FloatingRock rock) in _floating)
-                if (body != null) body.position = new Vector3((float)rock.X, (float)EnversLook.BobbedHeight(rock, seconds), (float)rock.Z);
+            foreach ((Transform body, FloatingRock rock, float floor) in _floating)
+                if (body != null) body.position = new Vector3((float)rock.X, (float)EnversLook.FloatingAltitude(rock, floor, seconds), (float)rock.Z);
             int shown = Mathf.Clamp(Mathf.RoundToInt(_ash.Count * density / 1.5f), 0, _ash.Count);
             float ground = StyleWorld.StandHeight(camera.x, camera.z);
             for (int i = 0; i < _ash.Count; i++)

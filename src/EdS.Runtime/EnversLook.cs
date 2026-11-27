@@ -288,7 +288,9 @@ namespace EdS.Runtime
         }
 
         /// <summary>Saison montrée dans l'Envers : aucune neige, aucune glace, un automne mort figé, teinte gris-violet.</summary>
-        public static SeasonLook Season => new SeasonLook(0.42f, 0.36f, 0.5f, 0.75f, 0f, 0f, 2, 0f);
+        /// <remarks>Revue Codex de la PR #261 (2e tour) : transition terminée (<c>Blend</c> à 1) : aucune saison d'avant ne se mêle au
+        /// feuillage, même quand le décor est reconstruit (<see cref="AtelierTrees.FadingFrom"/>).</remarks>
+        public static SeasonLook Season => new SeasonLook(0.42f, 0.36f, 0.5f, 0.75f, 0f, 0f, 2, 1f);
 
         /// <summary>
         /// Revue Codex de la PR #261 (P2) : saison d'affichage du décor (feuillage des arbres, imposteurs, feuilles au sol) : dans l'Envers,
@@ -407,6 +409,25 @@ namespace EdS.Runtime
         /// <summary>Hauteur d'une forme flottante à l'instant <paramref name="seconds"/> (oscillation lente, sans état).</summary>
         public static double BobbedHeight(FloatingRock rock, double seconds) =>
             rock.Y + BobMeters * Math.Sin(2 * Math.PI * seconds / BobSeconds + rock.Phase);
+
+        /// <summary>
+        /// Revue Codex de la PR #261 (2e tour) : sol sous une forme flottante : le plus haut du relief affiché (<paramref name="height"/>, la
+        /// hauteur du sol en un point) en son centre et aux quatre coins de son emprise : elle n'entre jamais dans une colline.
+        /// </summary>
+        public static double FloatingGround(FloatingRock rock, Func<double, double, double> height)
+        {
+            if (height is null) throw new ArgumentNullException(nameof(height));
+            double h = rock.Size / 2, best = height(rock.X, rock.Z);
+            foreach ((double dx, double dz) in new[] { (-h, -h), (h, -h), (-h, h), (h, h) }) best = Math.Max(best, height(rock.X + dx, rock.Z + dz));
+            return best;
+        }
+
+        /// <summary>Altitude (m) d'une forme flottante au-dessus du sol <paramref name="ground"/> à l'instant <paramref name="seconds"/>.</summary>
+        public static double FloatingAltitude(FloatingRock rock, double ground, double seconds) => ground + BobbedHeight(rock, seconds);
+
+        /// <summary>Bornes verticales (m) de l'occulteur d'une forme flottante : toute son oscillation, sa taille comprise.</summary>
+        public static (double Min, double Max) FloatingBounds(FloatingRock rock, double ground) =>
+            (ground + rock.Y - rock.Size / 2 - BobMeters, ground + rock.Y + rock.Size / 2 + BobMeters);
 
         // --- Chargement par cases autour de la caméra --------------------------------------------------------------------
 
