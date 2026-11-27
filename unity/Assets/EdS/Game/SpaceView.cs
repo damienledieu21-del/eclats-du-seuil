@@ -423,6 +423,7 @@ namespace EdS.Game
         private void ObstacleShape(SpaceObstacle obstacle)
         {
             string id = obstacle.Id;
+            if (_envers && EnversLieuObstacle(obstacle)) return;   // V2.52b : pièces des douze lieux, construites par case autour de la caméra
             if (_envers && EnversObstacle(obstacle)) return;   // V2.51b : arbres morts, ruines inversées, éclats noirs, autel de l'Aube
             List<Vector3> points = obstacle.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
             // Relecture indépendante de la PR #167 : gorge et ravins de la surface étendue, en creux de roche sombre (prisme bas, non occultant).

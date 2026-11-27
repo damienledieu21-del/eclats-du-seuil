@@ -288,6 +288,7 @@ namespace EdS.Game.Editor
             SewerPieces(notes);   // chantier V2.49.2 : matières du kit d'égout (Resources/Egouts), quand l'atelier l'aura livré
             DrownedPieces(notes);   // chantier V2.50.1b : matières du kit de grotte noyée (Resources/Noyees), quand l'atelier l'aura livré
             EnversPieces(notes);   // chantier V2.51b : matières du kit de l'Envers (Resources/Envers)
+            EnversLieuxPieces(notes);   // chantier V2.52b : kit des douze lieux de l'Envers et ses créatures (Resources/Envers2)
             RatModel(notes);   // V2.49.2 : le rat animé de Tripo (Resources/Rats), sa marche en « Legacy » et sa matière
             CavePieces(notes);   // chantier V2.46 : matières du kit de grotte (Resources/Grotte, chargé par son nom en jeu)
             catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
@@ -728,6 +729,28 @@ namespace EdS.Game.Editor
                 .Where(p => EnversLook.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             foreach (string path in paths) OwnMaterial(path, notes);
             if (paths.Count > 0) notes.Add("Envers : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(EnversLook.NameOf)) + ").");
+        }
+
+        /// <summary>
+        /// Chantier V2.52b : le kit des douze lieux de l'Envers (<see cref="EnversLieux.AssetFolder"/>, reconnu par <see cref="EnversLieux.NameOf"/>) :
+        /// même traitement que le kit de l'Envers ; ses créatures (<see cref="EnversLieux.CreatureAssetFolder"/>) comme celles des galeries : le
+        /// chien de cendre a sa marche « Legacy », le spectre est statique. Sans dossier : rien, sans erreur (formes simples en repli).
+        /// </summary>
+        private static void EnversLieuxPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(EnversLieux.AssetFolder)) return;
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { EnversLieux.AssetFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => EnversLieux.NameOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            foreach (string path in paths) OwnMaterial(path, notes);
+            if (paths.Count > 0) notes.Add("Envers des lieux : " + paths.Count + " modèles du kit (" + string.Join(", ", paths.Select(EnversLieux.NameOf)) + ").");
+            foreach (string creature in EnversLieux.CreatureModels)
+            {
+                string path = EnversLieux.CreatureAssetFolder + "/" + creature + ".fbx";
+                if (!(AssetImporter.GetAtPath(path) is ModelImporter)) continue;
+                if (EnversLieux.CreatureWalks(creature)) Legacy(path, false);
+                OwnMaterial(path, notes);
+                notes.Add("Envers des lieux : créature " + creature + (EnversLieux.CreatureWalks(creature) ? " (marche « Legacy »)." : " (statique, flotte)."));
+            }
         }
 
         private static void DrownedPieces(List<string> notes)
