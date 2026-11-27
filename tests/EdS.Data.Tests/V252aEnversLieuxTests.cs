@@ -544,6 +544,27 @@ public sealed class V252aEnversLieuxTests : IDisposable
     }
 
     [Fact]
+    public void Coffre_fouille_sauvegarde_par_l_autosauvegarde()
+    {
+        // Revue Codex de la PR #262 (P2) : la fouille marque la partie à sauvegarder ; sans rien d'autre, l'autosauvegarde l'écrit.
+        (string data, string scenarios) = CopyAll("coffre_de_la_felure", (1656, -468.5));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.envers_vallons", 0, 0, new[] { "zone.envers_vallons/safe/autel_de_l_aube" }, V11TestData.Hero()));
+        AdventureSession a = V11TestData.Adventure(save, data, scenarios);
+        for (int i = 0; i < 200; i++) a.Advance(0.05);   // la sauvegarde du début est faite
+        WorldSave before = SaveStore.Read(save).Save!;
+        Assert.DoesNotContain("zone.envers_vallons/secret/coffre_de_la_felure", before.Consumed);
+        int shards = before.Character!.Inventory.Where(s => s.Item == "item.eclat_de_seuil").Sum(s => s.Count);
+        Assert.Equal("coffre_de_la_felure", a.SecretInReach!.Id);
+        Assert.True(a.Interact());
+        for (int i = 0; i < 120; i++) a.Advance(0.05);   // 6 s, sans autre événement
+        WorldSave after = SaveStore.Read(save).Save!;
+        Assert.Contains("zone.envers_vallons/secret/coffre_de_la_felure", after.Consumed);
+        Assert.Equal(shards + 3, after.Character!.Inventory.Where(s => s.Item == "item.eclat_de_seuil").Sum(s => s.Count));
+    }
+
+    [Fact]
     public void Stele_lue_dans_l_aventure_et_relue()
     {
         (string data, string scenarios) = CopyAll("stele_du_cercle", (1656, -468.5));
