@@ -579,4 +579,12 @@ public class Lot101ProtocolTests
         }
         await Assert.ThrowsAnyAsync<SocketException>(() => TcpNetConnection.ConnectAsync("127.0.0.1", port, 1024, 1024));
     }
+
+    [Fact]
+    public async Task TCP_erreur_inattendue_sur_le_fil_de_connexion_rend_une_tache_en_echec()
+    {
+        // Revue Codex de la PR #269 : le fil dédié de connexion ne laisse sortir aucune exception (elle arrêterait le processus).
+        // Un port hors plage lève une exception autre que SocketException à l'intérieur de ce fil.
+        await Assert.ThrowsAnyAsync<Exception>(() => TcpNetConnection.ConnectAsync("127.0.0.1", 70_000, 1024, 1024));
+    }
 }
