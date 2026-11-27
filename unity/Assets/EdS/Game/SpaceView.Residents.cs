@@ -47,6 +47,8 @@ namespace EdS.Game
         private readonly HashSet<string> _lifeFailed = new HashSet<string>();
         /// <summary>Indices des habitants qui ont un corps (hystérésis du choix, <see cref="VillageLife.Pick"/>).</summary>
         private readonly HashSet<int> _lifeCurrent = new HashSet<int>();
+        /// <summary>Revue Codex de la PR #268 : où sont affichés les corps visibles (ils rentrent à pied avant de disparaître à la porte).</summary>
+        private readonly Dictionary<int, (double X, double Z)> _lifeShownAt = new Dictionary<int, (double X, double Z)>();
         private IReadOnlyList<int> _lifeNear = new int[0];
         private float _lifeNextPick;
         private double _lifeMinute = -1;
@@ -101,9 +103,14 @@ namespace EdS.Game
                 _lifeNextPick = Time.time + ResidentsPickSeconds;
                 DeviceTier tier = DeviceQuality.Tier;
                 _lifeCurrent.Clear();
-                foreach (ResidentBody b in _residentBodies.Values) _lifeCurrent.Add(b.Index);
+                _lifeShownAt.Clear();
+                foreach (ResidentBody b in _residentBodies.Values)
+                {
+                    _lifeCurrent.Add(b.Index);
+                    if (b.Body != null && b.Body.gameObject.activeSelf) _lifeShownAt[b.Index] = (b.Body.position.x, b.Body.position.z);
+                }
                 _lifeNear = VillageLife.Pick(_life, _lifeMinute, _lifeContext, camera.x, camera.z, VillageLife.Radius(tier),
-                    VillageLife.Cap(tier, DeviceQuality.Light), _lifeCurrent);
+                    VillageLife.Cap(tier, DeviceQuality.Light), _lifeCurrent, null, _lifeShownAt);
                 foreach (ResidentBody b in _residentBodies.Values) b.Seen = false;
                 for (int k = 0; k < _lifeNear.Count; k++)
                     if (_residentBodies.TryGetValue(_life.Residents[_lifeNear[k]].Id, out ResidentBody kept)) kept.Seen = true;

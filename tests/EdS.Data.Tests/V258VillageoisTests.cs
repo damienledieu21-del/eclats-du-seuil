@@ -398,4 +398,60 @@ public class V258RelectureTests
                     Assert.True((a.X - s.X) * (a.X - s.X) + (a.Z - s.Z) * (a.Z - s.Z) >= VillageLife.AvoidDistance * VillageLife.AvoidDistance - 1e-9,
                         r.Id + " " + s.Place);
     }
+
+    [Fact]
+    public void A_route_is_the_same_with_a_fresh_or_a_filled_memory()
+    {
+        Resident a = World.Residents.First(r => !r.Hamlet), b = World.Residents.Last(r => !r.Hamlet);
+        var fresh = new VillageRoads(Map.Roads);
+        var filled = new VillageRoads(Map.Roads);
+        filled.Route(a.Home.X, a.Home.Z, b.Home.X, b.Home.Z);   // un trajet voisin (4 cm) déjà gardé ne doit rien changer
+        var p1 = fresh.Route(a.Home.X + 0.04, a.Home.Z, b.Home.X, b.Home.Z);
+        var p2 = filled.Route(a.Home.X + 0.04, a.Home.Z, b.Home.X, b.Home.Z);
+        Assert.Equal(p1, p2);
+        Assert.Equal((a.Home.X + 0.04, a.Home.Z), p2[0]);
+        Assert.Equal((b.Home.X, b.Home.Z), p2[p2.Count - 1]);
+        var near = new VillageRoads(null);
+        near.Route(0, 0, 100, 0);
+        Assert.Equal((0.04, 0.0), near.Route(0.04, 0, 100, 0)[0]);
+    }
+
+    [Fact]
+    public void A_shown_resident_going_home_keeps_its_body_until_the_door()
+    {
+        Resident anchor = World.Residents.First(r => !r.Hamlet);
+        int i = 0;
+        double minute = 2 * 60;   // la nuit : sa pose théorique est rentrée
+        Assert.True(VillageLife.At(World, World.Residents[i], minute, Spring).Hidden);
+        double x = anchor.Market.X, z = anchor.Market.Z;
+        var shownAt = new Dictionary<int, (double X, double Z)> { [i] = (x + 5, z) };
+        Assert.Contains(i, VillageLife.Pick(World, minute, Spring, x, z, 60, 10, new HashSet<int> { i }, null, shownAt));
+        Assert.DoesNotContain(i, VillageLife.Pick(World, minute, Spring, x, z, 60, 10, new HashSet<int> { i }));   // arrivé : plus affiché
+        var far = new Dictionary<int, (double X, double Z)> { [i] = (x + 500, z) };
+        Assert.DoesNotContain(i, VillageLife.Pick(World, minute, Spring, x, z, 60, 10, new HashSet<int> { i }, null, far));
+    }
+
+    [Fact]
+    public void Each_member_of_a_household_has_its_own_spot_by_the_door()
+    {
+        foreach (var house in World.Residents.GroupBy(r => r.House).Where(g => g.Count() > 1))
+        {
+            var members = house.ToList();
+            for (int a = 0; a < members.Count; a++)
+                for (int b = a + 1; b < members.Count; b++)
+                {
+                    double dp = Math.Sqrt((members[a].Porch.X - members[b].Porch.X) * (members[a].Porch.X - members[b].Porch.X)
+                        + (members[a].Porch.Z - members[b].Porch.Z) * (members[a].Porch.Z - members[b].Porch.Z));
+                    Assert.True(dp >= 1.0, house.Key + " : porches à " + dp + " m");
+                    foreach (double m in new[] { 9 * 60.0, 14 * 60 + 45.0, 16 * 60.0 })
+                    {
+                        LifePose pa = VillageLife.At(World, members[a], m, Spring), pb = VillageLife.At(World, members[b], m, Spring);
+                        if (pa.Hidden || pb.Hidden || pa.Moving || pb.Moving) continue;
+                        double d = Math.Sqrt((pa.X - pb.X) * (pa.X - pb.X) + (pa.Z - pb.Z) * (pa.Z - pb.Z));
+                        Assert.True(d >= 0.8, house.Key + " à " + m + " : " + members[a].Id + " et " + members[b].Id + " à " + d + " m");
+                    }
+                }
+        }
+    }
 }
+

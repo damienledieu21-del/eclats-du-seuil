@@ -193,7 +193,7 @@ namespace EdS.Runtime
         private readonly List<(double X, double Z)> _nodes = new List<(double X, double Z)>();
         private readonly List<List<int>> _links = new List<List<int>>();
         private readonly List<(int A, int B)> _segments = new List<(int A, int B)>();
-        private readonly Dictionary<(long, long, long, long), (double X, double Z)[]> _cache = new Dictionary<(long, long, long, long), (double X, double Z)[]>();
+        private readonly Dictionary<(long, long, long, long), (double X, double Z)[]> _cache = new Dictionary<(long, long, long, long), (double X, double Z)[]>();   // clé sans perte (revue Codex de la PR #268)
 
         /// <summary>Distance de raccord entre deux routes (m) : un bout de route à moins de cela d'une autre route s'y branche.</summary>
         public const double JoinDistance = 6;
@@ -332,7 +332,11 @@ namespace EdS.Runtime
             return (at, seg);
         }
 
-        private static long Key(double v) => (long)Math.Round(v * 10);
+        /// <summary>
+        /// Revue Codex de la PR #268 : clé exacte (les bits du nombre), jamais arrondie : un trajet gardé a toujours les extrémités demandées,
+        /// et la réponse ne dépend pas de ce que la mémoire contenait avant.
+        /// </summary>
+        private static long Key(double v) => BitConverter.DoubleToInt64Bits(v == 0 ? 0.0 : v);
 
         /// <summary>
         /// Trajet de (<paramref name="fromX"/>, <paramref name="fromZ"/>) à (<paramref name="toX"/>, <paramref name="toZ"/>) : tout droit s'il
@@ -659,12 +663,19 @@ namespace EdS.Runtime
                 {
                     VillagerTrade trade = members[m];
                     string id = "habitant/" + house.Id + "/" + m;
-                    LifeSpot work = WorkSpot(trade, id, home, house, well, stalls, barns, fieldList, Nearest, Front, Free, Ring, gx, gz);
+                    // Revue Codex de la PR #268 : chacun sa place devant la porte (côte à côte le long de la façade), jamais l'un dans l'autre ;
+                    // les places déjà prises du foyer sont évitées comme celles des PNJ.
+                    double yawRad = door.Yaw * Math.PI / 180, along = (m - (members.Count - 1) / 2.0) * 1.1;
+                    var (px, pz) = Free(dx + Math.Cos(yawRad) * along + Math.Sin(yawRad) * 0.3, dz - Math.Sin(yawRad) * along + Math.Cos(yawRad) * 0.3, id + "/porche");
+                    LifeSpot porch = new LifeSpot(px, pz, door.Yaw, LifePlace.Porch, VillagerActivity.Sit, false);
+                    avoidList.Add((px, pz));
+                    LifeSpot work = trade == VillagerTrade.Elder ? porch
+                        : WorkSpot(trade, id, m, home, house, well, stalls, barns, fieldList, Nearest, Front, Free, Ring, gx, gz);
+                    if (work.Place == LifePlace.Work && trade != VillagerTrade.Farmer) avoidList.Add((work.X, work.Z));
                     LifeSpot market = Ring(gx, gz, well != null ? Math.Max(well.MaxX - well.MinX, well.MaxZ - well.MinZ) / 2 + 2.2 : 3.5, id + "/marche",
                         LifePlace.Market, VillagerActivity.Talk);
                     LifeSpot feast = Ring(gx, gz, 5.5, id + "/fete", LifePlace.Feast, StyleRules.Variant(id + "/danse", 2) == 0 ? VillagerActivity.Dance : VillagerActivity.Talk);
                     LifeSpot play = Ring(gx, gz, 6.5, id + "/jeux", LifePlace.Play, VillagerActivity.Talk);
-                    LifeSpot porch = new LifeSpot(dx, dz, door.Yaw, LifePlace.Porch, VillagerActivity.Sit, false);
                     residents.Add(new Resident(id, house.Id, trade, CharacterOf(trade, id), ModelOf(trade, id), StyleRules.Variant(id + "/heure", 41) - 20,
                         home, work, market, tavernOf(id), chapelOf(id), ShelterOf(id), feast, play, porch, hamlet));
                 }
@@ -766,7 +777,7 @@ namespace EdS.Runtime
             };
         }
 
-        private static LifeSpot WorkSpot(VillagerTrade trade, string id, LifeSpot home, Box house, Box? well, List<Box> stalls, List<Box> barns,
+        private static LifeSpot WorkSpot(VillagerTrade trade, string id, int member, LifeSpot home, Box house, Box? well, List<Box> stalls, List<Box> barns,
             List<StyleField> fields, Func<List<Box>, double, double, double, Box?> nearest, Func<Box, double, (double X, double Z, double Yaw)> front,
             Func<double, double, string, (double X, double Z)> free, Func<double, double, double, string, LifePlace, VillagerActivity, LifeSpot> ring,
             double gx, double gz)
@@ -818,7 +829,7 @@ namespace EdS.Runtime
                     return ring(gx, gz, 6.5, id + "/jeux", LifePlace.Play, VillagerActivity.Talk);
             }
             // Devant chez soi, à l'ouvrage (le fournil, la forge, l'atelier sont dans la maison : on travaille à la porte).
-            double a = (home.Yaw + (StyleRules.Variant(id + "/cour", 2) == 0 ? 60 : -60)) * Math.PI / 180;
+            double a = (home.Yaw + (StyleRules.Variant(id + "/cour", 2) == 0 ? 1 : -1) * (60 + 25 * member)) * Math.PI / 180;
             var (wx, wz) = free(home.X + Math.Sin(a) * 1.6, home.Z + Math.Cos(a) * 1.6, id + "/cour");
             return new LifeSpot(wx, wz, home.Yaw, LifePlace.Work, VillagerActivity.Gather, false);
         }
@@ -1067,10 +1078,11 @@ namespace EdS.Runtime
         /// <summary>
         /// Comme <see cref="Near"/>, avec hystérésis : ceux de <paramref name="current"/> (déjà montrés) restent tant qu'ils sont dehors à moins
         /// de <paramref name="radius"/> + <see cref="KeepMargin"/> m, et passent avant les nouveaux ; puis les nouveaux, dans le rayon, les plus
-        /// proches d'abord ; <paramref name="cap"/> au plus en tout.
+        /// proches d'abord ; <paramref name="cap"/> au plus en tout. <paramref name="shownAt"/> : où sont affichés les corps encore visibles
+        /// (indice → place) ; un habitant montré qui y figure est jugé à cette place, même si sa pose théorique est déjà rentrée.
         /// </summary>
         public static IReadOnlyList<int> Pick(VillageWorld world, double minute, VillageContext c, double x, double z, double radius, int cap,
-            ICollection<int>? current, IList<LifePose>? poses = null)
+            ICollection<int>? current, IList<LifePose>? poses = null, IReadOnlyDictionary<int, (double X, double Z)>? shownAt = null)
         {
             if (world is null) throw new ArgumentNullException(nameof(world));
             poses?.Clear();
@@ -1084,9 +1096,17 @@ namespace EdS.Runtime
                 double bx = Math.Max(0, Math.Max(r.MinX - x, x - r.MaxX)), bz = Math.Max(0, Math.Max(r.MinZ - z, z - r.MaxZ));
                 if (Math.Sqrt(bx * bx + bz * bz) > outer + RouteMargin) continue;
                 LifePose p = At(world, r, minute, c);
+                bool kept = current != null && current.Contains(i);
+                // Revue Codex de la PR #268 : un habitant montré qui rentre (chez lui, à l'abri d'une salle) est jugé là où son corps est
+                // encore (shownAt), pas à sa pose théorique déjà cachée : il garde son corps jusqu'à la porte.
+                if (kept && shownAt != null && shownAt.TryGetValue(i, out var seenAt))
+                {
+                    double ds = (seenAt.X - x) * (seenAt.X - x) + (seenAt.Z - z) * (seenAt.Z - z);
+                    if (ds <= outer * outer) found.Add((true, ds, i, p));
+                    continue;
+                }
                 if (p.Hidden) continue;
                 double d = (p.X - x) * (p.X - x) + (p.Z - z) * (p.Z - z);
-                bool kept = current != null && current.Contains(i);
                 if (d <= (kept ? outer * outer : radius * radius)) found.Add((kept, d, i, p));
             }
             var chosen = found.OrderBy(f => f.Kept ? 0 : 1).ThenBy(f => f.D).ThenBy(f => world.Residents[f.I].Id, StringComparer.Ordinal).Take(cap).ToList();
