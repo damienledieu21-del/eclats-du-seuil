@@ -1423,3 +1423,12 @@ Les pièces des douze lieux de l'Envers (V2.52a) et les secrets sont dessinés p
 - **Créatures** (`Resources/Envers2/Creatures`) : le **chien de cendre** (marche « Legacy ») pour les chiens de l'Envers ; le **spectre reflet** (statique : la marche bipède a échoué chez Tripo) pour les moines renversés et l'abbé renversé, qui flotte en ondulant (`EnversFloat`, `EnversLieux.WraithBob`). Sans modèle : le loup et le moine en robe, au rendu de faille.
 - **Repli** : chaque pièce sans modèle devient un prisme sombre ; un secret sans modèle, une boîte.
 - **Kit** : 13 modèles et 2 créatures Tripo du 27 novembre 2026 (dépense validée d'avance, environ 360 crédits réels), finis dans Blender (`Envers2/finir_envers2.py`, `Envers2/Creatures/finir_creatures.py` de l'AssetLab), à plat dans `Assets/EdS/Modeles/Resources/Envers2`.
+
+## Défauts des kits récents (branche `v2.55-defauts`, 27 novembre 2026)
+
+Contrôlés sur des rendus Blender (Workbench, sans écran : face, côté, dessus, oblique), sans dépense Tripo :
+
+- **Éclat noir** (`Envers/eclat_noir`) : pas couché mais trapu chez Tripo ; mis aux côtés de sa fiche, 1,5 × 1,5 × 3 m (`finir_envers.py`, `ETIRER`).
+- **Ancre de l'épave** (`Noyees/ancre_noyee`) : penchée à ~45° ; redressée par calcul (`finir_noyees.py`, `REDRESSER`), 2,26 × 0,61 × 3 m. L'ancre et le repaire sont occulteurs (`DrownedLooks.Occludes`).
+- **Gouffre des galeries** : le modèle est un bloc plein de 8 m qui bouchait le creux ; il n'est plus chargé (`GalleryLooks.ModelFor(Chasm)` nul) : fond, parois, lueur et lèvres procéduraux.
+- **Golem de cristal** et **spectre reflet** : animations faites dans Blender par script sur leur squelette Tripo (`atelier/eds_marche_procedurale.py`) : marche lourde et attente du golem ; bras et traîne de la robe qui ondulent pour le spectre, qui flotte toujours par le code (`EnversFloat`). Prises « Walk » et « Idle », importées en « Legacy » comme les autres créatures (`CreatureWalks` vrai). Après la mise à jour, relancer **Éclats du Seuil → Préparer l'essai de style** pour que les deux FBX passent en « Legacy ».

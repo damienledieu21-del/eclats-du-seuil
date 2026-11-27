@@ -602,7 +602,7 @@ namespace EdS.Game
             // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
             // modèle du catalogue, comme avant.
             // V2.52b : les reflets de l'Envers qui ont leur modèle Tripo (Resources/Envers2/Creatures) : le spectre pour les moines renversés et
-            // l'abbé renversé (statique, il flotte en ondulant), le chien de cendre animé ; sans modèle, le corps d'avant (robe du clergé, loup).
+            // l'abbé renversé (il flotte en ondulant ; bras et robe animés depuis V2.55), le chien de cendre animé ; sans modèle, le corps d'avant (robe du clergé, loup).
             string enversName = EnversLieux.CreatureModel(id);
             GameObject enversPrefab = enversName != null ? Resources.Load<GameObject>(EnversLieux.CreatureFolder + enversName) : null;
             HumanLook? human = humans && enversPrefab == null ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
@@ -702,10 +702,10 @@ namespace EdS.Game
                 }
             // Essai réaliste : les personnages de Mixamo ont leurs animations dans des fichiers à part (catalogue), jouées par un composant
             // Animation posé sur la racine du modèle (les chemins des os partent de là).
-            // V2.50b : une créature de cristal sur son propre modèle n'a que sa marche (ou rien, le golem statique) : pas les clips du loup ou de l'ours.
+            // V2.50b : une créature de cristal sur son propre modèle n'a que ses propres animations (marche ; attente pour le golem depuis V2.55) : pas les clips du loup ou de l'ours.
             AnimationClip[] clips = catalog.Clips(slot, id);
             if (rat != null && crystalName != null) clips = null;
-            if (rat != null && enversPrefab != null && rat == enversPrefab) clips = null;   // V2.52b : la marche du chien, rien pour le spectre
+            if (rat != null && enversPrefab != null && rat == enversPrefab) clips = null;   // V2.52b : la marche du chien ; V2.55 : celles du spectre
             if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
