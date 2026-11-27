@@ -27,9 +27,10 @@
         14,
         15,
         16,
-        17
+        17,
+        18
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux). Version 15 (chantier V2.45.1, étages) : floor (« surface » ou « dessous ») sur la zone et kind sur une porte (porte, escalier, puits, trappe, faille) ; dans un dessous, une créature (population, première forme d'un chef) part à 8 m au moins de chaque porte ; bornes relevées (64 portes, 256 zones reliées, 512 portes avec région, 32 portes par case) ; la version 14 est encore lue (sans eux, avec ses bornes de 16 portes, 256 avec région, 16 par case). Version 16 (V2.50.1, grottes noyées du lac) : water sur une porte (tide : noyée à marée haute ; diveMs : durée de la plongée quand elle est noyée) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle). Version 17 (V2.51, l'Envers) : floor « envers » (avec une région) et mirror (of : zone de la surface reflétée ; scenario : son scénario ; remove : obstacles de la surface absents de l'Envers) ; dans l'Envers, et près de toute faille, une créature part à 8 m au moins des portes ; une faille entre une zone et son Envers est au même point des deux côtés ; la version 16 est encore lue (sans eux)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux). Version 15 (chantier V2.45.1, étages) : floor (« surface » ou « dessous ») sur la zone et kind sur une porte (porte, escalier, puits, trappe, faille) ; dans un dessous, une créature (population, première forme d'un chef) part à 8 m au moins de chaque porte ; bornes relevées (64 portes, 256 zones reliées, 512 portes avec région, 32 portes par case) ; la version 14 est encore lue (sans eux, avec ses bornes de 16 portes, 256 avec région, 16 par case). Version 16 (V2.50.1, grottes noyées du lac) : water sur une porte (tide : noyée à marée haute ; diveMs : durée de la plongée quand elle est noyée) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle). Version 17 (V2.51, l'Envers) : floor « envers » (avec une région) et mirror (of : zone de la surface reflétée ; scenario : son scénario ; remove : obstacles de la surface absents de l'Envers) ; dans l'Envers, et près de toute faille, une créature part à 8 m au moins des portes ; une faille entre une zone et son Envers est au même point des deux côtés ; la version 16 est encore lue (sans eux). Version 18 (V2.52, le contenu de l'Envers des douze lieux) : secrets (coffres et stèles de lore fouillés une fois, récompenses données une seule fois) ; la version 17 est encore lue (sans eux)."
     },
     "kind": {
       "const": "zone"
@@ -658,6 +659,33 @@
             "envers"
           ],
           "description": "Chantier V2.45.1 (schéma 15) : étage de la zone, « surface » par défaut ; « dessous » : zone à part sous la surface (grotte, mine, crypte, égouts), reliée par des portes, avec créatures, jamais un intérieur ; le voyage rapide n'y mène pas ; ses créatures partent à 8 m au moins de chaque porte. V2.51 (schéma 17) : « envers » : couche de l'Envers d'une région (même grille, reflet de la surface : mirror obligatoire)."
+        },
+        "secrets": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "V2.52 (schéma 18) : secrets de la zone : un coffre (« coffre », au moins une récompense) ou une stèle de lore (« lore », récompenses facultatives), à une place dégagée de l'aire ; fouillé à 2 m, son texte montré, ses récompenses données une seule fois (clé « <zone>/secret/<id> » du registre du monde). Sans repère sur la carte.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "kind", "position", "text"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+              "name": { "type": "string", "minLength": 1 },
+              "kind": { "enum": ["coffre", "lore"] },
+              "position": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+              "text": { "type": "string", "pattern": "^text(\\.[a-z0-9_]+)+$" },
+              "rewards": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["item", "count"],
+                  "properties": { "item": { "type": "string" }, "count": { "type": "integer", "minimum": 1 } }
+                }
+              }
+            }
+          }
         },
         "mirror": {
           "type": "object",

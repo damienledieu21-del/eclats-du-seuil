@@ -121,8 +121,11 @@ namespace EdS.Runtime
         public static bool FromEnvers(string? id)
         {
             string key = (id ?? string.Empty).Trim().ToLowerInvariant();
+            // V2.52a : tous les reflets des douze lieux, dont le mot « reflet » est dans l'identifiant (« chien_reflet2 », « moine_reflet_abbe »,
+            // « sanglier_reflet1_v3 ») ; aucune créature de la surface ni d'un dessous ne le porte.
             return key.StartsWith("loup_echo_envers", StringComparison.Ordinal) || key.StartsWith("ours_reflet", StringComparison.Ordinal)
-                || key.StartsWith("loup_echo_reflet_gardien", StringComparison.Ordinal);
+                || key.StartsWith("loup_echo_reflet_gardien", StringComparison.Ordinal)
+                || System.Text.RegularExpressions.Regex.IsMatch(key, "(^|_)reflet([0-9_]|$)");
         }
 
         /// <summary>

@@ -319,7 +319,8 @@ public class SaisonsContenuTests
             };
             // V2.51a : un dessous n'a pas d'Envers : la faille de l'Envers est retirée.
             var doorList = root["data"]!["doors"]!.AsArray();
-            doorList.Remove(doorList.Single(d => (string)d!["id"]! == "faille_de_l_envers"));
+            WithoutRifts(root);   // V2.52a : et celles des douze lieux
+            _ = doorList;
             foreach (JsonNode? door in root["data"]!["doors"]!.AsArray())
                 if (moved.TryGetValue((string)door!["id"]!, out double[]? at)) door["position"] = new JsonArray(at[0], at[1]);
             return root.ToJsonString();

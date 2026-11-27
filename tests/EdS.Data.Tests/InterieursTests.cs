@@ -106,7 +106,7 @@ public class InterieursTests : IDisposable
                 "zone.auberge_combles" },   // V2.47.1 : les trois niveaux de la mine ; V2.48.1 : les cryptes de l'abbaye et de la chapelle ; V2.49.1 : les égouts du Bourg   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
-        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" || z.Envers ? ZoneValidator.CurrentSchemaVersion : z.Id.StartsWith("zone.grottes_noyees", StringComparison.Ordinal) ? ZoneValidator.WaterSchemaVersion : z.Underground || z.Id == "zone.chapelle" ? ZoneValidator.FloorsSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.51a : les Vallons (faille) et l'Envers au schéma 17 ; V2.50.1 : les grottes noyées au schéma 16 (eau des portes)   // V2.4 : Vallons en 9, intérieurs en 7 ; V2.46 : la grotte (dessous) au schéma courant ; V2.48.1 : la chapelle aussi (sa trappe)
+        Assert.All(linked.Zones, z => Assert.Equal(z.Envers ? ZoneValidator.CurrentSchemaVersion : z.Id == "zone.vallons" ? ZoneValidator.MirrorSchemaVersion : z.Id.StartsWith("zone.grottes_noyees", StringComparison.Ordinal) ? ZoneValidator.WaterSchemaVersion : z.Underground || z.Id == "zone.chapelle" ? ZoneValidator.FloorsSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.52a : l'Envers au schéma 18 (secrets), les Vallons au schéma 17 (failles) ; V2.50.1 : les grottes noyées au schéma 16 (eau des portes)   // V2.4 : Vallons en 9, intérieurs en 7 ; V2.46 : la grotte (dessous) au schéma courant ; V2.48.1 : la chapelle aussi (sa trappe)
         ZoneDefinition vallons = linked.Zones[0];
         Assert.False(vallons.Indoor);
         Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison"),
@@ -129,7 +129,8 @@ public class InterieursTests : IDisposable
             ("porte_egouts_marche", "zone.egouts_collecteur"), ("porte_egouts_deversoir", "zone.egouts_collecteur"), ("porte_grottes_noyees", "zone.grottes_noyees_bassins"),   // V2.49.1 : les égouts du Bourg
             ("porte_galeries_seuil", "zone.galeries_seuil"),   // V2.50a : les galeries sous les pierres du Seuil
             ("porte_dortoir_abbaye", "zone.dortoir_abbaye"),
-            ("faille_de_l_envers", "zone.envers_vallons") }, vallons.Doors.Where(d => d.Building is null).Select(d => (d.Id, d.To)));
+            ("faille_de_l_envers", "zone.envers_vallons") },
+            vallons.Doors.Where(d => d.Building is null && !IsEnversRift(d.Id)).Select(d => (d.Id, d.To)));   // V2.52a : les failles des douze lieux, dans V252aEnversLieuxTests
         foreach (ZoneDefinition inside in linked.Zones.Skip(1).Where(z => z.Id != "zone.souvenir_rupture" && !z.Underground && !z.Envers))
         {
             Assert.True(inside.Indoor);
@@ -254,7 +255,7 @@ public class InterieursTests : IDisposable
         ZoneDefinition souvenir = Read(ZoneJson("zone.souvenir_rupture")).Zone!;   // sous-lot V1.9.6 : la scène du souvenir
         // Zones manquantes.
         ValidationReport alone = ZoneValidator.CheckDoors(new[] { vallons });
-        Assert.Equal(28, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(41, alone.Errors.Count(e => e.Code == ValidationCode.UnknownReference && e.Path.EndsWith(".to", StringComparison.Ordinal)));   // V2.52a : et les treize failles des douze lieux ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         ZoneDefinition[] shops = { Read(ZoneJson("zone.boulangerie")).Zone!, Read(ZoneJson("zone.epicerie")).Zone!, Read(ZoneJson("zone.herboristerie")).Zone!,
             Read(ZoneJson("zone.mercerie")).Zone! };
         // Lot C (16 novembre 2026) : les intérieurs de métier, la cuisine et les chambres de l'auberge, l'étage des meules.
@@ -381,7 +382,7 @@ public class InterieursTests : IDisposable
         Assert.False(a.Indoors);
         Assert.Equal("porte_auberge", a.DoorInReach!.Id);
         Assert.True(a.CanUseDoor);
-        Assert.Equal(27, a.Doors().Count);   // V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(40, a.Doors().Count);   // V2.52a : les treize failles des douze lieux ; V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // sous-lot V1.7 : et la Maison de la Guilde ; V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         long tick = a.World.Save().WorldTick;
 
         Assert.True(a.Interact());   // F : la porte (ni PNJ ni nœud à portée)
@@ -421,7 +422,7 @@ public class InterieursTests : IDisposable
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
         Assert.False(a.Map.Indoor);
-        Assert.Equal(27, a.Map.Doors.Count);   // V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
+        Assert.Equal(40, a.Map.Doors.Count);   // V2.52a : les treize failles des douze lieux ; V2.51a : la faille de l'Envers ; V2.50a : les galeries du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : les deux entrées des égouts ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // V2.14 : et les quatre boutiques ; lot C : et cinq intérieurs de métier
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
     }

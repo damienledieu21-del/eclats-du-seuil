@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 17,
+  "schemaVersion": 18,
   "kind": "zone",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "zone.envers_vallons",
     "name": "Envers des Vallons",
@@ -12,7 +12,8 @@
       "of": "zone.vallons",
       "scenario": "zones/vallons",
       "remove": [
-        "porte_moulin"
+        "porte_moulin",
+        "arbre_millenaire_foret"
       ]
     },
     "entry": "autel_de_l_aube",
@@ -67,6 +68,175 @@
           -400
         ],
         "minLevel": 24
+      },
+      {
+        "id": "envers_du_village",
+        "name": "Envers du village",
+        "min": [
+          -100,
+          -70
+        ],
+        "max": [
+          140,
+          100
+        ],
+        "minLevel": 24
+      },
+      {
+        "id": "envers_du_bourg",
+        "name": "Envers du Bourg d'Aube",
+        "min": [
+          -1310,
+          -370
+        ],
+        "max": [
+          -710,
+          230
+        ],
+        "minLevel": 24
+      },
+      {
+        "id": "envers_de_la_vallee",
+        "name": "Envers de la vallée",
+        "min": [
+          -158,
+          100.0001
+        ],
+        "max": [
+          620,
+          1092
+        ],
+        "minLevel": 25
+      },
+      {
+        "id": "envers_des_coteaux",
+        "name": "Envers des coteaux",
+        "min": [
+          -1700,
+          -1500
+        ],
+        "max": [
+          -780,
+          -370
+        ],
+        "minLevel": 26
+      },
+      {
+        "id": "envers_de_la_foret",
+        "name": "Envers de la forêt des Loups",
+        "min": [
+          -1500,
+          282
+        ],
+        "max": [
+          -160,
+          1276
+        ],
+        "minLevel": 26
+      },
+      {
+        "id": "envers_des_collines",
+        "name": "Envers des hautes collines",
+        "min": [
+          -200,
+          1092
+        ],
+        "max": [
+          2188,
+          1458
+        ],
+        "minLevel": 27
+      },
+      {
+        "id": "envers_du_fort",
+        "name": "Envers du fort des bandits",
+        "min": [
+          1050,
+          900
+        ],
+        "max": [
+          1300,
+          1090
+        ],
+        "minLevel": 28
+      },
+      {
+        "id": "envers_de_la_carriere",
+        "name": "Envers de la carrière",
+        "min": [
+          850,
+          150
+        ],
+        "max": [
+          1250,
+          400
+        ],
+        "minLevel": 27
+      },
+      {
+        "id": "envers_de_l_abbaye",
+        "name": "Envers de l'abbaye",
+        "min": [
+          1600,
+          60
+        ],
+        "max": [
+          1820,
+          230
+        ],
+        "minLevel": 27
+      },
+      {
+        "id": "envers_du_lac",
+        "name": "Envers du lac des Aubes",
+        "min": [
+          -300,
+          -1360
+        ],
+        "max": [
+          1150,
+          -850
+        ],
+        "minLevel": 26
+      },
+      {
+        "id": "envers_du_pont_des_murmures",
+        "name": "Envers du pont des Murmures",
+        "min": [
+          -1499,
+          300
+        ],
+        "max": [
+          -1320,
+          700
+        ],
+        "minLevel": 27
+      },
+      {
+        "id": "envers_du_col",
+        "name": "Envers du col",
+        "min": [
+          1300,
+          800
+        ],
+        "max": [
+          2188,
+          1092
+        ],
+        "minLevel": 28
+      },
+      {
+        "id": "envers_de_la_route_d_ambre",
+        "name": "Envers de la route d'Ambre",
+        "min": [
+          -1908,
+          -320
+        ],
+        "max": [
+          -1310,
+          -60
+        ],
+        "minLevel": 25
       }
     ],
     "populations": [
@@ -97,6 +267,412 @@
         "leashRange": 10,
         "loot": "loot.ours",
         "family": "ours"
+      },
+      {
+        "creature": "chien_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "chien_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "chien_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "sanglier_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "chien_reflet4",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "chien_reflet5",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "garde_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "garde_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "garde_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "loup_echo_envers4",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers5",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers6",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "sanglier_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "sanglier_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "sanglier_reflet4",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "sanglier_reflet5",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "vendangeur_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "vendangeur_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "vendangeur_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "loup_echo_envers7",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers8",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers9",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers10",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_reflet2",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "ours_reflet3",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "loup_echo_envers11",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers12",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers13",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_reflet4",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "bandit_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "bandit_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "bandit_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "archer_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 14,
+        "loot": "loot.bandit_arc",
+        "family": "reflet"
+      },
+      {
+        "creature": "archer_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 14,
+        "loot": "loot.bandit_arc",
+        "family": "reflet"
+      },
+      {
+        "creature": "mineur_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "mineur_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "mineur_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "loup_echo_envers14",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers15",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "moine_reflet1",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "moine_reflet2",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "moine_reflet3",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "moine_reflet4",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
+      },
+      {
+        "creature": "loup_echo_envers16",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers17",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers18",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "sanglier_reflet6",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.sanglier",
+        "family": "reflet"
+      },
+      {
+        "creature": "loup_echo_envers19",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers20",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_reflet5",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "loup_echo_envers21",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers22",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers23",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers24",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_reflet6",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      },
+      {
+        "creature": "bandit_reflet4",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "bandit_reflet5",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.bandit",
+        "family": "reflet"
+      },
+      {
+        "creature": "chien_reflet6",
+        "respawnMs": 180000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "reflet"
       }
     ],
     "passages": [],
@@ -116,6 +692,67 @@
           }
         ],
         "loot": "loot.echo"
+      },
+      {
+        "id": "ombre_du_vieux_brunot",
+        "scenario": "zones/envers_vallons_brunot",
+        "forms": [
+          "ours_reflet_brunot",
+          "ours_reflet_brunot_dechaine"
+        ],
+        "fact": "fact.ombre_du_vieux_brunot.vaincue",
+        "rewards": [
+          {
+            "item": "item.ecorce_du_millenaire",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          }
+        ],
+        "loot": "loot.vieux_brunot"
+      },
+      {
+        "id": "reflet_de_machefer",
+        "scenario": "zones/envers_vallons_machefer",
+        "forms": [
+          "bandit_reflet_machefer",
+          "bandit_reflet_machefer_furieux"
+        ],
+        "fact": "fact.reflet_de_machefer.vaincu",
+        "rewards": [
+          {
+            "item": "item.chevaliere_de_machefer",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          }
+        ],
+        "loot": "loot.chef_des_bandits"
+      },
+      {
+        "id": "abbe_renverse",
+        "scenario": "zones/envers_vallons_abbe",
+        "forms": [
+          "moine_reflet_abbe",
+          "moine_reflet_abbe_courrouce",
+          "moine_reflet_abbe_dechire"
+        ],
+        "fact": "fact.abbe_renverse.vaincu",
+        "rewards": [
+          {
+            "item": "item.chapelet_renverse",
+            "count": 1
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 4
+          }
+        ],
+        "loot": "loot.echo"
       }
     ],
     "doors": [
@@ -129,6 +766,497 @@
         "to": "zone.vallons",
         "toDoor": "faille_de_l_envers",
         "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_du_village",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -40,
+          135
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_du_village",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_du_bourg",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -760,
+          -20
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_du_bourg",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_la_vallee",
+        "name": "Faille vers les Vallons",
+        "position": [
+          340,
+          560
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_la_vallee",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_des_coteaux",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -1120,
+          -560
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_des_coteaux",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_la_foret",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -600,
+          560
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_la_foret",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_la_foret_2",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -1200,
+          1000
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_la_foret_2",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_des_collines",
+        "name": "Faille vers les Vallons",
+        "position": [
+          563.7,
+          1189.1
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_des_collines",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_du_fort",
+        "name": "Faille vers les Vallons",
+        "position": [
+          1120,
+          870
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_du_fort",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_la_carriere",
+        "name": "Faille vers les Vallons",
+        "position": [
+          960,
+          260
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_la_carriere",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_l_abbaye",
+        "name": "Faille vers les Vallons",
+        "position": [
+          1640,
+          200
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_l_abbaye",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_du_lac",
+        "name": "Faille vers les Vallons",
+        "position": [
+          639.3,
+          -833.2
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_du_lac",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_des_terres_corrompues",
+        "name": "Faille vers les Vallons",
+        "position": [
+          1704.0,
+          -1000.0
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_des_terres_corrompues",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_vallons_de_la_route_d_ambre",
+        "name": "Faille vers les Vallons",
+        "position": [
+          -1500,
+          -240
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_envers_de_la_route_d_ambre",
+        "kind": "faille"
+      }
+    ],
+    "secrets": [
+      {
+        "id": "coffre_du_moulin_renverse",
+        "name": "Coffre renversé",
+        "kind": "coffre",
+        "position": [
+          11.0,
+          21.7
+        ],
+        "text": "text.v252.secret.coffre_du_moulin_renverse",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1
+          },
+          {
+            "item": "item.potion_de_soin",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "stele_de_la_place",
+        "name": "Stèle de la place",
+        "kind": "lore",
+        "position": [
+          -30,
+          -20
+        ],
+        "text": "text.v252.secret.stele_de_la_place"
+      },
+      {
+        "id": "stele_du_marche",
+        "name": "Stèle du marché",
+        "kind": "lore",
+        "position": [
+          -1000,
+          -90
+        ],
+        "text": "text.v252.secret.stele_du_marche"
+      },
+      {
+        "id": "coffre_de_la_garde_renversee",
+        "name": "Coffre de la garde",
+        "kind": "coffre",
+        "position": [
+          -900,
+          60
+        ],
+        "text": "text.v252.secret.coffre_de_la_garde_renversee",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "coffre_derriere_la_cascade",
+        "name": "Coffre derrière la cascade",
+        "kind": "coffre",
+        "position": [
+          595,
+          1030
+        ],
+        "text": "text.v252.secret.coffre_derriere_la_cascade",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.potion_de_soin",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "stele_du_gue",
+        "name": "Stèle du gué",
+        "kind": "lore",
+        "position": [
+          380,
+          600
+        ],
+        "text": "text.v252.secret.stele_du_gue"
+      },
+      {
+        "id": "coffre_du_chai_noir",
+        "name": "Coffre du chai noir",
+        "kind": "coffre",
+        "position": [
+          -1300,
+          -720
+        ],
+        "text": "text.v252.secret.coffre_du_chai_noir",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.cidre_du_verger",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "stele_des_vendanges",
+        "name": "Stèle des vendanges",
+        "kind": "lore",
+        "position": [
+          -1250,
+          -800
+        ],
+        "text": "text.v252.secret.stele_des_vendanges"
+      },
+      {
+        "id": "coffre_du_creux_de_l_arbre",
+        "name": "Creux de l'arbre mort",
+        "kind": "coffre",
+        "position": [
+          -835,
+          760
+        ],
+        "text": "text.v252.secret.coffre_du_creux_de_l_arbre",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          },
+          {
+            "item": "item.griffe_d_ours",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "stele_de_l_arbre",
+        "name": "Stèle de l'arbre millénaire",
+        "kind": "lore",
+        "position": [
+          -880,
+          740
+        ],
+        "text": "text.v252.secret.stele_de_l_arbre"
+      },
+      {
+        "id": "coffre_du_sommet",
+        "name": "Coffre du sommet",
+        "kind": "coffre",
+        "position": [
+          170,
+          1340
+        ],
+        "text": "text.v252.secret.coffre_du_sommet",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "coffre_du_butin_renverse",
+        "name": "Butin renversé",
+        "kind": "coffre",
+        "position": [
+          1200,
+          1010
+        ],
+        "text": "text.v252.secret.coffre_du_butin_renverse",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          },
+          {
+            "item": "item.potion_de_soin",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "stele_de_la_bouche",
+        "name": "Stèle de la bouche de la mine",
+        "kind": "lore",
+        "position": [
+          1170,
+          330
+        ],
+        "text": "text.v252.secret.stele_de_la_bouche"
+      },
+      {
+        "id": "coffre_du_wagonnet",
+        "name": "Wagonnet oublié",
+        "kind": "coffre",
+        "position": [
+          1000,
+          300
+        ],
+        "text": "text.v252.secret.coffre_du_wagonnet",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.minerai_de_fer",
+            "count": 6
+          }
+        ]
+      },
+      {
+        "id": "coffre_du_cloitre_renverse",
+        "name": "Reliquaire renversé",
+        "kind": "coffre",
+        "position": [
+          1740,
+          110
+        ],
+        "text": "text.v252.secret.coffre_du_cloitre_renverse",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "stele_de_la_rosace",
+        "name": "Stèle de la rosace",
+        "kind": "lore",
+        "position": [
+          1690,
+          175
+        ],
+        "text": "text.v252.secret.stele_de_la_rosace"
+      },
+      {
+        "id": "coffre_des_pontons_noirs",
+        "name": "Coffre des pontons noirs",
+        "kind": "coffre",
+        "position": [
+          19.0,
+          -870.0
+        ],
+        "text": "text.v252.secret.coffre_des_pontons_noirs",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 2
+          },
+          {
+            "item": "item.coquille_de_souffle",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "stele_des_noyes",
+        "name": "Stèle des noyés",
+        "kind": "lore",
+        "position": [
+          304.5,
+          -848.5
+        ],
+        "text": "text.v252.secret.stele_des_noyes"
+      },
+      {
+        "id": "stele_du_cercle",
+        "name": "Stèle du cercle fendu",
+        "kind": "lore",
+        "position": [
+          1540,
+          -680
+        ],
+        "text": "text.v252.secret.stele_du_cercle"
+      },
+      {
+        "id": "coffre_de_la_felure",
+        "name": "Coffre de la fêlure",
+        "kind": "coffre",
+        "position": [
+          1620,
+          -540
+        ],
+        "text": "text.v252.secret.coffre_de_la_felure",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "stele_du_pont_brise",
+        "name": "Stèle du pont brisé",
+        "kind": "lore",
+        "position": [
+          -1480,
+          500
+        ],
+        "text": "text.v252.secret.stele_du_pont_brise"
+      },
+      {
+        "id": "stele_du_col",
+        "name": "Stèle du col",
+        "kind": "lore",
+        "position": [
+          2000,
+          1060
+        ],
+        "text": "text.v252.secret.stele_du_col"
+      },
+      {
+        "id": "coffre_du_peage_renverse",
+        "name": "Coffre du péage renversé",
+        "kind": "coffre",
+        "position": [
+          -1850,
+          -230
+        ],
+        "text": "text.v252.secret.coffre_du_peage_renverse",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 1
+          },
+          {
+            "item": "item.potion_de_soin",
+            "count": 2
+          }
+        ]
       }
     ]
   }

@@ -1,0 +1,206 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 24,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 602,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          1710,
+          130
+        ],
+        "max": [
+          1756,
+          170
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "moine_reflet_abbe",
+        "type": "assailant",
+        "team": "ombres",
+        "initiative": 0,
+        "health": 1210,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1600,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 29,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "anatheme",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true
+          }
+        ],
+        "position": [
+          1730,
+          150
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "moine_reflet_abbe_courrouce",
+        "type": "assailant",
+        "team": "ombres",
+        "initiative": 0,
+        "health": 880,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1400,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 31,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "anatheme",
+            "rawDamage": 37,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "range": 8,
+            "telegraphMs": 1100,
+            "width": 1.6,
+            "guardable": true
+          },
+          {
+            "id": "glas",
+            "rawDamage": 33,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 3.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          1733,
+          150
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "moine_reflet_abbe_dechire",
+        "type": "assailant",
+        "team": "ombres",
+        "initiative": 0,
+        "health": 660,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1200,
+        "attacks": [
+          {
+            "id": "crosse",
+            "rawDamage": 33,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "glas",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 4,
+            "holdPosition": true
+          },
+          {
+            "id": "cri_des_morts",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1600,
+            "radius": 6,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          1736,
+          150
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.9,
+        "speed": 4.4,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 10,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}
