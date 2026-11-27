@@ -69,7 +69,7 @@ public class V2283QueteDuChevalTests
         Assert.Equal(Mission, PlayerCharacters.ChapterOneQuest);
         StoryBook book = Book(Zone());
         Quest q = book.Quest(Cheval);
-        Assert.Equal(Cheval, book.Quests[^1].Id);   // ajoutée à la fin : les quêtes d'avant gardent leur rang
+        Assert.Equal(Cheval, book.Quests[46].Id);   // ajoutée à la fin : les quêtes d'avant gardent leur rang (V2.57 : les suivantes viennent après)
         Assert.Equal(QuestCategory.Side, q.Category);
         Assert.Equal(new[] { "jument", "retour" }, q.Steps.Select(s => s.Id));
         Assert.Equal((ObjectiveKind.Reach, "rives_du_lac"), (q.Steps[0].Objective.Kind, q.Steps[0].Objective.Id));

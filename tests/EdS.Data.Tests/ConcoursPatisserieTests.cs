@@ -400,7 +400,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Histoire_schema_15_et_ses_refus()
     {
-        Assert.Equal((16, 15), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema15));
+        Assert.Equal((17, 15), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema15));
         Assert.True(ReadStory(StoryJson()).IsValid);
         // Présenter une qualité que la réponse ne demande pas : refusé au chemin de l'effet.
         var (root, path, choice) = FirstPastryChoice();

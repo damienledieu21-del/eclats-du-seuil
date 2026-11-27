@@ -431,6 +431,11 @@ public sealed class V2481CrypteTests : IDisposable
         }
         Edit("zone.chapelle", c => c["data"]!["safePoints"]![0]!["position"] = new JsonArray(3.9, -5.6));
         Edit("zone.crypte_chapelle", c => c["data"]!["chiefs"] = new JsonArray());
+        // V2.57 : sans sacristain, la quête du sacristain (son fait) ne tient plus : l'histoire sans les quêtes des Vallons.
+        string storyPath = StoryJsonReader.StoryPathIn(data);
+        JsonNode story = JsonNode.Parse(File.ReadAllText(storyPath))!;
+        V257TestData.WithoutQuetes(story);
+        File.WriteAllText(storyPath, story.ToJsonString());
         string save = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(save)!);
         SaveStore.Write(save, new WorldSave("zone.chapelle", 0, 0, Array.Empty<string>(), V11TestData.Hero()));

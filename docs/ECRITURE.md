@@ -194,6 +194,25 @@ PNJ déjà là, repris : **Rosalie** (son chat ; une lanterne à la fenêtre la 
 
 Répliques nouvelles : Gaspard, Odile, Aldric, Firmin, Sauge et Maëlle sur Croc-Gris ; Gaspard et Firmin sur la garde de nuit ; Firmin et Odile sur le chat ; Odile et Sauge sur le puits (Odile élude, comme dans sa fiche).
 
+## 3 nonies. Les donjons et l'Envers parlent (V2.57)
+
+**Jacquemin le charron** : bourru, chaleureux ; son frère Mathieu, mineur, a disparu avec son équipe le jour de l'éboulement ; on retrouve sa lampe, à la mèche neuve (quelqu'un la rallume : rien de plus n'est dit).
+
+**Ombeline la passeuse** : chante pour faire taire la gorge des Murmures, qui répète des noms qu'on n'a pas criés ; n'a « presque jamais » ouvert une lettre au cachet d'ambre.
+
+**Gerberte la foulonnière** : sent la corruption dans le drap avant de la voir (« la laine devient froide, comme mouillée de l'intérieur »).
+
+**Aude la guetteuse** : compte les hirondelles ; un feu, tout va bien, deux, des bandits, trois, le Seuil ; n'a allumé trois feux qu'une fois.
+
+**Frère Aubin, l'hospitalier** (nom donné au V2.57 : le prêtre de la chapelle garde Frère Anselme) : doux, pragmatique (« Un lit n'a pas de faction ») ; veut savoir ce qu'a fait l'abbé.
+
+L'abbé Herluin (l'abbé sans repos, sans fiche de PNJ) : a touché au Seuil la nuit de la Rupture, « pour fermer » ; son nom a été gratté du nécrologe par l'Ordre ; son reflet dans l'Envers défait sa prière à rebours.
+
+Guérin (mari de Mahaut, déjà nommé au chapitre 3) : passait des caisses dans les grottes noyées pour l'homme au cachet d'ambre ; « Il voulait arrêter », écrit d'une autre main dans son carnet.
+
+Celui-qui-Attend : toujours sans visage ni nom. L'Envers lui sert d'antichambre ; il y installe les voix des morts aimés (une femme chante la chanson des meuniers dans le moulin renversé) pour faire venir les vivants. Ne jamais dire qui il est (recommandation, à confirmer par Damien).
+
+
 ## 4. Clés des textes
 
 Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`). Le chapitre 5 a des clés `text.ch5.…` (par exemple `ch5.odile.aveu`) ; les quatre étapes reprises de l'ancienne mission ont des textes neufs (`text.ch5.quest.seuil.…`), et les quatre anciens textes du journal (`text.quest.traces.manifestation`, `.rodeur`, `.chef`, `.retour`) sont retirés. Le chapitre 1 enrichi (sous-lot V1.9.6) garde les clés `text.ch1.…` : l'ouverture (`text.ch1.quest.reveil.…`, `text.ch1.odile.reveil…`), la scène du souvenir (`text.ch1.ysolde.…`, `text.ch1.souvenir.galeran`, `text.ch1.souvenir.retour` ; son repli reste `text.ch1.discovery.souvenir`), Croc-Gris (`text.ch1.quest.traces.croc_gris`, `text.ch1.gaspard.croc`) et les indices (`text.ch1.discovery.…`, `text.ch1.gaspard.silhouette`).

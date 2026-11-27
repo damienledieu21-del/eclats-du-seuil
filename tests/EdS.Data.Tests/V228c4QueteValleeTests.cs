@@ -73,7 +73,7 @@ public class V228c4QueteValleeTests
         Assert.Equal(Passages, q.Effects.Where(e => e.Kind == EffectKind.OpenPassage).Select(e => e.Id));
         Assert.All(Passages, p => Assert.Contains(zone.Passages, x => x.Id == p));
         // Ajoutée à la fin : les quêtes d'avant gardent leur rang.
-        Assert.Equal(Vallee, book.Quests[^2].Id);   // V2.28d (3) : la quête du cheval après elle
+        Assert.Equal(Vallee, book.Quests[45].Id);   // V2.57 : les quatorze quêtes des Vallons après elles ;   // V2.28d (3) : la quête du cheval après elle
     }
 
     private static long XpForLevel(int level) => Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= level);

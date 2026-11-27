@@ -82,6 +82,17 @@ namespace EdS.World
             }
         }
 
+        /// <summary>V2.57 (histoire en schéma 17) : terres corrompues aujourd'hui (palier 1 ou plus, la source non comptée) ; 0 sans corruption.</summary>
+        public int CorruptedLands
+        {
+            get
+            {
+                int count = 0;
+                foreach (CorruptionView v in Corruption) if (!v.IsSource && v.IsCorrupted) count++;
+                return count;
+            }
+        }
+
         /// <summary>
         /// Sous-lot V2.42.1 : la terre la plus corrompue qui contient <paramref name="point"/> (à palier égal : la première, la source d'abord),
         /// ou null (aucune, ou toutes propres).
