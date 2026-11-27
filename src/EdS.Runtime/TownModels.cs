@@ -59,6 +59,18 @@ namespace EdS.Runtime
         Look = 2,
         Gather = 3,
         Walk = 4,
+
+        /// <summary>V2.58 : il danse (jour de fête).</summary>
+        Dance = 5,
+
+        /// <summary>V2.58 : il salue de la main.</summary>
+        Wave = 6,
+
+        /// <summary>V2.58 : il est assis (sur le pas de sa porte, sur un banc).</summary>
+        Sit = 7,
+
+        /// <summary>V2.58 : il boit (terrasse de l'auberge).</summary>
+        Drink = 8,
     }
 
     /// <summary>
@@ -686,6 +698,10 @@ namespace EdS.Runtime
                 case VillagerActivity.Look: words = new[] { "look", "around" }; break;
                 case VillagerActivity.Gather: words = new[] { "pull", "pick", "plant", "harvest", "gather", "dig", "fruit" }; break;
                 case VillagerActivity.Walk: words = new[] { "walk" }; break;
+                case VillagerActivity.Dance: words = new[] { "dance" }; break;   // V2.58 : sinon l'attente
+                case VillagerActivity.Wave: words = new[] { "wave" }; break;
+                case VillagerActivity.Sit: words = new[] { "seated", "sit" }; break;
+                case VillagerActivity.Drink: words = new[] { "drink" }; break;
                 default: words = new string[0]; break;
             }
             var matching = all.Where(c => words.Any(w => StyleRules.Key(c).Contains(w))).ToList();
