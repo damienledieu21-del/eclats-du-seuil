@@ -78,6 +78,9 @@ namespace EdS.Game
 
         /// <summary>V2.50.1b : la marée du lac, pour l'eau des passages de marée des grottes noyées.</summary>
         public void Tide(bool high) => _space?.Tide(high);
+
+        /// <summary>V2.51b : dans l'Envers, les formes flottantes et les cendres qui montent (densité de 0 à 1,5).</summary>
+        public void EnversFrame(Vector3 camera, float seconds, float density) => _space?.EnversFrame(camera, seconds, density);
         private IReadOnlyList<ConvexPolygon> _obstacles;
         private GameObject _defaultGround;
         private readonly Dictionary<string, Vector3> _from = new Dictionary<string, Vector3>();

@@ -823,9 +823,12 @@ namespace EdS.Game
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Rebuilds(a, Time.deltaTime);   // V2.43.3 : décor des chantiers selon l'état des lieux
             _arena.Home(a, HomeCarry(a), Time.deltaTime);   // V2.53.3 : meubles posés de la maison, et le meuble que l'on pose
-            _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
+            _arena.Season(EnversLook.DecorSeason(a.InEnvers, (int)a.WardrobeSeason));   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde ; V2.51b : l'automne mort dans l'Envers
             _arena.Vines(a.World.VineNow, a.World.SeasonIndex);   // V2.44.4 : rangs de vigne en trois états, vendanges
             _arena.Tide(a.World.Tide == EdS.World.TideLevel.High);   // V2.50.1b : l'eau des passages de marée des grottes noyées
+            // V2.51b : l'Envers : lumière qui respire avec la minute du monde, formes flottantes, cendres d'après le temps de la surface.
+            StyleWorld.SetEnversMinute((int)a.World.Zone.Time.Minute);
+            _arena.EnversFrame(_camera.Camera.transform.position, Time.time, a.InEnvers ? (float)EnversLook.AshDensity(a.SurfaceWeather) : 0f);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
@@ -856,6 +859,7 @@ namespace EdS.Game
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
                 _music.Story = a.InScene;   // sous-lot V2.9 (2e vague) : la musique des scènes de l'histoire
                 _music.Assault = Assault(a);   // sous-lot V2.9.2 : pillage ou faille en cours
+                _music.Envers = a.InEnvers;   // V2.51b : le bourdon de l'Envers à la place des nappes du monde
                 _music.Update(_mood, _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
             }
         }

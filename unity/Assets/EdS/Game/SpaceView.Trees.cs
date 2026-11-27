@@ -48,7 +48,7 @@ namespace EdS.Game
         private float _shownTreeGlow = -1f;
 
         /// <summary>Saison du monde (0 à 3), donnée par la partie à chaque image ; l'été sans partie.</summary>
-        public void Season(int season) => _worldSeason = AtelierTrees.Season(season);
+        public void Season(int season) => _worldSeason = AtelierTrees.Season(EnversLook.DecorSeason(_envers, season));   // V2.51b : l'automne mort dans l'Envers
 
         /// <summary>Saison montrée aux arbres (forcée par le menu d'essai, sinon celle du monde).</summary>
         private int ShownSeason => AtelierTrees.Shown(ForcedSeason, _worldSeason);
@@ -189,7 +189,7 @@ namespace EdS.Game
         /// pour une saison forcée par le menu d'essai).
         /// </summary>
         private static int FadingFrom(int season) =>
-            ForcedSeason < 0 && SeasonView.HasLook && SeasonView.Shown.Season == season && SeasonView.Shown.Blend < 1f ? (season + 3) % 4 : -1;
+            AtelierTrees.FadingFrom(ForcedSeason, SeasonView.HasLook, SeasonView.Shown.Season, SeasonView.Shown.Blend, season);
 
         /// <summary>
         /// V2.25.4 : chaque image (vue de la caméra) : saison des arbres (si elle change), lueur des veines de l'arbre corrompu, et

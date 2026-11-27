@@ -162,6 +162,72 @@ namespace EdS.Game
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
                 _bloom.intensity.value = catalog.Bloom;
             }
+            if (Envers) ApplyEnversLight(catalog);   // V2.51b : la lumière, le ciel et la brume de l'Envers remplacent ceux de l'heure
+        }
+
+        /// <summary>
+        /// V2.51b : la partie est dans l'Envers (<see cref="EnversLook"/>) : crépuscule violet qui respire, « soleil noir » bas, brume et ciel
+        /// violets, couleurs de l'image filtrées (les matériaux du décor ont en plus leur variante sombre, posée par le décor). Le panorama de
+        /// l'horizon montre l'Envers.
+        /// </summary>
+        public static bool Envers { get; private set; }
+
+        /// <summary>Entre dans l'Envers ou en sort (voir <see cref="Envers"/>).</summary>
+        public static void SetEnvers(bool envers)
+        {
+            if (Envers == envers) return;
+            Envers = envers;
+            HorizonView.Reversed = envers;
+            if (!envers && _colors != null && _colors.colorFilter != null) _colors.colorFilter.value = Color.white;
+            Refresh();
+        }
+
+        /// <summary>Minute du jour montrée par la lumière de l'heure (pour la respiration de la lumière de l'Envers).</summary>
+        private static int _enversMinute;
+
+        /// <summary>V2.51b : minute du monde, donnée par le jeu à chaque changement de minute.</summary>
+        public static void SetEnversMinute(int minute)
+        {
+            if (_enversMinute == minute) return;
+            _enversMinute = minute;
+            if (Envers) Refresh();
+        }
+
+        private static Color Rgb((double R, double G, double B) c) => new Color((float)c.R, (float)c.G, (float)c.B);
+
+        private static void ApplyEnversLight(StyleCatalog catalog)
+        {
+            EnversLight light = EnversLook.Light(_enversMinute);
+            float brightness = Mathf.Max(0.5f, 1f + BrightnessSetting.ExposureOffset * 0.25f);
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = Rgb(light.AmbientSky) * brightness;
+            RenderSettings.ambientEquatorColor = Rgb(light.AmbientHorizon) * brightness;
+            RenderSettings.ambientGroundColor = Rgb(light.AmbientGround) * brightness;
+            HorizonLight = Rgb(light.AmbientSky);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = Rgb(light.Fog);
+            RenderSettings.fogStartDistance = (float)light.FogStart;
+            RenderSettings.fogEndDistance = (float)light.FogEnd;
+            Lamps = 0f;
+            NightShare = 0.6f;
+            if (_sky != null)
+            {
+                if (_sky.HasProperty("_Exposure")) _sky.SetFloat("_Exposure", _skyExposure * (float)light.SkyExposure);
+                if (_sky.HasProperty("_Tint")) _sky.SetColor("_Tint", Rgb(light.SkyTint));
+            }
+            if (_sun != null)
+            {
+                _sun.color = Rgb(light.Sun);
+                _sun.intensity = catalog.SunIntensity * (float)light.SunIntensity;
+                _sun.transform.rotation = Quaternion.Euler((float)light.SunHeight, (float)light.SunTurn, 0f);
+            }
+            if (_colors != null)
+            {
+                _colors.saturation.value = catalog.Saturation + (float)light.Saturation;
+                _colors.contrast.value = catalog.Contrast + (float)light.Contrast;
+                _colors.colorFilter.value = Rgb(light.Filter);
+            }
         }
 
         /// <summary>
