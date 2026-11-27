@@ -146,6 +146,10 @@ public sealed class V253PerfsTests
         Assert.Contains("PerfRules.FireShadows(DeviceQuality.Tier)", Script("Game", "SpaceView.Interior.cs"));
         string space = Script("Game", "SpaceView.cs");
         Assert.Contains("SmallCasters();", space);
+        // Revue Codex de la PR #265 : les intérieurs et les souterrains (retours anticipés du constructeur) passent aussi par SmallCasters.
+        Assert.Contains("Cave(space, map);\n                SmallCasters();", space);
+        Assert.Contains("Interior(space, map);\n                SmallCasters();", space);
+        Assert.Equal(3, space.Split("\n            ").Count(l => l.TrimStart().StartsWith("SmallCasters();", StringComparison.Ordinal)));
         Assert.Contains("OccluderRules.Reach(", space);
         string game = Script("Game", "EdsGame.cs");
         Assert.Contains("KeyCode.F9", game);

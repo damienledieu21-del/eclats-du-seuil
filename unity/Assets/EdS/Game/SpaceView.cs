@@ -167,6 +167,7 @@ namespace EdS.Game
             {
                 _rivers = new List<List<Vector3>>();
                 Cave(space, map);
+                SmallCasters();   // revue Codex de la PR #265 : bougies et lanternes aussi
                 return;
             }
             // Intérieurs : une pièce (plancher, murs, meubles, lumières), sans terrain, herbe ni ciel.
@@ -174,6 +175,7 @@ namespace EdS.Game
             {
                 _rivers = new List<List<Vector3>>();
                 Interior(space, map);
+                SmallCasters();   // revue Codex de la PR #265 : bougies et lanternes aussi
                 return;
             }
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
