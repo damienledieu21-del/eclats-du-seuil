@@ -44,6 +44,17 @@ namespace EdS.Game
                 // (essai de Damien du 27 octobre 2026 au soir).
                 QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;
             }
+            // V2.53 (audit des performances, docs/PERFS.md) : un PC modeste (ou le réglage Basse) prend le rendu léger du menu : ombres sur
+            // 50 m en deux cascades (au lieu de 90 m en quatre, carte 4096), dures, MSAA ×2, sans occlusion de l'écran.
+            // Dans l'éditeur, le rendu du projet est remis à la sortie du mode Jeu (le réglage de qualité serait sinon gardé, et la préparation
+            // réglerait le rendu léger comme celui de l'ordinateur).
+            else if (!Application.isMobilePlatform && DeviceQuality.Tier == DeviceTier.Modest && catalog.ModestPipeline != null
+                && QualitySettings.renderPipeline != catalog.ModestPipeline)
+            {
+                RenderPipelineAsset project = QualitySettings.renderPipeline;
+                QualitySettings.renderPipeline = catalog.ModestPipeline;
+                if (Application.isEditor) Application.quitting += () => QualitySettings.renderPipeline = project;
+            }
             // Sous-lot V2.1 : une copie du ciel, dont la clarté et la teinte suivent l'heure (le ciel du catalogue n'est jamais modifié).
             if (_sky == null)
             {
