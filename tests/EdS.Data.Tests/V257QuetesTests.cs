@@ -441,7 +441,7 @@ public class V257QuetesTests
     public void Le_filon_des_disparus_recompense_refusee_sac_plein_sans_rien_changer()
     {
         const string Q = "quest.v257.filon_des_disparus";
-        var p = new Partie(HeroAt(18, new[] { "fact.met.charron_hameau" }));
+        var p = new Partie(HeroAt(20, new[] { "fact.met.charron_hameau" }));
         p.Talk("npc.charron_hameau", "accueil", "text.v257.charron.sujet.mines", "text.v257.charron.mines.accepter");
         Assert.True(p.W.Narrative!.IsActive(Q));
         long xp = Xp(p);
@@ -465,7 +465,7 @@ public class V257QuetesTests
         Assert.Equal(DialogueRefusal.None, p.W.ChooseReward(Q, 1, out _));
         p.Ticks();
         Assert.Equal(3, p.W.Inventory.Count("item.elixir_de_garde"));
-        FiniUneFois(p, Q, "npc.charron_hameau", xp, 1400);
+        FiniUneFois(p, Q, "npc.charron_hameau", xp, 1700);
     }
 
     [Fact]
@@ -622,13 +622,13 @@ public class V257QuetesTests
     {
         const string Q = "quest.v257.eau_grise";
         // Sans corruption : Gerberte n'en parle pas.
-        var calm = new Partie(HeroAt(16, new[] { "fact.met.foulonniere" }));
+        var calm = new Partie(HeroAt(20, new[] { "fact.met.foulonniere" }));
         DialogueView quiet = calm.View("npc.foulonniere");
         Assert.Equal(0, calm.W.CorruptedLands);
         Assert.DoesNotContain(quiet.Options, o => o.Text == "text.v257.foulonniere.eau.accepter");
         Assert.False(calm.W.Narrative!.IsOpen(Q));
         // Au dix-huitième jour, la corruption a gagné ses terres : la question vient.
-        var p = new Partie(HeroAt(16, new[] { "fact.met.foulonniere" }), NoonOf(18)) { Corrupt = true };
+        var p = new Partie(HeroAt(20, new[] { "fact.met.foulonniere" }), NoonOf(18)) { Corrupt = true };
         p.Open(Vallons);
         Assert.True(p.W.CorruptedLands >= 3, p.W.CorruptedLands.ToString());
         Assert.True(p.W.Narrative!.IsOpen(Q));
@@ -640,7 +640,7 @@ public class V257QuetesTests
         int shards = p.W.Inventory.Count("item.eclat_de_seuil");
         p.Talk("npc.foulonniere", "v257_eau_retour", "text.v257.foulonniere.eau_retour.merci");
         Assert.Equal(shards + 1, p.W.Inventory.Count("item.eclat_de_seuil"));
-        FiniUneFois(p, Q, "npc.foulonniere", xp, 650);
+        FiniUneFois(p, Q, "npc.foulonniere", xp, 1500);
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------------
@@ -708,6 +708,76 @@ public class V257QuetesTests
         bare.Step();
         Assert.Equal(SecretRefusal.None, bare.OpenSecret("stele_de_la_rosace"));
         Assert.Contains("fact.secret.stele_de_la_rosace", SaveJsonReader.Read(SaveJsonReader.Write(bare.Save())).Save!.Character!.Story.Facts);
+    }
+
+    [Fact]
+    public void Niveaux_alignes_sur_les_lieux_vises()
+    {
+        // Décision de Damien du 27 novembre 2026 : le filon et l'eau grise s'ouvrent deux niveaux sous le cœur de cristal et le cercle (22).
+        StoryBook book = Story.Value;
+        long Level(string q) => book.Quest(q).Requires.Single(c => c.Kind == ConditionKind.LevelAtLeast).Value;
+        Assert.Equal(20, Level("quest.v257.filon_des_disparus"));
+        Assert.Equal(20, Level("quest.v257.eau_grise"));
+        // Chaque quête s'ouvre au plus deux niveaux sous le lieu le plus profond qu'elle vise (dans le plafond de niveau, 25).
+        var places = new[] { Zone() }.Concat(V16TestData.Interiors).SelectMany(z => z.Places).ToDictionary(p => p.Id, p => p.MinLevel);
+        foreach (string q in Quetes)
+        {
+            int deepest = book.Quest(q).Steps.Where(s => s.Objective.Kind == ObjectiveKind.Reach).Select(s => places[s.Objective.Id]).DefaultIfEmpty(0).Max();
+            if (deepest > 0) Assert.True(Level(q) >= Math.Min(25, deepest - 2) && Level(q) <= deepest, $"{q} : {Level(q)} pour un lieu de niveau {deepest}");
+        }
+    }
+
+    [Fact]
+    public void Un_lieu_dans_deux_zones_reliees_est_refuse()
+    {
+        // La même zone reliée deux fois : chacun de ses lieux est dans deux zones (InPlace ne connaît que l'identifiant).
+        ZoneDefinition sewer = V16TestData.Interiors.Single(z => z.Id == "zone.egouts_collecteur");
+        StoryLoadResult r = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, Zone(), ItemsCatalog,
+            V16TestData.Interiors.Append(sewer).ToList());
+        Assert.Null(r.Story);
+        Assert.Contains(r.Report.Errors, e => e.Code == ValidationCode.DuplicateId && e.Path == "zone.egouts_collecteur:$.data.places[0].id");
+    }
+
+    [Fact]
+    public void Le_retour_d_une_autre_quete_reste_accessible_pendant_une_quete_du_V257()
+    {
+        // La ronde du capitaine à rendre pendant les égouts : son retour passe avant l'attente des égouts.
+        var p = new Partie(HeroAt(8, new[] { "fact.met.capitaine" }, new[] { "quest.premier_contrat" }));
+        p.Talk("npc.capitaine", "v257_egouts_offre", "text.v257.capitaine.egouts.accepter");
+        Assert.Equal("v257_egouts_attente", p.NodeOf("npc.capitaine"));
+        p.Hero = p.W.Character.WithStory(new SavedStory(p.W.Character.Story.Facts, p.W.Character.Story.Quests
+            .Append(new KeyValuePair<string, QuestProgress>("quest.v27.ronde_du_capitaine", new QuestProgress("retour")))
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal)));
+        p.W = null!;
+        Assert.Equal("v27_capitaine_merci", p.NodeOf("npc.capitaine"));
+        Assert.True(p.W.Narrative!.IsActive("quest.v257.sous_les_paves"));
+        // Chaque attente du V2.57 vient après les retours et récompenses du bloc de tête de son PNJ.
+        foreach (Dialogue d in Story.Value.Dialogues)
+        {
+            int head = 0;
+            while (head < d.Entries.Count && d.Entries[head].Conditions.Any(c => c.Kind is ConditionKind.QuestAt or ConditionKind.QuestReward or ConditionKind.QuestActive)) head++;
+            for (int i = 0; i < head; i++)
+                if (d.Entries[i].Node.StartsWith("v257_", StringComparison.Ordinal) && d.Entries[i].Conditions.Any(c => c.Kind == ConditionKind.QuestActive))
+                    Assert.DoesNotContain(d.Entries.Skip(i + 1).Take(head - i - 1), e => !e.Node.StartsWith("v257_", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public void La_corruption_se_lit_aussi_dans_un_interieur()
+    {
+        // Sœur Albe, dans la chapelle (un intérieur) : la corruption de la surface compte pour ses répliques.
+        var p = new Partie(HeroAt(16, new[] { "fact.met.albe" }, new[] { "quest.traces_sous_le_moulin", "quest.bourg_d_aube", "quest.herbes_pour_la_chapelle" }),
+            NoonOf(18)) { Corrupt = true };
+        DialogueView view = p.View("npc.albe");
+        Assert.Equal("zone.chapelle", p.W.Definition!.Id);
+        Assert.Null(p.W.CorruptionBook);   // le catalogue n'est pas en jeu dans la chapelle
+        Assert.True(p.W.CorruptedLands >= 4, p.W.CorruptedLands.ToString());
+        Assert.Equal("ch2_apres", view.Node);
+        Assert.True(Says(view, "text.v257.albe.corruption"), view.Text);
+        var calm = new Partie(HeroAt(16, new[] { "fact.met.albe" }, new[] { "quest.traces_sous_le_moulin", "quest.bourg_d_aube", "quest.herbes_pour_la_chapelle" }),
+            NoonOf(18));
+        Assert.False(Says(calm.View("npc.albe"), "text.v257.albe.corruption"));
+        Assert.Equal(0, calm.W.CorruptedLands);
     }
 
     [Fact]

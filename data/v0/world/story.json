@@ -5263,15 +5263,6 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.ombre_de_brunot"
-              }
-            ],
-            "node": "v257_brunot_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.v27.piste_des_rodeurs",
                 "step": "retour"
@@ -5378,6 +5369,15 @@
               }
             ],
             "node": "ch5_pierres_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.ombre_de_brunot"
+              }
+            ],
+            "node": "v257_brunot_attente"
           },
           {
             "conditions": [
@@ -10175,15 +10175,6 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.ce_qui_remonte"
-              }
-            ],
-            "node": "v257_citerne_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.bourg_d_aube",
                 "step": "mathurin"
@@ -10227,6 +10218,15 @@
               }
             ],
             "node": "ch2_dette_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.ce_qui_remonte"
+              }
+            ],
+            "node": "v257_citerne_attente"
           },
           {
             "conditions": [
@@ -10853,15 +10853,6 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.le_sacristain"
-              }
-            ],
-            "node": "v257_sacristain_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.le_loup_blanc",
                 "step": "anselme"
@@ -10905,6 +10896,15 @@
               }
             ],
             "node": "ch2_cloches_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.le_sacristain"
+              }
+            ],
+            "node": "v257_sacristain_attente"
           },
           {
             "conditions": [
@@ -12604,21 +12604,21 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.pierres_a_l_envers"
-              }
-            ],
-            "node": "v257_steles_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.registres_de_l_archiviste",
                 "step": "retour"
               }
             ],
             "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.pierres_a_l_envers"
+              }
+            ],
+            "node": "v257_steles_attente"
           },
           {
             "conditions": [
@@ -17210,15 +17210,6 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.voix_du_moulin"
-              }
-            ],
-            "node": "v257_moulin_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.champs_et_hameau",
                 "step": "albe"
@@ -17330,6 +17321,15 @@
               }
             ],
             "node": "v261_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.voix_du_moulin"
+              }
+            ],
+            "node": "v257_moulin_attente"
           },
           {
             "conditions": [
@@ -21376,15 +21376,6 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.ce_que_le_lac_garde"
-              }
-            ],
-            "node": "v257_lac_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.lettre_au_fond_du_lac",
                 "step": "choix"
@@ -21400,6 +21391,15 @@
               }
             ],
             "node": "ch3_lettre_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.ce_que_le_lac_garde"
+              }
+            ],
+            "node": "v257_lac_attente"
           },
           {
             "conditions": [
@@ -22051,30 +22051,12 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.reflet_de_machefer"
-              }
-            ],
-            "node": "v257_machefer_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.v257.sous_les_paves",
                 "step": "choix"
               }
             ],
             "node": "v257_egouts_choix"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questActive",
-                "id": "quest.v257.sous_les_paves"
-              }
-            ],
-            "node": "v257_egouts_attente"
           },
           {
             "conditions": [
@@ -22161,6 +22143,24 @@
               }
             ],
             "node": "ch1_contrat_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.reflet_de_machefer"
+              }
+            ],
+            "node": "v257_machefer_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.sous_les_paves"
+              }
+            ],
+            "node": "v257_egouts_attente"
           },
           {
             "conditions": [
@@ -24006,21 +24006,21 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.ce_que_gardent_les_eclats"
-              }
-            ],
-            "node": "v257_eclats_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.pierres_gravees",
                 "step": "ysarn"
               }
             ],
             "node": "ch5_lecture"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.ce_que_gardent_les_eclats"
+              }
+            ],
+            "node": "v257_eclats_attente"
           },
           {
             "conditions": [
@@ -25994,7 +25994,7 @@
                   },
                   {
                     "if": "levelAtLeast",
-                    "value": 18
+                    "value": 20
                   }
                 ],
                 "effects": [
@@ -26363,7 +26363,7 @@
                   },
                   {
                     "if": "levelAtLeast",
-                    "value": 16
+                    "value": 20
                   },
                   {
                     "if": "corruptionAtLeast",
@@ -26699,21 +26699,21 @@
           {
             "conditions": [
               {
-                "if": "questActive",
-                "id": "quest.v257.abbe_renverse"
-              }
-            ],
-            "node": "v257_abbe_attente"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.v257.moines_du_dessous",
                 "step": "choix"
               }
             ],
             "node": "v257_moines_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.abbe_renverse"
+              }
+            ],
+            "node": "v257_abbe_attente"
           },
           {
             "conditions": [
@@ -30714,7 +30714,7 @@
         "requires": [
           {
             "if": "levelAtLeast",
-            "value": 18
+            "value": 20
           }
         ],
         "steps": [
@@ -30786,11 +30786,11 @@
         "effects": [
           {
             "do": "giveXp",
-            "value": 1400
+            "value": 1700
           },
           {
             "do": "giveMoney",
-            "value": 600
+            "value": 700
           },
           {
             "do": "reputation",
@@ -31493,7 +31493,7 @@
         "requires": [
           {
             "if": "levelAtLeast",
-            "value": 16
+            "value": 20
           },
           {
             "if": "corruptionAtLeast",
@@ -31538,11 +31538,11 @@
         "effects": [
           {
             "do": "giveXp",
-            "value": 650
+            "value": 1500
           },
           {
             "do": "giveMoney",
-            "value": 300
+            "value": 600
           },
           {
             "do": "giveItem",

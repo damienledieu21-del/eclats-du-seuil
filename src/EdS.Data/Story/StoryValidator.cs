@@ -490,6 +490,17 @@ namespace EdS.Data.Story
                         if (z.Populations[i].Weather is { Sign: string weatherSign })
                             Text(weatherSign, $"{z.Id}:$.data.populations[{i}].weather.sign");
 
+                // V2.57, relecture de la PR #270 : en version 17, les objectifs et « inPlace » visent les lieux des zones reliées par leur seul
+                // identifiant (WorldSession.InPlace : la zone où se tient le personnage) : un lieu n'a qu'une zone.
+                if (_schema >= CurrentSchemaVersion)
+                {
+                    var placeZones = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                        for (int i = 0; i < z.Places.Count; i++)
+                            if (placeZones.TryGetValue(z.Places[i].Id, out string? other))
+                                _r.Add($"{z.Id}:$.data.places[{i}].id", ValidationCode.DuplicateId, $"lieu « {z.Places[i].Id} » déjà dans la zone « {other} ».");
+                            else placeZones.Add(z.Places[i].Id, z.Id);
+                }
                 var discoveries = new List<Discovery>();
                 if (_d.Discoveries != null)
                     for (int i = 0; i < _d.Discoveries.Count; i++)

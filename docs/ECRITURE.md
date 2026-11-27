@@ -204,13 +204,13 @@ Répliques nouvelles : Gaspard, Odile, Aldric, Firmin, Sauge et Maëlle sur Croc
 
 **Aude la guetteuse** : compte les hirondelles ; un feu, tout va bien, deux, des bandits, trois, le Seuil ; n'a allumé trois feux qu'une fois.
 
-**Frère Aubin, l'hospitalier** (nom donné au V2.57 : le prêtre de la chapelle garde Frère Anselme) : doux, pragmatique (« Un lit n'a pas de faction ») ; veut savoir ce qu'a fait l'abbé.
+**Frère Aubin, l'hospitalier** (nom retenu par Damien le 27 novembre 2026 : le prêtre de la chapelle garde Frère Anselme) : doux, pragmatique (« Un lit n'a pas de faction ») ; veut savoir ce qu'a fait l'abbé.
 
-L'abbé Herluin (l'abbé sans repos, sans fiche de PNJ) : a touché au Seuil la nuit de la Rupture, « pour fermer » ; son nom a été gratté du nécrologe par l'Ordre ; son reflet dans l'Envers défait sa prière à rebours.
+L'abbé Herluin (l'abbé sans repos, sans fiche de PNJ ; nom retenu par Damien le 27 novembre 2026) : a touché au Seuil la nuit de la Rupture, « pour fermer » ; son nom a été gratté du nécrologe par l'Ordre ; son reflet dans l'Envers défait sa prière à rebours.
 
 Guérin (mari de Mahaut, déjà nommé au chapitre 3) : passait des caisses dans les grottes noyées pour l'homme au cachet d'ambre ; « Il voulait arrêter », écrit d'une autre main dans son carnet.
 
-Celui-qui-Attend : toujours sans visage ni nom. L'Envers lui sert d'antichambre ; il y installe les voix des morts aimés (une femme chante la chanson des meuniers dans le moulin renversé) pour faire venir les vivants. Ne jamais dire qui il est (recommandation, à confirmer par Damien).
+Celui-qui-Attend : toujours sans visage ni nom. L'Envers lui sert d'antichambre ; il y installe les voix des morts aimés (une femme chante la chanson des meuniers dans le moulin renversé) pour faire venir les vivants. Ne jamais dire qui il est (décision de Damien du 27 novembre 2026 : il reste un mystère).
 
 
 ## 4. Clés des textes
