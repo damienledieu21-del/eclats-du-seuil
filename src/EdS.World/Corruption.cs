@@ -111,7 +111,8 @@ namespace EdS.World
         public static ZoneDefinition Strengthen(ZoneDefinition zone, CorruptionBook? book, SavedCorruption saved, long day)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
-            if (book is null || zone.Id != book.ZoneId || book.StrengthPercent == 0) return zone;
+            // V2.51 (retenu par Damien le 26 novembre 2026) : l'Envers d'une zone corrompue reflète sa corruption, au même point.
+            if (book is null || (zone.Id != book.ZoneId && zone.Mirror?.Of != book.ZoneId) || book.StrengthPercent == 0) return zone;
             long[] since = CorruptedSince(book, saved);
             long source = SourceSince(book, saved);
             return zone.Strengthened(p => StrengthAt(book, since, day, p, source));

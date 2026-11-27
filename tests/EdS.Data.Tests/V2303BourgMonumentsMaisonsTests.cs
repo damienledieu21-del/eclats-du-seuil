@@ -128,7 +128,7 @@ public class V2303BourgMonumentsMaisonsTests
     {
         var doors = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "zones", "vallons.json")))!["data"]!["doors"]!.AsArray()
             .Select(d => (X: d!["position"]![0]!.GetValue<double>(), Z: d["position"]![1]!.GetValue<double>())).ToList();
-        Assert.Equal(27, doors.Count);   // V2.50a : les galeries sous les pierres du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : la bouche d'égout du marché et le déversoir ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine de la carrière ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // lot C (16 novembre 2026) : et les cinq portes des intérieurs de métier, hors du Bourg
+        Assert.Equal(28, doors.Count);   // V2.51a : la faille de l'Envers ; V2.50a : les galeries sous les pierres du Seuil ; V2.50.1 : l'entrée des grottes noyées ; V2.49.1 : la bouche d'égout du marché et le déversoir ; V2.48.1 : la crypte de l'abbaye ; V2.47.1 : la mine de la carrière ; V2.46 : la grotte de la cascade ; V2.53.2 : la porte de la maison du joueur ;   // V2.43.4 : les cinq portes des lieux reconstruits ;   // lot C (16 novembre 2026) : et les cinq portes des intérieurs de métier, hors du Bourg
         foreach (BourgPiece p in Inside)
         {
             var f = BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw);

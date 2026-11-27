@@ -277,6 +277,39 @@ namespace EdS.Data.Zones
         /// créatures ; jamais un intérieur ; le voyage rapide n'y mène pas ; ni pluie, ni neige, ni monture.
         /// </summary>
         Underground = 1,
+
+        /// <summary>
+        /// V2.51 (schéma 17, plan de la grande carte § 3) : l'Envers (« envers »), reflet sombre d'une région de la surface, même grille et
+        /// mêmes coordonnées (<see cref="ZoneMirror"/>), ouvert par les failles au même point ; ni un intérieur ni un dessous : il a son ciel.
+        /// </summary>
+        Envers = 2,
+    }
+
+    /// <summary>
+    /// V2.51 (schéma 17) : reflet d'une zone de l'Envers. Son aire part des obstacles du scénario <see cref="Scenario"/> de la zone
+    /// <see cref="Of"/> (mêmes obstacles par défaut), moins ceux de <see cref="Removed"/> (passages qui n'existent que dans l'Envers), plus
+    /// ceux de son propre scénario (ruines effondrées, arbres morts, éclats). Même grille de région que la zone reflétée.
+    /// </summary>
+    public sealed class ZoneMirror
+    {
+        /// <summary>Obstacles retirés, au plus, par reflet.</summary>
+        public const int MaxRemoved = 512;
+
+        /// <summary>Zone de la surface reflétée (« zone.vallons »).</summary>
+        public string Of { get; }
+
+        /// <summary>Scénario de la zone reflétée (le même que le sien, vérifié avec les portes).</summary>
+        public string Scenario { get; }
+
+        /// <summary>Obstacles de la surface absents de l'Envers, dans l'ordre du fichier.</summary>
+        public IReadOnlyList<string> Removed { get; }
+
+        internal ZoneMirror(string of, string scenario, IEnumerable<string> removed)
+        {
+            Of = of;
+            Scenario = scenario;
+            Removed = Frozen.List(removed, nameof(removed));
+        }
     }
 
     /// <summary>Chantier V2.45.1 (schéma 15) : genre d'une porte ; les deux portes qui se répondent sont du même genre. Affichage seulement.</summary>
@@ -438,6 +471,12 @@ namespace EdS.Data.Zones
         /// </summary>
         public bool Sheltered => Indoor || Underground;
 
+        /// <summary>V2.51 : la zone est l'Envers d'une région (<see cref="ZoneFloor.Envers"/>).</summary>
+        public bool Envers => Floor == ZoneFloor.Envers;
+
+        /// <summary>V2.51 (schéma 17) : reflet de la zone de la surface (zone de l'Envers seulement), ou null.</summary>
+        public ZoneMirror? Mirror { get; }
+
         /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones, dans l'ordre du fichier (vide sans porte).</summary>
         public IReadOnlyList<Door> Doors { get; }
 
@@ -451,9 +490,10 @@ namespace EdS.Data.Zones
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
             ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null, RegionGrid? region = null,
-            ZoneFloor floor = ZoneFloor.Surface)
+            ZoneFloor floor = ZoneFloor.Surface, ZoneMirror? mirror = null)
         {
             Floor = floor;
+            Mirror = mirror;
             Region = region;
             Events = Frozen.List(events ?? Array.Empty<WorldEventDefinition>(), nameof(events));
             NightSpots = Frozen.List(nightSpots ?? Array.Empty<NightSpot>(), nameof(nightSpots));
@@ -546,7 +586,7 @@ namespace EdS.Data.Zones
         /// </summary>
         internal ZoneDefinition WithCaravanAttacks(IEnumerable<WorldEventDefinition> attacks) =>
             new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, Populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region, Floor);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region, Floor, Mirror);
 
         internal ZoneDefinition WithSeasons(IReadOnlyDictionary<string, PopulationSeasons> seasons)
         {
@@ -554,7 +594,7 @@ namespace EdS.Data.Zones
             var populations = Populations.Select(p => !seasons.TryGetValue(p.Creature, out PopulationSeasons s) ? p
                 : new Population(p.Creature, p.Template, p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, s)).ToList();
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror);
         }
 
         /// <summary>
@@ -587,7 +627,7 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? strong[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror);
         }
 
         public ZoneDefinition ForLevel(int playerLevel)
@@ -608,7 +648,7 @@ namespace EdS.Data.Zones
                 p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, p.Seasons)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region, Floor);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region, Floor, Mirror);
         }
     }
 
@@ -667,8 +707,14 @@ namespace EdS.Data.Zones
         /// <see cref="ZoneFloor"/>), <c>kind</c> facultatif sur une porte (voir <see cref="DoorKind"/>) et bornes des portes relevées
         /// (<see cref="MaxDoors"/>, <see cref="MaxRegionDoors"/>, <see cref="MaxDoorsPerCell"/>) ; la version 14 est encore lue (sans eux, avec les
         /// bornes d'avant). Version 16 (V2.50.1, grottes noyées du lac) : <c>water</c> facultatif sur une porte (voir <see cref="DoorWater"/> :
-        /// <c>tide</c>, <c>diveMs</c>) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle).</remarks>
-        public const int CurrentSchemaVersion = 16;
+        /// <c>tide</c>, <c>diveMs</c>) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle). Version 17
+        /// (V2.51, l'Envers) : étage « envers » (<see cref="ZoneFloor.Envers"/>, avec une région) et <c>mirror</c> (<c>of</c>, <c>scenario</c>,
+        /// <c>remove</c> : voir <see cref="ZoneMirror"/>) ; dans l'Envers, et près de toute faille, chaque créature part à 8 m au moins des
+        /// portes ; une faille entre une zone et son reflet est au même point des deux côtés ; la version 16 est encore lue (sans eux).</remarks>
+        public const int CurrentSchemaVersion = 17;
+
+        /// <summary>V2.51 : version de l'eau des portes (V2.50.1), encore lue.</summary>
+        public const int WaterSchemaVersion = 16;
 
         /// <summary>V2.50.1 : version des étages et des genres de porte (V2.45.1), encore lue.</summary>
         public const int FloorsSchemaVersion = 15;
@@ -799,6 +845,7 @@ namespace EdS.Data.Zones
                 || document.SchemaVersion == RegionSchemaVersion   // sous-lot V2.26 : la version 13 aussi (sans territoire)
                 || document.SchemaVersion == TerritorySchemaVersion   // chantier V2.45.1 : la version 14 aussi (sans étage)
                 || document.SchemaVersion == FloorsSchemaVersion   // V2.50.1 : la version 15 aussi (sans eau aux portes)
+                || document.SchemaVersion == WaterSchemaVersion   // V2.51 : la version 16 aussi (sans Envers)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -810,7 +857,8 @@ namespace EdS.Data.Zones
             bool schema13 = document.SchemaVersion >= RegionSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
             bool schema14 = document.SchemaVersion >= TerritorySchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
             bool schema15 = document.SchemaVersion >= FloorsSchemaVersion;   // chantier V2.45.1 : étages, genres de porte, bornes relevées
-            bool schema16 = document.SchemaVersion >= CurrentSchemaVersion;   // V2.50.1 : eau des portes (marée, plongée)
+            bool schema16 = document.SchemaVersion >= WaterSchemaVersion;   // V2.50.1 : eau des portes (marée, plongée)
+            bool schema17 = document.SchemaVersion >= CurrentSchemaVersion;   // V2.51 : l'Envers (étage, reflet)
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -842,10 +890,26 @@ namespace EdS.Data.Zones
             {
                 if (!schema15) report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage d'une zone : schéma {FloorsSchemaVersion} attendu.");
                 else if (d.Floor == "dessous") floor = ZoneFloor.Underground;
-                else if (d.Floor != "surface") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « {d.Floor} » inconnu : « surface » ou « dessous » attendu.");
+                else if (d.Floor == "envers" && schema17) floor = ZoneFloor.Envers;   // V2.51 (schéma 17)
+                else if (d.Floor == "envers") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « envers » : schéma {CurrentSchemaVersion} attendu.");
+                else if (d.Floor != "surface") report.Add("$.data.floor", ValidationCode.InvalidValue,
+                    $"étage « {d.Floor} » inconnu : « surface », « dessous »{(schema17 ? " ou « envers »" : string.Empty)} attendu.");
                 if (floor == ZoneFloor.Underground && d.Indoor == true)
                     report.Add("$.data.indoor", ValidationCode.InvalidValue, "un dessous n'est pas un intérieur (indoor: false attendu).");
+                if (floor == ZoneFloor.Envers && d.Indoor == true)
+                    report.Add("$.data.indoor", ValidationCode.InvalidValue, "l'Envers n'est pas un intérieur (indoor: false attendu).");
             }
+            // V2.51 (schéma 17) : l'Envers est le reflet d'une région ; seul l'Envers a un reflet.
+            ZoneMirror? mirror = null;
+            if (floor == ZoneFloor.Envers && d.Region is null)
+                report.Add("$.data.region", ValidationCode.MissingField, "l'Envers est une couche de région : « region » attendu (la grille de la zone reflétée).");
+            if (d.Mirror is null)
+            {
+                if (floor == ZoneFloor.Envers) Missing(report, "$.data.mirror", "reflet de la zone de la surface (of, scenario, remove)");
+            }
+            else if (!schema17) report.Add("$.data.mirror", ValidationCode.InvalidValue, $"reflet d'une zone : schéma {CurrentSchemaVersion} attendu.");
+            else if (floor != ZoneFloor.Envers) report.Add("$.data.mirror", ValidationCode.InvalidValue, "seule une zone de l'Envers (floor: « envers ») a un reflet.");
+            else mirror = CheckMirror(d.Mirror, d.Id, report);
             int maxRoads = regional ? MaxRegionRoads : MaxRoads, maxRoadPoints = regional ? MaxRegionRoadPoints : MaxRoadPoints;
             var placeIndices = new List<int>();
             var roadIndices = new List<int>();
@@ -1114,7 +1178,7 @@ namespace EdS.Data.Zones
                     if (door.Water is DoorWaterData wd)
                     {
                         bool tide = wd.Tide ?? false;
-                        if (!schema16) { report.Add(path + ".water", ValidationCode.InvalidValue, $"eau d'une porte : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        if (!schema16) { report.Add(path + ".water", ValidationCode.InvalidValue, $"eau d'une porte : schéma {WaterSchemaVersion} attendu."); ok = false; }
                         else if (wd.DiveMs is long dive && (dive < DoorWater.MinDiveMs || dive > DoorWater.MaxDiveMs || dive % DoorWater.DiveStepMs != 0))
                         { report.Add(path + ".water.diveMs", ValidationCode.OutOfRange, $"plongée de {dive} ms : de {DoorWater.MinDiveMs} à {DoorWater.MaxDiveMs} ms, multiple de {DoorWater.DiveStepMs}, attendue."); ok = false; }
                         else if (!tide && wd.DiveMs is null)
@@ -1209,7 +1273,28 @@ namespace EdS.Data.Zones
             }
             // Chantier V2.45.1 : dans un dessous, chaque créature part à au moins 8 m de chaque porte (on y arrive) : les populations, et les
             // formes de départ du chef (« boss ») et des autres chefs (décision de Damien du 21 novembre 2026 : « créatures »).
-            if (floor == ZoneFloor.Underground)
+            // V2.51 : de même dans l'Envers (toutes ses portes), et près de toute faille, à la surface aussi (on arrive par elle).
+            string where = floor == ZoneFloor.Underground ? "dans un dessous" : floor == ZoneFloor.Envers ? "dans l'Envers" : "près d'une faille";
+            // Relecture indépendante des PR #260 et #261 : à la surface, la règle des failles ne vaut qu'à partir du schéma 17 (un document 15
+            // ou 16 n'est pas refusé à tort) ; une faille (schéma 17) demande plus : au-delà de la garde des portes (12 m, CanUseDoor) et
+            // hors d'aggro de bord à bord.
+            List<Door> guarded = floor == ZoneFloor.Underground || floor == ZoneFloor.Envers ? doors
+                : schema17 ? doors.Where(x => x.Kind == DoorKind.Rift).ToList() : new List<Door>();
+            string? Refused(AssailantSetup creature, GroundVector at, Door door)
+            {
+                if (schema17 && door.Kind == DoorKind.Rift)
+                {
+                    Fixed reach = RiftClearance;
+                    if (creature.Behavior?.AggroRange is Fixed aggro && creature.Placement is CombatantPlacement p)
+                    {
+                        Fixed edge = checked(p.Radius + RiftCharacterRadius + aggro);
+                        if (edge > reach) reach = edge;
+                    }
+                    return AtMost(at, door.Position, reach) ? $"à {reach} m ou moins (garde de la faille, aggro de bord à bord compris)" : null;
+                }
+                return Closer(at, door.Position, MinDoorClearance) ? $"à moins de {MinDoorClearance} m" : null;
+            }
+            if (guarded.Count > 0)
             {
                 var bosses = new List<(Boss Boss, string Path)>();
                 if (boss != null) bosses.Add((boss, "$.data.boss"));
@@ -1217,19 +1302,19 @@ namespace EdS.Data.Zones
                 // Relecture indépendante de la PR #250 : toutes les formes, pas seulement la première (chacune a sa place dans le scénario).
                 foreach ((Boss each, string bossPath) in bosses)
                     for (int f = 0; f < each.Forms.Count; f++)
-                        foreach (Door door in doors)
-                            if (each.Forms[f].Placement is CombatantPlacement at && Closer(at.Position, door.Position, MinDoorClearance))
+                        foreach (Door door in guarded)
+                            if (each.Forms[f].Placement is CombatantPlacement at && Refused(each.Forms[f], at.Position, door) is string why)
                                 report.Add(bossPath + $".forms[{f}]", ValidationCode.OutOfRange,
-                                    $"dans un dessous, la forme « {each.Forms[f].Id} » du chef « {each.Id} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                                    $"{where}, la forme « {each.Forms[f].Id} » du chef « {each.Id} » part {why} de la porte « {door.Id} ».");
                 for (int i = 0; i < populations.Count; i++)
                 {
                     if (!(populations[i].Template.Placement is CombatantPlacement start)) continue;
-                    foreach (Door door in doors)
-                        if (Closer(start.Position, door.Position, MinDoorClearance))
+                    foreach (Door door in guarded)
+                        if (Refused(populations[i].Template, start.Position, door) is string why)
                         {
                             int index = d.Populations!.FindIndex(x => x?.Creature == populations[i].Creature);
                             report.Add($"$.data.populations[{index}].creature", ValidationCode.OutOfRange,
-                                $"dans un dessous, « {populations[i].Creature} » part à moins de {MinDoorClearance} m de la porte « {door.Id} ».");
+                                $"{where}, « {populations[i].Creature} » part {why} de la porte « {door.Id} ».");
                         }
                 }
             }
@@ -1245,7 +1330,7 @@ namespace EdS.Data.Zones
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region, floor));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region, floor, mirror));
         }
 
         /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>
@@ -1351,6 +1436,7 @@ namespace EdS.Data.Zones
                 if (!byId.ContainsKey(z.Id)) byId.Add(z.Id, z);
                 else report.Add("$", ValidationCode.DuplicateId, $"zone « {z.Id} » donnée deux fois.");
             foreach (ZoneDefinition z in zones) CheckDoorsOf(z, byId, report);
+            foreach (ZoneDefinition z in zones) CheckMirrorOf(z, byId, report);   // V2.51 : l'Envers et sa région
             CheckEventRegistry(zones, report);
             return report;
         }
@@ -1420,8 +1506,33 @@ namespace EdS.Data.Zones
                 else if (!Equals(back.Water, door.Water))
                     report.Add(path + ".water", ValidationCode.InvalidValue,
                         $"{z.Id}, porte « {door.Id} » ({door.Water?.ToString() ?? "à sec"}) : la porte « {back.Id} » de {target.Id} qui lui répond a une autre eau ({back.Water?.ToString() ?? "à sec"}).");
+                // V2.51 : entre une zone et son Envers, on passe par une faille, au même point des deux côtés.
+                else if (z.Mirror?.Of == target.Id || target.Mirror?.Of == z.Id)
+                {
+                    if (door.Kind != DoorKind.Rift)
+                        report.Add(path + ".kind", ValidationCode.InvalidValue, $"{z.Id}, porte « {door.Id} » : entre une zone et son Envers, le passage est une faille (« faille »).");
+                    else if (back.Position != door.Position)
+                        report.Add(path + ".position", ValidationCode.InvalidValue,
+                            $"{z.Id}, faille « {door.Id} » : la faille « {back.Id} » de {target.Id} qui lui répond n'est pas au même point.");
+                }
             }
             return report;
+        }
+
+        /// <summary>
+        /// Relecture indépendante des PR #260 et #261 : garde d'une faille (schéma 17) : une créature part à plus de 12 m (CanUseDoor refuse
+        /// la porte tant qu'un ennemi vivant est à 12 m ou moins), et hors d'aggro de bord à bord (rayon, personnage, portée d'aggro).
+        /// </summary>
+        public static readonly Fixed RiftClearance = Fixed.FromInt(12);
+
+        /// <summary>V2.51a : rayon du plus gros personnage, pour l'aggro de bord à bord près d'une faille.</summary>
+        public static readonly Fixed RiftCharacterRadius = Fixed.Parse("0.9");
+
+        /// <summary>V2.51a : les deux points sont à <paramref name="distance"/> ou moins l'un de l'autre (calcul exact sur les entiers).</summary>
+        public static bool AtMost(GroundVector a, GroundVector b, Fixed distance)
+        {
+            long dx = checked(a.X.Raw - b.X.Raw), dz = checked(a.Z.Raw - b.Z.Raw);
+            return checked(dx * dx + dz * dz) <= checked(distance.Raw * distance.Raw);
         }
 
         /// <summary>Chantier V2.45.1 : les deux points sont à moins de <paramref name="distance"/> l'un de l'autre (calcul exact sur les entiers).</summary>

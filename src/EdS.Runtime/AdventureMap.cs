@@ -265,6 +265,12 @@ namespace EdS.Runtime
         public RegionGrid? Region { get; }
 
         /// <summary>
+        /// V2.51 : la carte est celle de l'Envers d'une région (reflet de la surface : mêmes obstacles, autre lumière, autre ciel, matériaux
+        /// sombres ; voir <see cref="EnversLook"/>).
+        /// </summary>
+        public bool Envers { get; }
+
+        /// <summary>
         /// Sous-lot V2.28b (3) : espace d'où la carte est tirée (celui de la session, ou l'aire entière d'une zone à plusieurs secteurs) ;
         /// le décor (<c>SpaceView</c>) est construit sur lui, pas sur l'espace du secteur où est le personnage.
         /// </summary>
@@ -273,8 +279,9 @@ namespace EdS.Runtime
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
             IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null,
-            bool underground = false)
+            bool underground = false, bool envers = false)
         {
+            Envers = envers && !indoor;
             Region = region;
             Space = space;
             Gates = (gates ?? Array.Empty<SpaceObstacle>()).ToList();
@@ -294,6 +301,7 @@ namespace EdS.Runtime
             var key = new System.Text.StringBuilder();
             if (Indoor) key.Append("intérieur:");
             if (Underground) key.Append("dessous:");
+            if (Envers) key.Append("envers:");   // V2.51 : la même aire que la surface, mais un autre décor
             key.Append(FormattableString.Invariant($"{MinX}/{MinZ}/{MaxX}/{MaxZ}"));
             foreach (SpaceObstacle o in Obstacles)
             {

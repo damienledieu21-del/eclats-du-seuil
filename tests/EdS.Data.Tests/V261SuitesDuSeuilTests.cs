@@ -123,9 +123,9 @@ public class V261SuitesDuSeuilTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((16, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
+        Assert.Equal((17, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((14, "0.28.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
+        Assert.Equal((17, "0.28.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((16, "0.39.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.48.0-provisoire", Texts.ContentVersion);   // corruption (V2.42.1) : 0.47.0 (0.46.0 : reprise des caravanes, #243) ; caravanes (V2.41.1) : 0.45.0 ; plats de fête (F6) : 0.39.0 ; étal des fêtes (F4) : 0.38.0 ; fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.25.0-provisoire", ItemsCatalog.ContentVersion);
@@ -178,7 +178,7 @@ public class V261SuitesDuSeuilTests
         ZoneLoadResult old = Mutated(root => root["schemaVersion"] = 11);
         AssertError(old.Report, $"$.data.events[{i}].scar.spreadStage", ValidationCode.InvalidValue);
         AssertError(old.Report, $"$.data.events[{i}].groups[0].spreadTo", ValidationCode.InvalidValue);
-        AssertError(Mutated(root => root["schemaVersion"] = 17).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(Mutated(root => root["schemaVersion"] = 18).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Theory]

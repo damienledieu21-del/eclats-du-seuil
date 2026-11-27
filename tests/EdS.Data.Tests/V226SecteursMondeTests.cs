@@ -333,6 +333,8 @@ public class V226SecteursMondeTests
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         root["schemaVersion"] = 14;
+        JsonArray doors = root["data"]!["doors"]!.AsArray();   // V2.51a : sans la faille de l'Envers (genre de porte : schéma 15)
+        doors.Remove(doors.Single(d => (string)d!["id"]! == "faille_de_l_envers"));
         mutate?.Invoke(root);
         return ZoneJsonReader.Read(root.ToJsonString(), V11TestData.ScenariosDirectory, ShippedData, V11TestData.ItemsCatalog);
     }
@@ -343,7 +345,7 @@ public class V226SecteursMondeTests
     [Fact]
     public void Territoire_valide_seulement_en_schema_14_et_dans_la_marge()
     {
-        Assert.Equal((16, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.RegionSchemaVersion));
+        Assert.Equal((17, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.RegionSchemaVersion));
         ZoneLoadResult plain = Vallons14();
         Assert.True(plain.IsValid, plain.Report.ToString());   // les Vallons tiennent dans leur secteur, chaque créature à 8 m au moins du bord
         ZoneLoadResult ok = Vallons14(r => Population(r, "loup1")["territory"] = 30);

@@ -60,7 +60,7 @@ public class V2451EtagesTests
     [Fact]
     public void Versions_et_bornes()
     {
-        Assert.Equal((16, 14, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.TerritorySchemaVersion, ZoneValidator.RegionSchemaVersion));
+        Assert.Equal((17, 14, 13), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.TerritorySchemaVersion, ZoneValidator.RegionSchemaVersion));
         Assert.Equal((64, 16, 256), (ZoneValidator.MaxDoors, ZoneValidator.MaxDoorsBefore15, ZoneValidator.MaxLinkedZones));
         Assert.Equal((512, 256, 32, 16), (ZoneValidator.MaxRegionDoors, ZoneValidator.MaxRegionDoorsBefore15, ZoneValidator.MaxDoorsPerCell, ZoneValidator.MaxDoorsPerCellBefore15));
         Assert.Equal(Fixed.FromInt(8), ZoneValidator.MinDoorClearance);
@@ -91,7 +91,7 @@ public class V2451EtagesTests
     [Fact]
     public void Etage_refuse()
     {
-        AssertError(Validate(Dto(edit: d => d.Floor = "envers")), "$.data.floor", ValidationCode.InvalidValue);   // l'Envers viendra au V2.51
+        AssertError(Validate(Dto(edit: d => d.Floor = "envers")), "$.data.mirror", ValidationCode.MissingField);   // V2.51a : l'Envers demande son reflet
         AssertError(Validate(Dto(edit: d => d.Floor = "Dessous")), "$.data.floor", ValidationCode.InvalidValue);
         AssertError(Validate(Dto(edit: d => d.Floor = "dessous", schema: 14)), "$.data.floor", ValidationCode.InvalidValue);
         AssertError(Validate(Dto(edit: d => d.Floor = "surface", schema: 14)), "$.data.floor", ValidationCode.InvalidValue);

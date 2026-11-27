@@ -81,6 +81,22 @@ namespace EdS.Data.Zones
         /// Données seulement : rien ne change au jeu.
         /// </summary>
         public RegionData? Region { get; set; }
+
+        /// <summary>V2.51 (schéma 17) : reflet d'une zone de l'Envers (zone de la surface reflétée) ; facultatif, obligatoire dans l'Envers.</summary>
+        public MirrorData? Mirror { get; set; }
+    }
+
+    /// <summary>V2.51 (schéma 17) : reflet d'une zone de l'Envers, tel que lu.</summary>
+    public sealed class MirrorData
+    {
+        /// <summary>Zone de la surface reflétée (« zone.vallons »).</summary>
+        public string? Of { get; set; }
+
+        /// <summary>Son scénario (« zones/vallons »).</summary>
+        public string? Scenario { get; set; }
+
+        /// <summary>Obstacles de la surface absents de l'Envers ; facultatif.</summary>
+        public List<string?>? Remove { get; set; }
     }
 
     /// <summary>Sous-lot V2.25.3 (schéma 13) : grille d'une région, depuis son coin sud-ouest.</summary>

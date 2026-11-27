@@ -76,6 +76,11 @@ namespace EdS.Runtime
             ["loup_echo_bete_citerne_enragee"] = "Bête de la citerne enragée",
             // V2.50a : les galeries sous les pierres du Seuil (loups-échos de la faille, ours cristallisés) et leurs chefs.
             ["loup_echo_galerie"] = "Loup-écho des galeries",
+            // V2.51 : les reflets de l'Envers des Vallons et leur chef.
+            ["loup_echo_envers"] = "Reflet de loup",
+            ["ours_reflet"] = "Ombre d'ours",
+            ["loup_echo_reflet_gardien"] = "Reflet du Gardien",
+            ["loup_echo_reflet_gardien_brise"] = "Reflet du Gardien brisé",
             ["ours_galerie"] = "Ours cristallisé",
             // Décision de Damien du 26 novembre 2026 : créatures de cristal nouvelles.
             ["araignee_cristal_galerie"] = "Araignée de cristal",

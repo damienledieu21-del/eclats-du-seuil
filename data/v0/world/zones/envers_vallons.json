@@ -1,0 +1,135 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 17,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.envers_vallons",
+    "name": "Envers des Vallons",
+    "scenario": "zones/envers_vallons",
+    "floor": "envers",
+    "mirror": {
+      "of": "zone.vallons",
+      "scenario": "zones/vallons",
+      "remove": [
+        "porte_moulin"
+      ]
+    },
+    "entry": "autel_de_l_aube",
+    "region": {
+      "origin": [
+        -1908,
+        -1614
+      ],
+      "columns": 32,
+      "rows": 24
+    },
+    "scaling": {
+      "baseLevel": 1,
+      "bossBaseLevel": 5,
+      "healthPerLevelPercent": 12,
+      "damagePerLevelPercent": 30,
+      "easeLevels": 2
+    },
+    "safePoints": [
+      {
+        "id": "autel_de_l_aube",
+        "name": "Autel de l'Aube",
+        "position": [
+          1656,
+          -470
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "envers_des_terres_corrompues",
+        "name": "Envers des terres corrompues",
+        "min": [
+          1290,
+          -1350
+        ],
+        "max": [
+          2188,
+          -110
+        ],
+        "minLevel": 24
+      },
+      {
+        "id": "felure_renversee",
+        "name": "Fêlure renversée",
+        "min": [
+          1560,
+          -560
+        ],
+        "max": [
+          1700,
+          -400
+        ],
+        "minLevel": 24
+      }
+    ],
+    "populations": [
+      {
+        "creature": "loup_echo_envers1",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers2",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_echo_envers3",
+        "respawnMs": 120000,
+        "leashRange": 12,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "ours_reflet1",
+        "respawnMs": 900000,
+        "leashRange": 10,
+        "loot": "loot.ours",
+        "family": "ours"
+      }
+    ],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "reflet_du_gardien",
+        "scenario": "zones/envers_vallons_reflet",
+        "forms": [
+          "loup_echo_reflet_gardien",
+          "loup_echo_reflet_gardien_brise"
+        ],
+        "fact": "fact.reflet_du_gardien.vaincu",
+        "rewards": [
+          {
+            "item": "item.eclat_de_seuil",
+            "count": 4
+          }
+        ],
+        "loot": "loot.echo"
+      }
+    ],
+    "doors": [
+      {
+        "id": "faille_des_vallons",
+        "name": "Faille vers les Vallons",
+        "position": [
+          1640,
+          -455
+        ],
+        "to": "zone.vallons",
+        "toDoor": "faille_de_l_envers",
+        "kind": "faille"
+      }
+    ]
+  }
+}

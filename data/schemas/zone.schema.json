@@ -26,9 +26,10 @@
         13,
         14,
         15,
-        16
+        16,
+        17
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux). Version 15 (chantier V2.45.1, étages) : floor (« surface » ou « dessous ») sur la zone et kind sur une porte (porte, escalier, puits, trappe, faille) ; dans un dessous, une créature (population, première forme d'un chef) part à 8 m au moins de chaque porte ; bornes relevées (64 portes, 256 zones reliées, 512 portes avec région, 32 portes par case) ; la version 14 est encore lue (sans eux, avec ses bornes de 16 portes, 256 avec région, 16 par case). Version 16 (V2.50.1, grottes noyées du lac) : water sur une porte (tide : noyée à marée haute ; diveMs : durée de la plongée quand elle est noyée) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux). Version 15 (chantier V2.45.1, étages) : floor (« surface » ou « dessous ») sur la zone et kind sur une porte (porte, escalier, puits, trappe, faille) ; dans un dessous, une créature (population, première forme d'un chef) part à 8 m au moins de chaque porte ; bornes relevées (64 portes, 256 zones reliées, 512 portes avec région, 32 portes par case) ; la version 14 est encore lue (sans eux, avec ses bornes de 16 portes, 256 avec région, 16 par case). Version 16 (V2.50.1, grottes noyées du lac) : water sur une porte (tide : noyée à marée haute ; diveMs : durée de la plongée quand elle est noyée) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle). Version 17 (V2.51, l'Envers) : floor « envers » (avec une région) et mirror (of : zone de la surface reflétée ; scenario : son scénario ; remove : obstacles de la surface absents de l'Envers) ; dans l'Envers, et près de toute faille, une créature part à 8 m au moins des portes ; une faille entre une zone et son Envers est au même point des deux côtés ; la version 16 est encore lue (sans eux)."
     },
     "kind": {
       "const": "zone"
@@ -653,9 +654,36 @@
         "floor": {
           "enum": [
             "surface",
-            "dessous"
+            "dessous",
+            "envers"
           ],
-          "description": "Chantier V2.45.1 (schéma 15) : étage de la zone, « surface » par défaut ; « dessous » : zone à part sous la surface (grotte, mine, crypte, égouts), reliée par des portes, avec créatures, jamais un intérieur ; le voyage rapide n'y mène pas ; ses créatures partent à 8 m au moins de chaque porte."
+          "description": "Chantier V2.45.1 (schéma 15) : étage de la zone, « surface » par défaut ; « dessous » : zone à part sous la surface (grotte, mine, crypte, égouts), reliée par des portes, avec créatures, jamais un intérieur ; le voyage rapide n'y mène pas ; ses créatures partent à 8 m au moins de chaque porte. V2.51 (schéma 17) : « envers » : couche de l'Envers d'une région (même grille, reflet de la surface : mirror obligatoire)."
+        },
+        "mirror": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "of",
+            "scenario"
+          ],
+          "description": "V2.51 (schéma 17) : reflet d'une zone de l'Envers : son aire part des obstacles du scénario de la zone reflétée, moins ceux de remove, plus les siens.",
+          "properties": {
+            "of": {
+              "type": "string",
+              "pattern": "^zone\\.[a-z][a-z0-9_]*$"
+            },
+            "scenario": {
+              "type": "string"
+            },
+            "remove": {
+              "type": "array",
+              "maxItems": 512,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            }
+          }
         },
         "indoor": {
           "type": "boolean",
