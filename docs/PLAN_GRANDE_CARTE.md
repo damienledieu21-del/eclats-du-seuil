@@ -190,7 +190,7 @@ Les sorties de la région suivent ce continent (Recommandation) :
 | Route du col | bord nord-est (2 100, 1 220) | Crêtes de Fer, au nord-est | V2.40 |
 | **Route de l'Est** (4e sortie, réservée) | de l'abbaye (1 710, 145) au bord est (2 188, 150), entre la mine et les terres corrompues | Ruines d'Ysoria | **plus tard** : le tracé et une barrière expliquée (pont effondré, éboulement gardé par l'Ordre) sont posés dès V2.40 pour que rien ne soit à déplacer ; l'ouverture vient avec la région d'Ysoria |
 
-L'Envers des Vallons (V2.51) reprend les mêmes sorties, vers l'Envers des régions voisines de la seconde carte.
+L'Envers des Vallons (V2.51) reprend les mêmes sorties, vers l'Envers des régions voisines de la seconde carte. Proposition pour la seconde carte (27 novembre 2026, en attente des réponses de Damien) : [PLAN_CARTE_2.md](PLAN_CARTE_2.md).
 
 ### 4.1 Carte schématique
 
