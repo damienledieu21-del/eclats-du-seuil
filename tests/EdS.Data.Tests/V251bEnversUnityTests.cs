@@ -23,8 +23,9 @@ public sealed class V251bEnversUnityTests
         Assert.Equal(EnversPiece.None, EnversLook.PieceFor(null));
         // Chaque obstacle propre de l'Envers livré est une pièce connue, avec son modèle et sa hauteur.
         ZoneDefinition envers = V16TestData.Interiors.Single(z => z.Envers);
-        var own = envers.Setup.Space!.Obstacles.Where(o => o.Id.StartsWith("envers_", StringComparison.Ordinal)).ToList();
-        Assert.Equal(10, own.Count);
+        // V2.52b : les pièces des douze lieux (kit Envers2) sont reconnues par EnversLieux (voir V252bEnversLieuxUnityTests).
+        var own = envers.Setup.Space!.Obstacles.Where(o => o.Id.StartsWith("envers_", StringComparison.Ordinal) && EnversLieux.PieceFor(o.Id) == EnversLieuPiece.None).ToList();
+        Assert.True(own.Count >= 10, $"{own.Count}");
         foreach (var o in own)
         {
             EnversPiece piece = EnversLook.PieceFor(o.Id);

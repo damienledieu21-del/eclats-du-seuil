@@ -2062,7 +2062,9 @@ namespace EdS.Runtime
                         // Chantier V2.46 : un dessous (la grotte de la cascade) est dessiné en grotte, à l'abri.
                         _zone.Underground,
                         // V2.51 : l'Envers, reflet de la région (ses routes sont celles de la surface, voir Roads).
-                        _zone.Envers);
+                        _zone.Envers,
+                        // V2.52b : les secrets de la zone (coffres, stèles), dessinés dans le décor.
+                        _zone.Secrets.Select(x => new MapSecret(x.Id, x.Kind, Meters(x.Position.X), Meters(x.Position.Z))));
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
 

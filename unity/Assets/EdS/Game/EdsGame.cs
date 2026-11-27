@@ -885,6 +885,7 @@ namespace EdS.Game
             if (a.AltarInReach != null) return a.Text("text.ui.corruption.purify");   // sous-lot V2.42.2 : purifier l'autel d'une terre corrompue
             if (a.SourceHint is string source) return source;   // sous-lot V2.42.3 : défier le gardien de la source (comme Interact)
             if (a.ChestInReach != null) return a.Text("text.ui.caravan.chest.take");   // sous-lot V2.41.3 : reprendre un coffre au fort (comme Interact)
+            if (a.SecretHint is string secret) return secret;   // V2.52b : fouiller un coffre ou lire une stèle de l'Envers (comme Interact)
             // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
             if (a.DoorFirst && a.DoorInReach != null) return a.DoorHint;   // V2.43.4 : « fermée » devant la porte d'un lieu pas encore reconstruit
             if (a.NpcInReach is EdS.Data.Story.Npc npc)

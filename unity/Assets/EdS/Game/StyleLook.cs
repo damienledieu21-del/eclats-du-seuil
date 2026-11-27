@@ -597,13 +597,22 @@ namespace EdS.Game
             }
             // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
             // modèle du catalogue, comme avant.
-            HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
+            // V2.52b : les reflets de l'Envers qui ont leur modèle Tripo (Resources/Envers2/Creatures) : le spectre pour les moines renversés et
+            // l'abbé renversé (statique, il flotte en ondulant), le chien de cendre animé ; sans modèle, le corps d'avant (robe du clergé, loup).
+            string enversName = EnversLieux.CreatureModel(id);
+            GameObject enversPrefab = enversName != null ? Resources.Load<GameObject>(EnversLieux.CreatureFolder + enversName) : null;
+            HumanLook? human = humans && enversPrefab == null ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
             // V2.49.2 : les rats prennent le rat animé de Tripo (Resources/Rats) ; sans lui, le modèle de leur place (le loup), en repli.
             GameObject rat = human == null && StyleRules.IsRat(id) ? Resources.Load<GameObject>(SewerLooks.RatFolder + SewerLooks.RatModel) : null;
             // V2.50b (décision de Damien du 26 novembre 2026) : les créatures de cristal prennent leur modèle animé (Resources/Galeries/Creatures),
             // traité comme celui du rat ; sans lui, le modèle de leur place (loup ou ours), teinté de cristal plus bas.
             string crystalName = human == null ? GalleryLooks.CreatureModel(id) : null;
             if (rat == null && crystalName != null) rat = Resources.Load<GameObject>(GalleryLooks.CreatureFolder + crystalName);
+            if (rat == null && enversPrefab != null)
+            {
+                rat = enversPrefab;   // traité comme le rat : il regarde déjà devant lui, sa marche est la sienne
+                if (EnversLieux.Floats(enversName)) height = (float)EnversLieux.WraithHeight(id);
+            }
             GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : rat != null ? rat : catalog.Model(slot, id);
             if (prefab == null) return null;
             if (human is HumanLook sized) height = (float)sized.Height;
@@ -692,12 +701,16 @@ namespace EdS.Game
             // V2.50b : une créature de cristal sur son propre modèle n'a que sa marche (ou rien, le golem statique) : pas les clips du loup ou de l'ours.
             AnimationClip[] clips = catalog.Clips(slot, id);
             if (rat != null && crystalName != null) clips = null;
+            if (rat != null && enversPrefab != null && rat == enversPrefab) clips = null;   // V2.52b : la marche du chien, rien pour le spectre
             if (clips != null && clips.Length > 0)
             {
                 if (animation == null) animation = model.AddComponent<Animation>();
                 foreach (AnimationClip clip in clips)
                     if (clip != null && animation.GetClip(clip.name) == null) animation.AddClip(clip, clip.name);
             }
+            // V2.52b : le spectre flotte au-dessus du sol en ondulant (par le code, sans animation).
+            if (rat != null && rat == enversPrefab && EnversLieux.Floats(enversName))
+                look.AddComponent<EnversFloat>().Setup(id, look.transform.localPosition, 1f / Mathf.Max(0.01f, s.y));
             var styled = new StyleBody(look.transform, animation, height);
             if (beast) styled.Beast(look.transform.localPosition, look.transform.localRotation, 1f / Mathf.Max(0.01f, s.y));
             styled.Seed(lookId ?? id);   // sous-lot V2.15

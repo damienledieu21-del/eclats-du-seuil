@@ -161,6 +161,7 @@ namespace EdS.Game
             // Relecture des PR #260 et #261 : les formes flottantes et le semis ne sont plus construits sur toute l'aire (768 cases) mais par
             // case autour de la caméra, au fil des images (EnversFrame, EnversLook.CellsNear).
             _enversRegion = map.Region;
+            EnversLieuxSecrets(map);   // V2.52b : coffres et stèles, dessinés par case
             _enversMinX = Raw(space.Min.X.Raw);
             _enversMinZ = Raw(space.Min.Z.Raw);
             _enversMaxX = Raw(space.Max.X.Raw);
@@ -328,6 +329,7 @@ namespace EdS.Game
         {
             if (!_envers) return;
             StreamCells(camera);
+            StreamLieux(camera);   // V2.52b : pièces des douze lieux et secrets, par case
             _floating.RemoveAll(f => f.Body == null);
             foreach ((Transform body, FloatingRock rock, float floor) in _floating)
                 if (body != null) body.position = new Vector3((float)rock.X, (float)EnversLook.FloatingAltitude(rock, floor, seconds), (float)rock.Z);
@@ -398,6 +400,7 @@ namespace EdS.Game
         private void ReleaseEnvers()
         {
             _enversCells.Clear();
+            ReleaseLieux();   // V2.52b
             _keepBright.Clear();
             _enversRegion = null;
             foreach (Material m in _darkMaterials.Values)

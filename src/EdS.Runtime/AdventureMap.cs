@@ -22,6 +22,26 @@ namespace EdS.Runtime
         Door = 6,
     }
 
+    /// <summary>
+    /// V2.52b : un secret de la zone (coffre ou stèle de lore de l'Envers) posé dans le décor : identifiant, genre, place en mètres. Sans repère
+    /// sur la carte (on le trouve en explorant) : seulement dessiné. Affichage seulement.
+    /// </summary>
+    public sealed class MapSecret
+    {
+        public string Id { get; }
+        public SecretKind Kind { get; }
+        public double X { get; }
+        public double Z { get; }
+
+        public MapSecret(string id, SecretKind kind, double x, double z)
+        {
+            Id = id ?? throw new ArgumentNullException(nameof(id));
+            Kind = kind;
+            X = x;
+            Z = z;
+        }
+    }
+
     /// <summary>Intérieurs : une porte de la carte (nom de ce qu'il y a derrière, bâtiment dont c'est la porte, place en mètres).</summary>
     public sealed class MapDoor
     {
@@ -270,6 +290,9 @@ namespace EdS.Runtime
         /// </summary>
         public bool Envers { get; }
 
+        /// <summary>V2.52b : les secrets de la zone à dessiner (coffres, stèles), dans l'ordre du fichier ; vide sans eux.</summary>
+        public IReadOnlyList<MapSecret> Secrets { get; }
+
         /// <summary>
         /// Sous-lot V2.28b (3) : espace d'où la carte est tirée (celui de la session, ou l'aire entière d'une zone à plusieurs secteurs) ;
         /// le décor (<c>SpaceView</c>) est construit sur lui, pas sur l'espace du secteur où est le personnage.
@@ -279,8 +302,9 @@ namespace EdS.Runtime
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
             IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null,
-            bool underground = false, bool envers = false)
+            bool underground = false, bool envers = false, IEnumerable<MapSecret>? secrets = null)
         {
+            Secrets = (secrets ?? Array.Empty<MapSecret>()).ToList();
             Envers = envers && !indoor;
             Region = region;
             Space = space;
