@@ -250,6 +250,24 @@ public sealed class V254SonTests
         StyleSound[] expected = { StyleSound.StepStone, StyleSound.StepWater, StyleSound.StepSnow, StyleSound.StepMud, StyleSound.ChestOpen, StyleSound.DoorOpen,
             StyleSound.Dive, StyleSound.Emerge, StyleSound.Hurt };
         for (int i = 0; i < expected.Length; i++) Assert.Equal(sounds[i], StyleRules.PickSound(sounds, expected[i]));
+        // Les remplaçants de docs/SONS.md passent devant les sons déjà déposés, et la faille qui s'ouvre n'est pas son bourdonnement.
+        var replacing = new[]
+        {
+            root + "Sounds/Kenney/impactPunch_medium_000.ogg", root + "Sounds/PasseSon/eds_coup_epee_01.ogg", root + "Sounds/PasseSon/eds_bouclier_01.ogg",
+            root + "Sounds/PasseSon/eds_parade_01.ogg", root + "Sounds/PasseSon/eds_chute_01.ogg", root + "Sounds/PasseSon/eds_elan_01.ogg",
+            root + "Sounds/PasseSon/eds_sort_01.ogg", root + "Sounds/PasseSon/eds_pieces_01.ogg", root + "Sounds/PasseSon/eds_faille_ouvre_01.ogg",
+            root + "Sounds/PasseSon/eds_faille_ferme_01.ogg", root + "Sounds/Animaux/faille_bourdon.ogg", root + "Sounds/PasseSon/eds_ecole_feu_01.ogg",
+        };
+        Assert.EndsWith("eds_coup_epee_01.ogg", StyleRules.PickSound(replacing, StyleSound.Hit));
+        Assert.EndsWith("eds_bouclier_01.ogg", StyleRules.PickSound(replacing, StyleSound.Block));
+        Assert.EndsWith("eds_parade_01.ogg", StyleRules.PickSound(replacing, StyleSound.Parry));
+        Assert.EndsWith("eds_chute_01.ogg", StyleRules.PickSound(replacing, StyleSound.Death));
+        Assert.EndsWith("eds_elan_01.ogg", StyleRules.PickSound(replacing, StyleSound.Swing));
+        Assert.EndsWith("eds_sort_01.ogg", StyleRules.PickSound(replacing, StyleSound.Cast));
+        Assert.EndsWith("eds_pieces_01.ogg", StyleRules.PickSound(replacing, StyleSound.Coin));
+        Assert.EndsWith("eds_faille_ouvre_01.ogg", StyleRules.PickSound(replacing, StyleSound.Glass));
+        Assert.EndsWith("eds_faille_ferme_01.ogg", StyleRules.PickSound(replacing, StyleSound.Shatter));
+        Assert.EndsWith("faille_bourdon.ogg", StyleRules.PickSound(replacing, StyleSound.RiftHum));
         // Chaque musique et chaque ambiance du manifeste de l'essai a son entrée.
         Assert.Equal(Enum.GetValues<StyleMusic>().Length, EssaiManifest.Music.Count);
         Assert.Equal(Enum.GetValues<StyleAmbience>().Length, EssaiManifest.Ambiences.Count);

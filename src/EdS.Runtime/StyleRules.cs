@@ -711,20 +711,20 @@ namespace EdS.Runtime
         /// <summary>Mots cherchés dans les noms des sons, par ordre de préférence (noms des packs gratuits de Kenney d'abord).</summary>
         private static readonly Dictionary<StyleSound, string[]> Sounds = new Dictionary<StyleSound, string[]>
         {
-            [StyleSound.Hit] = new[] { "impactpunchmedium", "impactpunch", "punch", "hit", "fs733887", "fs420675" },   // V2.11 : épée (Freesound)
-            [StyleSound.Block] = new[] { "impactplate", "impactmetal", "shield", "block", "fs812518", "fs523760" },
-            [StyleSound.Parry] = new[] { "impactbell", "metalclick", "parry", "clang", "fs361485", "fs180828" },
-            [StyleSound.Death] = new[] { "impactsoftheavy", "impactwoodheavy", "death", "fall" },
+            [StyleSound.Hit] = new[] { "edscoupepee", "impactpunchmedium", "impactpunch", "punch", "hit", "fs733887", "fs420675" },   // V2.11 : épée (Freesound)
+            [StyleSound.Block] = new[] { "edsbouclier", "impactplate", "impactmetal", "shield", "block", "fs812518", "fs523760" },
+            [StyleSound.Parry] = new[] { "edsparade", "impactbell", "metalclick", "parry", "clang", "fs361485", "fs180828" },
+            [StyleSound.Death] = new[] { "edschute", "impactsoftheavy", "impactwoodheavy", "death", "fall" },
             [StyleSound.Potion] = new[] { "bottle", "drink", "potion", "liquid", "handlesmallleather", "cloth" },
             [StyleSound.Gather] = new[] { "impactmining", "chop", "dig", "gather" },
             [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot", "enclume" },
             // Essai réaliste 7 : packs CC0 d'OpenGameArt (artisticdude, rubberduck) et de Kenney.
-            [StyleSound.Swing] = new[] { "swish", "swing", "whoosh" },
-            [StyleSound.Cast] = new[] { "spell", "magic", "cast", "virixmisc", "fs876169" },   // V2.11 : sorts de la 5e vague en dernier recours
+            [StyleSound.Swing] = new[] { "edselan", "swish", "swing", "whoosh" },
+            [StyleSound.Cast] = new[] { "edssort", "spell", "magic", "cast", "virixmisc", "fs876169" },   // V2.11 : sorts de la 5e vague en dernier recours
             [StyleSound.Growl] = new[] { "growl", "howl", "wolf", "barking" },
             [StyleSound.Grunt] = new[] { "grunt", "boar", "pig", "oink" },
             [StyleSound.Roar] = new[] { "roar", "troll", "monster", "fs444444", "dragongrowl" },
-            [StyleSound.Coin] = new[] { "coin", "pickupgold" },
+            [StyleSound.Coin] = new[] { "edspieces", "coin", "pickupgold" },
             // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
             [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
             [StyleSound.Purr] = new[] { "ronron", "purr" },
@@ -739,8 +739,8 @@ namespace EdS.Runtime
             // tocsin d'abord ; la courte volée de TSP-Talk (n° 847110) rejoint les cloches d'église.
             [StyleSound.Tocsin] = new[] { "fs760390", "tocsin", "petitecloche", "clochebsb", "cloche", "handbell" },
             [StyleSound.ChurchBell] = new[] { "cloche", "eglise", "church", "chapelle", "fs847110" },
-            [StyleSound.Glass] = new[] { "verre", "glassbreak", "glass" },
-            [StyleSound.Shatter] = new[] { "miroir", "mirror", "shatter" },
+            [StyleSound.Glass] = new[] { "edsfailleouvre", "verre", "glassbreak", "glass" },
+            [StyleSound.Shatter] = new[] { "edsfailleferme", "miroir", "mirror", "shatter" },
             [StyleSound.RiftHum] = new[] { "faille", "bourdon", "humming", "drone" },
             // 2e vague (sons déposés dans « Sounds/Monde ») : portail des failles, pas selon le sol, bêtes de la ferme et des champs.
             [StyleSound.Portal] = new[] { "portail", "portal" },
@@ -786,6 +786,8 @@ namespace EdS.Runtime
             [StyleSound.StepGrass] = new[] { "lievre" },
             // Sous-lot V2.11 : le grognement du dragon (Little Robot Sound Factory) n'est pas celui d'un loup.
             [StyleSound.Growl] = new[] { "dragon" },
+            // V2.54 (docs/SONS.md) : l'ouverture et la fermeture d'une faille ne sont pas son bourdonnement.
+            [StyleSound.RiftHum] = new[] { "failleouvre", "failleferme" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>

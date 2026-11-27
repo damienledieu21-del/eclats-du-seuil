@@ -1416,3 +1416,14 @@ Les pièces des douze lieux de l'Envers (V2.52a) et les secrets sont dessinés p
 - **Créatures** (`Resources/Envers2/Creatures`) : le **chien de cendre** (marche « Legacy ») pour les chiens de l'Envers ; le **spectre reflet** (statique : la marche bipède a échoué chez Tripo) pour les moines renversés et l'abbé renversé, qui flotte en ondulant (`EnversFloat`, `EnversLieux.WraithBob`). Sans modèle : le loup et le moine en robe, au rendu de faille.
 - **Repli** : chaque pièce sans modèle devient un prisme sombre ; un secret sans modèle, une boîte.
 - **Kit** : 13 modèles et 2 créatures Tripo du 27 novembre 2026 (dépense validée d'avance, environ 360 crédits réels), finis dans Blender (`Envers2/finir_envers2.py`, `Envers2/Creatures/finir_creatures.py` de l'AssetLab), à plat dans `Assets/EdS/Modeles/Resources/Envers2`.
+
+## La passe son des Vallons (chantier V2.54 « son », 27 novembre 2026)
+
+Détail, inventaire, liste des fichiers à produire et chiffrage : [SONS.md](SONS.md).
+
+- **Sans rien déposer**, le jeu sonne : nappes de synthèse des milieux (marais, grotte, égouts, galeries, grottes noyées, Envers, sous l'eau, rafales du col), pas selon le sol (herbe, gravier, feuilles, plancher, pierre, eau, neige, boue), coups, blocage, parade, mort, élan, sort, pièces, potion, récolte, enclume, héros blessé, coffre ouvert, porte passée, plongée et remontée. Un fichier déposé dans `Assets/Style/…/PasseSon` (nom donné par SONS.md) remplace le son de synthèse après **Éclats du Seuil → Préparer l'essai de style**.
+- **Musique d'un lieu et d'un moment** : chaque souterrain et l'Envers ont la leur, l'exploration a une version de nuit et une d'hiver, le combat sous terre la sienne ; sans le fichier, le repli (galeries → grottes → crypte → exploration ; Envers → Seuil). Fondus : 1 s vers le combat, 4 s pour en sortir, 5 s pour l'Envers.
+- **Réglages (pause)** : nouvelle ligne **Volume** : − / nom du canal / + ; un clic sur le nom passe de la musique à l'ambiance, aux effets, à l'interface. Gardé d'une partie à l'autre.
+- **PC modeste** : au plus 24 bruitages à la fois (16 sur téléphone) ; les pas cèdent avant les coups, la mort et les portes passent toujours.
+
+Ce que tu vérifies : marcher du pré à la forêt, au col, aux pilotis du marais, puis descendre aux égouts, à la grotte de la cascade, aux galeries et aux grottes noyées (plonger) et passer dans l'Envers : la musique et la nappe changent en fondu, sans coupure ; les pas changent de sol ; un combat sous terre a sa musique ; ouvrir un coffre ; régler chaque volume à 0 puis à 100 %.
