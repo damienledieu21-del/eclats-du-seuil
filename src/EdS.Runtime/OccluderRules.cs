@@ -80,6 +80,24 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.53 (audit des performances) : boîte qui contient tous les segments de <see cref="MasksBody"/> (caméra et points du corps).
+        /// Un décor dont la boîte ne la touche pas ne peut pas cacher le joueur : un seul test par décor au lieu de trois segments
+        /// (des milliers de décors par image dans le Bourg).
+        /// </summary>
+        public static ((double X, double Y, double Z) Min, (double X, double Y, double Z) Max) Reach((double X, double Y, double Z) camera,
+            (double X, double Y, double Z) player)
+        {
+            double low = player.Y + Body[0], high = player.Y + Body[Body.Length - 1];
+            return ((Math.Min(camera.X, player.X), Math.Min(camera.Y, low), Math.Min(camera.Z, player.Z)),
+                (Math.Max(camera.X, player.X), Math.Max(camera.Y, high), Math.Max(camera.Z, player.Z)));
+        }
+
+        /// <summary>Deux boîtes alignées se touchent-elles (bords compris) ?</summary>
+        public static bool Overlap((double X, double Y, double Z) aMin, (double X, double Y, double Z) aMax, (double X, double Y, double Z) bMin,
+            (double X, double Y, double Z) bMax) =>
+            aMin.X <= bMax.X && aMax.X >= bMin.X && aMin.Y <= bMax.Y && aMax.Y >= bMin.Y && aMin.Z <= bMax.Z && aMax.Z >= bMin.Z;
+
+        /// <summary>
         /// Opacité visée : 0 pour un décor au-dessus atteint par la caméra (ou un toit sous lequel on se tient), <see cref="FadeAlpha"/> pour
         /// un décor qui cache le joueur, 1 sinon.
         /// </summary>
