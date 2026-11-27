@@ -1,6 +1,6 @@
 # Sons et musiques des Vallons (V2.54, passe son)
 
-Demande de Damien (27 novembre 2026) : un vrai système sonore pour les Vallons, avec une musique par lieu et par moment, des ambiances par milieu, des sons de jeu, un mixage et une limite de voix pour le PC modeste. Ce document fait l'inventaire de ce qui existe, décrit le système, liste **tous les sons et musiques à produire** (chaque entrée sert directement de prompt pour un générateur) et chiffre l'option de génération par IA. **Aucune dépense n'est engagée et aucun compte n'est créé : c'est la décision de Damien.**
+Demande de Damien (27 novembre 2026) : un vrai système sonore pour les Vallons, avec une musique par lieu et par moment, des ambiances par milieu, des sons de jeu, un mixage et une limite de voix pour le PC modeste. Ce document fait l'inventaire de ce qui existe, décrit le système, liste **tous les sons et musiques à produire** (chaque entrée sert directement de prompt pour un générateur) et chiffre l'option de génération par IA. Damien a validé la génération par IA le 27 novembre 2026 (section 3) ; c'est lui qui crée les comptes et paie, Claude n'a rien acheté.
 
 ## 1. Inventaire avant la V2.54
 
@@ -24,7 +24,7 @@ Toutes les règles de choix sont des fonctions pures, testées (`tests/EdS.Data.
 - **Nappes des milieux** (`SoundRules.BedVolume`) : marais, grotte, égouts, galeries, grottes noyées, Envers, sous l'eau, rafales en altitude ; sous terre, dans l'Envers et sous l'eau, les nappes du dehors se taisent (`MutesWorld`) ; la pluie et le vent ne s'entendent pas sous terre.
 - **Pas** (`SoundRules.Step`) : eau (grottes noyées), pierre (souterrains, Envers), plancher (intérieurs), boue (marais), neige (sol enneigé à 50 % au moins, sauf plancher), sinon herbe, gravier ou feuilles comme avant.
 - **Sons de jeu** : coups, blocage, parade, mort, élan, sort, potion, pièces (butin), récolte, enclume, héros blessé, coffre ouvert, porte passée, plongée puis remontée (avec la nappe sous l'eau pendant le passage), failles (déjà là), interface (déjà là).
-- **Mixage** (`SoundRules` + `SoundMixer`) : quatre volumes — musique (70 % par défaut), ambiance (80 %), effets (90 %), interface (80 %) — par pas de 10 %, courbe au carré, réglés dans la pause (**Réglages → ligne Volume** : − / nom du canal / + ; un clic sur le nom passe au canal suivant), sauvegardés dans les préférences.
+- **Mixage** (`SoundRules` + `SoundMixer`) : quatre volumes — musique (70 % par défaut), ambiance (80 %), effets (90 %), interface (80 %) — par pas de 10 %, gain neutre (1) au volume par défaut et au carré autour de lui (décision et revue du 27 novembre 2026), réglés dans la pause (**Réglages → ligne Volume** : − / nom du canal / + ; un clic sur le nom passe au canal suivant), sauvegardés dans les préférences.
 - **Limite de voix** (`SoundRules.VoiceLimit`, `Admit`, `PriorityOf`, `MinGap`) : 16 bruitages simultanés sur téléphone, 24 sur le PC modeste, 32 au-delà ; les pas et les bêtes s'arrêtent aux trois quarts, les coups à la limite, la mort, les portes, les coffres et la plongée passent toujours ; une salve du même son ne fait qu'un son (60 ms, 120 ms pour un pas).
 - **Repli** : un fichier du catalogue s'il est déposé, sinon un **son de synthèse** (`SoundSynth`, fait par le code, déterministe, aucun fichier) pour les 8 nappes de milieu et 26 bruitages (tous les pas, coups, parade, mort, élan, sort, portail, pièces, verre, potion, récolte, enclume, coffre, porte, plongée, remontée, héros blessé) ; une musique absente prend son repli ; sans aucune musique, silence musical.
 
@@ -32,100 +32,164 @@ Ce qui sonne **dès maintenant**, sans aucun fichier déposé : les nappes des 8
 
 Les sons de synthèse sont honnêtes mais simples (bruit filtré, résonances) : ils valent une maquette sonore, pas un enregistrement. Les fichiers ci-dessous les remplacent un par un, sans code : il suffit de les déposer et de relancer **Éclats du Seuil → Préparer l'essai de style**.
 
-## 3. Où déposer les fichiers
+## 3. Décisions de Damien du 27 novembre 2026
 
-Dans `unity/Assets/Style/` (non suivi par git), comme les packs actuels :
+- **Génération par IA validée**, environ **32 $** : un mois d'**ElevenLabs Creator** (22 $, 11 $ le premier mois) et un mois de **Suno Pro** (10 $). **C'est Damien qui crée les comptes et paie** ; Claude n'a rien acheté et ne crée aucun compte.
+- **Volumes par défaut validés** : musique 70 %, ambiance 80 %, effets 90 %, interface 80 %. Le gain vaut 1 à ces valeurs (revue de la PR #267) : le jeu sonne comme avant pour qui n'a rien réglé ; 0 % coupe tout ; 100 % monte jusqu'à +6 dB.
+- **Recommandations gardées** : une musique par souterrain, avec ses replis ; marais et col avec leur nappe seule, la musique d'exploration y reste ; un son de sort générique tant que le moteur ne donne pas l'école du sort à l'affichage.
 
-- musiques : `Music/PasseSon/` ; nappes : `Ambience/PasseSon/` ; bruitages : `Sounds/PasseSon/` ;
-- le nom du fichier décide de son rôle (colonne « Fichier ») ; plusieurs variantes : `_01`, `_02`… (jusqu'à 6, jouées tour à tour) ;
-- format : OGG Vorbis (ou WAV), 44,1 ou 48 kHz ; musiques et nappes en stéréo, bruitages en mono ; crête à −1 dBFS, sans silence au début d'un bruitage ;
-- une boucle (« oui » dans la colonne Boucle) doit se raccorder sans clic : fin et début au même niveau, sans fondu au noir.
+## 4. Mode d'emploi
 
-## 4. Liste complète à produire
+1. Générer les fichiers de la section 5, dans l'ordre des priorités (P1 d'abord : c'est ce qui manque le plus ou ce que la synthèse rend le moins bien).
+2. Les renommer **exactement** comme la colonne « Fichier » (les `_01`, `_02`… sont des variantes : jusqu'à 6, jouées tour à tour). L'extension peut être `.mp3` (téléchargement de Suno), `.wav` ou `.ogg`.
+3. Les déposer dans le dossier indiqué. Tous sont sous `unity/Assets/Style/`, qui n'est **pas** suivi par git (comme les autres packs) : créer les sous-dossiers `PasseSon` s'ils n'existent pas.
+   - musiques (Suno) : `unity/Assets/Style/Music/PasseSon/`
+   - nappes (ElevenLabs) : `unity/Assets/Style/Ambience/PasseSon/`
+   - bruitages et pas (ElevenLabs) : `unity/Assets/Style/Sounds/PasseSon/`
+4. Dans Unity : menu **Éclats du Seuil → Préparer l'essai de style**. La fenêtre de fin compte ce qui a été trouvé ; chaque fichier trouvé remplace le son de synthèse ou la musique de repli. Aucun code à changer.
 
-Les prompts sont en anglais (les générateurs les comprennent mieux) ; la description française dit l'intention. Durées indicatives.
+Règles à respecter :
 
-### 4.1 Musiques (Suno, Stable Audio ; instrumentales, sans voix)
+- un nom de pas ou de bruitage ne doit contenir **aucun mot de milieu** (`grotte`, `egout`, `marais`, `galerie`, `envers`…), sinon il serait pris pour une nappe ;
+- une boucle doit se raccorder sans clic : fin et début au même niveau, sans fondu au noir ; si l'outil propose une option de boucle, la cocher ;
+- bruitages courts : un seul son par fichier, attaque nette, sans silence au début, sans réverbération ;
+- licence : générer **pendant** l'abonnement payant (droits commerciaux de Suno et d'ElevenLabs) ; garder la page de l'abonnement comme preuve.
 
-Direction commune : fantasy médiévale intimiste, orchestre de chambre et instruments anciens (luth, vielle, harpe, flûtes, cordes, cor lointain), jamais épique tapageur sauf combat et chefs ; tonalités modales (dorien, éolien) ; mixage doux pour passer sous les nappes.
+## 5. Prompts prêts à copier
 
-| Fichier | Rôle | Durée | Boucle | Prompt |
-|---|---|---|---|---|
-| `eds_musique_exploration_nuit` | exploration la nuit (remplace la musique d'exploration de 22 h à 5 h) | 3–4 min | oui | `Instrumental fantasy nocturne, solo harp and soft low strings, distant wooden flute, slow 60 bpm, D dorian, calm and mysterious, starry countryside at night, sparse, no drums, no vocals, seamless loop` |
-| `eds_musique_exploration_hiver` | exploration en hiver | 3–4 min | oui | `Instrumental medieval winter theme, celesta and plucked harp over cold sustained strings, gentle sleigh-bell shimmer, 70 bpm, A aeolian, quiet snowy hills, melancholic and warm, no vocals, seamless loop` |
-| `eds_musique_grottes` | grottes (cascade, mines à cristaux) | 3 min | oui | `Dark ambient fantasy cave music, low drones, slow glassy bell motifs with long reverb, water-like marimba plinks, 50 bpm, mysterious not scary, no drums, no vocals, seamless loop` |
-| `eds_musique_egouts` | égouts du bourg | 3 min | oui | `Underground sewer exploration music, muted low cello ostinato, dripping pizzicato, metallic distant clanks, tense but restrained, 80 bpm, E phrygian, no vocals, seamless loop` |
-| `eds_musique_galeries` | galeries des éclats, du Seuil, mines | 3 min | oui | `Fantasy mine tunnels theme, deep frame drum heartbeat, bowed psaltery, shimmering crystal tones, sense of depth and ancient magic, 66 bpm, C minor, no vocals, seamless loop` |
-| `eds_musique_noyees` | grottes noyées du lac | 3 min | oui | `Flooded cavern ambient music, slow underwater-sounding pads, soft harp arpeggios drenched in reverb, low choir hum without words, 56 bpm, F lydian, dreamy and cold, seamless loop` |
-| `eds_musique_envers` | l'Envers (le monde reflété) | 4 min | oui | `Eerie otherworld ambient, reversed strings, detuned music box fragments, very low sub drone, sparse dissonant clusters, timeless, 40 bpm feel, unsettling but beautiful, no vocals, seamless loop` |
-| `eds_musique_combat_donjon` | combat sous terre et dans l'Envers | 2–3 min | oui | `Dungeon battle music, driving low taiko and frame drums, aggressive cello ostinato, brass stabs echoing in stone halls, 140 bpm, D minor, intense, no vocals, seamless loop` |
-| `eds_musique_combat` *(facultatif, remplace l'existante)* | combat au dehors | 2–3 min | oui | `Medieval fantasy skirmish music, fast hurdy-gurdy and fiddle over war drums, horn calls, 150 bpm, A minor, urgent and heroic, no vocals, seamless loop` |
-| `eds_musique_marais` *(prévu, non branché : voir question 2)* | marais | 3 min | oui | `Swamp ambient folk, slow bowed bass, reed flute, buzzing jaw harp, humid and sleepy, 60 bpm, G dorian, no vocals, seamless loop` |
-| `eds_musique_fete_hiver` *(prévu, non branché)* | veillée d'hiver au bourg | 2–3 min | oui | `Cozy medieval winter feast, hurdy-gurdy, recorder and frame drum, warm tavern dance in 6/8, 110 bpm, G major, joyful, no vocals, seamless loop` |
-| `eds_jingle_coffre` | petit motif d'un coffre rare | 3 s | non | `Short fantasy treasure jingle, harp glissando and bell, bright, 3 seconds, no vocals` |
+### 5.1 Suno (Pro) : musiques
 
-Les 12 musiques déjà déposées restent (exploration, village, combat, chefs, Seuil, scènes, bourg la nuit, auberge, forge, crypte, deux fêtes).
+Réglages communs : **Instrumental** coché, style = le prompt ci-dessous, titre = le nom du fichier. Suno rend des morceaux de 2 à 4 min : garder le meilleur des deux rendus, le télécharger, le renommer. Pro permet 20 téléchargements par mois : les 8 de P1 et les 3 de P3 tiennent dedans, avec de la marge pour des essais.
 
-### 4.2 Nappes d'ambiance (ElevenLabs Sound Effects, Stable Audio ; boucles)
+Direction commune : fantasy médiévale intimiste, orchestre de chambre et instruments anciens, jamais épique tapageur sauf combat ; mixage doux pour passer sous les nappes.
 
-| Fichier | Milieu | Durée | Boucle | Prompt |
-|---|---|---|---|---|
-| `eds_nappe_marais` | marais (pilotis) | 60 s | oui | `Swamp ambience loop, croaking frogs at varied distances, buzzing insects, still water lapping on wooden stilts, occasional heron call, humid, no music` |
-| `eds_nappe_grotte` | grotte | 60 s | oui | `Cave ambience loop, slow water drips echoing in a large stone cavern, faint air movement, distant trickle, no music, no voices` |
-| `eds_nappe_egouts` | égouts | 60 s | oui | `Medieval sewer ambience loop, flowing dirty water in a stone channel, gurgling, dripping, rats squeaking far away, echoing brick tunnel, no music` |
-| `eds_nappe_galeries` | galeries, mines | 60 s | oui | `Old mine tunnel ambience loop, deep low rumble, creaking wooden support beams, small pebbles trickling, distant pickaxe echo, no music` |
-| `eds_nappe_noyees` | grottes noyées | 60 s | oui | `Flooded cave ambience loop, gentle waves lapping against rock, water sloshing in hollows, drips with long echo, cold and vast, no music` |
-| `eds_nappe_envers` | l'Envers | 60 s | oui | `Otherworldly ambience loop, deep pulsing drone, reversed whispers without words, faint glassy crackles, wind through dead trees, unsettling, no music` |
-| `eds_nappe_sous_eau` | sous l'eau (plongée) | 20 s | oui | `Underwater ambience loop, muffled low rumble, small bubbles rising, pressure hum, heard from inside the water` |
-| `eds_nappe_rafales` | col, crêtes, hautes collines | 60 s | oui | `High mountain wind ambience loop, strong gusts over a rocky ridge, whistling through stones, no birds, no music` |
-| `eds_nappe_crypte` *(remplace l'air de la crypte si Damien le veut)* | crypte | 60 s | oui | `Crypt ambience loop, cold still air, faint distant drips, very soft stone settling, candle flicker crackle, no music` |
-| `eds_nappe_vent_plaine` *(remplace « vent » si besoin)* | plaine | 60 s | oui | `Gentle countryside wind loop, breeze through tall grass and hedges, soft and steady, no birds, no music` |
+**P1 (branchées : remplacent les replis tout de suite)**, dossier `unity/Assets/Style/Music/PasseSon/`
 
-### 4.3 Pas (ElevenLabs Sound Effects ; 4 à 6 variantes chacun, un seul pas par fichier)
+| Fichier | Rôle dans le jeu |
+|---|---|
+| `eds_musique_exploration_nuit` | exploration la nuit |
+| `eds_musique_grottes` | grotte de la cascade, mines à cristaux |
+| `eds_musique_egouts` | égouts du Bourg |
+| `eds_musique_galeries` | galeries des éclats, du Seuil, mines |
+| `eds_musique_noyees` | grottes noyées du lac |
+| `eds_musique_envers` | l'Envers |
+| `eds_musique_combat_donjon` | combat sous terre et dans l'Envers |
+| `eds_musique_exploration_hiver` | exploration en hiver |
 
-Personnage en bottes de cuir, pas de marche, mono, 0,2 à 0,5 s, attaque nette, sans réverbération (le jeu la met s'il le faut).
+```
+eds_musique_exploration_nuit
+Instrumental fantasy nocturne, solo harp and soft low strings, distant wooden flute, slow 60 bpm, D dorian, calm and mysterious, starry countryside at night, sparse, no drums, no vocals, seamless loop
+```
+```
+eds_musique_grottes
+Dark ambient fantasy cave music, low drones, slow glassy bell motifs with long reverb, water-like marimba plinks, 50 bpm, mysterious not scary, no drums, no vocals, seamless loop
+```
+```
+eds_musique_egouts
+Underground sewer exploration music, muted low cello ostinato, dripping pizzicato, metallic distant clanks, tense but restrained, 80 bpm, E phrygian, no vocals, seamless loop
+```
+```
+eds_musique_galeries
+Fantasy mine tunnels theme, deep frame drum heartbeat, bowed psaltery, shimmering crystal tones, sense of depth and ancient magic, 66 bpm, C minor, no vocals, seamless loop
+```
+```
+eds_musique_noyees
+Flooded cavern ambient music, slow underwater-sounding pads, soft harp arpeggios drenched in reverb, low wordless choir hum, 56 bpm, F lydian, dreamy and cold, seamless loop
+```
+```
+eds_musique_envers
+Eerie otherworld ambient, reversed strings, detuned music box fragments, very low sub drone, sparse dissonant clusters, timeless, 40 bpm feel, unsettling but beautiful, no vocals, seamless loop
+```
+```
+eds_musique_combat_donjon
+Dungeon battle music, driving low taiko and frame drums, aggressive cello ostinato, brass stabs echoing in stone halls, 140 bpm, D minor, intense, no vocals, seamless loop
+```
+```
+eds_musique_exploration_hiver
+Instrumental medieval winter theme, celesta and plucked harp over cold sustained strings, gentle sleigh-bell shimmer, 70 bpm, A aeolian, quiet snowy hills, melancholic and warm, no vocals, seamless loop
+```
 
-| Fichier | Sol | Prompt |
+**P3 (facultatives)** : `eds_musique_combat` remplace la musique de combat déjà déposée ; `eds_musique_marais` et `eds_musique_fete_hiver` sont prévues mais **pas encore branchées** (décision du 27 novembre : le marais garde la musique d'exploration).
+
+```
+eds_musique_combat
+Medieval fantasy skirmish music, fast hurdy-gurdy and fiddle over war drums, horn calls, 150 bpm, A minor, urgent and heroic, no vocals, seamless loop
+```
+```
+eds_musique_marais
+Swamp ambient folk, slow bowed bass, reed flute, buzzing jaw harp, humid and sleepy, 60 bpm, G dorian, no vocals, seamless loop
+```
+```
+eds_musique_fete_hiver
+Cozy medieval winter feast, hurdy-gurdy, recorder and frame drum, warm tavern dance in 6/8, 110 bpm, G major, joyful, no vocals, seamless loop
+```
+
+### 5.2 ElevenLabs (Sound Effects, Creator) : nappes, pas, bruitages
+
+Réglages communs : la durée indiquée (pour une nappe, la plus longue que l'outil permet, au moins 20 s : le jeu la boucle), option de boucle cochée pour les nappes si elle existe ; générer 2 à 4 essais et garder le meilleur. Creator inclut 605 générations : la liste ci-dessous en demande environ 150 à garder, soit 3 à 4 essais par son.
+
+**P1 : nappes des milieux (8 fichiers)**, dossier `unity/Assets/Style/Ambience/PasseSon/`
+
+| Fichier | Milieu | Prompt |
 |---|---|---|
-| `eds_pas_pierre_01…06` | pierre (souterrains, Envers) | `Single footstep, leather boot on dry stone floor, close, mono, no reverb` |
-| `eds_pas_eau_01…06` | eau peu profonde | `Single footstep splashing in ankle-deep water, leather boot, close, mono` |
-| `eds_pas_neige_01…06` | neige | `Single footstep crunching in fresh snow, leather boot, close, mono` |
-| `eds_pas_boue_01…06` | boue (marais) | `Single footstep in thick wet mud, squelch, leather boot, close, mono` |
-| `eds_pas_herbe_01…06` *(remplace)* | herbe | `Single footstep on short grass, leather boot, soft, close, mono` |
-| `eds_pas_gravier_01…06` *(remplace)* | gravier, route | `Single footstep on gravel path, leather boot, crunchy, close, mono` |
-| `eds_pas_feuilles_01…06` *(remplace)* | feuilles | `Single footstep on dry fallen leaves, leather boot, close, mono` |
-| `eds_pas_parquet_01…06` *(remplace)* | plancher | `Single footstep on old wooden floorboards, slight creak, leather boot, close, mono` |
+| `eds_nappe_egouts` | égouts | `Medieval sewer ambience loop, flowing dirty water in a stone channel, gurgling, dripping, rats squeaking far away, echoing brick tunnel, no music` |
+| `eds_nappe_grotte` | grotte | `Cave ambience loop, slow water drips echoing in a large stone cavern, faint air movement, distant trickle, no music, no voices` |
+| `eds_nappe_galeries` | galeries, mines | `Old mine tunnel ambience loop, deep low rumble, creaking wooden support beams, small pebbles trickling, distant pickaxe echo, no music` |
+| `eds_nappe_noyees` | grottes noyées | `Flooded cave ambience loop, gentle waves lapping against rock, water sloshing in hollows, drips with long echo, cold and vast, no music` |
+| `eds_nappe_marais` | marais (pilotis) | `Swamp ambience loop, croaking frogs at varied distances, buzzing insects, still water lapping on wooden stilts, occasional heron call, humid, no music` |
+| `eds_nappe_rafales` | col, crêtes, hautes collines | `High mountain wind ambience loop, strong gusts over a rocky ridge, whistling through stones, no birds, no music` |
+| `eds_nappe_sous_eau` | sous l'eau (plongée) | `Underwater ambience loop, muffled low rumble, small bubbles rising, pressure hum, heard from inside the water` |
+| `eds_nappe_envers` | l'Envers | `Otherworldly ambience loop, deep pulsing drone, reversed whispers without words, faint glassy crackles, wind through dead trees, unsettling, no music` |
 
-Les fichiers « *(remplace)* » passent devant les sons déjà déposés du même rôle. Attention : un nom de pas ne doit contenir aucun mot de milieu (`grotte`, `egout`, `marais`…), sinon il serait pris pour une nappe.
+**P1 : pas des nouveaux sols et bruitages du monde (9 sons, 2 à 6 variantes)**, dossier `unity/Assets/Style/Sounds/PasseSon/`
 
-### 4.4 Bruitages de jeu (ElevenLabs Sound Effects ; 3 à 6 variantes)
-
-| Fichier | Quoi | Durée | Prompt |
+| Fichier | Variantes | Durée | Prompt |
 |---|---|---|---|
-| `eds_coffre_01…03` | coffre (ou cache) qu'on ouvre | 1 s | `Old wooden treasure chest opening, iron latch click then creaking hinge, close, mono` |
-| `eds_porte_ouvre_01…03` | porte passée (changement de zone) | 1–1,5 s | `Heavy medieval wooden door opening, creaking iron hinges, short, close, mono` |
-| `eds_plongee_01…02` | plongée | 1,5 s | `Person diving into deep cold water, big splash then muffled bubbles, mono` |
-| `eds_remontee_01…02` | remontée et souffle | 1,5 s | `Person surfacing from water, splash and a deep gasp for air, mono` |
-| `eds_blesse_01…06` | le héros encaisse un coup | 0,3 s | `Short male pain grunt, warrior hit in combat, no words, mono` |
-| `eds_coup_epee_01…06` *(remplace)* | coup porté | 0,3 s | `Sword hitting leather armor and flesh, meaty impact, mono` |
-| `eds_bouclier_01…06` *(remplace)* | blocage au bouclier | 0,5 s | `Sword striking a wooden shield with iron rim, solid block, mono` |
-| `eds_parade_01…04` *(remplace)* | parade parfaite | 0,8 s | `Two steel swords clashing, bright ringing parry, mono` |
-| `eds_chute_01…03` *(remplace)* | un vaincu tombe | 1 s | `Body in armor collapsing on the ground, thud and metal rattle, mono` |
-| `eds_elan_01…06` *(remplace)* | coup dans le vide | 0,3 s | `Fast sword swing whoosh, mono` |
-| `eds_ecole_feu_01…04` | sort de feu (prévu, non branché : voir question 3) | 1 s | `Fireball spell cast, whoosh and roaring flame burst, mono` |
-| `eds_ecole_givre_01…04` | sort de givre (prévu) | 1 s | `Ice spell cast, crystalline crackle and cold wind burst, mono` |
-| `eds_ecole_lumiere_01…04` | soin, lumière (prévu) | 1,2 s | `Holy healing spell, soft choir-like shimmer and chimes, mono` |
-| `eds_sort_01…06` *(remplace « Cast »)* | sort générique | 0,8 s | `Arcane magic spell cast, rising sparkle and energy whoosh, mono` |
-| `eds_pieces_01…04` *(remplace)* | butin, pièces | 0,5 s | `Handful of gold coins dropped into a leather pouch, mono` |
-| `eds_potion_01…03` *(remplace)* | potion bue | 1 s | `Drinking a potion from a glass vial, two gulps and a cork pop, mono` |
-| `eds_faille_ouvre_01…02` | une faille s'ouvre (complète « portail ») | 2 s | `Magical rift tearing open in the air, glassy crack and deep whoosh, mono` |
-| `eds_faille_ferme_01…02` | une faille se referme | 1,5 s | `Magic portal collapsing, implosion and shattering glass, mono` |
+| `eds_pas_pierre_01…06` | 6 | 0,3 s | `Single footstep, leather boot on dry stone floor, close, mono, no reverb` |
+| `eds_pas_eau_01…06` | 6 | 0,4 s | `Single footstep splashing in ankle-deep water, leather boot, close, mono` |
+| `eds_pas_neige_01…06` | 6 | 0,4 s | `Single footstep crunching in fresh snow, leather boot, close, mono` |
+| `eds_pas_boue_01…06` | 6 | 0,4 s | `Single footstep in thick wet mud, squelch, leather boot, close, mono` |
+| `eds_coffre_01…03` | 3 | 1 s | `Old wooden treasure chest opening, iron latch click then creaking hinge, close, mono` |
+| `eds_porte_ouvre_01…03` | 3 | 1,5 s | `Heavy medieval wooden door opening, creaking iron hinges, short, close, mono` |
+| `eds_plongee_01…02` | 2 | 1,5 s | `Person diving into deep cold water, big splash then muffled bubbles, mono` |
+| `eds_remontee_01…02` | 2 | 1,5 s | `Person surfacing from water, splash and a deep gasp for air, mono` |
+| `eds_blesse_01…06` | 6 | 0,3 s | `Short male pain grunt, warrior hit in combat, no words, mono` |
 
-### 4.5 Interface (facultatif : les 13 sons de Kenney restent)
+**P2 : remplaçants des bruitages de combat et des sols d'avant (passent devant les sons déjà déposés)**, même dossier `unity/Assets/Style/Sounds/PasseSon/`
 
-Ceux-ci sont livrés avec le jeu : un remplaçant prend **le même nom** dans `unity/Assets/EdS/Interface/Resources/EdsInterface/Sons/` (suivi par git, licence à vérifier avant de l'y mettre).
+| Fichier | Variantes | Durée | Prompt |
+|---|---|---|---|
+| `eds_coup_epee_01…06` | 6 | 0,3 s | `Sword hitting leather armor and flesh, meaty impact, mono` |
+| `eds_bouclier_01…06` | 6 | 0,5 s | `Sword striking a wooden shield with iron rim, solid block, mono` |
+| `eds_parade_01…04` | 4 | 0,8 s | `Two steel swords clashing, bright ringing parry, mono` |
+| `eds_chute_01…03` | 3 | 1 s | `Body in armor collapsing on the ground, thud and metal rattle, mono` |
+| `eds_elan_01…06` | 6 | 0,3 s | `Fast sword swing whoosh, mono` |
+| `eds_sort_01…06` | 6 | 0,8 s | `Arcane magic spell cast, rising sparkle and energy whoosh, mono` |
+| `eds_pieces_01…04` | 4 | 0,5 s | `Handful of gold coins dropped into a leather pouch, mono` |
+| `eds_potion_01…03` | 3 | 1 s | `Drinking a potion from a glass vial, two gulps and a cork pop, mono` |
+| `eds_faille_ouvre_01…02` | 2 | 2 s | `Magical rift tearing open in the air, glassy crack and deep whoosh, mono` |
+| `eds_faille_ferme_01…02` | 2 | 1,5 s | `Magic portal collapsing, implosion and shattering glass, mono` |
+| `eds_pas_herbe_01…06` | 6 | 0,3 s | `Single footstep on short grass, leather boot, soft, close, mono` |
+| `eds_pas_gravier_01…06` | 6 | 0,3 s | `Single footstep on gravel path, leather boot, crunchy, close, mono` |
+| `eds_pas_feuilles_01…06` | 6 | 0,3 s | `Single footstep on dry fallen leaves, leather boot, close, mono` |
+| `eds_pas_parquet_01…06` | 6 | 0,3 s | `Single footstep on old wooden floorboards, slight creak, leather boot, close, mono` |
 
-| Fichier | Prompt |
+**P3 : facultatifs ou prévus, pas encore branchés**
+
+| Fichier | Dossier | Prompt | État |
+|---|---|---|---|
+| `eds_nappe_crypte` | `Ambience/PasseSon/` | `Crypt ambience loop, cold still air, faint distant drips, very soft stone settling, candle flicker crackle, no music` | remplace l'air de la crypte (branché) |
+| `eds_nappe_vent_plaine` | `Ambience/PasseSon/` | `Gentle countryside wind loop, breeze through tall grass and hedges, soft and steady, no birds, no music` | reconnu comme le vent (mot `vent`) : en concurrence avec le vent déjà déposé |
+| `eds_ecole_feu_01…04` | `Sounds/PasseSon/` | `Fireball spell cast, whoosh and roaring flame burst, mono` | prévu (son par école de sort) |
+| `eds_ecole_givre_01…04` | `Sounds/PasseSon/` | `Ice spell cast, crystalline crackle and cold wind burst, mono` | prévu |
+| `eds_ecole_lumiere_01…04` | `Sounds/PasseSon/` | `Holy healing spell, soft choir-like shimmer and chimes, mono` | prévu |
+| `eds_jingle_coffre` | `Sounds/PasseSon/` | `Short fantasy treasure jingle, harp glissando and bell, bright, 3 seconds` | prévu |
+
+`eds_nappe_crypte` : renommer en `eds_nappe_crypte_dungeonair` pour qu'il soit reconnu comme l'air de la crypte (mot `dungeonair`).
+
+**Interface (facultatif)** : les 13 sons de Kenney restent. Un remplaçant garde **le même nom** et va dans `unity/Assets/EdS/Interface/Resources/EdsInterface/Sons/` (ce dossier est suivi par git : licence à vérifier avant).
+
+| Fichiers | Prompt |
 |---|---|
 | `clic`, `survol`, `onglet` | `Soft UI click, wooden and parchment feel, fantasy game menu, very short, mono` |
 | `ouverture`, `fermeture` | `Leather book opening (or closing), fantasy UI, short, mono` |
@@ -133,34 +197,24 @@ Ceux-ci sont livrés avec le jeu : un remplaçant prend **le même nom** dans `u
 | `quete` | `Quest completed jingle, warm lute and bell, 2 seconds` |
 | `erreur` | `Muted wooden knock, UI error, very short, mono` |
 
-Total : 12 musiques (dont 8 branchées tout de suite), 10 nappes, 8 sols × 6 pas, 18 bruitages × 3 à 6 variantes, 8 sons d'interface facultatifs : environ **12 musiques et 160 bruitages ou nappes**.
+Total : 8 musiques en P1 (plus 3 facultatives), 8 nappes, 9 sons du monde (40 fichiers), 14 remplaçants (66 fichiers), puis le facultatif.
 
-## 5. Chiffrage de la génération par IA (non engagé)
+## 6. Chiffrage (validé par Damien le 27 novembre 2026)
 
-Prix publics relevés le 27 novembre 2026 (en dollars, hors taxes ; à revérifier avant tout achat). **Rien n'a été acheté, aucun compte n'a été créé.**
+Prix publics relevés le 27 novembre 2026, en dollars hors taxes, à revérifier au moment de l'achat.
 
-| Service | Formule utile | Prix | Ce qu'elle couvre ici |
+| Service | Formule | Prix | Ce qu'elle couvre |
 |---|---|---|---|
-| ElevenLabs (Sound Effects) | Creator, 1 mois | 22 $/mois (11 $ le premier mois) ; 605 générations de bruitages incluses ; bruitages libres de droits | les 10 nappes, les 48 pas, les ~90 bruitages, avec 3 à 4 essais par son |
-| Suno (musique) | Pro, 1 mois | 10 $/mois (8 $ à l'année) ; 2 500 crédits ; **20 téléchargements par mois** ; usage commercial inclus | les 12 musiques avec de la marge d'essais ; Premier (30 $/mois, 60 téléchargements) si Damien veut tout refaire |
-| Stable Audio (alternative) | Pro, 1 mois | 30 $/mois, 1 800 crédits | nappes et musiques d'ambiance ; à préférer seulement si Suno déçoit pour les boucles |
+| ElevenLabs (Sound Effects) | Creator, 1 mois | 22 $/mois (11 $ le premier mois) ; 605 générations ; bruitages libres de droits | toutes les nappes, les pas et les bruitages, avec 3 à 4 essais par son |
+| Suno | Pro, 1 mois | 10 $/mois ; 2 500 crédits ; 20 téléchargements par mois ; usage commercial inclus | les 8 musiques de P1 et les 3 de P3 |
+| Stable Audio (de secours) | Pro, 1 mois | 30 $/mois, 1 800 crédits | seulement si Suno déçoit pour les boucles |
 
-Recommandation (à décider par Damien) : **un mois d'ElevenLabs Creator + un mois de Suno Pro**, environ **32 $ (≈ 30 € HT, ~25 € avec le premier mois d'ElevenLabs à moitié prix)**, puis résilier ; budget confortable avec Suno Premier : environ 52 $. À vérifier : la licence commerciale ne vaut que pour ce qui est généré pendant l'abonnement payant (Suno), et les conditions d'ElevenLabs pour un jeu vendu.
-
-Option gratuite : continuer avec les packs CC0 (Kenney, OpenGameArt, Freesound CC0) et les sons de synthèse ; les musiques de Scott Buckley (CC-BY) couvrent déjà une partie des besoins.
-
-## 6. Choix faits par Claude (recommandations appliquées, à confirmer par Damien)
-
-1. **Musique des souterrains** : options (a) une seule musique « donjon » pour tous, (b) une par souterrain avec replis, (c) aucune musique sous terre. **Appliqué : (b)**, avec replis vers la crypte puis l'exploration, pour que rien ne change tant que les fichiers manquent.
-2. **Marais et altitude** : (a) nappe seule, (b) nappe et musique propre. **Appliqué : (a)** (la musique d'exploration y reste) ; `eds_musique_marais` est prévue mais non branchée.
-3. **Sons des sorts** : (a) un son générique, (b) un son par école (feu, givre, lumière). **Appliqué : (a)** pour l'instant (le moteur ne donne pas encore l'école du sort à l'affichage) ; les fichiers par école sont prévus.
-4. **Saisons et fêtes** : l'hiver a sa musique d'exploration ; les fêtes gardent leurs deux musiques ; une veillée d'hiver est prévue mais non branchée.
-5. **Volumes par défaut** : musique 70 %, ambiance 80 %, effets 90 %, interface 80 %.
+Total validé : environ **32 $**, environ 21 $ avec le premier mois d'ElevenLabs à moitié prix, puis résilier les deux.
 
 ## 7. Limites connues
 
 - Les sons de synthèse sont une maquette (ni voix ni instruments réels) ; aucune musique n'est synthétisée.
-- La plongée est un passage instantané (fondu au noir) : la nappe sous l'eau dure 1,8 s, le temps du fondu.
-- Pas dans l'eau : seulement dans les grottes noyées (le gué et les rigoles des égouts gardent la pierre ou l'herbe).
-- La limite de voix compte les bruitages lancés par le jeu (`StyleLook.Play`, pas, bêtes) ; les sons d'interface et les nappes n'en font pas partie.
+- La plongée est un passage instantané (fondu au noir) : la nappe sous l'eau dure 1,8 s ; pluie et tonnerre se taisent pendant ce temps.
+- Pas dans l'eau : grottes noyées, gués (`gue…`) et déversoir des égouts (`deversoir`) ; les égouts n'ont pas encore de lieu « rigole ».
+- La limite de voix compte les bruitages, les pas, les bêtes, les cloches, le tonnerre, le chat et les failles ; les sons d'interface et les nappes n'en font pas partie.
 - Rien n'est encore essayé dans Unity par Damien (CompileCheck seulement).

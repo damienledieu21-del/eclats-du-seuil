@@ -250,6 +250,7 @@ public sealed class V254SonTests
         StyleSound[] expected = { StyleSound.StepStone, StyleSound.StepWater, StyleSound.StepSnow, StyleSound.StepMud, StyleSound.ChestOpen, StyleSound.DoorOpen,
             StyleSound.Dive, StyleSound.Emerge, StyleSound.Hurt };
         for (int i = 0; i < expected.Length; i++) Assert.Equal(sounds[i], StyleRules.PickSound(sounds, expected[i]));
+        Assert.Equal(StyleAmbience.Crypt, StyleRules.AmbienceOf(root + "Ambience/PasseSon/eds_nappe_crypte_dungeonair.ogg"));
         // Les remplaçants de docs/SONS.md passent devant les sons déjà déposés, et la faille qui s'ouvre n'est pas son bourdonnement.
         var replacing = new[]
         {

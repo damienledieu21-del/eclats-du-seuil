@@ -1426,6 +1426,8 @@ Détail, inventaire, liste des fichiers à produire et chiffrage : [SONS.md](SON
 - **Réglages (pause)** : nouvelle ligne **Volume** : − / nom du canal / + ; un clic sur le nom passe de la musique à l'ambiance, aux effets, à l'interface. Gardé d'une partie à l'autre.
 - **PC modeste** : au plus 24 bruitages à la fois (16 sur téléphone) ; les pas cèdent avant les coups, la mort et les portes passent toujours.
 
+Décisions de Damien du 27 novembre 2026 : génération par IA validée (~32 $, comptes créés par Damien), volumes par défaut 70/80/90/80 validés (le jeu sonne comme avant à ces valeurs), recommandations sur les souterrains, le marais, le col et les sorts gardées. Mode d'emploi et prompts à copier : [SONS.md](SONS.md) sections 4 et 5.
+
 Ce que tu vérifies : marcher du pré à la forêt, au col, aux pilotis du marais, puis descendre aux égouts, à la grotte de la cascade, aux galeries et aux grottes noyées (plonger) et passer dans l'Envers : la musique et la nappe changent en fondu, sans coupure ; les pas changent de sol ; un combat sous terre a sa musique ; ouvrir un coffre ; régler chaque volume à 0 puis à 100 %.
 
 ## Défauts des kits récents (branche `v2.55-defauts`, 27 novembre 2026)
