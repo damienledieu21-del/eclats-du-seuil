@@ -124,10 +124,25 @@ public sealed class V253PerfsTests
     {
         string world = Script("Game", "StyleWorld.cs");
         Assert.Contains("DeviceQuality.Tier == DeviceTier.Modest && catalog.ModestPipeline != null", world);
-        Assert.Contains("Application.quitting +=", world);   // le rendu du projet revient à la sortie du mode Jeu
+        // Relecture de la PR #265 : gestionnaire nommé, désabonné avant d'être abonné (idempotent) et qui se désabonne lui-même.
+        Assert.Contains("Application.quitting -= RestoreProjectPipeline;\n                    Application.quitting += RestoreProjectPipeline;", world);
+        Assert.Contains("public static void RestoreProjectPipeline()\n        {\n            Application.quitting -= RestoreProjectPipeline;", world);
+        Assert.DoesNotContain("Application.quitting += (", world);
+        Assert.Contains("QualitySettings.renderPipeline == _modestPipeline) QualitySettings.renderPipeline = _projectPipeline;", world);
+        // Éditeur tué en plein jeu : rendu du projet remis à l'ouverture, jamais en mode Jeu.
+        string restore = Script("Editor", "EdsRenderRestore.cs");
+        Assert.Contains("[InitializeOnLoad]", restore);
+        Assert.Contains("if (EditorApplication.isPlayingOrWillChangePlaymode) return false;", restore);
+        Assert.Contains("QualitySettings.renderPipeline = project != null && !IsGenerated(project) ? project : null;", restore);
         string style = Script("Editor", "EdsStyle.cs");
         Assert.Contains("Tune(light, PerfRules.Render(DeviceTier.Modest), true);", style);
         Assert.Contains("Tune(pipeline, PerfRules.Render(DeviceTier.Full), sceneTextures);", style);
+        // Le rendu modeste reprend l'échelle, le HDR et l'étalonnage du rendu du projet, avant ses propres réglages d'ombres.
+        Assert.Contains("Inherit(light, pipelines[0]);", style);
+        Assert.True(style.IndexOf("Inherit(light, pipelines[0]);", StringComparison.Ordinal) < style.IndexOf("Tune(light,", StringComparison.Ordinal));
+        foreach (string name in new[] { "m_RenderScale", "m_SupportsHDR", "m_ColorGradingMode", "m_ColorGradingLutSize" })
+            Assert.Contains("\"" + name + "\"", style);
+        Assert.Contains("phoneRenderer.postProcessData = data;", style);   // post-traitement du renderer partagé avec le téléphone
         Assert.Contains("PerfRules.FireShadows(DeviceQuality.Tier)", Script("Game", "SpaceView.Interior.cs"));
         string space = Script("Game", "SpaceView.cs");
         Assert.Contains("SmallCasters();", space);
