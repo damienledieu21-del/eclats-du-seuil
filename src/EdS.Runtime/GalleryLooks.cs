@@ -75,14 +75,17 @@ namespace EdS.Runtime
             return GalleryPiece.None;
         }
 
-        /// <summary>Nom du modèle de <paramref name="piece"/> ; null pour <see cref="GalleryPiece.None"/>.</summary>
+        /// <summary>Nom du modèle de <paramref name="piece"/> ; null pour <see cref="GalleryPiece.None"/> et le gouffre (formes procédurales).</summary>
         public static string? ModelFor(GalleryPiece piece) => piece switch
         {
             GalleryPiece.Wall => Models[0],
             GalleryPiece.GiantShard => Models[1],
             GalleryPiece.Crystals => Models[2],
             GalleryPiece.Pillar => Models[3],
-            GalleryPiece.Chasm => Models[4],
+            // V2.55 (27 novembre 2026) : le modèle Tripo du gouffre (Models[4]) est un bloc de roche plein de 7,7 × 5 × 8 m, à peine creusé
+            // d'une encoche (rendus Blender face, côté, dessus) : posé en tuiles, il bouchait le creux. Retiré : le gouffre est dessiné par
+            // ses formes procédurales (ChasmPit : fond, parois et lueur ; deux lèvres de roche). Le fichier reste dans le kit.
+            GalleryPiece.Chasm => null,
             GalleryPiece.Altar => Models[6],
             GalleryPiece.Rubble => Models[7],
             _ => null,
@@ -303,7 +306,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Modèles des créatures de cristal (codes C01 à C03 de l'atelier, générés le 26 novembre 2026, 155 crédits réels) : l'araignée (rig
-        /// octopode et marche), le golem (**statique** : sa marche bipède a échoué chez Tripo, remboursée, sans nouvel essai) et le veilleur en
+        /// octopode et marche), le golem (sa marche bipède a échoué chez Tripo ; depuis V2.55, marche lourde et attente faites dans Blender par script sur son squelette) et le veilleur en
         /// cristal (rig quadrupède et marche), que prennent les trois formes du veilleur des éclats.
         /// </summary>
         public const string SpiderModel = "araignee_cristal", GolemModel = "golem_cristal", WatcherModel = "veilleur_cristal";
@@ -311,8 +314,8 @@ namespace EdS.Runtime
         /// <summary>Les trois modèles, dans l'ordre des codes de l'atelier.</summary>
         public static readonly IReadOnlyList<string> CreatureModels = new[] { SpiderModel, GolemModel, WatcherModel };
 
-        /// <summary>Vrai si le modèle <paramref name="name"/> a sa marche (« Walk ») : l'araignée et le veilleur ; le golem est statique.</summary>
-        public static bool CreatureWalks(string name) => name == SpiderModel || name == WatcherModel;
+        /// <summary>Vrai si le modèle <paramref name="name"/> a sa marche (« Walk ») : les trois (le golem depuis V2.55, avec son attente « Idle »).</summary>
+        public static bool CreatureWalks(string name) => name == SpiderModel || name == GolemModel || name == WatcherModel;
 
         /// <summary>
         /// Modèle de la créature <paramref name="id"/> : l'araignée ou le golem de cristal, ou le veilleur en cristal pour les formes du veilleur

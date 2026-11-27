@@ -48,7 +48,7 @@ namespace EdS.Runtime
     /// Chantier V2.52b : le décor des douze lieux de l'Envers (kit Envers2 de Tripo, 13 modèles et 2 créatures, 27 novembre 2026), en fonctions
     /// pures testées : pièce et modèle d'un obstacle, hauteur, sol local (la pièce posée sur le relief affiché, hauteur du sol comprise), pièces
     /// d'une case (le décor est construit par cases autour de la caméra, au plus un nombre de pièces par case selon la machine), secrets
-    /// (coffre, stèle), créatures (chien de cendre animé, spectre statique qui flotte en ondulant). Modèles pris dans
+    /// (coffre, stèle), créatures (chien de cendre animé, spectre qui flotte en ondulant, bras et robe animés depuis V2.55). Modèles pris dans
     /// <c>Resources/Envers2/&lt;nom&gt;</c>, formes simples en repli.
     /// </summary>
     public static class EnversLieux
@@ -65,7 +65,7 @@ namespace EdS.Runtime
         /// <summary>Objets des secrets.</summary>
         public const string ChestModel = "coffre_reflet", SteleModel = "stele_murmures";
 
-        /// <summary>Créatures : le spectre (statique, sa marche bipède a échoué chez Tripo) et le chien de cendre (marche).</summary>
+        /// <summary>Créatures : le spectre (sa marche bipède a échoué chez Tripo ; bras et robe qui ondulent faits dans Blender, V2.55) et le chien de cendre (marche).</summary>
         public const string WraithModel = "spectre_reflet", HoundModel = "chien_de_cendre";
 
         /// <summary>Les 13 modèles statiques du kit, dans l'ordre des fiches de l'atelier (V01 à V13).</summary>
@@ -243,8 +243,8 @@ namespace EdS.Runtime
             return null;
         }
 
-        /// <summary>Le chien de cendre a sa marche (« Walk ») ; le spectre est statique et flotte.</summary>
-        public static bool CreatureWalks(string name) => name == HoundModel;
+        /// <summary>Le chien de cendre a sa marche (« Walk ») ; le spectre aussi depuis V2.55 (« Walk » et « Idle » : bras et robe qui ondulent), et il flotte.</summary>
+        public static bool CreatureWalks(string name) => name == HoundModel || name == WraithModel;
 
         /// <summary>Le spectre flotte au-dessus du sol en ondulant (mouvement par le code, sans animation).</summary>
         public static bool Floats(string name) => name == WraithModel;
