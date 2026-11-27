@@ -2293,6 +2293,9 @@ namespace EdS.Runtime
 
         private readonly List<string> _soundPlaces = new List<string>();
 
+        /// <summary>Revue de la PR #267 : le personnage marche dans l'eau (gué, déversoir), relu par <see cref="SoundBiomeHere"/>.</summary>
+        public bool WadingHere { get; private set; }
+
         /// <summary>
         /// V2.54 (passe son) : le milieu sonore où se trouve le personnage (<see cref="SoundRules.BiomeOf"/>) d'après la zone et les lieux qui
         /// le contiennent ; <paramref name="places"/> : les ambiances de lieu de <see cref="Mood"/>. Affichage seulement.
@@ -2303,6 +2306,7 @@ namespace EdS.Runtime
             if (Me is GroundVector p)
                 foreach (Place pl in _zone.Places)
                     if (pl.Contains(p)) _soundPlaces.Add(pl.Id);
+            WadingHere = SoundRules.IsWading(_soundPlaces);   // revue de la PR #267 : gués, déversoir
             return SoundRules.BiomeOf(_zone.Id, _zone.Indoor, _zone.Underground, _zone.Envers, places, _soundPlaces);
         }
 

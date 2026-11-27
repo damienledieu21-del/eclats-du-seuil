@@ -34,7 +34,8 @@ namespace EdS.Game
         /// (<see cref="SoundRules.Step"/> : pierre sous terre, eau dans les grottes noyées, boue au marais, neige, plancher) ; sans fichier ni
         /// catalogue, le pas de synthèse.
         /// </remarks>
-        public void Update(ArenaView arena, Vector3 feet, bool forest, bool walking, float deltaTime, SoundBiome biome, double snow)
+        /// <param name="wading">Revue de la PR #267 : dans un gué ou un déversoir (<see cref="SoundRules.IsWading"/>) : pas dans l'eau.</param>
+        public void Update(ArenaView arena, Vector3 feet, bool forest, bool walking, float deltaTime, SoundBiome biome, double snow, bool wading)
         {
             _pool.Update();
             if (!walking || deltaTime <= 0f || arena == null)
@@ -65,7 +66,7 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             float volume = catalog != null ? catalog.StepVolume : 0.45f;
             if (volume <= 0f) return;
-            StyleSound sound = SoundRules.Step(arena.StepSound(feet, forest), biome, snow, false);
+            StyleSound sound = SoundRules.Step(arena.StepSound(feet, forest), biome, snow, wading);
             _pool.Play(sound, _steps++, feet - Vector3.up, 0.5f, volume, 0.4f, false);
         }
     }

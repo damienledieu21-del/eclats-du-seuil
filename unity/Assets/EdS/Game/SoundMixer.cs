@@ -35,7 +35,56 @@ namespace EdS.Game
         }
 
         /// <summary>Gain (0 à 1) de <paramref name="bus"/>.</summary>
-        public static float Gain(SoundBus bus) => (float)SoundRules.Gain(Percent(bus));
+        /// <remarks>Revue de la PR #267 : neutre (1) à la valeur par défaut du canal : le jeu ne sonne pas plus bas qu'avant.</remarks>
+        public static float Gain(SoundBus bus) => (float)SoundRules.BusGain(bus, Percent(bus));
+
+        /// <summary>Revue de la PR #267 : le personnage plonge (pluie et tonnerre se taisent), posé par le jeu à chaque image.</summary>
+        public static bool Underwater { get; set; }
+
+        private sealed class Tracked
+        {
+            public AudioSource Source;
+            public SoundBus Bus;
+            public float Base;
+        }
+
+        private static readonly List<Tracked> Loops = new List<Tracked>();
+
+        /// <summary>
+        /// Revue de la PR #267 : une source en boucle à volume fixe (le four de Firmin) suit le canal <paramref name="bus"/> : son volume est
+        /// <paramref name="baseVolume"/> fois le gain, recalculé à chaque réglage.
+        /// </summary>
+        public static void Track(AudioSource source, SoundBus bus, float baseVolume)
+        {
+            if (source == null) return;
+            Loops.Add(new Tracked { Source = source, Bus = bus, Base = baseVolume });
+            source.volume = baseVolume * Gain(bus);
+        }
+
+        private static void Refresh()
+        {
+            for (int i = Loops.Count - 1; i >= 0; i--)
+            {
+                if (Loops[i].Source == null)
+                {
+                    Loops.RemoveAt(i);
+                    continue;
+                }
+                Loops[i].Source.volume = Loops[i].Base * Gain(Loops[i].Bus);
+            }
+        }
+
+        /// <summary>
+        /// Revue de la PR #267 : fait d'avance les nappes et les bruitages de synthèse les plus courants (à l'ouverture de l'aventure, sous
+        /// l'écran de chargement) : aucun accroc quand un milieu ou un sol apparaît.
+        /// </summary>
+        public static void Prewarm()
+        {
+            for (StyleAmbience bed = StyleAmbience.Marsh; bed <= StyleAmbience.Gusts; bed++) Bed(bed);
+            foreach (StyleSound sound in System.Enum.GetValues(typeof(StyleSound)))
+                if (SoundSynth.HasCue(sound))
+                    for (int v = 0; v < Variants; v++) Synth(sound, v);
+        }
 
         /// <summary>Un pas de plus ou de moins sur le canal montré : sauvegardé, entendu tout de suite.</summary>
         public static void Step(int direction)
@@ -44,6 +93,7 @@ namespace EdS.Game
             Percents[i] = SoundRules.StepPercent(Percent(Shown), direction);
             PlayerPrefs.SetInt(KeyPrefix + i, Percents[i]);
             PlayerPrefs.Save();
+            Refresh();
             if (Shown == SoundBus.Interface) UiSounds.Play(UiCue.Click);
         }
 
@@ -70,14 +120,22 @@ namespace EdS.Game
         {
             float now = Time.unscaledTime;
             if (LastStart.TryGetValue(sound, out float last) && now - last < (float)SoundRules.MinGap(sound)) return false;
+            if (!TryStart(SoundRules.PriorityOf(sound), length)) return false;
+            LastStart[sound] = now;
+            return true;
+        }
+
+        /// <summary>Revue de la PR #267 : un son sans rôle de bruitage (tonnerre, chant de l'histoire) passe par la limite de voix.</summary>
+        public static bool TryStart(SoundPriority priority, float length)
+        {
+            float now = Time.unscaledTime;
             int playing = 0, free = -1;
             for (int i = 0; i < Ends.Length; i++)
             {
                 if (Ends[i] > now) playing++;
                 else if (free < 0) free = i;
             }
-            if (!SoundRules.Admit(SoundRules.PriorityOf(sound), playing, Limit)) return false;
-            LastStart[sound] = now;
+            if (!SoundRules.Admit(priority, playing, Limit)) return false;
             if (free >= 0) Ends[free] = now + Mathf.Max(0.05f, length);
             return true;
         }

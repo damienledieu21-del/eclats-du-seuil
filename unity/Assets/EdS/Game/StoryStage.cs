@@ -899,8 +899,9 @@ namespace EdS.Game
                 _voices = Source(go, Choir("Milliers de voix", new[] { 146.875f, 147.125f, 220f, 220.25f, 293.625f, 293.875f, 349.25f, 440f, 440.5f, 587.25f, 698.5f, 880f }, 2));
             }
             if (_choir == null) return;
-            float choir = inScene ? (_gateOpen ? 0.12f : 0.3f) : 0f;
-            float voices = inScene && _gateOpen ? 0.32f : 0f;
+            float music = SoundMixer.Gain(SoundBus.Music);   // revue de la PR #267 : le chant du souvenir suit le volume de la musique
+            float choir = inScene ? (_gateOpen ? 0.12f : 0.3f) * music : 0f;
+            float voices = inScene && _gateOpen ? 0.32f * music : 0f;
             _choir.volume = Mathf.MoveTowards(_choir.volume, choir, deltaTime * 0.25f);
             _voices.volume = Mathf.MoveTowards(_voices.volume, voices, deltaTime * (voices > 0f ? 0.6f : 0.3f));
             Keep(_choir);
@@ -941,7 +942,8 @@ namespace EdS.Game
         {
             if (!EnsureOneShot()) return;
             if (_howl == null) _howl = HowlClip();
-            if (_howl != null) _oneShot.PlayOneShot(_howl, 0.9f);
+            // Revue de la PR #267 : volume des effets et limite de voix.
+            if (_howl != null && SoundMixer.TryStart(StyleSound.Howl, _howl.length)) _oneShot.PlayOneShot(_howl, 0.9f * SoundMixer.Gain(SoundBus.Effects));
         }
 
         /// <summary>

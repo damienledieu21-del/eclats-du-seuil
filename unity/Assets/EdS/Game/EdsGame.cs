@@ -163,6 +163,7 @@ namespace EdS.Game
         private SoundBiome _biome;
         private bool _winter;
         private float _snow;
+        private bool _wading;
         private float _underwaterUntil = -1f;
         private bool _emergePending;
         private int _heardDives = -1, _heardChests = -1;
@@ -882,7 +883,7 @@ namespace EdS.Game
                 // V2.54 (passe son) : des pas même sans catalogue (pas de synthèse), selon le milieu et la neige.
                 if (_footsteps == null) _footsteps = new Footsteps(_camera.Camera.transform);
                 _footsteps.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
-                    !_paused && !a.InScene && Time.time >= _underwaterUntil, Time.deltaTime, _biome, _snow);
+                    !_paused && !a.InScene && Time.time >= _underwaterUntil, Time.deltaTime, _biome, _snow, _wading);
             }
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
@@ -895,6 +896,7 @@ namespace EdS.Game
                     _moodAge = 0f;
                     // V2.54 (passe son) : le milieu sonore, l'hiver et la neige au sol.
                     _biome = a.SoundBiomeHere(_mood.Places);
+                    _wading = a.WadingHere;   // revue de la PR #267 : gués et déversoir
                     _winter = a.WardrobeSeason == WardrobeSeason.Winter;
                     _snow = a.Sheltered ? 0f : a.SeasonShown.Snow;
                 }
@@ -902,6 +904,7 @@ namespace EdS.Game
                 _music.Biome = _biome;
                 _music.Winter = _winter;
                 _music.Underwater = Time.time < _underwaterUntil;
+                SoundMixer.Underwater = _music.Underwater;   // revue de la PR #267 : ni pluie ni tonnerre sous l'eau
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
                 _music.Story = a.InScene;   // sous-lot V2.9 (2e vague) : la musique des scènes de l'histoire
                 _music.Assault = Assault(a);   // sous-lot V2.9.2 : pillage ou faille en cours
@@ -1824,7 +1827,7 @@ namespace EdS.Game
         {
             get
             {
-                if (_audio == null && _camera != null && StyleCatalog.Loaded != null)
+                if (_audio == null && _camera != null)   // V2.54 son : même sans catalogue (bruitages de synthèse)
                 {
                     _audio = _camera.Camera.gameObject.AddComponent<AudioSource>();
                     EnsureListener();

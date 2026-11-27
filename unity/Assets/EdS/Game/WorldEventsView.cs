@@ -153,7 +153,8 @@ namespace EdS.Game
         /// <summary>Distance d'écoute réglée dans le catalogue (60 m sans lui), multipliée par <paramref name="factor"/>.</summary>
         private static float Hearing(float factor) => (StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastHearing : 60f) * factor;
 
-        private static float Volume => StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastVolume : 0.8f;
+        /// <remarks>Revue de la PR #267 : volume des effets du mixage compris (cloches, bourdonnement des failles, éclats).</remarks>
+        private static float Volume => (StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastVolume : 0.8f) * SoundMixer.Gain(SoundBus.Effects);
 
         private static AudioClip Clip(StyleSound sound) => StyleCatalog.Loaded != null ? StyleCatalog.Loaded.Sound(sound, 0) : null;
 
@@ -238,7 +239,8 @@ namespace EdS.Game
                     if (!Announce(e, n.Kind, w.Definition))
                     {
                         _audio.pitch = e.Kind == WorldEventKind.Rift ? 0.45f : 1f;
-                        _audio.PlayOneShot(Bell);
+                        // Revue de la PR #267 : volume des effets et limite de voix (la cloche de synthèse passe toujours : priorité haute).
+                        if (SoundMixer.TryStart(SoundPriority.High, Bell.length)) _audio.PlayOneShot(Bell, SoundMixer.Gain(SoundBus.Effects));
                     }
                 }
                 else if (e != null && e.Kind == WorldEventKind.Rift && (n.Kind == WorldEventNoticeKind.Won || n.Kind == WorldEventNoticeKind.Lost))
@@ -305,7 +307,8 @@ namespace EdS.Game
             _burst.spatialBlend = at.HasValue ? 1f : 0f;
             if (at.HasValue) _burst.transform.position = at.Value;
             _burst.maxDistance = Hearing(2f);
-            _burst.PlayOneShot(clip, volume * Volume * SoundMixer.Gain(SoundBus.Effects));   // V2.54 : mixage
+            if (!SoundMixer.TryStart(sound, clip.length)) return true;   // revue de la PR #267 : limite de voix (le son est là, juste retenu)
+            _burst.PlayOneShot(clip, volume * Volume);   // V2.54 : mixage (dans Volume)
             return true;
         }
 

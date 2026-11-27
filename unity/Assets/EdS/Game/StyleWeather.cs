@@ -235,7 +235,9 @@ namespace EdS.Game
                 // Revue Codex de la PR #101 : le volume d'ambiance du catalogue, sans plancher (0 : muet), comme la pluie.
                 float volume = (catalog != null ? catalog.AmbienceVolume : 0.8f) * _thunderVolume * (paused ? 0.5f : 1f) * SoundMixer.Gain(SoundBus.Ambience);   // V2.54 : mixage
                 _thunderSource.pitch = 0.9f + Mathf.Repeat(now * 3.1f, 0.25f);
-                if (_thunderClip != null) _thunderSource.PlayOneShot(_thunderClip, volume);
+                // Revue de la PR #267 : pas de tonnerre sous l'eau ; limite de voix.
+                if (_thunderClip != null && !SoundMixer.Underwater && SoundMixer.TryStart(SoundPriority.Normal, _thunderClip.length))
+                    _thunderSource.PlayOneShot(_thunderClip, volume);
             }
 
             // Pluie de synthèse (sans fichier « pluie ») : même volume que la nappe du catalogue.
@@ -243,7 +245,8 @@ namespace EdS.Game
             {
                 StyleCatalog catalog = StyleCatalog.Loaded;
                 float target = hushed ? 0f : (float)StyleRules.AmbienceVolume(StyleAmbience.Rain, double.NaN, false, false, indoors, 0, rain)
-                    * (catalog != null ? catalog.AmbienceVolume : 0.6f) * (paused ? 0.5f : 1f) * SoundMixer.Gain(SoundBus.Ambience);
+                    * (catalog != null ? catalog.AmbienceVolume : 0.6f) * (paused ? 0.5f : 1f) * SoundMixer.Gain(SoundBus.Ambience)
+                    * (SoundMixer.Underwater ? 0f : 1f);   // revue de la PR #267 : pas de pluie sous l'eau
                 _rainSource.volume = Mathf.MoveTowards(_rainSource.volume, target, deltaTime * 0.4f);
                 if (_rainSource.volume > 0.001f && !_rainSource.isPlaying) _rainSource.Play();
                 else if (_rainSource.volume <= 0.001f && target <= 0f && _rainSource.isPlaying) _rainSource.Pause();

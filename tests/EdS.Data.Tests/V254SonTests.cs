@@ -273,5 +273,41 @@ public sealed class V254SonTests
         Assert.Equal(Enum.GetValues<StyleAmbience>().Length, EssaiManifest.Ambiences.Count);
     }
 
+    [Fact]
+    public void Le_gain_est_neutre_au_volume_par_defaut()
+    {
+        // Revue de la PR #267 : qui n'a rien réglé entend le jeu comme avant (gain 1 à la valeur par défaut de chaque canal).
+        foreach (SoundBus bus in Enum.GetValues<SoundBus>())
+        {
+            Assert.Equal(1, SoundRules.BusGain(bus, SoundRules.DefaultPercent(bus)), 9);
+            Assert.Equal(0, SoundRules.BusGain(bus, 0));
+            Assert.True(SoundRules.BusGain(bus, 100) > 1);
+            Assert.True(SoundRules.BusGain(bus, 100) <= SoundRules.MaxGain);
+            double last = -1;
+            for (int p = 0; p <= 100; p += 10)
+            {
+                double g = SoundRules.BusGain(bus, p);
+                Assert.True(g > last || (g == last && g == SoundRules.MaxGain));
+                last = g;
+            }
+        }
+        Assert.Equal(0.25, SoundRules.Gain(40, 80), 9);
+        Assert.Equal(SoundRules.MaxGain, SoundRules.Gain(100, 50));
+        Assert.Equal(SoundRules.MaxGain, SoundRules.Gain(10, 0));
+        Assert.Equal(0, SoundRules.Gain(0, 0));
+    }
+
+    [Fact]
+    public void Les_gues_et_le_deversoir_font_des_pas_dans_l_eau()
+    {
+        Assert.True(SoundRules.IsWading(new[] { "gue_de_la_vallee" }));
+        Assert.True(SoundRules.IsWading(new[] { "place", "deversoir" }));
+        Assert.True(SoundRules.IsWading(new[] { "rigole_est" }));
+        Assert.False(SoundRules.IsWading(new[] { "guerite_du_fort", "guet", "tour_de_guet" }));
+        Assert.False(SoundRules.IsWading(null));
+        Assert.False(SoundRules.IsWading(Array.Empty<string>()));
+        Assert.Equal(StyleSound.StepWater, SoundRules.Step(StyleSound.StepGravel, SoundBiome.Sewer, 0, SoundRules.IsWading(new[] { "deversoir" })));
+    }
+
     private static double Rms(float[] a) => Math.Sqrt(a.Sum(v => (double)v * v) / a.Length);
 }

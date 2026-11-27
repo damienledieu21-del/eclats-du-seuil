@@ -556,7 +556,7 @@ namespace EdS.Game
             source.rolloffMode = AudioRolloffMode.Linear;
             source.minDistance = 2f;
             source.maxDistance = 14f;
-            source.volume = catalog.AmbienceVolume * 1.4f;
+            SoundMixer.Track(source, SoundBus.Ambience, catalog.AmbienceVolume * 1.4f);   // revue de la PR #267 : volume de l'ambiance
             source.time = clip.length * StyleRules.Variant("four", 100) / 100f;
             source.Play();
         }

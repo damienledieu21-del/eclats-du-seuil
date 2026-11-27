@@ -70,7 +70,11 @@ namespace EdS.Game
         }
 
         /// <summary>Musique et ambiance de l'aventure (V2.54 : toujours, même sans catalogue : les nappes de synthèse jouent alors seules).</summary>
-        public static StyleAudio Create(Transform parent) => new StyleAudio(StyleCatalog.Loaded, parent);
+        public static StyleAudio Create(Transform parent)
+        {
+            SoundMixer.Prewarm();   // revue de la PR #267 : synthèses faites d'avance, à l'ouverture de l'aventure
+            return new StyleAudio(StyleCatalog.Loaded, parent);
+        }
 
         private float MusicVolume => _catalog != null ? _catalog.MusicVolume : 0.5f;
         private float AmbienceVolume => _catalog != null ? _catalog.AmbienceVolume : 0.6f;
@@ -134,8 +138,17 @@ namespace EdS.Game
                 source.Play();
                 _ambience[kind] = source;
             }
-            if (!source.isPlaying) source.Play();
             source.volume = Mathf.MoveTowards(source.volume, level, deltaTime * 0.5f);
+            // Revue de la PR #267 : une nappe éteinte est mise en pause (elle ne coûte rien), et reprend où elle en était.
+            if (level <= 0f && source.volume <= 0f)
+            {
+                if (source.isPlaying) source.Pause();
+            }
+            else if (!source.isPlaying)
+            {
+                if (source.time > 0f) source.UnPause();
+                else source.Play();
+            }
         }
 
         public void Update(AdventureMood mood, bool paused, float deltaTime)

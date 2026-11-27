@@ -99,6 +99,22 @@ namespace EdS.Runtime
             HasWord(placeId, "col", false) || HasWord(placeId, "crete", true) || HasWord(placeId, "cairns", false)
             || (HasWord(placeId, "hautes", false) && HasWord(placeId, "collines", false)) || HasWord(placeId, "signal", false);
 
+        /// <summary>
+        /// Revue de la PR #267 : on marche dans l'eau (pas dans l'eau) dans un gué (« gue… »), un déversoir, une rigole, un canal ou un
+        /// chenal (mot entier ou début de mot).
+        /// </summary>
+        public static bool IsWading(IReadOnlyList<string>? placeIds)
+        {
+            if (placeIds == null) return false;
+            for (int i = 0; i < placeIds.Count; i++)
+            {
+                string id = placeIds[i];
+                if (HasWord(id, "gue", false) || HasWord(id, "deversoir", true) || HasWord(id, "rigole", true) || HasWord(id, "canal", true)
+                    || HasWord(id, "chenal", true)) return true;
+            }
+            return false;
+        }
+
         /// <summary>Le milieu est-il sous terre (ni pluie, ni vent, ni oiseaux) ?</summary>
         public static bool IsUnderground(SoundBiome biome) =>
             biome == SoundBiome.Cave || biome == SoundBiome.Sewer || biome == SoundBiome.Crypt || biome == SoundBiome.Gallery || biome == SoundBiome.Drowned;
@@ -255,11 +271,25 @@ namespace EdS.Runtime
         public static int StepPercent(int percent, int direction) => ClampPercent(ClampPercent(percent) + Math.Sign(direction) * 10);
 
         /// <summary>Gain (0 à 1) d'un pourcentage : courbe au carré, plus fidèle à l'oreille qu'une droite (50 % ≈ −12 dB).</summary>
-        public static double Gain(int percent)
+        public static double Gain(int percent) => Gain(percent, 100);
+
+        /// <summary>Gain le plus fort d'un canal poussé au-delà de son volume par défaut (+6 dB).</summary>
+        public const double MaxGain = 2;
+
+        /// <summary>
+        /// Revue de la PR #267 : gain neutre à la valeur par défaut (<paramref name="neutral"/> : 1, le jeu sonne comme avant pour qui n'a
+        /// rien réglé), au carré autour d'elle (0 % muet), au plus <see cref="MaxGain"/> à 100 %.
+        /// </summary>
+        public static double Gain(int percent, int neutral)
         {
-            double p = ClampPercent(percent) / 100.0;
-            return p * p;
+            int n = ClampPercent(neutral);
+            if (n <= 0) return ClampPercent(percent) > 0 ? MaxGain : 0;
+            double r = (double)ClampPercent(percent) / n;
+            return Math.Min(MaxGain, r * r);
         }
+
+        /// <summary>Gain d'un canal : neutre à sa valeur par défaut (<see cref="DefaultPercent"/>).</summary>
+        public static double BusGain(SoundBus bus, int percent) => Gain(percent, DefaultPercent(bus));
 
         /// <summary>Le canal suivant (le libellé du réglage passe de la musique à l'ambiance, aux effets, à l'interface, puis revient).</summary>
         public static SoundBus NextBus(SoundBus bus) => (SoundBus)(((int)bus + 1) % 4);
