@@ -695,7 +695,7 @@ namespace EdS.Game.Editor
             {
                 string path = GalleryLooks.CreatureAssetFolder + "/" + creature + ".fbx";
                 if (!(AssetImporter.GetAtPath(path) is ModelImporter)) continue;
-                if (GalleryLooks.CreatureWalks(creature)) Legacy(path, false);   // le golem est statique : rien à préparer
+                if (GalleryLooks.CreatureWalks(creature)) Legacy(path, false);   // les trois depuis V2.55 (golem : marche et attente faites dans Blender)
                 OwnMaterial(path, notes);
                 notes.Add("Galeries : créature " + creature + (GalleryLooks.CreatureWalks(creature) ? " (marche « Legacy »)." : " (statique)."));
             }
@@ -734,7 +734,7 @@ namespace EdS.Game.Editor
         /// <summary>
         /// Chantier V2.52b : le kit des douze lieux de l'Envers (<see cref="EnversLieux.AssetFolder"/>, reconnu par <see cref="EnversLieux.NameOf"/>) :
         /// même traitement que le kit de l'Envers ; ses créatures (<see cref="EnversLieux.CreatureAssetFolder"/>) comme celles des galeries : le
-        /// chien de cendre a sa marche « Legacy », le spectre est statique. Sans dossier : rien, sans erreur (formes simples en repli).
+        /// chien de cendre a sa marche « Legacy », le spectre aussi depuis V2.55 (bras et robe qui ondulent). Sans dossier : rien, sans erreur (formes simples en repli).
         /// </summary>
         private static void EnversLieuxPieces(List<string> notes)
         {

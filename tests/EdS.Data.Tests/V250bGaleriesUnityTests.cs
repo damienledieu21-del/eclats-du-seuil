@@ -79,10 +79,11 @@ public class V250bGaleriesUnityTests
         Assert.Equal(GalleryLooks.Models.Count, GalleryLooks.Models.Distinct().Count());
         foreach (GalleryPiece piece in Enum.GetValues<GalleryPiece>().Where(p => p != GalleryPiece.None))
         {
-            Assert.Contains(GalleryLooks.ModelFor(piece)!, GalleryLooks.Models);
+            if (piece != GalleryPiece.Chasm) Assert.Contains(GalleryLooks.ModelFor(piece)!, GalleryLooks.Models);
             Assert.InRange(GalleryLooks.HeightOf(piece), 0.5, CaveLooks.WallHeight);
         }
         Assert.Null(GalleryLooks.ModelFor(GalleryPiece.None));
+        Assert.Null(GalleryLooks.ModelFor(GalleryPiece.Chasm));   // V2.55 : bloc plein chez Tripo, gouffre procédural
         Assert.Equal(new[] { GalleryPiece.Wall, GalleryPiece.GiantShard, GalleryPiece.Pillar }, Enum.GetValues<GalleryPiece>().Where(GalleryLooks.Occludes));
         // Les pièces hautes du rendu sont exactement les obstacles qui ne sont pas bas (on tire par-dessus les autres).
         foreach (string id in V250aGaleriesTests.Galleries)
@@ -375,7 +376,7 @@ public class V250bGaleriesUnityTests
 
     /// <summary>
     /// Créatures de cristal générées le 26 novembre 2026 (155 crédits réels), finies dans Blender (Galeries/Creatures/finir_creatures.py) :
-    /// l'araignée et le veilleur avec leur marche, le golem statique (sa marche bipède a échoué chez Tripo, remboursée). Elles sont dans
+    /// l'araignée et le veilleur avec leur marche, le golem (sa marche bipède a échoué chez Tripo ; V2.55 : marche et attente faites dans Blender). Elles sont dans
     /// Resources/Galeries/Creatures avec leur couleur et leur normale ; sans elles, le repli (loup, ours teintés ; loup-écho du veilleur) reste.
     /// </summary>
     [Fact]
@@ -390,12 +391,13 @@ public class V250bGaleriesUnityTests
             Assert.InRange(new FileInfo(fbx).Length, 10_000, 2_000_000);
             Assert.True(File.Exists(Path.Combine(folder, name + "_couleur.jpg")), name);
             Assert.True(File.Exists(Path.Combine(folder, name + "_normale.png")), name);
-            // La marche est dans le FBX (nom de prise « Walk », que le jeu reconnaît) ; le golem n'a aucune animation.
+            // La marche est dans le FBX (nom de prise « Walk », que le jeu reconnaît).
             bool walk = File.ReadAllBytes(fbx).AsSpan().IndexOf("Walk"u8) >= 0;
             Assert.Equal(GalleryLooks.CreatureWalks(name), walk);
         }
         Assert.Equal(GalleryLooks.CreatureModels.Count, Directory.GetFiles(folder, "*.fbx").Length);
-        Assert.False(GalleryLooks.CreatureWalks(GalleryLooks.GolemModel));
+        Assert.True(GalleryLooks.CreatureWalks(GalleryLooks.GolemModel));   // V2.55 : marche lourde et attente faites dans Blender
+        Assert.True(File.ReadAllBytes(Path.Combine(folder, GalleryLooks.GolemModel + ".fbx")).AsSpan().IndexOf("Idle"u8) >= 0);
         // Toutes les formes du veilleur prennent le veilleur en cristal ; il reste un écho de faille (rendu violet), plus massif.
         foreach (Boss chief in Zone("zone.galeries_eclats").Chiefs)
             foreach (var form in chief.Forms)

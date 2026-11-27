@@ -5,7 +5,7 @@ namespace EdS.Game
 {
     /// <summary>
     /// Chantier V2.52b : le spectre de l'Envers (moines renversés, l'abbé renversé) flotte au-dessus de sa place en ondulant
-    /// (<see cref="EnversLieux.WraithBob"/>) : son modèle est statique (la marche bipède a échoué chez Tripo).
+    /// (<see cref="EnversLieux.WraithBob"/>) : la marche bipède a échoué chez Tripo ; depuis V2.55 ses bras et sa robe ondulent (animations faites dans Blender), la hauteur reste au code.
     /// </summary>
     public sealed class EnversFloat : MonoBehaviour
     {

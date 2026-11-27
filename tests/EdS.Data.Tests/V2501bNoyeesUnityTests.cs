@@ -53,7 +53,7 @@ public sealed class V2501bNoyeesUnityTests
         Assert.Equal(12, DrownedLooks.Models.Count);
         Assert.Equal(DrownedLooks.Models.Count, DrownedLooks.Models.Distinct().Count());
         Assert.All(Enum.GetValues<DrownedPiece>().Where(p => p != DrownedPiece.None), p => Assert.Contains(DrownedLooks.ModelFor(p)!, DrownedLooks.Models));
-        Assert.Equal(new[] { DrownedPiece.Wall, DrownedPiece.Vault, DrownedPiece.Rock, DrownedPiece.Wreck }, Enum.GetValues<DrownedPiece>().Where(DrownedLooks.Occludes));
+        Assert.Equal(new[] { DrownedPiece.Wall, DrownedPiece.Vault, DrownedPiece.Rock, DrownedPiece.Wreck, DrownedPiece.Lair, DrownedPiece.Anchor }, Enum.GetValues<DrownedPiece>().Where(DrownedLooks.Occludes));
         Assert.Equal(new[] { DrownedPiece.Basin }, Enum.GetValues<DrownedPiece>().Where(DrownedLooks.IsWater));
         Assert.Equal(new[] { DrownedPiece.Wall }, Enum.GetValues<DrownedPiece>().Where(DrownedLooks.Tiled));
         Assert.Equal(3.0, DrownedLooks.HeightOf(DrownedPiece.Vault));   // voûte basse
@@ -242,7 +242,7 @@ public sealed class V2501bNoyeesUnityTests
         Assert.Single(caves[0].Setup.Space!.Obstacles, o => DrownedLooks.PieceFor(o.Id) == DrownedPiece.Lair);
         Assert.Single(caves[1].Setup.Space!.Obstacles, o => DrownedLooks.PieceFor(o.Id) == DrownedPiece.Anchor);
         Assert.Equal((DrownedLooks.LairModel, DrownedLooks.AnchorModel), (DrownedLooks.ModelFor(DrownedPiece.Lair), DrownedLooks.ModelFor(DrownedPiece.Anchor)));
-        Assert.False(DrownedLooks.Occludes(DrownedPiece.Lair) || DrownedLooks.Occludes(DrownedPiece.Anchor));
+        Assert.True(DrownedLooks.Occludes(DrownedPiece.Lair) && DrownedLooks.Occludes(DrownedPiece.Anchor));   // V2.55 : occulteurs (3 m et 2,2 m)
         foreach (ZoneDefinition z in caves)
         {
             var obstacles = z.Setup.Space!.Obstacles;
