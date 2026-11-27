@@ -1977,6 +1977,8 @@ namespace EdS.Runtime
             // V2.49.1 (décision de Damien du 23 novembre 2026) : les rats des égouts et les rats géants. Aucun rongeur dans le projet : en repli, le
             // quadrupède le plus proche (le loup, qui a ses attaques), à petite échelle (BeastHeight). Jamais « ratelier_… » (obstacles).
             if (IsRat(id)) return StyleSlot.Wolf;
+            // V2.52a : les chiens de cendre de l'Envers (« chien_reflet2 ») : leur modèle (kit Envers2) dans Unity ; en repli, le loup.
+            if (IsAshHound(id)) return StyleSlot.Wolf;
             // V2.50a (décision de Damien du 26 novembre 2026) : créatures de cristal des galeries du Seuil. Sans leur modèle (kit Tripo préparé),
             // l'araignée prend le quadrupède le plus proche (le loup) et le golem l'ours, teintés de cristal dans Unity.
             if (IsCrystalSpider(id)) return StyleSlot.Wolf;
@@ -2027,6 +2029,9 @@ namespace EdS.Runtime
         /// </summary>
         public static bool IsRat(string id) => Regex.IsMatch(id ?? string.Empty, "^rat(_|[0-9]|$)", RegexOptions.IgnoreCase);
 
+        /// <summary>V2.52a : un chien de cendre de l'Envers (« chien_reflet2 », « chien_reflet1_v3 ») ; pas un chien du bourg.</summary>
+        public static bool IsAshHound(string id) => Key(id ?? string.Empty).StartsWith("chienreflet", StringComparison.Ordinal);
+
         /// <summary>
         /// V2.49.2 (demande du 25 novembre 2026) : la bête <paramref name="id"/> a-t-elle la voix de son modèle (grognement, hurlement du
         /// loup) ? Pas les rats, même habillés en loup : aucun son de rat dans le projet, ils se taisent.
@@ -2075,6 +2080,9 @@ namespace EdS.Runtime
             if (IsCrystalGolem(id)) return 2.4;
             // V2.50b : le veilleur des éclats (chef, sur le veilleur en cristal), massif comme Croc-Gris.
             if (key.StartsWith("loupechoveilleureclats", StringComparison.Ordinal)) return 1.4;
+            // V2.52a : le chien de cendre (0,8 m, sur le loup en repli) et l'ombre du vieux Brunot (comme le vieux Brunot).
+            if (IsAshHound(id)) return 0.8;
+            if (key.StartsWith("oursrefletbrunot", StringComparison.Ordinal)) return 2.2;
             // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
             if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
             if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;

@@ -414,6 +414,18 @@
         "value": 340
       },
       {
+        "item": "item.ecorce_du_millenaire",
+        "value": 420
+      },
+      {
+        "item": "item.chevaliere_de_machefer",
+        "value": 420
+      },
+      {
+        "item": "item.chapelet_renverse",
+        "value": 440
+      },
+      {
         "item": "item.larme_du_seuil",
         "value": 2400
       },

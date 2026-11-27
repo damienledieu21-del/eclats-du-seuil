@@ -899,6 +899,8 @@ namespace EdS.Runtime
             if (SourceInReach) return ChallengeSource();   // sous-lot V2.42.3 : puis le défi de la source, au cercle des pierres levées
             // Revue Codex de la PR #243 (P1) : puis un coffre de la quête de reprise au fort (avant portes et PNJ ; la touche d'action).
             if (ChestInReach != null) return TakeChest();
+            // V2.52a : puis un secret de la zone (coffre ou stèle de l'Envers), même touche.
+            if (SecretInReach != null) return OpenSecret();
             // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
             // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
             if (DoorFirst) return UseDoor();

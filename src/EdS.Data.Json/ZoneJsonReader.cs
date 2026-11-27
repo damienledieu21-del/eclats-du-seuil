@@ -75,7 +75,7 @@ namespace EdS.Data.Json
                 scenario = loaded.Setup;
             }
             // V2.51 (schéma 17) : l'aire de l'Envers part des obstacles de la zone reflétée (moins les retirés), plus les siens.
-            if (report.IsValid && scenario != null && document.SchemaVersion >= ZoneValidator.CurrentSchemaVersion && document.Data?.Floor == "envers"
+            if (report.IsValid && scenario != null && document.SchemaVersion >= ZoneValidator.MirrorSchemaVersion && document.Data?.Floor == "envers"
                 && document.Data.Mirror is MirrorData mirror && mirror.Scenario is string mirrored && ZoneValidator.IsScenarioPath(mirrored))
             {
                 ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, mirrored + ".json"), data, area: true);
@@ -152,6 +152,8 @@ namespace EdS.Data.Json
                             n => $"{n} obstacles retirés, au plus {ZoneMirror.MaxRemoved}.", (e, ip) => input.Text(e, ip)),
                     })) d.Mirror = m;
                 },
+                ["secrets"] = (v, p) => d.Secrets = input.ReadLimitedList(v, p, ZoneValidator.MaxSecrets,   // V2.52 (schéma 18) : secrets
+                    n => $"{n} secrets, au plus {ZoneValidator.MaxSecrets}.", (e, ip) => ReadSecret(input, e, ip)),
                 ["scaling"] = (v, p) =>   // sous-lot V1.8 (schéma 7) : zones en mélange
                 {
                     var s = new ZoneScalingData();
@@ -481,6 +483,32 @@ namespace EdS.Data.Json
                 ["sign"] = (v, p) => night.Sign = input.Text(v, p),
             });
             return ok ? night : null;
+        }
+
+        /// <summary>V2.52 (schéma 18) : un secret (coffre ou stèle de lore).</summary>
+        private static SecretData? ReadSecret(JsonInput input, JsonElement element, string path)
+        {
+            var s = new SecretData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => s.Id = input.Text(v, p),
+                ["name"] = (v, p) => s.Name = input.Text(v, p),
+                ["kind"] = (v, p) => s.Kind = input.Text(v, p),
+                ["position"] = (v, p) => s.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["text"] = (v, p) => s.Text = input.Text(v, p),
+                ["rewards"] = (v, p) => s.Rewards = input.ReadLimitedList(v, p, ZoneValidator.MaxRewards, n => $"{n} récompenses, au plus {ZoneValidator.MaxRewards}.",
+                    (e, ip) => ReadReward(input, e, ip)),
+            }) ? s : null;
+        }
+
+        private static RewardData? ReadReward(JsonInput input, JsonElement e, string ip)
+        {
+            var r = new RewardData();
+            return input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["item"] = (rv, rp) => r.Item = input.Text(rv, rp),
+                ["count"] = (rv, rp) => r.Count = input.Int32(rv, rp),
+            }) ? r : null;
         }
 
         internal static BossData? ReadBoss(JsonInput input, JsonElement element, string path)

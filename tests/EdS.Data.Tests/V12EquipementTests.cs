@@ -78,8 +78,8 @@ public class V12EquipementTests
     public void Catalogue_des_niveaux_1_a_20_avec_plusieurs_bons_choix()
     {
         List<ItemDefinition> gear = ItemsCatalog.Items.Where(i => i.Type == ItemType.Equipment && i.Slot is not ("shard" or "tool")).ToList();
-        Assert.InRange(gear.Count, 60, 90);   // quelques dizaines d'objets (V2.46 : 81 avec l'anneau de la cascade)
-        Assert.Equal((1, 20), (gear.Min(i => i.RequiredLevel), gear.Max(i => i.RequiredLevel)));
+        Assert.InRange(gear.Count, 60, 100);   // quelques dizaines d'objets (V2.52a : 91 avec les trois objets des chefs de l'Envers ; V2.46 : 81 avec l'anneau de la cascade)
+        Assert.Equal((1, 24), (gear.Min(i => i.RequiredLevel), gear.Max(i => i.RequiredLevel)));   // V2.52a : les objets des chefs de l'Envers, au niveau 24
         // Chaque place du combat a des objets ; chaque tranche de cinq niveaux a plusieurs choix de même rareté pour une même place.
         foreach (string kind in ItemsCatalog.Places.Where(p => p.Group == PlaceGroup.Combat).Select(p => p.Accepts).Distinct())
             Assert.True(gear.Count(i => i.Slot == kind) >= 3, kind);

@@ -92,7 +92,7 @@ public class CuisineBoulangerieTests
     public void Quatre_plats_pour_la_place_du_plat_et_deux_patisseries()
     {
         ItemCatalog c = Items.Value;
-        Assert.Equal("0.25.0-provisoire", c.ContentVersion);
+        Assert.Equal("0.26.0-provisoire", c.ContentVersion);
         string[] meals = { "item.friture_du_lac", "item.truite_meuniere", "item.quenelles_de_brochet", "item.matelote_de_carpe_doree" };
         Assert.Equal(meals, c.Items.Where(i => i.Boon == BoonKind.Meal).Select(i => i.Id));
         Assert.Equal(new[] { ItemQuality.Normal, ItemQuality.Normal, ItemQuality.Superior, ItemQuality.Masterwork }, meals.Select(m => c.Item(m).BoonQuality));
