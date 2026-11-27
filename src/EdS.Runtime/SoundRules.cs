@@ -37,6 +37,14 @@ namespace EdS.Runtime
         Interface = 3,
     }
 
+    /// <summary>Revue Codex de la PR #267 : ce qu'une source en boucle doit faire (rien, se mettre en pause, reprendre).</summary>
+    public enum SoundTransport
+    {
+        Keep = 0,
+        Pause = 1,
+        Resume = 2,
+    }
+
     /// <summary>V2.54 : priorité d'un bruitage face à la limite de voix (un pas cède avant un coup, un coup avant une mort).</summary>
     public enum SoundPriority
     {
@@ -251,6 +259,18 @@ namespace EdS.Runtime
             if (biome == SoundBiome.Marsh) return StyleSound.StepMud;
             if (!double.IsNaN(snow) && snow >= 0.5 && outdoor != StyleSound.StepWood) return StyleSound.StepSnow;
             return outdoor;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #267 : une musique ou une nappe en boucle se met en pause quand sa cible et son volume sont à 0 (elle ne coûte
+        /// rien et reprendra où elle en était), et reprend dès que sa cible redevient positive (volume remonté dans les réglages, fin d'un
+        /// silence), même sans changer de lieu ; sinon rien. NaN vaut 0.
+        /// </summary>
+        public static SoundTransport Transport(bool playing, double target, double volume)
+        {
+            bool silent = !(target > 0);
+            if (silent && !(volume > 0)) return playing ? SoundTransport.Pause : SoundTransport.Keep;
+            return !silent && !playing ? SoundTransport.Resume : SoundTransport.Keep;
         }
 
         /// <summary>Le son est-il un pas ?</summary>

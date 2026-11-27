@@ -140,11 +140,14 @@ namespace EdS.Game
             }
             source.volume = Mathf.MoveTowards(source.volume, level, deltaTime * 0.5f);
             // Revue de la PR #267 : une nappe éteinte est mise en pause (elle ne coûte rien), et reprend où elle en était.
-            if (level <= 0f && source.volume <= 0f)
-            {
-                if (source.isPlaying) source.Pause();
-            }
-            else if (!source.isPlaying)
+            Apply(source, SoundRules.Transport(source.isPlaying, level, source.volume));
+        }
+
+        /// <summary>Revue Codex de la PR #267 : met en pause ou reprend une source en boucle (du début si elle n'a jamais joué).</summary>
+        private static void Apply(AudioSource source, SoundTransport transport)
+        {
+            if (transport == SoundTransport.Pause) source.Pause();
+            else if (transport == SoundTransport.Resume)
             {
                 if (source.time > 0f) source.UnPause();
                 else source.Play();
@@ -187,8 +190,9 @@ namespace EdS.Game
                 AudioSource source = music.Value;
                 float target = music.Key == _playing ? level : 0f;
                 source.volume = Mathf.MoveTowards(source.volume, target, step);
-                // Une musique éteinte est mise en pause : elle reprendra où elle en était.
-                if (target <= 0f && source.volume <= 0f && source.isPlaying) source.Pause();
+                // Une musique éteinte est mise en pause : elle reprendra où elle en était. Revue Codex de la PR #267 : et elle reprend quand
+                // sa cible redevient positive (musique remise au-dessus de 0 % sans changer de lieu).
+                Apply(source, SoundRules.Transport(source.isPlaying, target, source.volume));
             }
 
             float ambience = Hushed ? 0f : AmbienceVolume * SoundMixer.Gain(SoundBus.Ambience) * (paused ? 0.5f : 1f);

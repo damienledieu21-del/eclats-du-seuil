@@ -310,5 +310,18 @@ public sealed class V254SonTests
         Assert.Equal(StyleSound.StepWater, SoundRules.Step(StyleSound.StepGravel, SoundBiome.Sewer, 0, SoundRules.IsWading(new[] { "deversoir" })));
     }
 
+    [Fact]
+    public void Une_boucle_en_pause_reprend_quand_sa_cible_remonte()
+    {
+        // Revue Codex de la PR #267 : musique à 0 % puis remontée sans changer de lieu.
+        Assert.Equal(SoundTransport.Pause, SoundRules.Transport(true, 0, 0));
+        Assert.Equal(SoundTransport.Resume, SoundRules.Transport(false, 0.3, 0));
+        Assert.Equal(SoundTransport.Keep, SoundRules.Transport(true, 0, 0.2));   // fondu de sortie en cours
+        Assert.Equal(SoundTransport.Keep, SoundRules.Transport(false, 0, 0));
+        Assert.Equal(SoundTransport.Keep, SoundRules.Transport(true, 0.5, 0.5));
+        Assert.Equal(SoundTransport.Pause, SoundRules.Transport(true, double.NaN, double.NaN));
+        Assert.Equal(SoundTransport.Keep, SoundRules.Transport(false, double.NaN, 0));
+    }
+
     private static double Rms(float[] a) => Math.Sqrt(a.Sum(v => (double)v * v) / a.Length);
 }
