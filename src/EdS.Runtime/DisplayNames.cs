@@ -81,6 +81,22 @@ namespace EdS.Runtime
             ["ours_reflet"] = "Ombre d'ours",
             ["loup_echo_reflet_gardien"] = "Reflet du Gardien",
             ["loup_echo_reflet_gardien_brise"] = "Reflet du Gardien brisé",
+            // V2.52a : les reflets des douze lieux de l'Envers et leurs chefs.
+            ["chien_reflet"] = "Chien de cendre",
+            ["sanglier_reflet"] = "Reflet de sanglier",
+            ["garde_reflet"] = "Garde renversé",
+            ["bandit_reflet"] = "Bandit renversé",
+            ["mineur_reflet"] = "Mineur renversé",
+            ["vendangeur_reflet"] = "Vendangeur renversé",
+            ["archer_reflet"] = "Archer renversé",
+            ["moine_reflet"] = "Moine renversé",
+            ["ours_reflet_brunot"] = "Ombre du vieux Brunot",
+            ["ours_reflet_brunot_dechaine"] = "Ombre du vieux Brunot déchaînée",
+            ["bandit_reflet_machefer"] = "Reflet de Mâchefer",
+            ["bandit_reflet_machefer_furieux"] = "Reflet de Mâchefer furieux",
+            ["moine_reflet_abbe"] = "L'abbé renversé",
+            ["moine_reflet_abbe_courrouce"] = "L'abbé renversé courroucé",
+            ["moine_reflet_abbe_dechire"] = "L'abbé renversé déchiré",
             ["ours_galerie"] = "Ours cristallisé",
             // Décision de Damien du 26 novembre 2026 : créatures de cristal nouvelles.
             ["araignee_cristal_galerie"] = "Araignée de cristal",
@@ -106,6 +122,7 @@ namespace EdS.Runtime
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["morsure_de_cendre"] = "Morsure de cendre",   // V2.52a : chiens de cendre de l'Envers
             ["brulure"] = "Brûlure",
             ["coup_bis"] = "Coup",
             ["coup_felant"] = "Coup fêlant",

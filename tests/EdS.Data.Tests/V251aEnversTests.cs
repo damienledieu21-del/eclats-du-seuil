@@ -61,7 +61,8 @@ public sealed class V251aEnversTests : IDisposable
         ZoneDefinition e = Envers;
         Assert.Equal((ZoneFloor.Envers, true, false, false), (e.Floor, e.Envers, e.Indoor, e.Sheltered));
         Assert.Equal(("zone.vallons", "zones/vallons"), (e.Mirror!.Of, e.Mirror.Scenario));
-        Assert.Equal(new[] { "porte_moulin" }, e.Mirror.Removed);
+        // V2.52a : l'arbre millénaire de la surface est aussi retiré (son reflet mort, « envers_arbre_millenaire_mort », le remplace).
+        Assert.Equal(new[] { "porte_moulin", "arbre_millenaire_foret" }, e.Mirror.Removed);
         Assert.Null(Vallons.Mirror);
         // Même grille, mêmes bornes.
         Assert.Equal((Vallons.Region!.OriginX, Vallons.Region.OriginZ, Vallons.Region.Columns, Vallons.Region.Rows),
@@ -70,14 +71,14 @@ public sealed class V251aEnversTests : IDisposable
         // Chaque obstacle de la surface est dans l'Envers, au même endroit, sauf la porte du moulin ; puis les siens.
         var surface = Vallons.Setup.Space.Obstacles;
         var envers = e.Setup.Space.Obstacles;
-        var kept = surface.Where(o => o.Id != "porte_moulin").ToList();
+        var kept = surface.Where(o => !e.Mirror.Removed.Contains(o.Id)).ToList();
         Assert.Equal(kept.Select(o => (o.Id, o.Low, string.Join(";", o.Points))), envers.Take(kept.Count).Select(o => (o.Id, o.Low, string.Join(";", o.Points))));
         var own = envers.Skip(kept.Count).Select(o => o.Id).ToList();
-        Assert.Equal(10, own.Count);
+        Assert.True(own.Count >= 10, $"{own.Count}");   // V2.52a : les retouches des douze lieux s'ajoutent aux dix de la V2.51
         Assert.All(own, id => Assert.StartsWith("envers_", id, StringComparison.Ordinal));
         Assert.DoesNotContain(envers, o => o.Id == "porte_moulin");
         // Sa propre population, pas celle de la surface.
-        Assert.Equal(new[] { "loup_echo_envers1", "loup_echo_envers2", "loup_echo_envers3", "ours_reflet1" }, e.Populations.Select(p => p.Creature));
+        Assert.Equal(new[] { "loup_echo_envers1", "loup_echo_envers2", "loup_echo_envers3", "ours_reflet1" }, e.Populations.Take(4).Select(p => p.Creature));
         Assert.DoesNotContain(e.Setup.Combatants, c => Vallons.Setup.Combatants.Any(v => v.Id == c.Id));
         Assert.Equal("autel_de_l_aube", e.Entry.Id);
         Assert.Equal(24, e.MinLevelAt(e.Entry.Position));
@@ -154,7 +155,9 @@ public sealed class V251aEnversTests : IDisposable
     {
         string dir = Path.Combine(_folder, "scenarios_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(dir, "zones"));
-        foreach (string f in new[] { "vallons.json", "envers_vallons.json", "envers_vallons_reflet.json" })
+        // V2.52a : avec les scénarios des chefs de l'Envers des douze lieux.
+        foreach (string f in Directory.GetFiles(Path.Combine(Scenarios, "zones"), "*.json").Select(x => Path.GetFileName(x))
+            .Where(x => x == "vallons.json" || x.StartsWith("envers_vallons", StringComparison.Ordinal)))
             File.Copy(Path.Combine(Scenarios, "zones", f), Path.Combine(dir, "zones", f));
         string path = Path.Combine(dir, "zones", scenario + ".json");
         JsonObject s = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
@@ -186,20 +189,26 @@ public sealed class V251aEnversTests : IDisposable
         foreach (Door d in Envers.Doors)
             foreach (CombatantSetup c in Fighters(Envers))
                 Check(Envers.Id, P(d.Position), c.Id, P(c.Placement!.Position), c.Placement.Radius.Raw / 1e4, ((AssailantSetup)c).Behavior!.AggroRange!.Value.Raw / 1e4);
-        Assert.Equal(4 + 2, pairs);
+        Assert.Equal(Fighters(Envers).Count() * Envers.Doors.Count, pairs);   // V2.52a : toutes les failles des douze lieux
         // Côté Vallons : toutes les créatures de la surface, tous les chefs et toutes leurs formes, le gardien de la source (défi V2.42.3).
         pairs = 0;
-        foreach (CombatantSetup c in Fighters(Vallons))
-            Check(Vallons.Id, Rift, c.Id, P(c.Placement!.Position), c.Placement.Radius.Raw / 1e4, ((AssailantSetup)c).Behavior?.AggroRange?.Raw / 1e4 ?? 0);
-        foreach (string file in new[] { "vallons_gardien_source", "vallons_chef", "vallons_bandits", "vallons_croc_gris" })
-            foreach (JsonNode? f in JsonNode.Parse(File.ReadAllText(Path.Combine(Scenarios, "zones", file + ".json")))!["data"]!["combatants"]!.AsArray())
-                Check(file, Rift, (string)f!["id"]!, ((double)f["position"]![0]!, (double)f["position"]![1]!), (double)f["radius"]!, (double)f["behavior"]!["aggroRange"]!);
+        // V2.52a : à chaque faille des Vallons (celle de la V2.51 et celles des douze lieux).
+        var rifts = Vallons.Doors.Where(d => d.Kind == DoorKind.Rift).Select(d => P(d.Position)).ToList();
+        Assert.True(rifts.Count > 1);
+        foreach (var rift in rifts)
+        {
+            foreach (CombatantSetup c in Fighters(Vallons))
+                Check(Vallons.Id, rift, c.Id, P(c.Placement!.Position), c.Placement.Radius.Raw / 1e4, ((AssailantSetup)c).Behavior?.AggroRange?.Raw / 1e4 ?? 0);
+            foreach (string file in new[] { "vallons_gardien_source", "vallons_chef", "vallons_bandits", "vallons_croc_gris" })
+                foreach (JsonNode? f in JsonNode.Parse(File.ReadAllText(Path.Combine(Scenarios, "zones", file + ".json")))!["data"]!["combatants"]!.AsArray())
+                    Check(file, rift, (string)f!["id"]!, ((double)f["position"]![0]!, (double)f["position"]![1]!), (double)f["radius"]!, (double)f["behavior"]!["aggroRange"]!);
+            // Les créatures des événements du monde aussi (attaques, failles du Seuil, chasses).
+            foreach (WorldEventDefinition ev in Vallons.Events)
+                foreach (WorldEventGroup g in ev.Groups)
+                    foreach (WorldEventCreature c in g.Creatures)
+                        Assert.True(Dist(P(c.Position), rift) > guard + 10, $"{ev.Id} / {c.Like}");
+        }
         Assert.True(pairs > 100);
-        // Les créatures des événements du monde aussi (attaques, failles du Seuil, chasses).
-        foreach (WorldEventDefinition ev in Vallons.Events)
-            foreach (WorldEventGroup g in ev.Groups)
-                foreach (WorldEventCreature c in g.Creatures)
-                    Assert.True(Dist(P(c.Position), Rift) > guard + 10, $"{ev.Id} / {c.Like}");
     }
 
     [Theory]
@@ -209,7 +218,7 @@ public sealed class V251aEnversTests : IDisposable
     {
         string dir = CopyScenarios(s => Combatant(s, "loup_echo_envers1")["position"] = new JsonArray(x, -455.0));
         ZoneLoadResult r = Read(ZoneJson("zone.envers_vallons"), dir);
-        Assert.Equal(valid, r.IsValid);
+        Assert.True(valid == r.IsValid, r.Report.ToString());
         if (!valid)
             Assert.Contains(r.Report.Errors, e => e.Path == "$.data.populations[0].creature" && e.Message.StartsWith("dans l'Envers", StringComparison.Ordinal));
     }
@@ -312,7 +321,7 @@ public sealed class V251aEnversTests : IDisposable
     public void Chef_dans_le_chemin_standard()
     {
         Assert.Null(Envers.Boss);
-        Boss reflet = Assert.Single(Envers.Chiefs);
+        Boss reflet = Envers.Chiefs[0];   // V2.52a : suivi des chefs des douze lieux
         Assert.Equal(("reflet_du_gardien", "fact.reflet_du_gardien.vaincu", "loot.echo"), (reflet.Id, reflet.Fact, reflet.Loot));
         Assert.Equal(new[] { "loup_echo_reflet_gardien", "loup_echo_reflet_gardien_brise" }, reflet.Forms.Select(f => f.Id));
         Assert.Equal(new[] { ("item.eclat_de_seuil", 4) }, reflet.Rewards);
@@ -374,7 +383,9 @@ public sealed class V251aEnversTests : IDisposable
     [Fact]
     public void Apparences_et_noms_des_reflets()
     {
-        var ids = Fighters(Envers).Select(c => c.Id).ToList();
+        // V2.52a : les reflets de la V2.51 (les autres sont vérifiés par V252aEnversLieuxTests).
+        var ids = Fighters(Envers).Select(c => c.Id).Where(id => id is "loup_echo_envers1" or "loup_echo_envers2" or "loup_echo_envers3" or "ours_reflet1"
+            || id.StartsWith("loup_echo_reflet_gardien", StringComparison.Ordinal)).ToList();
         Assert.Equal(6, ids.Count);
         foreach (string id in ids.Concat(new[] { "loup_echo_envers2_v3", "ours_reflet1_v2" }))
         {

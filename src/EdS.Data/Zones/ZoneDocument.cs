@@ -84,6 +84,30 @@ namespace EdS.Data.Zones
 
         /// <summary>V2.51 (schéma 17) : reflet d'une zone de l'Envers (zone de la surface reflétée) ; facultatif, obligatoire dans l'Envers.</summary>
         public MirrorData? Mirror { get; set; }
+
+        /// <summary>V2.52 (schéma 18) : secrets de la zone (coffres et stèles de lore, fouillés une fois) ; facultatif.</summary>
+        public List<SecretData?>? Secrets { get; set; }
+    }
+
+    /// <summary>V2.52 (schéma 18) : secret d'une zone, tel que lu.</summary>
+    public sealed class SecretData
+    {
+        public string? Id { get; set; }
+
+        /// <summary>Nom montré à portée (« Coffre renversé »).</summary>
+        public string? Name { get; set; }
+
+        /// <summary>Genre : « coffre » (des récompenses) ou « lore » (une stèle à lire).</summary>
+        public string? Kind { get; set; }
+
+        /// <summary>Place du secret [x, z], dégagée dans l'aire.</summary>
+        public PointData? Position { get; set; }
+
+        /// <summary>Clé du texte montré à la fouille (« text.… »).</summary>
+        public string? Text { get; set; }
+
+        /// <summary>Récompenses de la première fouille ; obligatoires pour un coffre, facultatives pour une stèle.</summary>
+        public List<RewardData?>? Rewards { get; set; }
     }
 
     /// <summary>V2.51 (schéma 17) : reflet d'une zone de l'Envers, tel que lu.</summary>

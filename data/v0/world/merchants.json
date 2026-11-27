@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 7,
   "kind": "merchants",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "values": [
       {
@@ -412,6 +412,18 @@
       {
         "item": "item.amulette_des_noyes",
         "value": 340
+      },
+      {
+        "item": "item.ecorce_du_millenaire",
+        "value": 420
+      },
+      {
+        "item": "item.chevaliere_de_machefer",
+        "value": 420
+      },
+      {
+        "item": "item.chapelet_renverse",
+        "value": 440
       },
       {
         "item": "item.larme_du_seuil",

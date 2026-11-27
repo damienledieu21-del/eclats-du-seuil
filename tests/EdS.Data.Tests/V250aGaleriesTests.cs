@@ -184,7 +184,7 @@ public sealed class V250aGaleriesTests : IDisposable
         Assert.Equal((60, 110, 20), (larme.Bonus.MagicResistance, larme.Bonus.MaxHealth, larme.Bonus.StatusResistance));
         Assert.Equal(2400, V11TestData.ShippedMerchants.Values["item.larme_du_seuil"]);
         // Le plafond du catalogue reste le niveau 20 (décision de Damien du 22 novembre 2026 pour le cœur de cristal).
-        Assert.Equal(20, Items.Items.Max(i => i.RequiredLevel));
+        Assert.Equal(24, Items.Items.Max(i => i.RequiredLevel));   // V2.52a : les objets des chefs de l'Envers (niveau 24)
         var facts = Vallons.Value.Chiefs.Select(c => c.Fact).Concat(V16TestData.Interiors.SelectMany(z => z.Chiefs).Select(c => c.Fact)).ToList();
         Assert.Equal(facts.Count, facts.Distinct().Count());
     }

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.25.0-provisoire",
+  "contentVersion": "0.26.0-provisoire",
   "data": {
     "slots": [
       {
@@ -2438,6 +2438,51 @@
         "rarity": "common",
         "stack": 5,
         "icon": "marteau_du_carrier"
+      },
+      {
+        "id": "item.ecorce_du_millenaire",
+        "name": "Écorce du millénaire",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "cloak",
+        "requiredLevel": 24,
+        "bonus": {
+          "armor": 30,
+          "maxHealth": 140,
+          "statusResistance": 15
+        },
+        "named": true
+      },
+      {
+        "id": "item.chevaliere_de_machefer",
+        "name": "Chevalière de Mâchefer",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "ring",
+        "requiredLevel": 24,
+        "bonus": {
+          "physicalPower": 24,
+          "maxHealth": 90,
+          "armor": 15
+        },
+        "named": true
+      },
+      {
+        "id": "item.chapelet_renverse",
+        "name": "Chapelet renversé",
+        "icon": "talisman_du_seuil",
+        "type": "equipment",
+        "rarity": "epic",
+        "slot": "neck",
+        "requiredLevel": 24,
+        "bonus": {
+          "magicResistance": 55,
+          "maxHealth": 120,
+          "statusResistance": 20
+        },
+        "named": true
       }
     ],
     "loot": [

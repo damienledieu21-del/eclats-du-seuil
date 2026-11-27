@@ -451,6 +451,15 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot V1.6 : le chef, puis les autres chefs.</summary>
         public IReadOnlyList<Boss> Bosses { get; }
 
+        /// <summary>V2.52 (schéma 18) : secrets de la zone (coffres, stèles de lore), dans l'ordre du fichier ; vide sans eux.</summary>
+        public IReadOnlyList<ZoneSecret> Secrets { get; }
+
+        /// <summary>V2.52 : le secret <paramref name="id"/> de la zone, ou null.</summary>
+        public ZoneSecret? SecretOf(string id) => Secrets.FirstOrDefault(s => s.Id == id);
+
+        /// <summary>V2.52 : clé du registre du monde d'un secret fouillé (« zone.envers_vallons/secret/coffre_du_sommet »).</summary>
+        public string SecretKey(string secret) => $"{Id}/secret/{secret ?? throw new ArgumentNullException(nameof(secret))}";
+
         /// <summary>Sous-lot V1.6 : clé du registre du monde de la première victoire sur le chef <paramref name="boss"/>.</summary>
         public string VictoryKeyOf(Boss boss) => $"{Id}/boss/{(boss ?? throw new ArgumentNullException(nameof(boss))).Id}";
 
@@ -490,8 +499,9 @@ namespace EdS.Data.Zones
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
             ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null, RegionGrid? region = null,
-            ZoneFloor floor = ZoneFloor.Surface, ZoneMirror? mirror = null)
+            ZoneFloor floor = ZoneFloor.Surface, ZoneMirror? mirror = null, IEnumerable<ZoneSecret>? secrets = null)
         {
+            Secrets = Frozen.List(secrets ?? Array.Empty<ZoneSecret>(), nameof(secrets));
             Floor = floor;
             Mirror = mirror;
             Region = region;
@@ -586,7 +596,7 @@ namespace EdS.Data.Zones
         /// </summary>
         internal ZoneDefinition WithCaravanAttacks(IEnumerable<WorldEventDefinition> attacks) =>
             new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, Populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region, Floor, Mirror);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events.Concat(attacks ?? throw new ArgumentNullException(nameof(attacks))).ToList(), Region, Floor, Mirror, Secrets);
 
         internal ZoneDefinition WithSeasons(IReadOnlyDictionary<string, PopulationSeasons> seasons)
         {
@@ -594,7 +604,7 @@ namespace EdS.Data.Zones
             var populations = Populations.Select(p => !seasons.TryGetValue(p.Creature, out PopulationSeasons s) ? p
                 : new Population(p.Creature, p.Template, p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, s)).ToList();
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, Setup, Entry, SafePoints, Places, populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror, Secrets);
         }
 
         /// <summary>
@@ -627,7 +637,7 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? strong[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror);
+                Boss, Roads, Indoor, Doors, Chiefs, Scaling, NightSpots, Events, Region, Floor, Mirror, Secrets);
         }
 
         public ZoneDefinition ForLevel(int playerLevel)
@@ -648,7 +658,7 @@ namespace EdS.Data.Zones
                 p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory, p.Seasons)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region, Floor, Mirror);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region, Floor, Mirror, Secrets);
         }
     }
 
@@ -710,8 +720,19 @@ namespace EdS.Data.Zones
         /// <c>tide</c>, <c>diveMs</c>) ; les deux portes qui se répondent ont la même eau ; la version 15 est encore lue (sans elle). Version 17
         /// (V2.51, l'Envers) : étage « envers » (<see cref="ZoneFloor.Envers"/>, avec une région) et <c>mirror</c> (<c>of</c>, <c>scenario</c>,
         /// <c>remove</c> : voir <see cref="ZoneMirror"/>) ; dans l'Envers, et près de toute faille, chaque créature part à 8 m au moins des
-        /// portes ; une faille entre une zone et son reflet est au même point des deux côtés ; la version 16 est encore lue (sans eux).</remarks>
-        public const int CurrentSchemaVersion = 17;
+        /// portes ; une faille entre une zone et son reflet est au même point des deux côtés ; la version 16 est encore lue (sans eux). Version 18
+        /// (V2.52, le contenu de l'Envers des douze lieux) : <c>secrets</c> facultatif (coffres et stèles de lore fouillés une fois : voir
+        /// <see cref="ZoneSecret"/>) ; la version 17 est encore lue (sans eux).</remarks>
+        public const int CurrentSchemaVersion = 18;
+
+        /// <summary>V2.52 : version de l'Envers (étage « envers », reflet ; V2.51), encore lue.</summary>
+        public const int MirrorSchemaVersion = 17;
+
+        /// <summary>V2.52 (schéma 18) : secrets d'une zone, au plus.</summary>
+        public const int MaxSecrets = 64;
+
+        /// <summary>V2.52 (schéma 18) : dégagement d'un secret aux obstacles (on s'en approche pour fouiller).</summary>
+        public static readonly Fixed SecretClearance = Fixed.FromInt(1);
 
         /// <summary>V2.51 : version de l'eau des portes (V2.50.1), encore lue.</summary>
         public const int WaterSchemaVersion = 16;
@@ -846,6 +867,7 @@ namespace EdS.Data.Zones
                 || document.SchemaVersion == TerritorySchemaVersion   // chantier V2.45.1 : la version 14 aussi (sans étage)
                 || document.SchemaVersion == FloorsSchemaVersion   // V2.50.1 : la version 15 aussi (sans eau aux portes)
                 || document.SchemaVersion == WaterSchemaVersion   // V2.51 : la version 16 aussi (sans Envers)
+                || document.SchemaVersion == MirrorSchemaVersion   // V2.52 : la version 17 aussi (sans secrets)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -858,7 +880,8 @@ namespace EdS.Data.Zones
             bool schema14 = document.SchemaVersion >= TerritorySchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
             bool schema15 = document.SchemaVersion >= FloorsSchemaVersion;   // chantier V2.45.1 : étages, genres de porte, bornes relevées
             bool schema16 = document.SchemaVersion >= WaterSchemaVersion;   // V2.50.1 : eau des portes (marée, plongée)
-            bool schema17 = document.SchemaVersion >= CurrentSchemaVersion;   // V2.51 : l'Envers (étage, reflet)
+            bool schema17 = document.SchemaVersion >= MirrorSchemaVersion;   // V2.51 : l'Envers (étage, reflet)
+            bool schema18 = document.SchemaVersion >= CurrentSchemaVersion;   // V2.52 : secrets
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -891,7 +914,7 @@ namespace EdS.Data.Zones
                 if (!schema15) report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage d'une zone : schéma {FloorsSchemaVersion} attendu.");
                 else if (d.Floor == "dessous") floor = ZoneFloor.Underground;
                 else if (d.Floor == "envers" && schema17) floor = ZoneFloor.Envers;   // V2.51 (schéma 17)
-                else if (d.Floor == "envers") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « envers » : schéma {CurrentSchemaVersion} attendu.");
+                else if (d.Floor == "envers") report.Add("$.data.floor", ValidationCode.InvalidValue, $"étage « envers » : schéma {MirrorSchemaVersion} attendu.");
                 else if (d.Floor != "surface") report.Add("$.data.floor", ValidationCode.InvalidValue,
                     $"étage « {d.Floor} » inconnu : « surface », « dessous »{(schema17 ? " ou « envers »" : string.Empty)} attendu.");
                 if (floor == ZoneFloor.Underground && d.Indoor == true)
@@ -907,7 +930,7 @@ namespace EdS.Data.Zones
             {
                 if (floor == ZoneFloor.Envers) Missing(report, "$.data.mirror", "reflet de la zone de la surface (of, scenario, remove)");
             }
-            else if (!schema17) report.Add("$.data.mirror", ValidationCode.InvalidValue, $"reflet d'une zone : schéma {CurrentSchemaVersion} attendu.");
+            else if (!schema17) report.Add("$.data.mirror", ValidationCode.InvalidValue, $"reflet d'une zone : schéma {MirrorSchemaVersion} attendu.");
             else if (floor != ZoneFloor.Envers) report.Add("$.data.mirror", ValidationCode.InvalidValue, "seule une zone de l'Envers (floor: « envers ») a un reflet.");
             else mirror = CheckMirror(d.Mirror, d.Id, report);
             int maxRoads = regional ? MaxRegionRoads : MaxRoads, maxRoadPoints = regional ? MaxRegionRoadPoints : MaxRoadPoints;
@@ -1325,12 +1348,22 @@ namespace EdS.Data.Zones
                 CheckPerCell("$.data.doors", "portes", schema15 ? MaxDoorsPerCell : MaxDoorsPerCellBefore15, doors.Select((x, k) => (doorIndices[k], (IReadOnlyList<RegionCell>)new[] { region.CellOf(x.Position) })), report);
                 CheckPerCell("$.data.roads", "routes", MaxRoadsPerCell, roads.Select((r, k) => (roadIndices[k], region.CellsAlong(r.Points))), report);
             }
+            // V2.52 (schéma 18) : secrets (coffres, stèles de lore).
+            var secrets = new List<ZoneSecret>();
+            if (d.Secrets != null)
+            {
+                if (!schema18) report.Add("$.data.secrets", ValidationCode.InvalidValue, $"secrets d'une zone : schéma {CurrentSchemaVersion} attendu.");
+                else if (d.Secrets.Count > MaxSecrets) report.Add("$.data.secrets", ValidationCode.LimitExceeded, $"{d.Secrets.Count} secrets, au plus {MaxSecrets}.");
+                else
+                    for (int i = 0; i < d.Secrets.Count; i++)
+                        if (CheckSecret(d.Secrets[i], $"$.data.secrets[{i}]", secrets, space, scenario, items, report) is ZoneSecret secret) secrets.Add(secret);
+            }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region, floor, mirror));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region, floor, mirror, secrets));
         }
 
         /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>

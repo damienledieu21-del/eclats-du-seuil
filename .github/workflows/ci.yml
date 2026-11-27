@@ -104,7 +104,8 @@ jobs:
       - run: dotnet build --no-restore -c Debug -warnaserror
       - name: Tests Debug (${{ matrix.part.name }})
         run: |
-          dotnet test --no-build -c Debug --filter "${{ matrix.part.filter }}" --logger trx --results-directory "$RUNNER_TEMP/resultats-debug"
+          # V2.52a : un test bloqué (plus de 45 min ; le plus long cas Debug des Vallons, Lot114dSnapshotDataTests, dépasse 10 min) arrête le travail en le nommant, au lieu de geler le job.
+          dotnet test --no-build -c Debug --filter "${{ matrix.part.filter }}" --blame-hang --blame-hang-timeout 45m --blame-hang-dump-type none --logger trx --results-directory "$RUNNER_TEMP/resultats-debug"
           python3 - "$RUNNER_TEMP/resultats-debug" <<'EOF'
           import pathlib, sys, xml.etree.ElementTree as ET
           ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}

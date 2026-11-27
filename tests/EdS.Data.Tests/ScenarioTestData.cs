@@ -194,11 +194,21 @@ internal static class ScenarioTestData
     /// <summary>V2.46 : les portes des dessous (hors de l'aire d'avant) : la grotte derrière la cascade, puis la mine (V2.47.1).</summary>
     public static readonly string[] UnderDoors = { "porte_grotte_cascade", "porte_mine_galeries", "porte_crypte_abbaye", "porte_egouts_marche", "porte_egouts_deversoir", "porte_grottes_noyees", "porte_galeries_seuil", "faille_de_l_envers" };   // V2.51a : et la faille de l'Envers ;   // V2.47.1 : et la bouche de la mine ; V2.48.1 : et l'escalier de la crypte de l'abbaye ; V2.49.1 : et les deux entrées des égouts
 
+    /// <summary>V2.52a : une faille des douze lieux vers l'Envers (« faille_envers_<lieu> »), hors de l'aire d'avant.</summary>
+    public static bool IsEnversRift(string id) => id.StartsWith("faille_envers_", StringComparison.Ordinal);
+
+    /// <summary>V2.52a : retire des portes d'une zone (racine du fichier) toutes les failles vers l'Envers (celle de la V2.51 et celles des douze lieux).</summary>
+    public static void WithoutRifts(JsonObject zone)
+    {
+        if (zone["data"]?["doors"] is not JsonArray doors) return;
+        foreach (var d in doors.Where(d => (string?)d!["kind"] == "faille").ToList()) doors.Remove(d);
+    }
+
     /// <summary>V2.43.4 : la zone des Vallons (racine du fichier) sans les portes des lieux reconstruits (V2.46 : ni celles des dessous).</summary>
     public static void WithoutRebuildDoors(JsonObject zone)
     {
         if (zone["data"]?["doors"] is not JsonArray doors) return;
-        foreach (var d in doors.Where(d => RebuildDoors.Contains((string)d!["id"]!) || UnderDoors.Contains((string)d!["id"]!)).ToList()) doors.Remove(d);
+        foreach (var d in doors.Where(d => RebuildDoors.Contains((string)d!["id"]!) || UnderDoors.Contains((string)d!["id"]!) || IsEnversRift((string)d!["id"]!)).ToList()) doors.Remove(d);
     }
 
     public static void ZoneBefore(JsonObject zone)

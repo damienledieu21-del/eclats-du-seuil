@@ -35,7 +35,7 @@ public class ConcoursPatisserieTests
     public void Catalogue_v8_deux_patisseries_de_concours_seulement()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((8, 8, "0.25.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
+        Assert.Equal((8, 8, "0.26.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
         Assert.Equal(new[] { Tarte, Couronne, "item.fouace_des_semailles" }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
         Assert.All(new[] { Couronne, Tarte }, id => Assert.True(c.TakesQuality(c.Item(id)) && c.SignsAlways(c.Item(id))));
         // Un autre objet de soin ne prend pas de qualité ; un équipement prend une qualité mais n'est signé que chef-d'œuvre.

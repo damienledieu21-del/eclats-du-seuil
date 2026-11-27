@@ -72,7 +72,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(("0.36.0", 30, 24, 11), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire", "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
-        Assert.Equal((17, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((18, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class V24AnimauxMoteurTests
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json")))!;
-        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
+        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
     }
 }
 
@@ -324,7 +324,7 @@ public class V24AnimauxMondeTests
     [Fact]
     public void Populations_livrees_et_leurs_temps()
     {
-        Assert.Equal((17, "0.28.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : schéma 13 ; V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
+        Assert.Equal((17, "0.29.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : schéma 13 ; V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
         Assert.All(Mist, id => Assert.Equal(new[] { "mist" }, Vallons.PopulationOf(id)!.Weather!.Kinds));
         Assert.All(Mist.Take(3), id => Assert.Equal(("loup", "loot.loup"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
         Assert.All(Mist.Skip(3), id => Assert.Equal(("echo", "loot.echo"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
@@ -559,7 +559,7 @@ public class V24AnimauxMondeTests
         });
         Assert.True(v8.IsValid, v8.Report.ToString());
         Assert.All(v8.Zone!.Populations, p => Assert.Null(p.Weather));
-        AssertError(ZoneMutated(r => r["schemaVersion"] = 18), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(ZoneMutated(r => r["schemaVersion"] = 19), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);   // V2.52a : 18 est la version courante
     }
 
     [Fact]

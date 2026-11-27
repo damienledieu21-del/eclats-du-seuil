@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 17,
   "kind": "zone",
-  "contentVersion": "0.28.0-provisoire",
+  "contentVersion": "0.29.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -3555,6 +3555,149 @@
         ],
         "to": "zone.envers_vallons",
         "toDoor": "faille_des_vallons",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_du_village",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -40,
+          135
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_du_village",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_du_bourg",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -760,
+          -20
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_du_bourg",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_la_vallee",
+        "name": "Faille vers l'Envers",
+        "position": [
+          340,
+          560
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_la_vallee",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_des_coteaux",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -1120,
+          -560
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_des_coteaux",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_la_foret",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -600,
+          560
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_la_foret",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_la_foret_2",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -1200,
+          1000
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_la_foret_2",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_des_collines",
+        "name": "Faille vers l'Envers",
+        "position": [
+          563.7,
+          1189.1
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_des_collines",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_du_fort",
+        "name": "Faille vers l'Envers",
+        "position": [
+          1120,
+          870
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_du_fort",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_la_carriere",
+        "name": "Faille vers l'Envers",
+        "position": [
+          960,
+          260
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_la_carriere",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_l_abbaye",
+        "name": "Faille vers l'Envers",
+        "position": [
+          1640,
+          200
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_l_abbaye",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_du_lac",
+        "name": "Faille vers l'Envers",
+        "position": [
+          639.3,
+          -833.2
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_du_lac",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_des_terres_corrompues",
+        "name": "Faille vers l'Envers",
+        "position": [
+          1704.0,
+          -1000.0
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_des_terres_corrompues",
+        "kind": "faille"
+      },
+      {
+        "id": "faille_envers_de_la_route_d_ambre",
+        "name": "Faille vers l'Envers",
+        "position": [
+          -1500,
+          -240
+        ],
+        "to": "zone.envers_vallons",
+        "toDoor": "faille_vallons_de_la_route_d_ambre",
         "kind": "faille"
       }
     ],
