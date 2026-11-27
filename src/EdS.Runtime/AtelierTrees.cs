@@ -461,6 +461,15 @@ namespace EdS.Runtime
         /// <summary>Feuilles au sol (objet « …_feuilles_sol ») : en automne seulement.</summary>
         public static bool GroundLeaves(int season) => Season(season) == 2;
 
+        /// <summary>
+        /// V2.44.3 (règle sortie de SpaceView.Trees, revue Codex de la PR #261) : saison d'avant à fondre dans le feuillage, ou -1 : seulement
+        /// pendant la transition (<paramref name="blend"/> &lt; 1) de la saison <paramref name="shownSeason"/> montrée quand c'est celle des
+        /// arbres, jamais pour une saison forcée par le menu d'essai (<paramref name="forced"/> ≥ 0). L'automne figé de l'Envers a une
+        /// transition terminée : jamais de saison d'avant.
+        /// </summary>
+        public static int FadingFrom(int forced, bool hasLook, int shownSeason, float blend, int season) =>
+            forced < 0 && hasLook && shownSeason == season && blend < 1f ? (season + 3) % 4 : -1;
+
         /// <summary>Rôle d'un objet du FBX d'un arbre : « LOD1 », « LOD2 », « LOD3 » (imposteur), « collision », « sol », ou null.</summary>
         public static string? PartOf(string? name)
         {

@@ -78,7 +78,7 @@ public sealed class V213LumiereTests
     public void Garde_fou_source_le_curseur_est_cite_dans_le_jeu()
     {
         string world = Script("Game", "StyleWorld.cs");
-        Assert.Equal(4, world.Split(new[] { "BrightnessSetting.ExposureOffset" }, StringSplitOptions.None).Length - 1);   // V2.46 : et la pénombre de la grotte (CaveLight)
+        Assert.Equal(5, world.Split(new[] { "BrightnessSetting.ExposureOffset" }, StringSplitOptions.None).Length - 1);   // V2.46 : et la pénombre de la grotte (CaveLight) ; V2.51b : et la lumière de l'Envers
         string hud = Script("Game", "HudView.cs");
         Assert.Contains("BrightnessSetting.Step(-1)", hud);
         Assert.Contains("BrightnessSetting.Step(1)", hud);

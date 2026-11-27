@@ -2228,6 +2228,7 @@ namespace EdS.Runtime
             get
             {
                 SeasonLook look = World.CivilSeason is SeasonState s ? SeasonLook.Of(s).WithSnow(World.Seasons?.Snow, World.CivilDay) : SeasonLook.Steady(World.SeasonIndex);
+                if (World.Definition?.Envers == true) return EnversLook.Season;   // V2.51b : l'Envers n'a pas de saisons : un automne mort figé
                 return World.Definition?.Sheltered == true ? look.Indoors() : look;   // V2.44.3 : ni neige ni glace dans une pièce ; V2.45.2 : ni dans un dessous
             }
         }
@@ -2288,6 +2289,7 @@ namespace EdS.Runtime
             double x = p.X.Raw / 10000.0, z = p.Z.Raw / 10000.0;
             bool village = _zone.Indoor;
             AmbiencePlace places = StyleRules.PlaceAmbience((string?)null, _zone.Id, _zone.Indoor);
+            if (_zone.Envers) places |= AmbiencePlace.Threshold;   // V2.51b : dans l'Envers, la musique du Seuil
             double forge = double.PositiveInfinity;
             foreach (Place pl in _zone.Places)
             {
@@ -2359,8 +2361,22 @@ namespace EdS.Runtime
                 _weather = World.Weather;
                 _weatherMinute = key;
             }
-            return _weather;
+            // V2.51b : dans l'Envers, le temps des Vallons montré à sa façon (rien ne tombe) ; les cendres et les éclairs suivent SurfaceWeather.
+            return _zone.Envers ? WeatherCycle.Typical(EnversLook.ShownWeather(_weather.Kind)) : _weather;
         }
+
+        /// <summary>V2.51b : le temps de la surface (celui des Vallons), même dans l'Envers, pour ses cendres et ses éclairs.</summary>
+        public WeatherKind SurfaceWeather
+        {
+            get
+            {
+                Weather();
+                return _weather.Kind;
+            }
+        }
+
+        /// <summary>V2.51b : la partie est dans l'Envers (lumière, ciel, matériaux sombres, cendres, bourdon).</summary>
+        public bool InEnvers => _zone.Envers;
 
         /// <summary>Sous-lot V2.2 : ce que le temps change à l'affichage, à l'heure de la partie (<see cref="WeatherCycle.Look"/>).</summary>
         public WeatherLook WeatherLook(double partialTick = 0) => WeatherCycle.Look(Weather(), Light(partialTick));
