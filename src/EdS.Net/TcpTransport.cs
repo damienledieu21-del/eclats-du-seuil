@@ -64,20 +64,24 @@ namespace EdS.Net
         public static Task<TcpNetConnection> ConnectAsync(string host, int port, int maxReceivePayload, int maxSendPayload)
         {
             if (host is null) throw new ArgumentNullException(nameof(host));
-            return Task.Run(async () =>
+            // V2.56 : un fil dédié, pas le pool de fils. Sous charge (CI à deux cœurs, tests en parallèle), la file du pool pouvait retarder
+            // la tâche de plus de 10 s, délai après lequel NetworkSession abandonne la connexion (« délai de 10 s dépassé »).
+            var done = new TaskCompletionSource<TcpNetConnection>();
+            new Thread(() =>
             {
                 var client = new TcpClient();
                 try
                 {
-                    await client.ConnectAsync(host, port).ConfigureAwait(false);
-                    return new TcpNetConnection(client, maxReceivePayload, maxSendPayload);
+                    client.Connect(host, port);
+                    done.TrySetResult(new TcpNetConnection(client, maxReceivePayload, maxSendPayload));
                 }
-                catch
+                catch (Exception e)
                 {
                     client.Dispose();
-                    throw;
+                    done.TrySetException(e);
                 }
-            });
+            }) { IsBackground = true, Name = "EdS.Net connexion " + host + ":" + port }.Start();
+            return done.Task;
         }
 
         public string RemoteAddress { get; }
