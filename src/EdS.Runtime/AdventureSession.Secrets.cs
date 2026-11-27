@@ -34,6 +34,8 @@ namespace EdS.Runtime
             switch (refusal)
             {
                 case SecretRefusal.None:
+                    // Revue Codex de la PR #262 (P2) : objets et clé du registre changés hors des événements du tick : à la prochaine sauvegarde.
+                    _dirty = true;
                     Say(secret.Text);
                     foreach ((string item, int count) in given) Say("text.ui.item_given", ItemName(item), count);
                     return true;
