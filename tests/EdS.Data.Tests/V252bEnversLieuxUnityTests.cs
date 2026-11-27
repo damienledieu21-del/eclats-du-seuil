@@ -147,6 +147,11 @@ public sealed class V252bEnversLieuxUnityTests
             Assert.InRange(EnversLieux.WraithBob("moine_reflet1", t), EnversLieux.WraithLift - EnversLieux.WraithBobMeters - 1e-9, EnversLieux.WraithLift + EnversLieux.WraithBobMeters + 1e-9);
         Assert.Equal(EnversLieux.WraithBob("moine_reflet1", 1.0), EnversLieux.WraithBob("moine_reflet1", 1.0 + EnversLieux.WraithBobSeconds), 9);
         Assert.NotEqual(EnversLieux.WraithBob("moine_reflet1", 1.0), EnversLieux.WraithBob("moine_reflet2", 1.0));
+        // Relecture indépendante de la PR #263 : un spectre mort ou tombé ne bouge plus.
+        Assert.True(EnversLieux.WraithMoves(false));
+        Assert.False(EnversLieux.WraithMoves(true));
+        string floater = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EnversFloat.cs"));
+        Assert.Contains("EnversLieux.WraithMoves(_body != null && _body.Dead)", floater, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -190,5 +195,7 @@ public sealed class V252bEnversLieuxUnityTests
         string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.EnversLieux.cs"));
         Assert.Contains("Repli (modèle absent)", view, StringComparison.Ordinal);
         Assert.Contains("EnversLieux.CellPieces", view, StringComparison.Ordinal);
+        // Relecture indépendante de la PR #263 : une case défaite retire ses secrets de la liste de ce qui garde sa clarté.
+        Assert.Contains("_keepBright.RemoveWhere(t => t == null || t.IsChildOf(cell.transform))", view, StringComparison.Ordinal);
     }
 }

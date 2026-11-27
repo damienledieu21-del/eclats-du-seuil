@@ -255,8 +255,12 @@ namespace EdS.Game
         /// immobile, le modèle joue son clip de garde (« Sword And Shield Block » de Mixamo), sinon il reste au repos.
         /// </param>
         /// <param name="wander">Sous-lot V2.4.1 : ce que fait une bête qui erre (<c>CombatantView.Wander</c>) : arrêtée, elle broute ou fouille.</param>
+        /// <summary>V2.52b (relecture indépendante de la PR #263) : le corps est mort (couché, ou sur son animation de mort).</summary>
+        public bool Dead { get; private set; }
+
         public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false, string wander = null)
         {
+            Dead = dead;
             // Revue Codex de la PR #133 : un mort ne regarde plus rien, même couché sans animation de mort (retours anticipés plus bas).
             if (dead && _head != null)
             {
@@ -712,6 +716,8 @@ namespace EdS.Game
             if (rat != null && rat == enversPrefab && EnversLieux.Floats(enversName))
                 look.AddComponent<EnversFloat>().Setup(id, look.transform.localPosition, 1f / Mathf.Max(0.01f, s.y));
             var styled = new StyleBody(look.transform, animation, height);
+            EnversFloat floater = look.GetComponent<EnversFloat>();
+            if (floater != null) floater.Follow(styled);   // V2.52b : un spectre mort ne flotte plus
             if (beast) styled.Beast(look.transform.localPosition, look.transform.localRotation, 1f / Mathf.Max(0.01f, s.y));
             styled.Seed(lookId ?? id);   // sous-lot V2.15
             return styled;

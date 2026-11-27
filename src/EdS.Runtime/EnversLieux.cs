@@ -265,6 +265,11 @@ namespace EdS.Runtime
             return WraithLift + WraithBobMeters * Math.Sin(2 * Math.PI * (seconds / WraithBobSeconds + phase));
         }
 
+        /// <summary>
+        /// Relecture indépendante de la PR #263 : le spectre n'ondule que vivant ; mort ou tombé, il retombe à sa place et ne bouge plus.
+        /// </summary>
+        public static bool WraithMoves(bool dead) => !dead;
+
         /// <summary>Hachage stable d'un identifiant (FNV-1a, sans dépendre de string.GetHashCode).</summary>
         public static int StableHash(string? id)
         {

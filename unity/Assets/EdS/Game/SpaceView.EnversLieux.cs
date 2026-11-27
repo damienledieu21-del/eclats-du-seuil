@@ -57,6 +57,8 @@ namespace EdS.Game
                     ReleaseFade(o);
                     _occluders.Remove(o);
                 }
+                // Relecture indépendante de la PR #263 : les secrets de la case quittent aussi la liste de ce qui garde sa clarté.
+                _keepBright.RemoveWhere(t => t == null || t.IsChildOf(cell.transform));
                 Object.Destroy(cell);
             }
             int built = 0;
