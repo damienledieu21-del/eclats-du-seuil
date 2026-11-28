@@ -193,20 +193,22 @@ namespace EdS.Game
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             AudioClip clip = catalog != null ? catalog.Sound(sound, BeastCalls.Pick(n, 1 << 20)) : null;
+            // V2.54 (passe son) : un pas sans fichier prend le pas de synthèse ; limite de voix et volume des effets du mixage.
+            if (clip == null && SoundRules.IsStep(sound)) clip = SoundMixer.Synth(sound, n);
             if (clip == null) return false;
             Voice voice = null;
             for (int i = 0; i < _voices.Length && voice == null; i++)
                 if (!_voices[i].Busy) voice = _voices[i];
             if (voice == null) return false;
             (double start, double length) = BeastCalls.Cue(clip.name, clip.length, n, seconds);
-            if (length <= 0) return false;
+            if (length <= 0 || !SoundMixer.TryStart(sound, (float)length)) return false;
             AudioSource source = voice.Source;
             source.transform.position = at + Vector3.up;
-            source.maxDistance = catalog.BeastHearing * range;
+            source.maxDistance = (catalog != null ? catalog.BeastHearing : 60f) * range;
             source.clip = clip;
             voice.Started = Time.unscaledTime;
             voice.Length = (float)length;
-            voice.Volume = volume * (beastVolume ? catalog.BeastVolume : 1f);
+            voice.Volume = volume * (beastVolume && catalog != null ? catalog.BeastVolume : 1f) * SoundMixer.Gain(SoundBus.Effects);
             // Relecture de la PR #114 : le volume de la première image est déjà le bon (un pas part à plein volume, sans montée).
             source.volume = voice.Volume * (float)BeastCalls.Envelope(0, length);
             source.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));

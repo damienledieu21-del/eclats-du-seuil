@@ -63,7 +63,7 @@ namespace EdS.Game
             if (Last.TryGetValue(cue, out float last) && now - last < 0.06f) return;
             Last[cue] = now;
             AudioSource source = Source();
-            if (source != null) source.PlayOneShot(clip, Files[cue].Volume * Volume);
+            if (source != null) source.PlayOneShot(clip, Files[cue].Volume * Volume * SoundMixer.Gain(EdS.Runtime.SoundBus.Interface));   // V2.54 : volume de l'interface
         }
 
         private static AudioClip Clip(UiCue cue)

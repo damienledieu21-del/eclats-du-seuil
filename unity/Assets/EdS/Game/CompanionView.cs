@@ -514,9 +514,9 @@ namespace EdS.Game
 
         public void Meow(AudioClip clip, float volume, float pitch)
         {
-            if (_voice == null || clip == null) return;
+            if (_voice == null || clip == null || !SoundMixer.TryStart(StyleSound.Meow, clip.length)) return;   // revue de la PR #267 : mixage
             _voice.pitch = pitch;
-            _voice.PlayOneShot(clip, volume);
+            _voice.PlayOneShot(clip, volume * SoundMixer.Gain(SoundBus.Effects));
         }
 
         /// <summary>
@@ -560,15 +560,15 @@ namespace EdS.Game
         /// </summary>
         public void Purr(AudioClip clip, int n)
         {
-            if (_purr == null || clip == null) return;
+            if (_purr == null || clip == null || !SoundMixer.TryStart(StyleSound.Purr, Mathf.Min(clip.length, 7f))) return;   // revue de la PR #267
             if (clip.length <= 8f)
             {
-                _purr.PlayOneShot(clip, 0.35f);
+                _purr.PlayOneShot(clip, 0.35f * SoundMixer.Gain(SoundBus.Effects));
                 return;
             }
             (double start, double length) = BeastCalls.Cue(clip.name, clip.length, n, 7);
             _purr.clip = clip;
-            _purr.volume = 0.35f * (float)BeastCalls.Envelope(0, length);
+            _purr.volume = 0.35f * SoundMixer.Gain(SoundBus.Effects) * (float)BeastCalls.Envelope(0, length);
             _purr.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
             _purr.Play();
             _purrStarted = Time.unscaledTime;   // relecture de la PR #114 : le passage finit même en pause (timeScale à 0)
@@ -586,7 +586,7 @@ namespace EdS.Game
                 _purrLength = 0f;
                 return;
             }
-            _purr.volume = 0.35f * (float)BeastCalls.Envelope(t, _purrLength);
+            _purr.volume = 0.35f * SoundMixer.Gain(SoundBus.Effects) * (float)BeastCalls.Envelope(t, _purrLength);
         }
 
         public void Destroy()

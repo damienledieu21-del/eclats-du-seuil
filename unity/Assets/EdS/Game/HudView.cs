@@ -346,6 +346,7 @@ namespace EdS.Game
         private float _shownSensitivity = float.NaN;
         private UiText _settingsTitle;
         private UiButton _slower, _faster, _darker, _brighter, _creatorButton, _quitButton;
+        private UiButton _quieter, _volume, _louder;   // V2.54 : volumes du mixage
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
         private System.Action _openCreator;
@@ -394,12 +395,15 @@ namespace EdS.Game
             }
             _textures.Text.Value = DeviceQuality.Label;   // sous-lot V2.12.4 ; réglage « Qualité » du 21 novembre 2026
             _brightness.Value = BrightnessSetting.Label;   // sous-lot V2.13
+            _volume.Text.Value = SoundMixer.Label;   // V2.54 : « Musique : 70 % »
+            _quieter.Text.Value = UiTexts.Get(HudTextsV21.Minus);
+            _louder.Text.Value = UiTexts.Get(HudTextsV21.Plus);
         }
 
         private void BuildSettings()
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 567f, 560f, 474f, 0.5f, 0.5f);   // V2.53.3 : et Quitter l'aventure   // V2.13 : luminosité ; V2.16 : Mon personnage
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 567f, 560f, 528f, 0.5f, 0.5f);   // V2.54 : et les volumes   // V2.53.3 : et Quitter l'aventure   // V2.13 : luminosité ; V2.16 : Mon personnage
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _settingsTitle = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(_settingsTitle.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
@@ -425,11 +429,19 @@ namespace EdS.Game
             At(_brightness.Rect, 280f, 304f, 240f, 40f, 0.5f, 0.5f);
             _brighter = UiKit.Button(_settings, "Plus lumineux", "bouton", "", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => BrightnessSetting.Step(1));
             At(_brighter.Rect, 440f, 304f, 52f, 44f, 0.5f, 0.5f);
+            // V2.54 (passe son) : volumes de la musique, de l'ambiance, des effets et de l'interface, par pas de 10 %, sauvegardés et entendus
+            // tout de suite ; un clic sur le nom passe au canal suivant.
+            _quieter = UiKit.Button(_settings, "Moins fort", "bouton_sobre", "", UiFace.Title, 24f, UiKit.Ink, () => SoundMixer.Step(-1));
+            At(_quieter.Rect, 120f, 358f, 52f, 44f, 0.5f, 0.5f);
+            _volume = UiKit.Button(_settings, "Volume", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, SoundMixer.NextBus);
+            At(_volume.Rect, 280f, 358f, 240f, 44f, 0.5f, 0.5f);
+            _louder = UiKit.Button(_settings, "Plus fort", "bouton", "", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => SoundMixer.Step(1));
+            At(_louder.Rect, 440f, 358f, 52f, 44f, 0.5f, 0.5f);
             // Sous-lot V2.16 : le créateur de personnage (corps, coiffure, couleurs).
             _creatorButton = UiKit.Button(_settings, "Mon personnage", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _openCreator?.Invoke());
-            At(_creatorButton.Rect, 280f, 358f, 440f, 44f, 0.5f, 0.5f);
+            At(_creatorButton.Rect, 280f, 412f, 440f, 44f, 0.5f, 0.5f);
             _quitButton = UiKit.Button(_settings, "Quitter l'aventure", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _quitAdventure?.Invoke());
-            At(_quitButton.Rect, 280f, 412f, 440f, 44f, 0.5f, 0.5f);
+            At(_quitButton.Rect, 280f, 466f, 440f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 
