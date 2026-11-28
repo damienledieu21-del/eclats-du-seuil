@@ -453,5 +453,58 @@ public class V258RelectureTests
                 }
         }
     }
+
+    [Fact]
+    public void A_branch_joining_mid_road_splits_it_so_trips_use_the_junction()
+    {
+        var roads = new VillageRoads(new[]
+        {
+            new StyleRoad("a", new[] { (0.0, 0.0), (100.0, 0.0) }, 3, false),
+            new StyleRoad("b", new[] { (50.0, 0.0), (50.0, 100.0) }, 3, false),
+        });
+        Assert.Equal(1, roads.Components());
+        var path = roads.Route(40, 0, 50, 80);
+        Assert.Equal(90, VillageRoads.Length(path), 6);   // par le raccord, plus par (0, 0) : 170 m
+        Assert.DoesNotContain((0.0, 0.0), path);
+        var back = roads.Route(90, 0, 50, 60);
+        Assert.Equal(100, VillageRoads.Length(back), 6);
+        // Raccord à 3 m du milieu (bout de branche pas tout à fait sur la route) : scindé aussi.
+        var near = new VillageRoads(new[]
+        {
+            new StyleRoad("a", new[] { (0.0, 0.0), (100.0, 0.0) }, 3, false),
+            new StyleRoad("b", new[] { (50.0, 3.0), (50.0, 100.0) }, 3, false),
+        });
+        Assert.Equal(10 + 3 + 77, VillageRoads.Length(near.Route(40, 0, 50, 80)), 6);
+    }
+
+    [Fact]
+    public void Residents_are_the_same_whatever_window_is_loaded_first()
+    {
+        AdventureMap whole = Map.Whole;
+        AdventureMap Window(double x, double z)
+        {
+            long cx = (long)(x * 10_000), cz = (long)(z * 10_000), half = 64 * 10_000;
+            var w = new AdventureMap(AdventureMap.WindowOf(whole.Space, (cx - half, cz - half, cx + half, cz + half)), whole.Places, whole.Roads,
+                whole.Clearings, whole.Doors, false, whole.Speakers);
+            w.Whole = whole;
+            return w;
+        }
+        Resident bourg = World.Residents.First(r => !r.Hamlet), hamlet = World.Residents.First(r => r.Hamlet);
+        AdventureMap first = Window(bourg.Home.X, bourg.Home.Z), other = Window(hamlet.Home.X, hamlet.Home.Z);
+        Assert.NotEqual(first.Obstacles.Count, other.Obstacles.Count);
+        Assert.Equal(VillageLife.RegionAvoid(first), VillageLife.RegionAvoid(other));
+        Assert.Equal(VillageLife.RegionAvoid(whole), VillageLife.RegionAvoid(first));
+        Assert.NotEmpty(VillageLife.RegionAvoid(whole));
+        VillageWorld a = VillageLife.World(first, whole.AreaFields(whole.Roads), VillageLife.RegionAvoid(first));
+        VillageWorld b = VillageLife.World(other, whole.AreaFields(whole.Roads), VillageLife.RegionAvoid(other));
+        Assert.Equal(a.Residents.Select(r => (r.Id, r.Home.X, r.Home.Z, r.Work.X, r.Work.Z, r.Market.X, r.Porch.Z)),
+            b.Residents.Select(r => (r.Id, r.Home.X, r.Home.Z, r.Work.X, r.Work.Z, r.Market.X, r.Porch.Z)));
+        // Les villageois du décor de toute la région sont évités, pas seulement ceux de la première fenêtre.
+        var avoid = VillageLife.RegionAvoid(whole);
+        foreach (Resident r in a.Residents)
+            foreach (var p in avoid)
+                Assert.True((p.X - r.Market.X) * (p.X - r.Market.X) + (p.Z - r.Market.Z) * (p.Z - r.Market.Z)
+                    >= VillageLife.AvoidDistance * VillageLife.AvoidDistance - 1e-9, r.Id);
+    }
 }
 

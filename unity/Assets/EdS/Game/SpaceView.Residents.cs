@@ -81,11 +81,9 @@ namespace EdS.Game
             AdventureMap whole = map.Whole;
             if (_lifeWorld == null || !ReferenceEquals(_lifeWorldOf, whole))
             {
-                // Relecture de la PR #268 : loin des PNJ des pièces et des villageois du décor (marchands des étals compris).
-                var avoid = new List<(double X, double Z)>();
-                for (int i = 0; i < whole.Speakers.Count; i++) avoid.Add((whole.Speakers[i].X, whole.Speakers[i].Z));
-                for (int i = 0; i < _villagers.Count; i++) avoid.Add((_villagers[i].Data.X, _villagers[i].Data.Z));
-                _lifeWorld = VillageLife.World(whole, whole.AreaFields(_roads), avoid);
+                // Revue Codex de la PR #268 (tour 2) : loin des PNJ des pièces et des villageois du décor de TOUTE la région (pas de la
+                // fenêtre chargée) : les mêmes habitants quelle que soit la fenêtre d'où l'on entre.
+                _lifeWorld = VillageLife.World(whole, whole.AreaFields(whole.Roads), VillageLife.RegionAvoid(whole));
                 _lifeWorldOf = whole;
             }
             _life = _lifeWorld;

@@ -218,17 +218,19 @@ namespace EdS.Runtime
             var list = (roads ?? Array.Empty<StyleRoad>()).Where(r => r != null && r.Points != null && r.Points.Count >= 2)
                 .OrderBy(r => r.Id, StringComparer.Ordinal).ToList();
             var firstOf = new List<int>();
-            foreach (StyleRoad r in list)
+            for (int k = 0; k < list.Count; k++)
             {
+                StyleRoad r = list[k];
                 firstOf.Add(_nodes.Count);
                 for (int i = 0; i < r.Points.Count; i++)
                 {
                     Node(r.Points[i]);
-                    if (i > 0) Link(_nodes.Count - 2, _nodes.Count - 1);
+                    if (i > 0) Link(_nodes.Count - 2, _nodes.Count - 1, k);
                 }
             }
-            int segmentCount = _segments.Count;
-            // Croisements : chaque bout de route se branche sur le segment le plus proche d'une autre route (s'il est assez près).
+            // Croisements : chaque bout de route se branche sur le segment le plus proche d'une autre route (s'il est assez près). Revue
+            // Codex de la PR #268 (tour 2) : le segment touché est SCINDÉ au raccord (A–raccord, raccord–B, le lien direct A–B retiré) :
+            // un trajet qui part du milieu de ce segment peut ainsi passer par le raccord, sans aller chercher une extrémité.
             for (int r = 0; r < list.Count; r++)
             {
                 int last = firstOf[r] + list[r].Points.Count - 1;
@@ -238,10 +240,11 @@ namespace EdS.Runtime
                     double best = JoinDistance * JoinDistance;
                     int bestSeg = -1;
                     (double X, double Z) bestAt = default;
-                    for (int s = 0; s < segmentCount; s++)
+                    for (int s = 0; s < _segments.Count; s++)
                     {
+                        int road = _segmentRoad[s];
+                        if (road < 0 || road == r) continue;   // ni un raccord, ni sa propre route
                         (int a, int b) = _segments[s];
-                        if (a >= firstOf[r] && a <= last) continue;
                         var q = Project(p, _nodes[a], _nodes[b]);
                         double d = D2(p, q);
                         if (d < best)
@@ -252,10 +255,21 @@ namespace EdS.Runtime
                         }
                     }
                     if (bestSeg < 0) continue;
-                    int join = Node(bestAt);
-                    Link(end, join);
-                    Link(join, _segments[bestSeg].A);
-                    Link(join, _segments[bestSeg].B);
+                    (int sa, int sb) = _segments[bestSeg];
+                    int join;
+                    if (D2(bestAt, _nodes[sa]) < 1e-12) join = sa;   // sur une extrémité : pas de nouveau point
+                    else if (D2(bestAt, _nodes[sb]) < 1e-12) join = sb;
+                    else
+                    {
+                        join = Node(bestAt);
+                        _links[sa].Remove(sb);
+                        _links[sb].Remove(sa);
+                        _segments[bestSeg] = (sa, join);
+                        _links[sa].Add(join);
+                        _links[join].Add(sa);
+                        Link(join, sb, _segmentRoad[bestSeg]);
+                    }
+                    Link(end, join, -1);
                 }
             }
         }
@@ -295,12 +309,16 @@ namespace EdS.Runtime
             return _nodes.Count - 1;
         }
 
-        private void Link(int a, int b)
+        /// <summary>Route d'origine de chaque segment (−1 : un raccord entre deux routes).</summary>
+        private readonly List<int> _segmentRoad = new List<int>();
+
+        private void Link(int a, int b, int road)
         {
             if (a == b) return;
             _links[a].Add(b);
             _links[b].Add(a);
             _segments.Add((a, b));
+            _segmentRoad.Add(road);
         }
 
         private static double D2((double X, double Z) a, (double X, double Z) b) => (a.X - b.X) * (a.X - b.X) + (a.Z - b.Z) * (a.Z - b.Z);
@@ -507,6 +525,26 @@ namespace EdS.Runtime
         /// PR #268 : deux corps l'un dans l'autre).
         /// </summary>
         public const double AvoidDistance = 1.5;
+
+        /// <summary>
+        /// Revue Codex de la PR #268 (tour 2) : les places à éviter de toute la région (carte entière, jamais la fenêtre chargée) : les PNJ
+        /// des pièces (<see cref="AdventureMap.Speakers"/>) et tous les villageois du décor que la région peut placer
+        /// (<see cref="TownModels.Villagers"/> sur la carte entière, sans limite de nombre : marchands des étals compris). Même liste quelle que
+        /// soit la fenêtre d'où l'on part.
+        /// </summary>
+        public static IReadOnlyList<(double X, double Z)> RegionAvoid(AdventureMap map)
+        {
+            if (map is null) throw new ArgumentNullException(nameof(map));
+            AdventureMap whole = map.Whole;
+            var list = new List<(double X, double Z)>();
+            if (whole.Indoor) return list;
+            foreach (var s in whole.Speakers) list.Add((s.X, s.Z));
+            foreach (StyleVillager v in TownModels.Villagers(whole, whole.AreaFields(whole.Roads), MaxDecorVillagers)) list.Add((v.X, v.Z));
+            return list;
+        }
+
+        /// <summary>Villageois du décor comptés au plus par <see cref="RegionAvoid"/> (bien au-delà de ce qu'une région en place).</summary>
+        public const int MaxDecorVillagers = 4096;
 
         /// <summary>Au plus d'habitants par carte (une maison en donne d'un à trois).</summary>
         public const int MaxResidents = 480;
