@@ -167,8 +167,18 @@ namespace EdS.Runtime
             StyleSound.Swing, StyleSound.Cast, StyleSound.Growl, StyleSound.Grunt, StyleSound.Roar, StyleSound.Coin, StyleSound.Bray,
         };
 
+        /// <summary>V2.54 (passe son, docs/SONS.md) : pas sur la pierre, l'eau, la neige, la boue ; coffre, porte, plongée, remontée, héros blessé.</summary>
+        public static readonly IReadOnlyList<StyleSound> PassSounds = new[]
+        {
+            StyleSound.StepStone, StyleSound.StepWater, StyleSound.StepSnow, StyleSound.StepMud, StyleSound.ChestOpen, StyleSound.DoorOpen,
+            StyleSound.Dive, StyleSound.Emerge, StyleSound.Hurt,
+        };
+
         private static readonly Dictionary<StyleSound, string> SoundLabels = new Dictionary<StyleSound, string>
         {
+            [StyleSound.StepStone] = "pas sur la pierre (V2.54)", [StyleSound.StepWater] = "pas dans l'eau (V2.54)", [StyleSound.StepSnow] = "pas dans la neige (V2.54)",
+            [StyleSound.StepMud] = "pas dans la boue (V2.54)", [StyleSound.ChestOpen] = "coffre qu'on ouvre (V2.54)", [StyleSound.DoorOpen] = "porte qu'on passe (V2.54)",
+            [StyleSound.Dive] = "plongée (V2.54)", [StyleSound.Emerge] = "remontée et souffle (V2.54)", [StyleSound.Hurt] = "héros blessé (V2.54)",
             [StyleSound.Hit] = "coup porté", [StyleSound.Block] = "coup bloqué", [StyleSound.Parry] = "parade", [StyleSound.Death] = "chute d'un vaincu",
             [StyleSound.Potion] = "potion bue", [StyleSound.Gather] = "récolte", [StyleSound.Craft] = "fabrication (enclume)", [StyleSound.Swing] = "coup dans le vide",
             [StyleSound.Cast] = "sort lancé", [StyleSound.Growl] = "grondement du loup", [StyleSound.Grunt] = "grognement de combat", [StyleSound.Roar] = "rugissement",
@@ -188,6 +198,7 @@ namespace EdS.Runtime
                 .Concat(WorldSounds.Select(s => new EssaiAudio(SoundLabels[s], Root + "/Sounds/Monde", "silence", sound: s)))
                 .Concat(CombatSounds.Select(s => new EssaiAudio(SoundLabels[s], Root + "/Sounds (un sous-dossier, pas Music ni Ambience)",
                     s == StyleSound.Bray ? "le hennissement, plus grave" : "son fait par le code ou silence", sound: s)))
+                .Concat(PassSounds.Select(s => new EssaiAudio(SoundLabels[s], Root + "/Sounds/PasseSon", "son fait par le code", sound: s)))
                 .ToList();
 
         /// <summary>Musiques attendues (une par valeur de <see cref="StyleMusic"/>).</summary>
@@ -206,6 +217,15 @@ namespace EdS.Runtime
             // Sous-lot V2.10 : les musiques de fête de RandomMind (CC0), déposées par Damien dans Music/OGA.
             new EssaiAudio("grandes fêtes, foire et moissons (King's Feast)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Feast),
             new EssaiAudio("jour de marché et veillée (Minstrel Dance)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Dance),
+            // V2.54 (passe son, docs/SONS.md) : musiques à produire, rangées dans Music/PasseSon.
+            new EssaiAudio("exploration la nuit (V2.54)", Root + "/Music/PasseSon", "musique d'exploration", music: StyleMusic.ExplorationNight),
+            new EssaiAudio("exploration en hiver (V2.54)", Root + "/Music/PasseSon", "musique d'exploration", music: StyleMusic.ExplorationWinter),
+            new EssaiAudio("grottes (V2.54)", Root + "/Music/PasseSon", "musique de la crypte", music: StyleMusic.Caves),
+            new EssaiAudio("égouts (V2.54)", Root + "/Music/PasseSon", "musique de la crypte", music: StyleMusic.Sewers),
+            new EssaiAudio("galeries et mines (V2.54)", Root + "/Music/PasseSon", "musique des grottes", music: StyleMusic.Galleries),
+            new EssaiAudio("grottes noyées (V2.54)", Root + "/Music/PasseSon", "musique des grottes", music: StyleMusic.Drowned),
+            new EssaiAudio("l'Envers (V2.54)", Root + "/Music/PasseSon", "musique du Seuil", music: StyleMusic.Envers),
+            new EssaiAudio("combat sous terre et dans l'Envers (V2.54)", Root + "/Music/PasseSon", "musique du combat", music: StyleMusic.CombatDungeon),
         };
 
         /// <summary>Ambiances attendues (une par valeur de <see cref="StyleAmbience"/>).</summary>
@@ -230,6 +250,15 @@ namespace EdS.Runtime
             new EssaiAudio("meule du moulin (V2.11)", Root + "/Sounds/Boulangerie", "silence", ambience: StyleAmbience.Mill),
             new EssaiAudio("foule des fêtes (V2.11)", Root + "/Sounds/Fete", "silence", ambience: StyleAmbience.Festival),
             new EssaiAudio("air de la crypte (V2.11 : aucun lieu encore)", Root + "/Sounds/Donjon", "silence", ambience: StyleAmbience.Crypt),
+            // V2.54 (passe son, docs/SONS.md) : nappes des milieux, rangées dans Ambience/PasseSon ; sans fichier, une nappe de synthèse.
+            new EssaiAudio("marais (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Marsh),
+            new EssaiAudio("grotte (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Cave),
+            new EssaiAudio("égouts (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Sewer),
+            new EssaiAudio("galeries et mines (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Gallery),
+            new EssaiAudio("grottes noyées (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Drowned),
+            new EssaiAudio("l'Envers (V2.54)", Root + "/Ambience/PasseSon", "bourdon fait par le code", ambience: StyleAmbience.Envers),
+            new EssaiAudio("sous l'eau (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Underwater),
+            new EssaiAudio("rafales en altitude (V2.54)", Root + "/Ambience/PasseSon", "nappe faite par le code", ambience: StyleAmbience.Gusts),
         };
 
         // --- Corps humains (4e vague, V2.9.2 : Universal Base Characters, Universal Animation Library) ---------------------------------

@@ -161,7 +161,7 @@ namespace EdS.Game
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             AudioClip clip = catalog != null ? catalog.Sound(StyleSound.Glass, 0) : null;
-            if (clip == null) return;
+            if (clip == null || !SoundMixer.TryStart(StyleSound.Glass, clip.length)) return;   // revue de la PR #267 : limite de voix
             if (_crack == null)
             {
                 var go = new GameObject("Verre des cicatrices");
@@ -176,7 +176,7 @@ namespace EdS.Game
             _crack.maxDistance = catalog.BeastHearing * 1.5f;
             _crack.transform.position = at + Vector3.up;
             _crack.pitch = 0.8f;   // plus grave qu'une faille : la terre qui se fend
-            _crack.PlayOneShot(clip, 0.6f * catalog.BeastVolume);
+            _crack.PlayOneShot(clip, 0.6f * catalog.BeastVolume * SoundMixer.Gain(SoundBus.Effects));
         }
 
         private static Transform Piece(PrimitiveType shape, string name, Color color, Transform parent)

@@ -322,6 +322,33 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9.2 : braiment de l'âne (un fichier « braiment », « bray » ; sans lui, le hennissement plus grave).</summary>
         Bray = 39,
+
+        /// <summary>V2.54 (passe son) : pas sur la pierre (grottes, galeries, égouts, crypte, pavés) ; sans fichier, un pas de synthèse.</summary>
+        StepStone = 40,
+
+        /// <summary>V2.54 : pas dans l'eau peu profonde (grottes noyées, rigoles des égouts, gués).</summary>
+        StepWater = 41,
+
+        /// <summary>V2.54 : pas dans la neige (hiver, col).</summary>
+        StepSnow = 42,
+
+        /// <summary>V2.54 : pas dans la boue (marais, pilotis).</summary>
+        StepMud = 43,
+
+        /// <summary>V2.54 : un coffre (ou une cache) qu'on ouvre.</summary>
+        ChestOpen = 44,
+
+        /// <summary>V2.54 : une porte qu'on passe (changement de zone).</summary>
+        DoorOpen = 45,
+
+        /// <summary>V2.54 : plongée sous l'eau (grottes noyées).</summary>
+        Dive = 46,
+
+        /// <summary>V2.54 : remontée à la surface, avec la reprise de souffle.</summary>
+        Emerge = 47,
+
+        /// <summary>V2.54 : le héros encaisse un coup (souffle, grognement court).</summary>
+        Hurt = 48,
     }
 
     /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
@@ -362,6 +389,30 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.10 : le jour de marché et la veillée (« Medieval: Minstrel Dance » de RandomMind).</summary>
         Dance = 11,
+
+        /// <summary>V2.54 (passe son) : l'exploration la nuit (plus calme) ; sans elle, l'exploration.</summary>
+        ExplorationNight = 12,
+
+        /// <summary>V2.54 : l'exploration en hiver ; sans elle, l'exploration.</summary>
+        ExplorationWinter = 13,
+
+        /// <summary>V2.54 : les grottes (grotte de la cascade, mines à cristaux) ; sans elle, la crypte.</summary>
+        Caves = 14,
+
+        /// <summary>V2.54 : les égouts du bourg ; sans elle, la crypte.</summary>
+        Sewers = 15,
+
+        /// <summary>V2.54 : les galeries (galeries des éclats, du Seuil, mines) ; sans elle, les grottes.</summary>
+        Galleries = 16,
+
+        /// <summary>V2.54 : les grottes noyées ; sans elle, les grottes.</summary>
+        Drowned = 17,
+
+        /// <summary>V2.54 : l'Envers ; sans elle, le Seuil.</summary>
+        Envers = 18,
+
+        /// <summary>V2.54 : un combat sous terre ou dans l'Envers ; sans lui, le combat.</summary>
+        CombatDungeon = 19,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -420,6 +471,30 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.11 : l'air d'une crypte ou d'un donjon (Freesound n° 530161) ; aucun lieu ne l'a encore.</summary>
         Crypt = 18,
+
+        /// <summary>V2.54 (passe son) : le marais (grenouilles, insectes, eau dormante) ; sans fichier, une nappe de synthèse.</summary>
+        Marsh = 19,
+
+        /// <summary>V2.54 : une grotte (gouttes qui résonnent, air immobile).</summary>
+        Cave = 20,
+
+        /// <summary>V2.54 : les égouts (eau qui court, gargouillis, gouttes).</summary>
+        Sewer = 21,
+
+        /// <summary>V2.54 : des galeries ou une mine (grondement sourd, étais qui craquent, cailloux qui roulent).</summary>
+        Gallery = 22,
+
+        /// <summary>V2.54 : les grottes noyées (clapotis, eau qui lèche la pierre, gouttes en écho).</summary>
+        Drowned = 23,
+
+        /// <summary>V2.54 : l'Envers (le bourdon grave fait par le code, <see cref="EnversLook.Drone"/>).</summary>
+        Envers = 24,
+
+        /// <summary>V2.54 : sous l'eau (son étouffé, bulles).</summary>
+        Underwater = 25,
+
+        /// <summary>V2.54 : rafales en altitude (col, crêtes, hautes collines, tour de signal).</summary>
+        Gusts = 26,
     }
 
     /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance, autour du personnage (plusieurs à la fois).</summary>
@@ -636,20 +711,20 @@ namespace EdS.Runtime
         /// <summary>Mots cherchés dans les noms des sons, par ordre de préférence (noms des packs gratuits de Kenney d'abord).</summary>
         private static readonly Dictionary<StyleSound, string[]> Sounds = new Dictionary<StyleSound, string[]>
         {
-            [StyleSound.Hit] = new[] { "impactpunchmedium", "impactpunch", "punch", "hit", "fs733887", "fs420675" },   // V2.11 : épée (Freesound)
-            [StyleSound.Block] = new[] { "impactplate", "impactmetal", "shield", "block", "fs812518", "fs523760" },
-            [StyleSound.Parry] = new[] { "impactbell", "metalclick", "parry", "clang", "fs361485", "fs180828" },
-            [StyleSound.Death] = new[] { "impactsoftheavy", "impactwoodheavy", "death", "fall" },
+            [StyleSound.Hit] = new[] { "edscoupepee", "impactpunchmedium", "impactpunch", "punch", "hit", "fs733887", "fs420675" },   // V2.11 : épée (Freesound)
+            [StyleSound.Block] = new[] { "edsbouclier", "impactplate", "impactmetal", "shield", "block", "fs812518", "fs523760" },
+            [StyleSound.Parry] = new[] { "edsparade", "impactbell", "metalclick", "parry", "clang", "fs361485", "fs180828" },
+            [StyleSound.Death] = new[] { "edschute", "impactsoftheavy", "impactwoodheavy", "death", "fall" },
             [StyleSound.Potion] = new[] { "bottle", "drink", "potion", "liquid", "handlesmallleather", "cloth" },
             [StyleSound.Gather] = new[] { "impactmining", "chop", "dig", "gather" },
             [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot", "enclume" },
             // Essai réaliste 7 : packs CC0 d'OpenGameArt (artisticdude, rubberduck) et de Kenney.
-            [StyleSound.Swing] = new[] { "swish", "swing", "whoosh" },
-            [StyleSound.Cast] = new[] { "spell", "magic", "cast", "virixmisc", "fs876169" },   // V2.11 : sorts de la 5e vague en dernier recours
+            [StyleSound.Swing] = new[] { "edselan", "swish", "swing", "whoosh" },
+            [StyleSound.Cast] = new[] { "edssort", "spell", "magic", "cast", "virixmisc", "fs876169" },   // V2.11 : sorts de la 5e vague en dernier recours
             [StyleSound.Growl] = new[] { "growl", "howl", "wolf", "barking" },
             [StyleSound.Grunt] = new[] { "grunt", "boar", "pig", "oink" },
             [StyleSound.Roar] = new[] { "roar", "troll", "monster", "fs444444", "dragongrowl" },
-            [StyleSound.Coin] = new[] { "coin", "pickupgold" },
+            [StyleSound.Coin] = new[] { "edspieces", "coin", "pickupgold" },
             // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
             [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
             [StyleSound.Purr] = new[] { "ronron", "purr" },
@@ -664,8 +739,8 @@ namespace EdS.Runtime
             // tocsin d'abord ; la courte volée de TSP-Talk (n° 847110) rejoint les cloches d'église.
             [StyleSound.Tocsin] = new[] { "fs760390", "tocsin", "petitecloche", "clochebsb", "cloche", "handbell" },
             [StyleSound.ChurchBell] = new[] { "cloche", "eglise", "church", "chapelle", "fs847110" },
-            [StyleSound.Glass] = new[] { "verre", "glassbreak", "glass" },
-            [StyleSound.Shatter] = new[] { "miroir", "mirror", "shatter" },
+            [StyleSound.Glass] = new[] { "edsfailleouvre", "verre", "glassbreak", "glass" },
+            [StyleSound.Shatter] = new[] { "edsfailleferme", "miroir", "mirror", "shatter" },
             [StyleSound.RiftHum] = new[] { "faille", "bourdon", "humming", "drone" },
             // 2e vague (sons déposés dans « Sounds/Monde ») : portail des failles, pas selon le sol, bêtes de la ferme et des champs.
             [StyleSound.Portal] = new[] { "portail", "portal" },
@@ -685,6 +760,16 @@ namespace EdS.Runtime
             [StyleSound.Hooves] = new[] { "fs437103", "sabots", "hooves", "horsewalksonpavement" },
             [StyleSound.RiftSurge] = new[] { "fs522704", "teleportation", "energymagic" },
             [StyleSound.Bray] = new[] { "braiment", "braie", "bray", "donkey" },
+            // V2.54 (passe son, docs/SONS.md) : noms des fichiers à produire (« eds_pas_pierre_01 »…), puis des noms courants des packs.
+            [StyleSound.StepStone] = new[] { "paspierre", "stonestep", "footstepstone", "footstepconcrete" },
+            [StyleSound.StepWater] = new[] { "paseau", "waterstep", "footstepwater", "splashstep" },
+            [StyleSound.StepSnow] = new[] { "pasneige", "snowstep", "footstepsnow" },
+            [StyleSound.StepMud] = new[] { "pasboue", "mudstep", "footstepmud" },
+            [StyleSound.ChestOpen] = new[] { "coffre", "chestopen", "chestcreak" },
+            [StyleSound.DoorOpen] = new[] { "porteouvre", "dooropen", "doorcreak" },
+            [StyleSound.Dive] = new[] { "plongee", "dive", "plunge" },
+            [StyleSound.Emerge] = new[] { "remontee", "emerge", "gasp" },
+            [StyleSound.Hurt] = new[] { "blesse", "playerhurt", "hurtgrunt" },
         };
 
         /// <summary>
@@ -701,11 +786,23 @@ namespace EdS.Runtime
             [StyleSound.StepGrass] = new[] { "lievre" },
             // Sous-lot V2.11 : le grognement du dragon (Little Robot Sound Factory) n'est pas celui d'un loup.
             [StyleSound.Growl] = new[] { "dragon" },
+            // V2.54 (docs/SONS.md) : l'ouverture et la fermeture d'une faille ne sont pas son bourdonnement.
+            [StyleSound.RiftHum] = new[] { "failleouvre", "failleferme" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
         private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
+            // V2.54 (passe son, docs/SONS.md) : noms des musiques à produire, en tête (« eds_musique_exploration_nuit » contient aussi
+            // « exploration »).
+            (StyleMusic.ExplorationNight, new[] { "explorationnuit", "nightexploration", "nocturne" }),
+            (StyleMusic.ExplorationWinter, new[] { "explorationhiver", "winterexploration", "hiver" }),
+            (StyleMusic.CombatDungeon, new[] { "combatdonjon", "dungeoncombat", "combatsousterre" }),
+            (StyleMusic.Caves, new[] { "musiquegrotte", "cavemusic", "grottes" }),
+            (StyleMusic.Sewers, new[] { "musiqueegout", "sewermusic", "egouts" }),
+            (StyleMusic.Galleries, new[] { "musiquegalerie", "minemusic", "galeries" }),
+            (StyleMusic.Drowned, new[] { "musiquenoyee", "underwatermusic", "noyees" }),
+            (StyleMusic.Envers, new[] { "musiqueenvers", "upsidedown", "envers" }),
             // Sous-lot V2.10 : les musiques de fête de RandomMind (en tête : « festival » est aussi un mot du village).
             (StyleMusic.Feast, new[] { "kingsfeast", "feast", "banquet" }),
             (StyleMusic.Dance, new[] { "minstreldance", "minstrel", "dance" }),
@@ -750,6 +847,15 @@ namespace EdS.Runtime
             (StyleAmbience.Mill, new[] { "fs70201", "gristmill", "meule" }),
             (StyleAmbience.Festival, new[] { "fs40133", "fs856541", "fetemedievale", "festivalcrowd" }),
             (StyleAmbience.Crypt, new[] { "fs530161", "fs516566", "fs166187", "dungeonair" }),
+            // V2.54 (passe son, docs/SONS.md) : nappes des biomes et des souterrains ; sans fichier, une nappe de synthèse (SoundSynth).
+            (StyleAmbience.Marsh, new[] { "nappemarais", "marais", "swamp", "marsh", "frogs" }),
+            (StyleAmbience.Underwater, new[] { "nappesouseau", "souseau", "underwater" }),
+            (StyleAmbience.Drowned, new[] { "nappenoyee", "grottenoyee", "flooded" }),
+            (StyleAmbience.Sewer, new[] { "nappeegout", "egout", "sewer" }),
+            (StyleAmbience.Gallery, new[] { "nappegalerie", "galerie", "mineshaft" }),
+            (StyleAmbience.Cave, new[] { "nappegrotte", "grotte", "cavern" }),
+            (StyleAmbience.Envers, new[] { "nappeenvers", "envers" }),
+            (StyleAmbience.Gusts, new[] { "rafales", "gusts", "mountainwind", "ventfort" }),
             // Sous-lot V2.2 : la pluie d'abord (« thunderstorm_rain » est une nappe de pluie, qui tourne en boucle), puis le tonnerre seul.
             (StyleAmbience.Rain, new[] { "pluie", "rain", "averse" }),
             (StyleAmbience.Thunder, new[] { "orage", "thunder", "tonnerre" }),
