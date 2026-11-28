@@ -385,6 +385,8 @@ namespace EdS.Game
         [Range(3f, 30f)] public float TreeHeight = 11f;
         [Tooltip("Rendu plus léger pour le téléphone (ombres, effets), créé par le menu ; l'ordinateur garde le rendu du projet.")]
         public UnityEngine.Rendering.RenderPipelineAsset PhonePipeline;
+        [Tooltip("V2.53 : rendu du PC modeste (ou réglage Basse) : ombres sur 50 m, deux cascades, dures, sans occlusion de l'écran ; créé par le menu.")]
+        public UnityEngine.Rendering.RenderPipelineAsset ModestPipeline;
 
         /// <summary>Rotation ajoutée (degrés) aux modèles qui ne regardent pas devant eux une fois importés.</summary>
         public float HeroYaw;

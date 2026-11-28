@@ -68,6 +68,10 @@ namespace EdS.World
         public SecretRefusal OpenSecret(string id, List<(string Item, int Count)>? given = null)
         {
             SecretRefusal refusal = CanOpenSecret(id);
+            // V2.57 : une stèle déjà lue se relit ; relue à portée, elle apprend son fait s'il manque (stèle lue avant le V2.57). Rien d'autre.
+            if (refusal == SecretRefusal.AlreadyOpened && Narrative != null && Definition!.SecretOf(id)!.Kind == SecretKind.Lore
+                && SecretsInReach().Any(s => s.Id == id))
+                Narrative.LearnQueued(EdS.Data.Story.StoryValidator.SecretFact(id));
             if (refusal != SecretRefusal.None) return refusal;
             ZoneDefinition zone = Definition!;
             ZoneSecret secret = zone.SecretOf(id)!;
@@ -76,6 +80,11 @@ namespace EdS.World
             if (!Zone.Consume(zone.SecretKey(id))) return SecretRefusal.AlreadyOpened;
             Inventory.CopyFrom(trial);
             given?.AddRange(secret.Rewards);
+            // V2.57 : la première fouille apprend « fact.secret.<secret> » (fragments de lore des stèles, quêtes de l'Envers), annoncé au tick
+            // suivant ; sans histoire, gardé pour la sauvegarde comme le fait d'un chef.
+            string fact = EdS.Data.Story.StoryValidator.SecretFact(id);
+            if (Narrative != null) Narrative.LearnQueued(fact);
+            else if (!_pendingFacts.Contains(fact)) _pendingFacts.Add(fact);
             return SecretRefusal.None;
         }
 

@@ -66,7 +66,7 @@ public class V193bSuitesTests
     public void Histoire_en_schema_5_l_apprentie_finit_par_une_epee_de_qualite_superieure()
     {
         StoryBook book = Story.Value;
-        Assert.Equal((16, 16), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.7 : schéma 12 (réputation) ; V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
+        Assert.Equal((17, 17), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.7 : schéma 12 (réputation) ; V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
         Assert.Equal(new[] { "colombe", "minerai", "forger", "montrer", "epee" }, book.Quest(Apprentie).Steps.Select(s => s.Id));
         Objective o = book.Quest(Apprentie).Steps[^1].Objective;
         Assert.Equal((ObjectiveKind.CraftQuality, "item.epee_de_garde", ItemQuality.Superior, 1L), (o.Kind, o.Id, o.Quality, o.Value));
@@ -119,7 +119,7 @@ public class V193bSuitesTests
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(4, read.Story!.SchemaVersion);
         // Plus ancien ou plus récent : refusé.
-        foreach (int version in new[] { 3, 17 })   // concours de pâtisserie : la version 15 ; fêtes aux vraies dates : la version 14 ; V2.10 : la version 13 ; V2.7 : la version 12 ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
+        foreach (int version in new[] { 3, 18 })   // V2.57 : la version 17 ; concours de pâtisserie : la version 15 ; fêtes aux vraies dates : la version 14 ; V2.10 : la version 13 ; V2.7 : la version 12 ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
         {
             root["schemaVersion"] = version;
             Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
@@ -419,7 +419,7 @@ public class V193bSuitesTests
     {
         Dialogue albe = Story.Value.Dialogue("dialogue.albe");
         // Sous-lot V1.9.5 : douze entrées (les quatre des anciennes étapes de la mission sont parties : parties converties à la lecture).
-        Assert.Equal(19, albe.Entries.Count);   // V2.6.1 : la quête des cicatrices (six) ; V2.6 : les échos rôdeurs
+        Assert.Equal(23, albe.Entries.Count);   // V2.57 : la voix du moulin (quatre) ; V2.6.1 : la quête des cicatrices (six) ; V2.6 : les échos rôdeurs
         Assert.Equal(new[] { "ch2_accueil", "ch2_en_cours", "ch2_apres", "ch2_herbes_attente" },
             albe.Nodes.Where(n => n.Choices.Any(c => c.Next == "ch3_lettre")).Select(n => n.Id));
         // Le mot d'après le chapitre 2 garde ses réponses d'avant, dans l'ordre ; la lettre vient après.

@@ -307,6 +307,12 @@ public class SaisonsContenuTests
     {
         string data = ScenarioTestData.CopyData((file, text) =>
         {
+            if (underground && file == "world/story.json")   // V2.57 : sans l'Envers, sans ses quêtes
+            {
+                JsonNode story = JsonNode.Parse(text)!;
+                V257TestData.WithoutQuetes(story);
+                return story.ToJsonString();
+            }
             if (!underground || file != "world/zones/vallons.json") return text;
             JsonObject root = JsonNode.Parse(text)!.AsObject();
             root["schemaVersion"] = ZoneValidator.CurrentSchemaVersion;

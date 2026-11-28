@@ -372,7 +372,8 @@ namespace EdS.Game.Editor
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
-            catalog.PhonePipeline = RenderQuality(notes, catalog.SampleWater != null);
+            catalog.PhonePipeline = RenderQuality(notes, catalog.SampleWater != null, out RenderPipelineAsset modest);
+            catalog.ModestPipeline = modest;   // V2.53 : rendu du PC modeste
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
 
@@ -397,6 +398,7 @@ namespace EdS.Game.Editor
                 + "\nObjets : " + (catalog.Props.Length == 0 ? "aucun" : string.Join(", ", catalog.Props.Select(p => PropName(p.Kind))))
                 + "\nEau : " + (catalog.SampleWater != null ? "eau du sample (ordinateur)" : catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
+                + ", rendu du PC modeste : " + (catalog.ModestPipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
                 + ", musiques : " + catalog.Music.Length + " sur 8, ambiances : " + catalog.Ambiences.Length + " sur 14"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
@@ -1677,16 +1679,18 @@ namespace EdS.Game.Editor
         /// des bords, occlusion ambiante de l'écran) ; un rendu léger est créé pour le téléphone dans <c>Generated</c> (ombres sur 35 m,
         /// deux cascades, sans occlusion), choisi par le jeu au lancement sur Android. Rend ce rendu léger, ou null sans URP.
         /// </summary>
-        private static RenderPipelineAsset RenderQuality(List<string> notes, bool sceneTextures)
+        private static RenderPipelineAsset RenderQuality(List<string> notes, bool sceneTextures, out RenderPipelineAsset modest)
         {
-            var pipelines = new[] { GraphicsSettings.defaultRenderPipeline, QualitySettings.renderPipeline }.OfType<UniversalRenderPipelineAsset>().Distinct().ToList();
+            modest = null;
+            var pipelines = new[] { GraphicsSettings.defaultRenderPipeline, QualitySettings.renderPipeline }.OfType<UniversalRenderPipelineAsset>().Distinct()
+                .Where(p => !AssetDatabase.GetAssetPath(p).StartsWith(Generated + "/", System.StringComparison.Ordinal)).ToList();   // V2.53 : jamais les rendus légers
             if (pipelines.Count == 0)
             {
                 notes.Add("Rendu URP absent : réglages de l'image laissés tels quels.");
                 return null;
             }
             foreach (UniversalRenderPipelineAsset pipeline in pipelines)
-                Tune(pipeline, 90f, 4, 4096, true, 4, sceneTextures, 8);
+                Tune(pipeline, PerfRules.Render(DeviceTier.Full), sceneTextures);
             if (sceneTextures) notes.Add("Rendu de l'ordinateur : image et profondeur de la scène gardées pour l'eau du sample (reflets, lit vu par transparence).");
             int ssao = 0;
             foreach (string path in AssetDatabase.FindAssets("t:UniversalRendererData", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)
@@ -1713,9 +1717,47 @@ namespace EdS.Game.Editor
                 phoneRenderer.postProcessData = data;
                 EditorUtility.SetDirty(phoneRenderer);
             }
-            Tune(phone, 35f, 2, 1024, false, 2, false, 4);
+            Tune(phone, PerfRules.Render(DeviceTier.Phone), false);
+            // V2.53 (audit des performances) : rendu du PC modeste, sur le renderer du téléphone (sans occlusion de l'écran) ; il garde
+            // l'image et la profondeur de la scène (eau, failles) et les huit lumières par objet (intérieurs).
+            string modestPath = Generated + "/EdS_URP_Modeste.asset";
+            UniversalRenderPipelineAsset light = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(modestPath);
+            if (light == null)
+            {
+                light = UniversalRenderPipelineAsset.Create(phoneRenderer);
+                AssetDatabase.CreateAsset(light, modestPath);
+            }
+            Inherit(light, pipelines[0]);   // relecture de la PR #265 : échelle de rendu, HDR, étalonnage du rendu du projet
+            Tune(light, PerfRules.Render(DeviceTier.Modest), true);
+            notes.Add("Rendu du PC modeste : ombres sur 50 m, deux cascades, dures, sans occlusion de l'écran (EdS_URP_Modeste).");
+            modest = light;
             AssetDatabase.SaveAssets();
             return phone;
+        }
+
+        /// <summary>
+        /// V2.53 (relecture de la PR #265) : réglages de l'image repris du rendu du projet par le rendu du PC modeste (sans écart visuel autre
+        /// que les ombres, le lissage et l'occlusion). Un réglage absent de cette version d'URP est ignoré.
+        /// </summary>
+        public static readonly string[] InheritedSettings =
+        {
+            "m_RenderScale", "m_SupportsHDR", "m_HDRColorBufferPrecision", "m_ColorGradingMode", "m_ColorGradingLutSize", "m_UpscalingFilter",
+            "m_VolumeFrameworkUpdateMode",
+        };
+
+        /// <summary>Copie <see cref="InheritedSettings"/> de <paramref name="source"/> dans <paramref name="target"/>.</summary>
+        private static void Inherit(UniversalRenderPipelineAsset target, UniversalRenderPipelineAsset source)
+        {
+            if (target == null || source == null) return;
+            var from = new SerializedObject(source);
+            var to = new SerializedObject(target);
+            foreach (string name in InheritedSettings)
+            {
+                SerializedProperty property = from.FindProperty(name);
+                if (property != null && to.FindProperty(name) != null) to.CopyFromSerializedProperty(property);
+            }
+            to.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
 
         /// <summary>
@@ -1723,9 +1765,12 @@ namespace EdS.Game.Editor
         /// <paramref name="sceneTextures"/> garde l'image et la profondeur de la scène, que l'eau des Production Ready Shaders lit (sinon
         /// ces deux réglages restent tels quels).
         /// </summary>
-        private static void Tune(UniversalRenderPipelineAsset pipeline, float shadowDistance, int cascades, int shadowResolution, bool softShadows, int msaa,
-            bool sceneTextures, int lightsPerObject)
+        private static void Tune(UniversalRenderPipelineAsset pipeline, RenderProfile profile, bool sceneTextures)
         {
+            // V2.53 : valeurs tirées de PerfRules.Render (pures, testées).
+            float shadowDistance = profile.ShadowDistance;
+            int cascades = profile.Cascades, shadowResolution = profile.ShadowResolution, msaa = profile.Msaa, lightsPerObject = profile.LightsPerObject;
+            bool softShadows = profile.SoftShadows;
             var so = new SerializedObject(pipeline);
             void Set(string name, System.Action<SerializedProperty> apply)
             {

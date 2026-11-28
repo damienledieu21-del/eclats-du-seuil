@@ -188,8 +188,9 @@ public class V195Chapitre5Tests
             "discovery.pierre_gravee_foret", "discovery.pierre_gravee_plaine", "discovery.lecture_des_pierres" })
             Assert.Contains(book.Discoveries, x => x.Id == d);
         // Sœur Albe : douze entrées (les quatre des anciennes étapes sont parties) ; le chapitre 5 passe par des réponses de ses nœuds.
-        Assert.Equal(19, book.Dialogue("dialogue.albe").Entries.Count);   // V2.6.1 : la quête des cicatrices (six) ; V2.6 : les échos rôdeurs
-        Assert.DoesNotContain(book.Dialogue("dialogue.albe").Entries, e => e.Conditions.Any(c => c.Id == Main));
+        Assert.Equal(23, book.Dialogue("dialogue.albe").Entries.Count);   // V2.57 : la voix du moulin (quatre) ; V2.6.1 : la quête des cicatrices (six) ; V2.6 : les échos rôdeurs
+        // V2.57 : sauf l'offre de la voix du moulin, après le chapitre 5 (32 entrées au plus depuis la version 11).
+        Assert.DoesNotContain(book.Dialogue("dialogue.albe").Entries, e => e.Conditions.Any(c => c.Id == Main) && !e.Node.StartsWith("v257_", StringComparison.Ordinal));
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= StoryValidator.MaxEntries, d.Id));
         // Récompenses (proposées) : 3 400 points et 21 argent 50 pour le chapitre ; 2 600 points pour les deux quêtes secondaires. Du niveau
         // 20 au 21 sans les quêtes secondaires ni les combats ; avec elles, au 23 ; les combats du Seuil mènent au 25.
@@ -286,7 +287,8 @@ public class V195Chapitre5Tests
         w = Go(w, Odile);
         Say(w, "npc.odile", "ch1_ferrure");
         Say(Open(Odile, Hero(25, Done(AfterChapter4.Append("fact.odile.retour"), Chapters1To4.Append(Main).Append("quest.ferrure_de_rechange").Append("quest.pont_des_vallons").ToArray()))), "npc.odile", "apres");
-        var after = Done(AfterChapter4.Append("fact.ch5.albe.voix"), Chapters1To4.Append(Main).Append(Herbes).ToArray());
+        var after = Done(AfterChapter4.Append("fact.ch5.albe.voix"), Chapters1To4.Append(Main).Append(Herbes)
+            .Append("quest.v257.voix_du_moulin").Append("quest.v257.ce_que_gardent_les_eclats").ToArray());   // V2.57 : leurs offres passeraient devant
         WorldSession apres = OpenIn("zone.chapelle", Albe, Hero(25, after));
         LeadsTo(apres, "npc.albe", "ch2_apres", "text.ch4.albe.vers_apres", "ch4_apres");
         Choose(apres, 0, "ch5_apres");
@@ -701,7 +703,7 @@ public class V195Chapitre5Tests
         LeadsTo(Open(Gaspard, Hero(21, rodeur)), "npc.gaspard", "rodeur", "text.ch5.gaspard.vers_loup", "ch5_loup");
         LeadsTo(Open(Gaspard, Hero(21, rodeur)), "npc.gaspard", "rodeur", "text.ch5.gaspard.vers_pierres", "ch5_pierres");
         // Toutes les quêtes de Gaspard finies : ses conseils.
-        Say(Open(Gaspard, Hero(25, Done(facts, Bete, Loup, Pierres, Brunot))), "npc.gaspard", "garde");
+        Say(Open(Gaspard, Hero(25, Done(facts, Bete, Loup, Pierres, Brunot, "quest.v257.ombre_de_brunot"))), "npc.gaspard", "garde");   // V2.57 : l'ombre de Brunot faite
         // Chez Odile, au retour du chapitre 5 : son aveu garde les réponses vers la ferrure et le pont.
         var retour = new SavedStory(facts, new Dictionary<string, QuestProgress> { [Main] = new("retour") }, new Dictionary<string, int> { ["npc.odile"] = 1 });
         WorldSession odile = Open(Odile, Hero(21, retour));

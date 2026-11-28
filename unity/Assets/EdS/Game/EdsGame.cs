@@ -1194,6 +1194,11 @@ namespace EdS.Game
         private void Update()
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
+            // V2.53 (audit des performances) : F9 montre ou cache les images par seconde et le temps d'une image (essai du soir).
+            _frameStats.Add(Time.unscaledDeltaTime);
+            if (Input.GetKeyDown(KeyCode.F9)) _fpsShown = !_fpsShown;
+            if (_fpsShown && _frameStats.Due()) _fpsText = _frameStats.Text() + " · " + MachineTier.TierName(DeviceQuality.Tier)
+                + " · " + (QualitySettings.renderPipeline != null ? QualitySettings.renderPipeline.name : "rendu du projet");
             if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
 
             LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
@@ -2093,6 +2098,10 @@ namespace EdS.Game
             else if (action == TalentScreen.Action.Close) CloseTalents();
         }
 
+        private readonly FrameStats _frameStats = new FrameStats();   // V2.53 : mesure des images (F9)
+        private bool _fpsShown;
+        private string _fpsText = "";
+
         private void OnGUI()
         {
             bool locked = Overlay;
@@ -2103,6 +2112,12 @@ namespace EdS.Game
             _title.Draw();   // V2.55 : l'écran titre, sous le logo d'ouverture (qui s'efface dessus)
             Hud.Begin();
             _logo.Draw();   // V2.54 : le logo s'ouvre au-dessus de tout (démarrage, préparation, jeu)
+            if (_fpsShown)
+            {
+                Hud.Begin();
+                Hud.Panel(new Rect(Hud.Width - 640, 8, 630, 34), new Color(0f, 0f, 0f, 0.6f));
+                Hud.Text(new Rect(Hud.Width - 630, 14, 615, 26), _fpsText);
+            }
         }
 
         private void DrawGame()

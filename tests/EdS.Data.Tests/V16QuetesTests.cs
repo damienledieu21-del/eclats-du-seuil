@@ -109,7 +109,12 @@ public class V16QuetesTests
                 "$.data.npcs[45].zone", "$.data.npcs[46].zone",   // 17 novembre 2026 : les voyageurs de passage, dans les chambres
                 "$.data.npcs[47].zone", "$.data.npcs[48].zone",   // et Perrine et Huguet, à l'auberge
                 "$.data.scenes[0].zone" },   // V2.14 : Bastien et Margot dans leur boutique ;   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
-            alone.Report.Errors.Where(e => !e.Path.Contains(".schedule[", StringComparison.Ordinal)).Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
+            alone.Report.Errors.Where(e => !e.Path.Contains(".schedule[", StringComparison.Ordinal) && !e.Path.StartsWith("$.data.quests[", StringComparison.Ordinal)
+                && !e.Path.StartsWith("$.data.dialogues[", StringComparison.Ordinal)).Select(e => e.Path));
+        // V2.57 : sans les zones reliées, les quêtes des dessous et de l'Envers (ajoutées après la 47e) visent des lieux, des créatures et
+        // des faits de chefs inconnus ; aucune autre.
+        Assert.All(alone.Report.Errors.Where(e => e.Path.StartsWith("$.data.quests[", StringComparison.Ordinal)),
+            e => Assert.True(int.Parse(e.Path.Substring(14, 2)) >= 47, e.ToString()));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         // Sous-lot V2.3.1 : les créneaux qui mènent dans un intérieur (la salle de l'auberge) visent aussi une zone inconnue.
         Assert.All(alone.Report.Errors.Where(e => e.Path.Contains(".schedule[", StringComparison.Ordinal)),
             e => Assert.True(e.Path.EndsWith(".zone", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownReference, e.ToString()));
@@ -146,8 +151,9 @@ public class V16QuetesTests
         yield return Case("$.data.dialogues[7].nodes[0].choices[0].effects[0].id", ValidationCode.InvalidValue,
             r => r["data"]!["dialogues"]![7]!["nodes"]![0]!["choices"]![0]!["effects"]![0]!["id"] = "npc.pretre");
         // Sous-lot V1.9.5 : l'entrée du loup blanc passe devant (l'offre de la bête blanche est la sixième).
-        yield return Case("$.data.dialogues[7].entries[5].conditions[1].value", ValidationCode.MissingField,
-            r => r["data"]!["dialogues"]![7]!["entries"]![5]!["conditions"]![1]!.AsObject().Remove("value"));
+        // V2.57 : les deux entrées du sacristain passent devant (l'offre de la bête blanche est la huitième).
+        yield return Case("$.data.dialogues[7].entries[7].conditions[1].value", ValidationCode.MissingField,
+            r => r["data"]!["dialogues"]![7]!["entries"]![7]!["conditions"]![1]!.AsObject().Remove("value"));
         // PNJ des intérieurs.
         yield return Case("$.data.npcs[6].zone", ValidationCode.UnknownReference, r => Npc(r, "npc.aubergiste")["zone"] = "zone.cave");
         yield return Case("$.data.npcs[6].zone", ValidationCode.InvalidValue, r => Npc(r, "npc.aubergiste")["zone"] = "zone.vallons");

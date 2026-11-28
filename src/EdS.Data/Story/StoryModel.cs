@@ -105,6 +105,19 @@ namespace EdS.Data.Story
         /// <c>quality</c> : de toute qualité.
         /// </summary>
         HasSigned = 26,
+
+        /// <summary>
+        /// V2.57 (histoire en schéma 17) : circonstance temporaire : la saison du monde est <c>id</c> (<c>spring</c>, <c>summer</c>,
+        /// <c>autumn</c>, <c>winter</c>) : la saison réelle si la date est fournie, sinon celle du calendrier du jeu.
+        /// </summary>
+        Season = 27,
+
+        /// <summary>
+        /// V2.57 (schéma 17) : au moins (<c>corruptionAtLeast</c>) ou moins de (<c>corruptionBelow</c>) <c>value</c> terres corrompues
+        /// aujourd'hui (palier 1 ou plus, la source non comptée) ; sans corruption chargée : aucune.
+        /// </summary>
+        CorruptionAtLeast = 28,
+        CorruptionBelow = 29,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>

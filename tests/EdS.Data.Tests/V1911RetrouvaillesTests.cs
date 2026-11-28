@@ -104,7 +104,8 @@ public sealed class V1911RetrouvaillesTests
         for (int i = 0; i < 2; i++)
         {
             Assert.Equal(DialogueRefusal.None, w.Talk("npc." + k, out DialogueView? next));
-            Assert.Equal(reunion, next!.Text);
+            // V2.57 : une réplique de saison (ou de corruption) peut passer devant les retrouvailles, toujours après la première rencontre.
+            Assert.True(next!.Text == reunion || next.Text.StartsWith($"text.v257.{k}.", StringComparison.Ordinal), next.Text);
             Assert.Equal(first.Options.Count, next.Options.Count);   // mêmes réponses que l'accueil
             w.Narrative.Close();
         }
