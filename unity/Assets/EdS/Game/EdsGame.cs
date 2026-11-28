@@ -925,11 +925,41 @@ namespace EdS.Game
             return false;
         }
 
+        /// <summary>V2.59 (suite de l'audit) : dernière indication construite, refaite seulement quand son texte ou son argument change.</summary>
+        private string _hintFormat, _hintArg, _hintText;
+
+        /// <summary>V2.59 : <c>string.Format(format, arg)</c> gardé d'une image à l'autre (avant : une chaîne neuve à chaque image).</summary>
+        private string Hint(string format, string arg)
+        {
+            if (_hintText == null || !string.Equals(format, _hintFormat, StringComparison.Ordinal) || !string.Equals(arg, _hintArg, StringComparison.Ordinal))
+            {
+                _hintFormat = format;
+                _hintArg = arg;
+                _hintText = string.Format(format, arg);
+            }
+            return _hintText;
+        }
+
+        /// <summary>V2.59 : horloge de l'entraînement, refaite seulement quand la seconde affichée change.</summary>
+        private int _clockSecond = -1;
+        private string _clockText;
+
+        private string TrainingClock(float elapsed)
+        {
+            int second = (int)elapsed;
+            if (second != _clockSecond || _clockText == null)
+            {
+                _clockSecond = second;
+                _clockText = $"{second / 60}:{second % 60:00}";
+            }
+            return _clockText;
+        }
+
         /// <summary>Indication de l'action possible ici (parler, récolter, faire halte, reprendre), ou null.</summary>
         private string AdventureHint()
         {
             AdventureSession a = _adventure;
-            if (a.MustContinue) return string.Format(a.Text("text.ui.continue_hint"), a.LastSafePoint);
+            if (a.MustContinue) return Hint(a.Text("text.ui.continue_hint"), a.LastSafePoint);
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
             if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.ScarInReach != null) return a.Text("text.ui.scar.purify");   // sous-lot V2.6 : purifier une cicatrice
@@ -940,11 +970,11 @@ namespace EdS.Game
             // Revue Codex de la PR #209 : dans un intérieur, la porte plus proche que le PNJ passe avant lui (comme Interact).
             if (a.DoorFirst && a.DoorInReach != null) return a.DoorHint;   // V2.43.4 : « fermée » devant la porte d'un lieu pas encore reconstruit
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
-                return string.Format(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
-            if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
+                return Hint(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
+            if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return Hint(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
             if (a.DoorInReach != null) return a.DoorHint;   // intérieurs ; V2.43.4 : « fermée » si le lieu n'est pas reconstruit
-            if (a.CanRest) return string.Format(a.Text("text.ui.rest_hint"), a.LastSafePoint);
-            if (a.WorkshopHere is string workshop) return string.Format(a.Text("text.ui.craft_hint"), workshop);
+            if (a.CanRest) return Hint(a.Text("text.ui.rest_hint"), a.LastSafePoint);
+            if (a.WorkshopHere is string workshop) return Hint(a.Text("text.ui.craft_hint"), workshop);
             if (a.TideHint is string tide) return tide;   // V2.50.1b : la marée, dans les grottes noyées
             return null;
         }
@@ -2078,7 +2108,9 @@ namespace EdS.Game
                 _hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity, true);
                 _hud.Clock(a.EventBanner ?? a.ScarLabel ?? a.CorruptionLabel);   // V2.5 : « En cours : … » ; V2.6 : « Cicatrice du Seuil · palier 2 sur 4 »
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
-                _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
+                // V2.59 : le texte de l'aide n'est construit que si elle est affichée (Help ne le lit pas sinon).
+                bool helpShown = _help && open;
+                _hud.Help(helpShown, a.PlaceName, helpShown ? "Aventure · " + a.TimeOfDay + " · " + _camera.Describe() : null, _adventureHelp);
             }
             else
             {
@@ -2086,10 +2118,10 @@ namespace EdS.Game
                 float elapsed = _combat.Tick * (float)_combat.TickSeconds;
                 _hud.Center(_paused ? "Pause" : null, null, null);
                 _hud.Settings(_paused && !_combat.IsFinished, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);   // pas sur l'écran de fin
-                _hud.Clock($"{(int)elapsed / 60}:{(int)elapsed % 60:00}");
+                _hud.Clock(TrainingClock(elapsed));
                 if (Network)
-                    _hud.Help(_help, "Coopération", (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe(), HelpKeys.Network);
-                else _hud.Help(_help, ScenarioName(), "Build : " + BuildName() + " · " + _camera.Describe(), HelpKeys.Training);
+                    _hud.Help(_help, "Coopération", _help ? (_net.Host != null ? "Tu héberges" : _net.Address) + " · " + NetworkBuildName() + " · " + _camera.Describe() : null, HelpKeys.Network);
+                else _hud.Help(_help, _help ? ScenarioName() : null, _help ? "Build : " + BuildName() + " · " + _camera.Describe() : null, HelpKeys.Training);
             }
             _hud.End(deltaTime);
         }

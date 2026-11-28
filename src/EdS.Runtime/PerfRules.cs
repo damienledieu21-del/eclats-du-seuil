@@ -81,6 +81,13 @@ namespace EdS.Runtime
 
         /// <summary>Un feu d'intérieur projette-t-il des ombres (lumière ponctuelle : six vues de la scène par image) ? Seulement sur le PC complet.</summary>
         public static bool FireShadows(DeviceTier tier) => tier == DeviceTier.Full;
+
+        /// <summary>
+        /// V2.59 (suite de l'audit) : la version lointaine (LOD1) d'une maison du kit projette-t-elle une ombre ? Seulement sur le PC
+        /// complet. Sur une machine allégée, elle n'apparaît qu'au-delà de <see cref="BourgKit.LodDistances"/> (45 m sur PC modeste,
+        /// 30 m sur téléphone), au bord de la distance d'ombre (50 m, 35 m), dans la bande où l'ombre s'efface déjà.
+        /// </summary>
+        public static bool FarHouseShadow(DeviceTier tier) => !Reduced(tier);
     }
 
     /// <summary>

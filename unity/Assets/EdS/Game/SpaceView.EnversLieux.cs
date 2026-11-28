@@ -44,7 +44,8 @@ namespace EdS.Game
         {
             if (_enversRegion == null || (_lieuPieces.Count == 0 && _lieuSecrets.Count == 0)) return;
             double radius = EnversLook.StreamRadius(DeviceQuality.Tier);
-            var gone = new List<int>();
+            List<int> gone = _goneCells;   // V2.59 : liste réutilisée (avant : une liste neuve à chaque image)
+            gone.Clear();
             foreach (KeyValuePair<int, GameObject> cell in _lieuCells)
                 if (!EnversLook.CellKept(_enversRegion, cell.Key % 64, cell.Key / 64, camera.x, camera.z, radius)) gone.Add(cell.Key);
             foreach (int key in gone)
@@ -52,13 +53,15 @@ namespace EdS.Game
                 GameObject cell = _lieuCells[key];
                 _lieuCells.Remove(key);
                 if (cell == null) continue;
-                foreach (Occluder o in _occluders.Where(o => o.Transform != null && o.Transform.IsChildOf(cell.transform)).ToList())
+                DropCellOccluders(_lieuCellOccluders, key);   // V2.59 : ceux de la case, retenus à sa construction
+                // Relecture indépendante de la PR #263 : les secrets de la case quittent aussi la liste de ce qui garde sa clarté
+                // (V2.59 : ceux retenus à sa construction, puis les racines détruites).
+                if (_lieuCellBright.TryGetValue(key, out List<Transform> bright))
                 {
-                    ReleaseFade(o);
-                    _occluders.Remove(o);
+                    for (int i = 0; i < bright.Count; i++) _keepBright.Remove(bright[i]);
+                    _lieuCellBright.Remove(key);
                 }
-                // Relecture indépendante de la PR #263 : les secrets de la case quittent aussi la liste de ce qui garde sa clarté.
-                _keepBright.RemoveWhere(t => t == null || t.IsChildOf(cell.transform));
+                _keepBright.RemoveWhere(BrightGone);
                 Object.Destroy(cell);
             }
             int built = 0;
@@ -67,14 +70,19 @@ namespace EdS.Game
                 if (built >= EnversLook.StreamCellsPerFrame) break;
                 int key = row * 64 + column;
                 if (_lieuCells.ContainsKey(key)) continue;
-                _lieuCells[key] = BuildLieuCell(column, row);
+                int first = _occluders.Count;
+                GameObject made = BuildLieuCell(column, row, out List<Transform> bright);
+                _lieuCells[key] = made;
+                _lieuCellOccluders[key] = OccludersSince(first, made.transform);
+                _lieuCellBright[key] = bright;
                 built++;
             }
         }
 
         /// <summary>Les pièces et les secrets d'une case, sous une racine de case ; les pièces assombries, les secrets gardent leur clarté.</summary>
-        private GameObject BuildLieuCell(int column, int row)
+        private GameObject BuildLieuCell(int column, int row, out List<Transform> bright)
         {
+            bright = new List<Transform>();
             var cell = new GameObject("Envers lieux c" + column + "_r" + row);
             cell.transform.SetParent(_root.transform, false);
             DeviceTier tier = DeviceQuality.Tier;
@@ -89,11 +97,24 @@ namespace EdS.Game
             {
                 int first = _root.transform.childCount;
                 LieuSecret(_lieuSecrets[i], tier);
-                for (int k = first; k < _root.transform.childCount; k++) _keepBright.Add(_root.transform.GetChild(k));
+                for (int k = first; k < _root.transform.childCount; k++)
+                {
+                    Transform t = _root.transform.GetChild(k);
+                    _keepBright.Add(t);
+                    bright.Add(t);
+                }
                 Adopt(cell, first);
             }
+            SmallCasters(cell);   // V2.59 : comme le décor posé au chargement
             return cell;
         }
+
+        /// <summary>V2.59 : occulteurs et racines gardant leur clarté de chaque case des lieux, par clé de case.</summary>
+        private readonly Dictionary<int, List<Occluder>> _lieuCellOccluders = new Dictionary<int, List<Occluder>>();
+        private readonly Dictionary<int, List<Transform>> _lieuCellBright = new Dictionary<int, List<Transform>>();
+
+        /// <summary>V2.59 : une racine détruite quitte ce qui garde sa clarté (sans allocation de prédicat).</summary>
+        private static readonly System.Predicate<Transform> BrightGone = t => t == null;
 
         /// <summary>Range sous la case ce qui vient d'être posé sous la racine du décor (depuis le rang <paramref name="first"/>).</summary>
         private void Adopt(GameObject cell, int first)
@@ -147,6 +168,8 @@ namespace EdS.Game
         private void ReleaseLieux()
         {
             _lieuCells.Clear();
+            _lieuCellOccluders.Clear();
+            _lieuCellBright.Clear();
             _lieuPieces.Clear();
             _lieuSpots.Clear();
             _lieuSecrets = new List<MapSecret>();

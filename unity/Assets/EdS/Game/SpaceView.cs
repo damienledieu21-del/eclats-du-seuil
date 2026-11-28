@@ -27,6 +27,9 @@ namespace EdS.Game
             public Vector3 Max;
             public float Cut = 1f;
 
+            /// <summary>V2.59 : retiré avec sa case de l'Envers (retrait groupé en un passage, <c>List.RemoveAll</c>).</summary>
+            public bool Gone;
+
             /// <summary>V1.10 : décor au-dessus (poutres) : il disparaît en fondu dès que la caméra arrive à sa hauteur.</summary>
             public bool Overhead;
 
@@ -250,7 +253,7 @@ namespace EdS.Game
             {
                 float rx0 = _rivers.Min(r => r.Min(p => p.x)), rx1 = _rivers.Max(r => r.Max(p => p.x));
                 float rz0 = _rivers.Min(r => r.Min(p => p.z)), rz1 = _rivers.Max(r => r.Max(p => p.z));
-                StyleWorld.Reflections(_root.transform, new Vector3((rx0 + rx1) / 2f, 1.5f, (rz0 + rz1) / 2f),
+                _reflections = StyleWorld.Reflections(_root.transform, new Vector3((rx0 + rx1) / 2f, 1.5f, (rz0 + rz1) / 2f),
                     new Vector3(maxX - minX + 40f, 40f, maxZ - minZ + 40f), _waters);
             }
         }
@@ -2004,11 +2007,14 @@ namespace EdS.Game
         /// <see cref="PerfRules.SmallCaster"/> m : bougies, gobelets, cailloux, petites caisses) ne projettent plus d'ombre ; chacun était
         /// redessiné dans chaque cascade de la carte d'ombres. Les corps animés gardent la leur. Rien ne change sur le PC complet.
         /// </summary>
-        private void SmallCasters()
+        private void SmallCasters() => SmallCasters(_root);
+
+        /// <summary>V2.59 : la même coupure sous <paramref name="root"/> (décor posé après coup : pièces du Bourg, cases de l'Envers).</summary>
+        private static void SmallCasters(GameObject root)
         {
             DeviceTier tier = DeviceQuality.Tier;
-            if (!PerfRules.Reduced(tier)) return;
-            foreach (MeshRenderer r in _root.GetComponentsInChildren<MeshRenderer>(true))
+            if (root == null || !PerfRules.Reduced(tier)) return;
+            foreach (MeshRenderer r in root.GetComponentsInChildren<MeshRenderer>(true))
             {
                 if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.On) continue;
                 Vector3 size = r.bounds.size;
@@ -2026,6 +2032,7 @@ namespace EdS.Game
         /// </summary>
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
+            BourgStep(camera);   // V2.59 : le Bourg posé par lots, le plus proche de la caméra d'abord
             _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
             Walk(deltaTime);   // essai réaliste 8 : les passants du bourg
             ResidentsStep(camera, player, deltaTime);   // V2.58 : les habitants qui suivent leur journée
@@ -2254,6 +2261,9 @@ namespace EdS.Game
             ReleaseRebuilds();   // V2.43.3 : matériaux de l'échafaudage des chantiers
             ReleaseHome();   // V2.53.3 : matériaux de la maison du joueur
             ReleaseVines();   // V2.44.4 : matériaux des rangs de vigne
+            _bourgPending.Clear();   // V2.59 : pièces du Bourg pas encore posées
+            _bourgOrder = null;
+            _reflections = null;
             ReleaseEnvers();   // V2.51b : variantes sombres des matériaux, lumière de l'Envers
             if (_ice != null && _ice != _water) Object.Destroy(_ice);   // V2.44.3 (revue Codex de la PR #232) : copie de l'eau qui gèle
             Object.Destroy(_root);

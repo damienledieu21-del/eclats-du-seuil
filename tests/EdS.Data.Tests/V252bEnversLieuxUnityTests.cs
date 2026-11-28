@@ -200,6 +200,8 @@ public sealed class V252bEnversLieuxUnityTests
         Assert.Contains("Repli (modèle absent)", view, StringComparison.Ordinal);
         Assert.Contains("EnversLieux.CellPieces", view, StringComparison.Ordinal);
         // Relecture indépendante de la PR #263 : une case défaite retire ses secrets de la liste de ce qui garde sa clarté.
-        Assert.Contains("_keepBright.RemoveWhere(t => t == null || t.IsChildOf(cell.transform))", view, StringComparison.Ordinal);
+        // V2.59 : ceux retenus à la construction de la case, puis les racines détruites.
+        Assert.Contains("for (int i = 0; i < bright.Count; i++) _keepBright.Remove(bright[i]);", view, StringComparison.Ordinal);
+        Assert.Contains("_keepBright.RemoveWhere(BrightGone);", view, StringComparison.Ordinal);
     }
 }

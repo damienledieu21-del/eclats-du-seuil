@@ -355,7 +355,8 @@ namespace EdS.Game
         {
             if (_enversRegion == null) return;
             double radius = EnversLook.StreamRadius(DeviceQuality.Tier);
-            var gone = new List<int>();
+            List<int> gone = _goneCells;   // V2.59 : liste réutilisée (avant : une liste neuve à chaque image)
+            gone.Clear();
             foreach (KeyValuePair<int, GameObject> cell in _enversCells)
                 if (!EnversLook.CellKept(_enversRegion, cell.Key % 64, cell.Key / 64, camera.x, camera.z, radius)) gone.Add(cell.Key);
             foreach (int key in gone)
@@ -364,11 +365,8 @@ namespace EdS.Game
                 _enversCells.Remove(key);
                 if (cell == null) continue;
                 // Les occulteurs de ses formes flottantes partent avec elle (leurs copies en fondu sont rendues), avant la destruction.
-                foreach (Occluder o in _occluders.Where(o => o.Transform != null && o.Transform.IsChildOf(cell.transform)).ToList())
-                {
-                    ReleaseFade(o);
-                    _occluders.Remove(o);
-                }
+                // V2.59 : ceux de la case, retenus à sa construction (avant : recherche dans tous les occulteurs, puis un retrait chacun).
+                DropCellOccluders(_enversCellOccluders, key);
                 Object.Destroy(cell);
             }
             int built = 0;
@@ -377,7 +375,10 @@ namespace EdS.Game
                 if (built >= EnversLook.StreamCellsPerFrame) break;
                 int key = row * 64 + column;
                 if (_enversCells.ContainsKey(key)) continue;
-                _enversCells[key] = BuildCell(column, row);
+                int first = _occluders.Count;
+                GameObject made = BuildCell(column, row);
+                _enversCells[key] = made;
+                _enversCellOccluders[key] = OccludersSince(first, made.transform);
                 built++;
             }
         }
@@ -394,12 +395,52 @@ namespace EdS.Game
                     && TownRules.RoadAt(spot.X, spot.Z, _roads).Edge > 0.5)
                     Scattered(spot.X, spot.Z, spot.Kind, spot.Scale, spot.Yaw, cell.transform);
             DarkenUnder(cell);
+            SmallCasters(cell);   // V2.59 : comme le décor posé au chargement
             return cell;
+        }
+
+        /// <summary>V2.59 : cases à défaire dans l'image (réutilisée par les cases de l'Envers et celles des lieux).</summary>
+        private readonly List<int> _goneCells = new List<int>();
+
+        /// <summary>V2.59 : occulteurs de chaque case de l'Envers (formes flottantes, semis), par clé de case.</summary>
+        private readonly Dictionary<int, List<Occluder>> _enversCellOccluders = new Dictionary<int, List<Occluder>>();
+
+        /// <summary>V2.59 : retrait en un seul passage des occulteurs marqués (sans allocation de prédicat).</summary>
+        private static readonly System.Predicate<Occluder> OccluderGone = o => o.Gone;
+
+        /// <summary>V2.59 : les occulteurs ajoutés depuis le rang <paramref name="first"/> qui sont sous <paramref name="cell"/>.</summary>
+        private List<Occluder> OccludersSince(int first, Transform cell)
+        {
+            var mine = new List<Occluder>();
+            for (int i = first; i < _occluders.Count; i++)
+            {
+                Occluder o = _occluders[i];
+                if (o.Transform != null && o.Transform.IsChildOf(cell)) mine.Add(o);
+            }
+            return mine;
+        }
+
+        /// <summary>
+        /// V2.59 : les occulteurs de la case <paramref name="key"/> partent avec elle (leurs copies en fondu sont rendues), en un seul
+        /// passage sur la liste des occulteurs (avant : <c>Where(...).ToList()</c> puis un <c>Remove</c> par décor, O(n²)).
+        /// </summary>
+        private void DropCellOccluders(Dictionary<int, List<Occluder>> byCell, int key)
+        {
+            if (!byCell.TryGetValue(key, out List<Occluder> mine)) return;
+            byCell.Remove(key);
+            if (mine.Count == 0) return;
+            for (int i = 0; i < mine.Count; i++)
+            {
+                ReleaseFade(mine[i]);
+                mine[i].Gone = true;
+            }
+            _occluders.RemoveAll(OccluderGone);
         }
 
         private void ReleaseEnvers()
         {
             _enversCells.Clear();
+            _enversCellOccluders.Clear();
             ReleaseLieux();   // V2.52b
             _keepBright.Clear();
             _enversRegion = null;
