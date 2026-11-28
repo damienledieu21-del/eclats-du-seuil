@@ -172,7 +172,8 @@ public class InterfaceStyleTests
         Assert.Contains("!_menuOpen && !LobbyShown && _talents == null && _combat != null", game, StringComparison.Ordinal);
         Assert.Contains("&& !TalentsOpen;", game, StringComparison.Ordinal);
         Assert.Contains("_hud.Player(player, deltaTime);", game, StringComparison.Ordinal);
-        Assert.Contains("_hud.Help(_help && open, a.PlaceName,", game, StringComparison.Ordinal);
+        Assert.Contains("bool helpShown = _help && open;", game, StringComparison.Ordinal);   // V2.59 : texte construit seulement si affiché
+        Assert.Contains("_hud.Help(helpShown, a.PlaceName,", game, StringComparison.Ordinal);
         Assert.DoesNotContain("Hud.Player(", game, StringComparison.Ordinal);
         Assert.DoesNotContain("DrawMini", game, StringComparison.Ordinal);
         Assert.DoesNotContain("public static void Player(", hud, StringComparison.Ordinal);

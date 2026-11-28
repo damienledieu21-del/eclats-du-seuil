@@ -40,6 +40,10 @@ namespace EdS.Game
         private Material _windowGlass, _lanternGlow, _wispGlow, _owlGlow;
         private GameObject _nightRoot;
         private float _lampSort = 1f, _shownLamps = -1f, _shownNight = -1f;
+        /// <summary>V2.59 : distances, lanternes toujours allumées et lanternes retenues, gardées d'une relecture à l'autre.</summary>
+        private double[] _lampDistances = new double[0];
+        private bool[] _lampAlways = new bool[0];
+        private int[] _lampNearest = new int[0];
         /// <summary>Villageois du décor rentrés : 1 la nuit du monde, 2 sous la pluie (sous-lot V2.2), 3 les deux.</summary>
         private int _villagersHome;
 
@@ -249,20 +253,27 @@ namespace EdS.Game
             if (_lampSort >= 0.25f)
             {
                 _lampSort = 0f;
-                var distances = new List<double>(_lanterns.Count);
-                var always = new List<bool>(_lanterns.Count);
-                foreach (Lamp l in _lanterns)
+                // V2.59 (suite de l'audit) : tableaux gardés d'une relecture à l'autre, ordre sans allocation (même ordre que LampOrder).
+                int n = _lanterns.Count;
+                if (_lampDistances.Length < n)
                 {
-                    distances.Add((l.Glow - camera).sqrMagnitude);
-                    always.Add(_alwaysLit.Contains(l.Data.Id));
+                    _lampDistances = new double[n];
+                    _lampAlways = new bool[n];
                 }
-                var nearest = TownModels.LampOrder(distances, always, lamps, _lampLights.Count).Select(i => _lanterns[i]).ToList();
+                if (_lampNearest.Length < _lampLights.Count) _lampNearest = new int[_lampLights.Count];
+                for (int i = 0; i < n; i++)
+                {
+                    Lamp l = _lanterns[i];
+                    _lampDistances[i] = (l.Glow - camera).sqrMagnitude;
+                    _lampAlways[i] = _alwaysLit.Contains(l.Data.Id);
+                }
+                int found = TownModels.LampOrder(_lampDistances, _lampAlways, n, lamps, _lampLights.Count, _lampNearest);
                 for (int i = 0; i < _lampLights.Count; i++)
                 {
                     Light light = _lampLights[i];
-                    if (i < nearest.Count) light.transform.position = nearest[i].Glow + new Vector3(0f, -0.1f, 0f);
-                    _lightAlways[i] = i < nearest.Count && _alwaysLit.Contains(nearest[i].Data.Id);
-                    light.enabled = i < nearest.Count && (lamps > 0.01f || _lightAlways[i]);
+                    if (i < found) light.transform.position = _lanterns[_lampNearest[i]].Glow + new Vector3(0f, -0.1f, 0f);
+                    _lightAlways[i] = i < found && _lampAlways[_lampNearest[i]];
+                    light.enabled = i < found && (lamps > 0.01f || _lightAlways[i]);
                 }
             }
             for (int i = 0; i < _lampLights.Count; i++)

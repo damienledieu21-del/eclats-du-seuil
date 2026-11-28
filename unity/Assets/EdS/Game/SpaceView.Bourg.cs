@@ -32,13 +32,28 @@ namespace EdS.Game
             return _bourg.Fallbacks.TryGetValue(id, out string old) && catalog.OwnDecorPiece(old) != null;
         }
 
+        /// <summary>V2.59 : pièces du Bourg retenues au chargement, posées ensuite par lots (<see cref="BourgStep"/>).</summary>
+        private readonly System.Collections.Generic.List<(BourgPiece Piece, GameObject Prefab)> _bourgPending = new System.Collections.Generic.List<(BourgPiece, GameObject)>();
+
+        /// <summary>V2.59 : ordre de pose des pièces en attente (<see cref="BourgBuild.Order"/>), calculé à la première image ; rang suivant.</summary>
+        private int[] _bourgOrder;
+        private int _bourgNext;
+        private readonly System.Diagnostics.Stopwatch _bourgWatch = new System.Diagnostics.Stopwatch();
+
+        /// <summary>V2.59 : sonde de reflets de la rivière (reprise une fois le Bourg entier posé, pour qu'elle le voie comme avant).</summary>
+        private ReflectionProbe _reflections;
+
         /// <summary>
-        /// V2.30.2 : pose les pièces du Bourg proches de la fenêtre, chacune sur le sol affiché (au plus bas sous son pied, V2.24), tournée
-        /// vers l'extérieur ; les portes ont leurs vantaux rabattus vers la ville et la herse levée (<see cref="BourgModels.OpenParts"/>).
-        /// Aucune collision (le moteur garde ses obstacles) ; elles s'effacent quand elles cachent le joueur.
+        /// V2.30.2 : retient les pièces du Bourg proches de la fenêtre ; V2.59 (suite de l'audit des performances) : elles sont posées
+        /// ensuite par lots à chaque image, les plus proches de la caméra d'abord (<see cref="BourgStep"/>), au lieu d'un bloc au
+        /// chargement (119 maisons instanciées deux fois : saccade à l'entrée de la zone). Les lanternes de porte et les boîtes qui
+        /// arrêtent la caméra ne dépendent que des pièces : elles restent prêtes dès le chargement (avant le décor de nuit).
         /// </summary>
         private void BourgDecor()
         {
+            _bourgPending.Clear();
+            _bourgOrder = null;
+            _bourgNext = 0;
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null || _bourg == null || _bourg.Pieces.Count == 0) return;
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
@@ -53,24 +68,8 @@ namespace EdS.Game
                 if (p.Fallback != null && catalog.OwnDecorPiece(p.Fallback.When ?? p.Piece) == null) p = p.Fallback.For(near);
                 GameObject prefab = catalog.OwnDecorPiece(p.Piece);
                 if (prefab == null) continue;
-                var holder = new GameObject(prefab.name + " (Bourg)");
-                holder.transform.SetParent(_root.transform, false);
-                float x = (float)p.X, z = (float)p.Z;
-                // V2.30.5 : fossé et ponts au niveau du bord (pas au fond creusé) ; pièces murales à leur hauteur de pose sur la façade.
-                float ground = BourgModels.OnRim(p.Piece) ? RimGround(p) : Ground(x, z, (float)BourgModels.Foot(p.Piece));
-                holder.transform.position = new Vector3(x, ground + (float)p.Height, z);
-                holder.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
-                // Kit du Bourg : sols (place, rue pavée, ruelle, bordure) couchés sur la pente du sol affiché, à sa hauteur au centre ; posés au
-                // plus bas de leur pied, ils s'enterraient sur les pentes et ne laissaient voir que des coins clairs épars dans l'herbe.
-                if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, p.Piece, x, z, (float)p.Yaw);
-                GameObject model = Object.Instantiate(prefab, holder.transform, false);
-                foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-                var panes = new System.Collections.Generic.List<Renderer>();
-                BourgOpen(holder.transform, model.transform, p.Piece);
-                // Relecture indépendante : occulteurs pour les grandes pièces seulement (tours, portes, bâtiments).
-                if (BourgModels.Occludes(p.Piece)) AddModelOccluders(model);
-                BourgNight(p, holder.transform, model, panes);
-                KitLod(model, p.Piece, catalog, panes);
+                _bourgPending.Add((p, prefab));
+                BourgLamps(p);
                 // V2.30.3 : un bâtiment habillé arrête la caméra à son emprise (comme un modèle de l'atelier), jusqu'au haut de ses pièces.
                 if (p.Covers != null && Blocks(TownRules.BuildingFor(p.Covers)) && TownRules.BuildingFor(p.Covers) != StyleBuilding.None)
                 {
@@ -87,6 +86,71 @@ namespace EdS.Game
                 float ground = Ground((x0 + x1) / 2f, (z0 + z1) / 2f, 0.4f);
                 _cameraBoxes.Add(new CameraBox(x0, ground, z0, x1, ground + top, z1));
             }
+        }
+
+        /// <summary>
+        /// V2.59 : une image de construction du Bourg : l'ordre (le plus proche de <paramref name="camera"/> d'abord) est pris à la
+        /// première image, puis les pièces sont posées tant que <see cref="BourgBuild.Continue"/> le permet (budget de la machine,
+        /// <see cref="StreamingProfile.BudgetMs"/>). La dernière pièce posée, la sonde de reflets est reprise une fois.
+        /// </summary>
+        private void BourgStep(Vector3 camera)
+        {
+            if (_bourgPending.Count == 0) return;
+            if (_bourgOrder == null)
+            {
+                var spots = new System.Collections.Generic.List<(double X, double Z)>(_bourgPending.Count);
+                for (int i = 0; i < _bourgPending.Count; i++) spots.Add((_bourgPending[i].Piece.X, _bourgPending[i].Piece.Z));
+                _bourgOrder = BourgBuild.Order(spots, camera.x, camera.z);
+                _bourgNext = 0;
+            }
+            double budget = StreamingProfile.For(DeviceQuality.Tier).BudgetMs;
+            _bourgWatch.Reset();
+            _bourgWatch.Start();
+            int built = 0;
+            while (_bourgNext < _bourgOrder.Length && BourgBuild.Continue(built, _bourgWatch.Elapsed.TotalMilliseconds, budget))
+            {
+                var pending = _bourgPending[_bourgOrder[_bourgNext++]];
+                BourgPlace(pending.Piece, pending.Prefab);
+                built++;
+            }
+            _bourgWatch.Stop();
+            if (_bourgNext < _bourgOrder.Length) return;
+            _bourgPending.Clear();
+            _bourgOrder = null;
+            _bourgNext = 0;
+            if (_reflections != null) _reflections.RenderProbe();
+        }
+
+        /// <summary>
+        /// V2.30.2 : pose une pièce du Bourg sur le sol affiché (au plus bas sous son pied, V2.24), tournée vers l'extérieur ; les portes ont
+        /// leurs vantaux rabattus vers la ville et la herse levée (<see cref="BourgModels.OpenParts"/>). Aucune collision (le moteur garde
+        /// ses obstacles) ; elles s'effacent quand elles cachent le joueur. V2.59 : posée après coup, elle reçoit ce que le décor posé au
+        /// chargement reçoit à la fin (petits objets sans ombre, assombrissement de l'Envers).
+        /// </summary>
+        private void BourgPlace(BourgPiece p, GameObject prefab)
+        {
+            if (_root == null || prefab == null) return;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            var holder = new GameObject(prefab.name + " (Bourg)");
+            holder.transform.SetParent(_root.transform, false);
+            float x = (float)p.X, z = (float)p.Z;
+            // V2.30.5 : fossé et ponts au niveau du bord (pas au fond creusé) ; pièces murales à leur hauteur de pose sur la façade.
+            float ground = BourgModels.OnRim(p.Piece) ? RimGround(p) : Ground(x, z, (float)BourgModels.Foot(p.Piece));
+            holder.transform.position = new Vector3(x, ground + (float)p.Height, z);
+            holder.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
+            // Kit du Bourg : sols (place, rue pavée, ruelle, bordure) couchés sur la pente du sol affiché, à sa hauteur au centre ; posés au
+            // plus bas de leur pied, ils s'enterraient sur les pentes et ne laissaient voir que des coins clairs épars dans l'herbe.
+            if (BourgModels.IsGround(p.Piece)) GroundOnSlope(holder.transform, p.Piece, x, z, (float)p.Yaw);
+            GameObject model = Object.Instantiate(prefab, holder.transform, false);
+            foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            var panes = new System.Collections.Generic.List<Renderer>();
+            BourgOpen(holder.transform, model.transform, p.Piece);
+            // Relecture indépendante : occulteurs pour les grandes pièces seulement (tours, portes, bâtiments).
+            if (BourgModels.Occludes(p.Piece)) AddModelOccluders(model);
+            BourgWindows(p, holder.transform, model, panes);
+            if (catalog != null) KitLod(model, p.Piece, catalog, panes);
+            SmallCasters(holder);   // V2.53 : comme le décor posé au chargement
+            if (_envers) DarkenUnder(holder);   // V2.51b : comme le décor posé au chargement (EnversDecor)
         }
 
         /// <summary>
@@ -107,6 +171,9 @@ namespace EdS.Game
             nearList.AddRange(windows);
             Renderer[] near = nearList.ToArray(), distant = far.GetComponentsInChildren<Renderer>();
             if (near.Length == 0 || distant.Length == 0) return;
+            // V2.59 (suite de l'audit des performances) : la version lointaine ne projette plus d'ombre sur une machine allégée.
+            if (!PerfRules.FarHouseShadow(DeviceQuality.Tier))
+                foreach (Renderer r in distant) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             GameObject owner = model.transform.parent.gameObject;
             LODGroup group = owner.GetComponent<LODGroup>();
             if (group == null) group = owner.AddComponent<LODGroup>();
@@ -146,10 +213,8 @@ namespace EdS.Game
         /// porte faite par le code, sur la façade de son modèle (<see cref="BourgModels.DoorLanternOf"/>) ; les fenêtres de façade d'un bâtiment habillé (entre ses volets « Volet_…_G » et « …_D », rez-de-chaussée
         /// et premier étage côté rue, deux au plus) prennent le fond de fenêtre qui s'allume la nuit.
         /// </summary>
-        private void BourgNight(BourgPiece p, Transform holder, GameObject model, System.Collections.Generic.List<Renderer> windows)
+        private void BourgLamps(BourgPiece p)
         {
-            float a = (float)p.Yaw * Mathf.Deg2Rad;
-            (int X, int Z) facing = (Mathf.RoundToInt(Mathf.Sin(a)), Mathf.RoundToInt(Mathf.Cos(a)));
             if (p.Piece == BourgModels.WallLantern)
             {
                 string id = "lanterne/" + p.X.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," + p.Z.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
@@ -159,13 +224,21 @@ namespace EdS.Game
                 return;
             }
             if (p.Covers == null || BourgModels.IsWall(p.Covers) || BourgModels.IsTower(p.Covers) || BourgModels.IsDitch(p.Covers)) return;
-            StyleBuilding kind = TownRules.BuildingFor(p.Covers);
             // Revue Codex de la PR #204 : la lanterne de porte d'un monument va sur la façade de la pièce posée (pas sur la boîte de l'obstacle).
             if (BourgModels.HasDoorLantern(p.Piece))
             {
                 (double lx, double lz) = BourgModels.DoorLanternOf(p);
                 _lampSpots.Add(new NightLamp("porte/" + p.Covers + "/" + p.Piece, NightLampKind.DoorLantern, lx, NightLamps.DoorLanternHeight, lz, p.Yaw));
             }
+        }
+
+        /// <summary>V2.30.5 : les fenêtres de façade de la pièce posée (V2.59 : séparées des lanternes, posées avec le modèle).</summary>
+        private void BourgWindows(BourgPiece p, Transform holder, GameObject model, System.Collections.Generic.List<Renderer> windows)
+        {
+            if (p.Piece == BourgModels.WallLantern) return;
+            if (p.Covers == null || BourgModels.IsWall(p.Covers) || BourgModels.IsTower(p.Covers) || BourgModels.IsDitch(p.Covers)) return;
+            float a = (float)p.Yaw * Mathf.Deg2Rad;
+            (int X, int Z) facing = (Mathf.RoundToInt(Mathf.Sin(a)), Mathf.RoundToInt(Mathf.Cos(a)));
             int lit = 0;
             foreach (Renderer left in model.GetComponentsInChildren<Renderer>())
             {

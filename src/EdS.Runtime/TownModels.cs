@@ -281,6 +281,45 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.59 (suite de l'audit des performances) : même ordre que <see cref="LampOrder(IReadOnlyList{double}, IReadOnlyList{bool}, double, int)"/>
+        /// sur les <paramref name="n"/> premières lanternes, sans allocation : les indices retenus sont écrits dans <paramref name="result"/>
+        /// (au plus sa longueur), et leur nombre est rendu. Sélection pas à pas (la plus petite clé au-dessus de la précédente), pour les
+        /// huit lumières de la vue relues quatre fois par seconde.
+        /// </summary>
+        public static int LampOrder(double[] distances, bool[] alwaysLit, int n, double lamps, int count, int[] result)
+        {
+            if (distances == null) throw new ArgumentNullException(nameof(distances));
+            if (alwaysLit == null) throw new ArgumentNullException(nameof(alwaysLit));
+            if (result == null) throw new ArgumentNullException(nameof(result));
+            if (n < 0 || n > distances.Length || n > alwaysLit.Length) throw new ArgumentOutOfRangeException(nameof(n));
+            bool day = lamps < 1.0;
+            int wanted = Math.Min(Math.Min(Math.Max(0, count), result.Length), n);
+            int last = -1;
+            for (int k = 0; k < wanted; k++)
+            {
+                int best = -1;
+                for (int i = 0; i < n; i++)
+                {
+                    if (last >= 0 && LampKey(distances, alwaysLit, day, i, last) <= 0) continue;   // déjà retenue (clé au plus la précédente)
+                    if (best < 0 || LampKey(distances, alwaysLit, day, i, best) < 0) best = i;
+                }
+                if (best < 0) return k;
+                result[k] = best;
+                last = best;
+            }
+            return wanted;
+        }
+
+        /// <summary>Compare les clés (toujours allumée le jour, distance, indice) des lanternes <paramref name="a"/> et <paramref name="b"/>.</summary>
+        private static int LampKey(double[] distances, bool[] alwaysLit, bool day, int a, int b)
+        {
+            int ga = day && alwaysLit[a] ? 0 : 1, gb = day && alwaysLit[b] ? 0 : 1;
+            if (ga != gb) return ga.CompareTo(gb);
+            int d = distances[a].CompareTo(distances[b]);   // comme OrderBy (comparateur par défaut des double)
+            return d != 0 ? d : a.CompareTo(b);
+        }
+
+        /// <summary>
         /// V2.22 : force (0 à 1) de la fumée d'un feu (<see cref="ShopChimney"/>, d'après son identifiant) : 0,35 pour le feu de tisanes
         /// d'une herboristerie (décision de Damien du 10 novembre 2026 au soir : fumée légère), 1 pour les autres (fournils, cuisines,
         /// âtres).
