@@ -1286,8 +1286,16 @@ namespace EdS.World
 
         bool INarrativeWorld.IsEquipped(string item) => Inventory.Equipped.Values.Contains(item);
 
-        bool INarrativeWorld.InPlace(string place) =>
-            Definition != null && ((INarrativeWorld)this).PlayerPosition is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
+        /// <remarks>
+        /// V2.57 (histoire en schéma 17) : un lieu de la zone où se tient le personnage, qu'elle soit celle de l'histoire ou une zone reliée (un
+        /// dessous, l'Envers) ; les identifiants des lieux sont uniques d'une zone à l'autre (vérifié par les tests des données).
+        /// </remarks>
+        bool INarrativeWorld.InPlace(string place)
+        {
+            if (Definition is null) return false;
+            CombatantView me = Zone.Engine.View(CombatantId);
+            return me.IsPresent && !me.IsDead && me.Position is GroundVector p && Definition.PlacesAt(p).Any(x => x.Id == place);
+        }
 
         /// <summary>Intérieurs : zone de l'histoire et des métiers (null pour une partie sur une simulation donnée).</summary>
         private readonly string? _storyZone;

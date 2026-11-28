@@ -41,7 +41,7 @@
 | Protocole réseau | 6 (message `season` : date du serveur, V2.44.1, décision du 20 novembre 2026 ; 5 : esquive) | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v18 (v17 à v7 encore lues ; secrets `secrets` (coffres et stèles de lore, fouillés une fois, clé `<zone>/secret/<id>`), V2.52a ; l'Envers : étage `envers` et reflet `mirror` (`of`, `scenario`, `remove`), aire composée par `ZoneValidator.Reflect`, failles au même point, V2.51a ; eau des portes `water` (`tide`, `diveMs`) : marée et plongée des grottes noyées, `EdS.World/Tides.cs`, V2.50.1 ; étage `floor` (surface, dessous), genre de porte `kind`, bornes des portes relevées (64, 512 et 32 par case ; 256 zones reliées), V2.45.1 ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v16 (v4 à v15 encore lues ; `lane` sur `contestOpen` et `contest` : piste de concours, deux concours à la même fête, décision du 16 novembre 2026, en v16 ; `hasSigned` et `present`, concours de pâtisserie, en v15 ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
+| Histoire (schéma) | v17 (v4 à v16 encore lues ; conditions `season`, `corruptionAtLeast`, `corruptionBelow`, objectifs dans les zones reliées, faits des chefs des dessous et `fact.secret.<secret>`, V2.57, contenu 0.40.0, textes 0.50.0 ; `lane` sur `contestOpen` et `contest` : piste de concours, deux concours à la même fête, décision du 16 novembre 2026, en v16 ; `hasSigned` et `present`, concours de pâtisserie, en v15 ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Compagnons (catalogue) | 1 | `Allies/CompanionModel.cs` (`CompanionValidator`) |
 | Lieux reconstruits (schéma) | v2 (v1 encore lue ; portes des intérieurs `rebuilt.doors`, V2.43.4 ; chantiers par paliers, V2.43.1 ; faits `fact.rebuild.<lieu>.started`, `.<palier>`, `.done`) | `Rebuilds/RebuildModel.cs` (`CurrentSchemaVersion`), `EdS.World/Rebuilds.cs` |
 | Maison du joueur (schéma) | v1 (achat, paliers, meubles sur la grille de 0,25 m, coffre ; `EdS.World/Home.cs`, `WorldSession.Home.cs`) | `Homes/HomeModel.cs` (`HomeValidator.CurrentSchemaVersion`) |
@@ -72,6 +72,7 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.36.0-contenu-0.6
 | Combat dans l'espace | `docs/COMBAT_ESPACE.md` | `grep -n "portée" docs/COMBAT_ESPACE.md` |
 | Réseau, serveur | `docs/RESEAU.md`, `src/EdS.Net`, `src/EdS.Server` | `grep -n "Version" src/EdS.Net/Protocol.cs` |
 | Unity | `docs/UNITY.md`, `tests/EdS.Unity.CompileCheck` | `find src -name "*.asmdef"` |
+| Performances (audit, Profiler, F9) | `docs/PERFS.md`, `src/EdS.Runtime/PerfRules.cs` | `grep -n "PC modeste" docs/PERFS.md` |
 | Limites connues d'un lot | `docs/LIMITES_LOT_*.md` | `grep -ni "limite" docs/LIMITES_LOT_12.md` |
 | Périmètre, crédits, builds CI | `docs/PERIMETRE.md`, `docs/CREDITS.md` | `grep -n "^#" docs/PERIMETRE.md` |
 | Tests | `tests/EdS.{Domain,Data,Simulation}.Tests` | `grep -rn "\[Trait(\"Category\"" tests` |

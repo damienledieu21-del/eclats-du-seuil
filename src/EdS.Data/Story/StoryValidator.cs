@@ -157,7 +157,28 @@ namespace EdS.Data.Story
         /// Firmin ne se ferment plus l'un l'autre) : <c>lane</c> facultatif sur une condition <c>contestOpen</c> et un effet <c>contest</c>
         /// (nom <c>[a-z0-9_]</c>, 32 caractères au plus) : une piste de concours de la fête, avec son propre « un par fête et par an » (clé
         /// « fête.piste » dans <c>story.festivals</c> de la sauvegarde, format inchangé). La version 15 reste lue telle quelle.</remarks>
-        public const int CurrentSchemaVersion = 16;
+        /// <remarks>Version 17 (V2.57, quêtes et dialogues des Vallons) : condition <c>season</c> (<c>id</c> parmi <see cref="Seasons"/>),
+        /// conditions <c>corruptionAtLeast</c> et <c>corruptionBelow</c> (sans <c>id</c>, <c>value</c> de 0 à <see cref="MaxCorruptedLands"/> :
+        /// terres corrompues aujourd'hui) ; les objectifs <c>reach</c>, <c>defeat</c>, <c>defeatFamily</c> et la condition <c>inPlace</c>
+        /// visent aussi les lieux et les créatures des zones reliées (intérieurs, dessous, Envers). Quelle que soit la version, les faits des
+        /// chefs des zones reliées et « fact.secret.&lt;secret&gt; » (première fouille d'un secret) peuvent être attendus. La version 16 reste
+        /// lue telle quelle.</remarks>
+        public const int CurrentSchemaVersion = 17;
+
+        /// <summary>V2.57 : la version 16 (pistes de concours), encore lue telle quelle.</summary>
+        public const int Schema16 = 16;
+
+        /// <summary>V2.57 (schéma 17) : saisons de la condition <c>season</c>, dans l'ordre de <see cref="EdS.Domain.Time.Season"/>.</summary>
+        public static readonly IReadOnlyList<string> Seasons = new ReadOnlyCollection<string>(new[] { "spring", "summer", "autumn", "winter" });
+
+        /// <summary>V2.57 (schéma 17) : borne de <c>corruptionAtLeast</c> et <c>corruptionBelow</c> (terres corrompues comptées).</summary>
+        public const int MaxCorruptedLands = 64;
+
+        /// <summary>V2.57 : préfixe du fait appris à la première fouille d'un secret (coffre ou stèle) : « fact.secret.&lt;secret&gt; ».</summary>
+        public const string SecretFactPrefix = "fact.secret.";
+
+        /// <summary>V2.57 : fait appris à la première fouille du secret <paramref name="secret"/>.</summary>
+        public static string SecretFact(string secret) => SecretFactPrefix + (secret ?? throw new ArgumentNullException(nameof(secret)));
 
         /// <summary>
         /// Lot C (décision de Damien du 17 novembre 2026) : nombre de portes au plus entre la zone de l'histoire et la pièce d'un créneau ou
@@ -274,6 +295,8 @@ namespace EdS.Data.Story
             ["festival"] = ConditionKind.Festival, ["contestOpen"] = ConditionKind.ContestOpen,   // sous-lot V2.10 (schéma 13)
             ["contestRound"] = ConditionKind.ContestRound,
             ["hasSigned"] = ConditionKind.HasSigned,   // concours de pâtisserie (schéma 15)
+            ["season"] = ConditionKind.Season,   // V2.57 (schéma 17)
+            ["corruptionAtLeast"] = ConditionKind.CorruptionAtLeast, ["corruptionBelow"] = ConditionKind.CorruptionBelow,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -357,6 +380,7 @@ namespace EdS.Data.Story
                 || document.SchemaVersion == Schema13   // fêtes aux vraies dates
                 || document.SchemaVersion == Schema14   // concours de pâtisserie
                 || document.SchemaVersion == Schema15   // décision de Damien du 16 novembre 2026 : pistes de concours (lane)
+                || document.SchemaVersion == Schema16   // V2.57 : saison, corruption, lieux et créatures des zones reliées
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -466,6 +490,17 @@ namespace EdS.Data.Story
                         if (z.Populations[i].Weather is { Sign: string weatherSign })
                             Text(weatherSign, $"{z.Id}:$.data.populations[{i}].weather.sign");
 
+                // V2.57, relecture de la PR #270 : en version 17, les objectifs et « inPlace » visent les lieux des zones reliées par leur seul
+                // identifiant (WorldSession.InPlace : la zone où se tient le personnage) : un lieu n'a qu'une zone.
+                if (_schema >= CurrentSchemaVersion)
+                {
+                    var placeZones = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                        for (int i = 0; i < z.Places.Count; i++)
+                            if (placeZones.TryGetValue(z.Places[i].Id, out string? other))
+                                _r.Add($"{z.Id}:$.data.places[{i}].id", ValidationCode.DuplicateId, $"lieu « {z.Places[i].Id} » déjà dans la zone « {other} ».");
+                            else placeZones.Add(z.Places[i].Id, z.Id);
+                }
                 var discoveries = new List<Discovery>();
                 if (_d.Discoveries != null)
                     for (int i = 0; i < _d.Discoveries.Count; i++)
@@ -544,6 +579,13 @@ namespace EdS.Data.Story
                 CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);   // « fact.met.… » refusé pour un chef par ZoneValidator
+                // V2.57 : les chefs des zones reliées (dessous, Envers) apprennent aussi leur fait à la victoire (WorldSession), et la première
+                // fouille d'un secret (coffre, stèle) apprend « fact.secret.<secret> ».
+                foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                {
+                    if (!ReferenceEquals(z, _zone)) foreach (Boss boss in z.Bosses) _factsSet.Add(boss.Fact);
+                    foreach (EdS.Data.Zones.ZoneSecret secret in z.Secrets) if (IsFactId(SecretFact(secret.Id))) _factsSet.Add(SecretFact(secret.Id));
+                }
                 // Sous-lot V1.9.10 : le premier dialogue avec chaque PNJ apprend son fait « déjà rencontré ».
                 foreach (string npcId in _npcs) _factsSet.Add(MetFact(npcId));
                 _factsSet.Add(CompanionRecruitedFact);   // compagnons : appris au recrutement
@@ -1078,7 +1120,10 @@ namespace EdS.Data.Story
                         ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoStep(t, p)
                             && Value(t, p, 0, (_d.Festivals?.FirstOrDefault(f => f?.Id == t.Id)?.Rounds ?? 1) - 1),
-                        ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.InPlace => Ref(t, p, PlaceIds(), "lieu") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.Season => Since17(t.Kind, p + ".if") && Ref(t, p, Seasons, "saison") && NoValue(t, p) && NoStep(t, p),   // V2.57
+                        ConditionKind.CorruptionAtLeast or ConditionKind.CorruptionBelow =>
+                            Since17(t.Kind, p + ".if") && NoId(t, p) && Value(t, p, 0, MaxCorruptedLands) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
                     if (ok) list.Add(new StoryCondition(kind, t.Id ?? string.Empty, t.Value ?? 0, t.Step, null, conditionLane));
@@ -1193,13 +1238,13 @@ namespace EdS.Data.Story
                     ObjectiveKind.Purify => ScarredRift(t, path) && Value(t, path, 1, EdS.Data.Saves.SavedScar.MaxEntries),   // sous-lot V2.6.1
                     ObjectiveKind.Talk => Ref(t, path, _npcs, "PNJ") && NoValue(t, path),
                     ObjectiveKind.Deliver => ItemRef(t, path) && Value(t, path, 1, MaxCount) && NpcRef(t, path),
-                    ObjectiveKind.DefeatFamily => Ref(t, path, _zone.Populations.Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
+                    ObjectiveKind.DefeatFamily => Ref(t, path, LinkedZones().SelectMany(z => z.Populations).Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Equipped => EquipmentRef(t, path) && NoValue(t, path),
                     ObjectiveKind.GuildRank => RankRef(t, path) && NoValue(t, path),   // sous-lot V1.7
                     ObjectiveKind.CraftQuality => QualityItemRef(t, path) & QualityRef(t, path) & Value(t, path, 1, MaxCount),   // sous-lot V1.9.3b
                     ObjectiveKind.Fact => Fact(t, path, needed: true) && NoValue(t, path),
-                    ObjectiveKind.Reach => Ref(t, path, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, path),
-                    ObjectiveKind.Defeat => Ref(t, path, _zone.Populations.Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
+                    ObjectiveKind.Reach => Ref(t, path, PlaceIds(), "lieu") && NoValue(t, path),
+                    ObjectiveKind.Defeat => Ref(t, path, LinkedZones().SelectMany(z => z.Populations).Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Collect => ItemRef(t, path) && Value(t, path, 1, MaxCount),
                     ObjectiveKind.Practice => Ref(t, path, PracticeActions, "geste") && Value(t, path, 1, MaxPractice),   // sous-lot V1.9.6
                     _ => Ref(t, path, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, path),
@@ -1369,6 +1414,21 @@ namespace EdS.Data.Story
             /// <summary>Sous-lot V2.7 : <paramref name="what"/> (réputation) demande la version 12.</summary>
             /// <summary>Sous-lot V2.10 : <paramref name="what"/> demande la version 13 (fêtes).</summary>
             /// <summary>Concours de pâtisserie : <paramref name="what"/> est connu depuis la version 15.</summary>
+            /// <summary>
+            /// V2.57 (schéma 17) : zones où un lieu ou une créature d'un objectif peut se trouver : la zone de l'histoire, puis, depuis la
+            /// version 17, les zones qui lui sont reliées (intérieurs, dessous, Envers) ; avant, la zone de l'histoire seule.
+            /// </summary>
+            private IEnumerable<ZoneDefinition> LinkedZones() => _schema >= CurrentSchemaVersion ? new[] { _zone }.Concat(_interiors) : new[] { _zone };
+
+            private IEnumerable<string> PlaceIds() => LinkedZones().SelectMany(z => z.Places).Select(x => x.Id).Distinct(StringComparer.Ordinal);
+
+            private bool Since17(string what, string p)
+            {
+                if (_schema >= CurrentSchemaVersion) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                return false;
+            }
+
             private bool Since15(string what, string p)
             {
                 if (_schema >= Schema15) return true;
@@ -1385,9 +1445,9 @@ namespace EdS.Data.Story
                 lane = null;
                 if (!t.Present.Contains("lane") && t.Lane is null) return true;
                 if (!allowed) { _r.Add(p + ".lane", ValidationCode.InvalidValue, "seuls « contestOpen » et « contest » ont une piste (lane)."); return false; }
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema16)
                 {
-                    _r.Add(p + ".lane", ValidationCode.InvalidValue, $"« lane » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(p + ".lane", ValidationCode.InvalidValue, $"« lane » inconnu en version {_schema} du format : version {Schema16} demandée.");
                     return false;
                 }
                 if (t.Lane is null || !LaneName.IsMatch(t.Lane)) { _r.Add(p + ".lane", ValidationCode.InvalidValue, "piste : [a-z0-9_], de 1 à 32 caractères."); return false; }

@@ -28,6 +28,20 @@ namespace EdS.Game
         /// Pose le ciel, la brume, la lumière et les couleurs de l'image du catalogue sur <paramref name="camera"/> (à appeler une fois,
         /// après la création du soleil). Sans catalogue ou sans ciel : rien, et false.
         /// </summary>
+        private static RenderPipelineAsset _projectPipeline, _modestPipeline;   // V2.53 : rendu du projet remplacé par celui du PC modeste
+
+        /// <summary>
+        /// V2.53 (relecture de la PR #265) : à la sortie du mode Jeu dans l'éditeur, remet le rendu du projet s'il a été remplacé par celui
+        /// du PC modeste, puis se désabonne. Sans effet s'il est appelé deux fois.
+        /// </summary>
+        public static void RestoreProjectPipeline()
+        {
+            Application.quitting -= RestoreProjectPipeline;
+            if (_modestPipeline != null && QualitySettings.renderPipeline == _modestPipeline) QualitySettings.renderPipeline = _projectPipeline;
+            _projectPipeline = null;
+            _modestPipeline = null;
+        }
+
         public static bool Ambience(Camera camera)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
@@ -43,6 +57,24 @@ namespace EdS.Game
                 // Nom qualifié : URP a aussi un ShadowQuality (UnityEngine.Rendering.Universal) ; non qualifié, Unity refuse de compiler
                 // (essai de Damien du 27 octobre 2026 au soir).
                 QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;
+            }
+            // V2.53 (audit des performances, docs/PERFS.md) : un PC modeste (ou le réglage Basse) prend le rendu léger du menu : ombres sur
+            // 50 m en deux cascades (au lieu de 90 m en quatre, carte 4096), dures, MSAA ×2, sans occlusion de l'écran.
+            // Dans l'éditeur, le rendu du projet est remis à la sortie du mode Jeu (le réglage de qualité serait sinon gardé, et la préparation
+            // réglerait le rendu léger comme celui de l'ordinateur).
+            else if (!Application.isMobilePlatform && DeviceQuality.Tier == DeviceTier.Modest && catalog.ModestPipeline != null
+                && QualitySettings.renderPipeline != catalog.ModestPipeline)
+            {
+                // Relecture de la PR #265 : gestionnaire nommé et idempotent (aucun abonnement qui s'accumule sans rechargement du domaine) ;
+                // si l'éditeur est tué en plein jeu, EdsRenderRestore remet le rendu du projet à sa prochaine ouverture.
+                _projectPipeline = QualitySettings.renderPipeline;
+                _modestPipeline = catalog.ModestPipeline;
+                QualitySettings.renderPipeline = catalog.ModestPipeline;
+                if (Application.isEditor)
+                {
+                    Application.quitting -= RestoreProjectPipeline;
+                    Application.quitting += RestoreProjectPipeline;
+                }
             }
             // Sous-lot V2.1 : une copie du ciel, dont la clarté et la teinte suivent l'heure (le ciel du catalogue n'est jamais modifié).
             if (_sky == null)

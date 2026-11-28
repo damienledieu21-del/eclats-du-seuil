@@ -280,6 +280,7 @@ internal static class ScenarioTestData
     /// </summary>
     public static void StoryBefore(JsonNode story)
     {
+        V257TestData.WithoutQuetes(story);   // V2.57 : les quêtes des dessous et de l'Envers, hors de l'aire d'avant
         var data = story["data"]!;
         // Sous-lot V2.30.1 : PNJ, haltes et invités des fêtes du bourg reviennent au cœur.
         int town = 0;

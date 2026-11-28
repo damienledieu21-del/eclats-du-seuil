@@ -14,6 +14,7 @@ internal static class V215TestData
 
     public static void WithoutPastryContest(JsonObject root)
     {
+        V257TestData.WithoutQuetes(root);   // V2.57 : d'abord ce qui demande la version 17
         foreach (JsonNode? d in root["data"]!["dialogues"]!.AsArray())
         {
             JsonArray entries = d!["entries"]!.AsArray(), nodes = d["nodes"]!.AsArray();
