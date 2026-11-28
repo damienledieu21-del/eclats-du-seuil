@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "kind": "story",
-  "contentVersion": "0.39.0-provisoire",
+  "contentVersion": "0.40.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -2195,6 +2195,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.voix_du_moulin",
+                "step": "odile"
+              }
+            ],
+            "node": "v257_moulin_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.le_seuil",
                 "step": "retour"
               },
@@ -2881,6 +2891,32 @@
               {
                 "conditions": [
                   {
+                    "if": "fact",
+                    "id": "fact.v257.moulin.verite"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v257.odile.moulin_dit"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.moulin.silence"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v257.odile.moulin_tu"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "riviere"
@@ -2923,6 +2959,45 @@
                   }
                 ],
                 "text": "text.v23.odile.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v257.odile_apres.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v257.odile_apres.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v257.odile_apres.ete"
               }
             ]
           },
@@ -4474,6 +4549,127 @@
                 "next": "ch1_puits"
               }
             ]
+          },
+          {
+            "id": "v257_moulin_choix",
+            "text": "text.v257.odile.moulin_choix",
+            "choices": [
+              {
+                "text": "text.v257.odile.moulin_choix.verite",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.moulin.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.moulin.verite"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.moulin.decide"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.odile",
+                    "value": 1
+                  }
+                ],
+                "next": "v257_moulin_verite"
+              },
+              {
+                "text": "text.v257.odile.moulin_choix.silence",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.moulin.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.moulin.silence"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.moulin.decide"
+                  }
+                ],
+                "next": "v257_moulin_silence"
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v257_moulin_verite",
+            "text": "text.v257.odile.moulin_verite",
+            "choices": []
+          },
+          {
+            "id": "v257_moulin_silence",
+            "text": "text.v257.odile.moulin_silence",
+            "choices": []
           }
         ]
       },
@@ -4664,6 +4860,71 @@
                   }
                 ],
                 "text": "text.v23.maelle.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
+                  }
+                ],
+                "text": "text.v257.maelle.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
+                  }
+                ],
+                "text": "text.v257.maelle.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
+                  }
+                ],
+                "text": "text.v257.maelle.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
+                  }
+                ],
+                "text": "text.v257.maelle.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
+                  }
+                ],
+                "text": "text.v257.maelle.hiver"
               }
             ]
           },
@@ -4993,6 +5254,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.ombre_de_brunot",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_brunot_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.v27.piste_des_rodeurs",
                 "step": "retour"
               }
@@ -5102,6 +5373,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.ombre_de_brunot"
+              }
+            ],
+            "node": "v257_brunot_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questDone",
                 "id": "quest.traces_sous_le_moulin"
               },
@@ -5168,6 +5448,23 @@
               }
             ],
             "node": "ch1_croc"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.ombre_de_brunot"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 25
+              },
+              {
+                "if": "questDone",
+                "id": "quest.le_vieux_brunot"
+              }
+            ],
+            "node": "v257_brunot_offre"
           },
           {
             "conditions": [
@@ -5579,6 +5876,19 @@
                   }
                 ],
                 "text": "text.v27.gaspard.hostile"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.gaspard"
+                  }
+                ],
+                "text": "text.v257.gaspard.printemps"
               }
             ]
           },
@@ -8576,6 +8886,301 @@
                 "next": "ch1_aldric_moque"
               }
             ]
+          },
+          {
+            "id": "v257_brunot_offre",
+            "text": "text.v257.gaspard.brunot",
+            "choices": [
+              {
+                "text": "text.v257.gaspard.brunot.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.ombre_de_brunot"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.ombre_de_brunot"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.gaspard.brunot.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v257_brunot_attente",
+            "text": "text.v257.gaspard.brunot_attente",
+            "choices": [
+              {
+                "text": "text.v257.gaspard.brunot_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v257_brunot_retour",
+            "text": "text.v257.gaspard.brunot_retour",
+            "choices": [
+              {
+                "text": "text.v257.gaspard.brunot_retour.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
           }
         ]
       },
@@ -9561,6 +10166,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.ce_qui_remonte",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_citerne_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.bourg_d_aube",
                 "step": "mathurin"
               }
@@ -9607,6 +10222,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.ce_qui_remonte"
+              }
+            ],
+            "node": "v257_citerne_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.peaux_pour_l_auberge"
               }
@@ -9625,6 +10249,23 @@
               }
             ],
             "node": "ch2_dette"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.ce_qui_remonte"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 8
+              },
+              {
+                "if": "questDone",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "v257_citerne_offre"
           },
           {
             "conditions": [
@@ -10141,12 +10782,74 @@
                 "text": "text.v23.mathurin.salle"
               }
             ]
+          },
+          {
+            "id": "v257_citerne_offre",
+            "text": "text.v257.aubergiste.citerne",
+            "choices": [
+              {
+                "text": "text.v257.aubergiste.citerne.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.ce_qui_remonte"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.ce_qui_remonte"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.aubergiste.citerne.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_citerne_attente",
+            "text": "text.v257.aubergiste.citerne_attente",
+            "choices": [
+              {
+                "text": "text.v257.aubergiste.citerne_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_citerne_retour",
+            "text": "text.v257.aubergiste.citerne_retour",
+            "choices": [
+              {
+                "text": "text.v257.aubergiste.citerne_retour.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
       {
         "id": "dialogue.pretre",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.le_sacristain",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_sacristain_retour"
+          },
           {
             "conditions": [
               {
@@ -10197,6 +10900,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.le_sacristain"
+              }
+            ],
+            "node": "v257_sacristain_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.bete_blanche"
               },
@@ -10219,6 +10931,19 @@
               }
             ],
             "node": "ch2_cloches"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.le_sacristain"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 6
+              }
+            ],
+            "node": "v257_sacristain_offre"
           },
           {
             "conditions": [
@@ -10395,6 +11120,19 @@
                   }
                 ],
                 "text": "text.v23.anselme.porte"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.pretre"
+                  }
+                ],
+                "text": "text.v257.pretre.printemps"
               },
               {
                 "conditions": [
@@ -10837,6 +11575,58 @@
             "choices": [
               {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_sacristain_offre",
+            "text": "text.v257.pretre.sacristain",
+            "choices": [
+              {
+                "text": "text.v257.pretre.sacristain.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.le_sacristain"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.le_sacristain"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.pretre.sacristain.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_sacristain_attente",
+            "text": "text.v257.pretre.sacristain_attente",
+            "choices": [
+              {
+                "text": "text.v257.pretre.sacristain_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_sacristain_retour",
+            "text": "text.v257.pretre.sacristain_retour",
+            "choices": [
+              {
+                "text": "text.v257.pretre.sacristain_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -11805,11 +12595,47 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.pierres_a_l_envers",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_steles_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.registres_de_l_archiviste",
                 "step": "retour"
               }
             ],
             "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.pierres_a_l_envers"
+              }
+            ],
+            "node": "v257_steles_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.pierres_a_l_envers"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 24
+              },
+              {
+                "if": "questDone",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "v257_steles_offre"
           },
           {
             "conditions": [
@@ -11946,6 +12772,58 @@
               {
                 "conditions": [
                   {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v257.archiviste.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v257.archiviste.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v257.archiviste.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v257.archiviste.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.archiviste"
                   }
@@ -11960,6 +12838,58 @@
             "choices": [
               {
                 "text": "text.archiviste.retour.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_steles_offre",
+            "text": "text.v257.archiviste.steles",
+            "choices": [
+              {
+                "text": "text.v257.archiviste.steles.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.pierres_a_l_envers"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.pierres_a_l_envers"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.archiviste.steles.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_steles_attente",
+            "text": "text.v257.archiviste.steles_attente",
+            "choices": [
+              {
+                "text": "text.v257.archiviste.steles_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_steles_retour",
+            "text": "text.v257.archiviste.steles_retour",
+            "choices": [
+              {
+                "text": "text.v257.archiviste.steles_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -16261,6 +17191,26 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.voix_du_moulin",
+                "step": "fin"
+              }
+            ],
+            "node": "v257_moulin_fin"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.voix_du_moulin",
+                "step": "albe"
+              }
+            ],
+            "node": "v257_moulin_depart"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.champs_et_hameau",
                 "step": "albe"
               }
@@ -16375,6 +17325,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.voix_du_moulin"
+              }
+            ],
+            "node": "v257_moulin_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "fact",
                 "id": "fact.ch2.albe.rencontree"
               },
@@ -16401,6 +17360,23 @@
               }
             ],
             "node": "v261_offre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.voix_du_moulin"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 24
+              },
+              {
+                "if": "questDone",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "v257_moulin_offre"
           },
           {
             "conditions": [
@@ -16901,6 +17877,19 @@
               {
                 "conditions": [
                   {
+                    "if": "questDone",
+                    "id": "quest.v257.voix_du_moulin"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.moulin_apres"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "activity",
                     "id": "npc.albe",
                     "step": "veille"
@@ -16925,6 +17914,71 @@
                   }
                 ],
                 "text": "text.v261.albe.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v257.albe.hiver"
               }
             ]
           },
@@ -17684,6 +18738,70 @@
                     "id": "fact.v261.albe.apres"
                   }
                 ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moulin_offre",
+            "text": "text.v257.albe.moulin",
+            "choices": [
+              {
+                "text": "text.v257.albe.moulin.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.voix_du_moulin"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.voix_du_moulin"
+                  }
+                ],
+                "next": "v257_moulin_depart"
+              },
+              {
+                "text": "text.v257.albe.moulin.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moulin_depart",
+            "text": "text.v257.albe.moulin_depart",
+            "choices": [
+              {
+                "text": "text.v257.albe.moulin_depart.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moulin_attente",
+            "text": "text.v257.albe.moulin_attente",
+            "choices": [
+              {
+                "text": "text.v257.albe.moulin_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moulin_fin",
+            "text": "text.v257.albe.moulin_fin",
+            "choices": [
+              {
+                "text": "text.v257.albe.moulin_fin.merci",
+                "conditions": [],
+                "effects": [],
                 "next": null
               }
             ]
@@ -18891,6 +20009,71 @@
               {
                 "conditions": [
                   {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v257.doyen.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v257.doyen.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v257.doyen.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v257.doyen.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v257.doyen.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.doyen"
                   }
@@ -20047,6 +21230,71 @@
               {
                 "conditions": [
                   {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v257.fermiere.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v257.fermiere.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v257.fermiere.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v257.fermiere.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v257.fermiere.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.fermiere"
                   }
@@ -20119,6 +21367,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.ce_que_le_lac_garde",
+                "step": "choix"
+              }
+            ],
+            "node": "v257_lac_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.lettre_au_fond_du_lac",
                 "step": "choix"
               }
@@ -20137,6 +21395,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.ce_que_le_lac_garde"
+              }
+            ],
+            "node": "v257_lac_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.lettre_au_fond_du_lac"
               },
@@ -20146,6 +21413,23 @@
               }
             ],
             "node": "ch3_lettre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.ce_que_le_lac_garde"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 12
+              },
+              {
+                "if": "questDone",
+                "id": "quest.lettre_au_fond_du_lac"
+              }
+            ],
+            "node": "v257_lac_offre"
           },
           {
             "conditions": [
@@ -20337,11 +21621,168 @@
           {
             "id": "ch3_apres_rendue",
             "text": "text.ch3.veuve.apres_rendue",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.lac.verite"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
+                  }
+                ],
+                "text": "text.v257.veuve.apres_verite"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.lac.silence"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
+                  }
+                ],
+                "text": "text.v257.veuve.apres_silence"
+              }
+            ]
           },
           {
             "id": "ch3_apres_gardee",
             "text": "text.ch3.veuve.apres_gardee",
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.lac.verite"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
+                  }
+                ],
+                "text": "text.v257.veuve.gardee_verite"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.lac.silence"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
+                  }
+                ],
+                "text": "text.v257.veuve.gardee_silence"
+              }
+            ]
+          },
+          {
+            "id": "v257_lac_offre",
+            "text": "text.v257.veuve.lac",
+            "choices": [
+              {
+                "text": "text.v257.veuve.lac.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.ce_que_le_lac_garde"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.ce_que_le_lac_garde"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.veuve.lac.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_lac_attente",
+            "text": "text.v257.veuve.lac_attente",
+            "choices": [
+              {
+                "text": "text.v257.veuve.lac_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_lac_choix",
+            "text": "text.v257.veuve.lac_choix",
+            "choices": [
+              {
+                "text": "text.v257.veuve.lac_choix.verite",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.lac.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.lac.verite"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.lac.decide"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.veuve",
+                    "value": 1
+                  }
+                ],
+                "next": "v257_lac_verite"
+              },
+              {
+                "text": "text.v257.veuve.lac_choix.silence",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.lac.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.lac.silence"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.lac.decide"
+                  }
+                ],
+                "next": "v257_lac_silence"
+              }
+            ]
+          },
+          {
+            "id": "v257_lac_verite",
+            "text": "text.v257.veuve.lac_verite",
+            "choices": []
+          },
+          {
+            "id": "v257_lac_silence",
+            "text": "text.v257.veuve.lac_silence",
             "choices": []
           }
         ]
@@ -20601,6 +22042,26 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.reflet_de_machefer",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_machefer_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.sous_les_paves",
+                "step": "choix"
+              }
+            ],
+            "node": "v257_egouts_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.v27.ronde_du_capitaine",
                 "step": "retour"
               }
@@ -20686,6 +22147,24 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.v257.reflet_de_machefer"
+              }
+            ],
+            "node": "v257_machefer_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.sous_les_paves"
+              }
+            ],
+            "node": "v257_egouts_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.tour_silencieuse"
               },
@@ -20708,6 +22187,36 @@
               }
             ],
             "node": "ch1_contrat"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.reflet_de_machefer"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 25
+              },
+              {
+                "if": "questDone",
+                "id": "quest.tour_et_camp"
+              }
+            ],
+            "node": "v257_machefer_offre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.sous_les_paves"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 7
+              }
+            ],
+            "node": "v257_egouts_offre"
           },
           {
             "conditions": [
@@ -21574,6 +23083,188 @@
             "id": "v27_capitaine_merci",
             "text": "text.v27.capitaine.merci",
             "choices": []
+          },
+          {
+            "id": "v257_egouts_offre",
+            "text": "text.v257.capitaine.egouts",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.egouts.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.sous_les_paves"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.sous_les_paves"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.capitaine.egouts.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_egouts_attente",
+            "text": "text.v257.capitaine.egouts_attente",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.egouts_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_egouts_choix",
+            "text": "text.v257.capitaine.egouts_choix",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.egouts_choix.garde",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.egouts.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.egouts.livre"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.egouts.decide"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "guard",
+                    "value": 40
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  }
+                ],
+                "next": "v257_egouts_garde"
+              },
+              {
+                "text": "text.v257.capitaine.egouts_choix.bruler",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.egouts.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.egouts.brule"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.egouts.decide"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 40
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.capitaine",
+                    "value": 1
+                  }
+                ],
+                "next": "v257_egouts_brule"
+              }
+            ]
+          },
+          {
+            "id": "v257_egouts_garde",
+            "text": "text.v257.capitaine.egouts_garde",
+            "choices": []
+          },
+          {
+            "id": "v257_egouts_brule",
+            "text": "text.v257.capitaine.egouts_brule",
+            "choices": []
+          },
+          {
+            "id": "v257_machefer_offre",
+            "text": "text.v257.capitaine.machefer",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.machefer.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.reflet_de_machefer"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.reflet_de_machefer"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.capitaine.machefer.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.capitaine"
+                  }
+                ],
+                "text": "text.v257.capitaine.machefer.livre"
+              }
+            ]
+          },
+          {
+            "id": "v257_machefer_attente",
+            "text": "text.v257.capitaine.machefer_attente",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.machefer_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_machefer_retour",
+            "text": "text.v257.capitaine.machefer_retour",
+            "choices": [
+              {
+                "text": "text.v257.capitaine.machefer_retour.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -22306,11 +23997,47 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v257.ce_que_gardent_les_eclats",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_eclats_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.pierres_gravees",
                 "step": "ysarn"
               }
             ],
             "node": "ch5_lecture"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.ce_que_gardent_les_eclats"
+              }
+            ],
+            "node": "v257_eclats_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v257.ce_que_gardent_les_eclats"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 22
+              },
+              {
+                "if": "questDone",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "v257_eclats_offre"
           },
           {
             "conditions": [
@@ -22444,6 +24171,125 @@
             "choices": [
               {
                 "text": "text.ch5.ysarn.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v257.ysarn.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v257.ysarn.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v257.ysarn.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v257.ysarn.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v257.ysarn.hiver"
+              }
+            ]
+          },
+          {
+            "id": "v257_eclats_offre",
+            "text": "text.v257.ysarn.eclats",
+            "choices": [
+              {
+                "text": "text.v257.ysarn.eclats.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.ce_que_gardent_les_eclats"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.ce_que_gardent_les_eclats"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.ysarn.eclats.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_eclats_attente",
+            "text": "text.v257.ysarn.eclats_attente",
+            "choices": [
+              {
+                "text": "text.v257.ysarn.eclats_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_eclats_retour",
+            "text": "text.v257.ysarn.eclats_retour",
+            "choices": [
+              {
+                "text": "text.v257.ysarn.eclats_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -23993,6 +25839,25 @@
         "id": "dialogue.charron",
         "entries": [
           {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.filon_des_disparus",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_mines_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.filon_des_disparus"
+              }
+            ],
+            "node": "v257_mines_attente"
+          },
+          {
             "conditions": [],
             "node": "accueil"
           }
@@ -24005,6 +25870,84 @@
               {
                 "conditions": [
                   {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "phase",
+                    "id": "night"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.nuit"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.charron_hameau"
+                  }
+                ],
+                "text": "text.v257.charron.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.charron_hameau"
                   }
@@ -24014,7 +25957,104 @@
             ],
             "choices": [
               {
+                "text": "text.v257.charron.sujet.mines",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "discover",
+                    "id": "discovery.v257.carriers_et_mineurs"
+                  }
+                ],
+                "next": "v257_mines"
+              },
+              {
+                "text": "text.v257.charron.sujet.hameau",
+                "conditions": [],
+                "effects": [],
+                "next": "v257_hameau"
+              },
+              {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_mines",
+            "text": "text.v257.charron.mines",
+            "choices": [
+              {
+                "text": "text.v257.charron.mines.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.filon_des_disparus"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 20
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.filon_des_disparus"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.charron.mines.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.charron.mines.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_hameau",
+            "text": "text.v257.charron.hameau",
+            "choices": [
+              {
+                "text": "text.v257.charron.hameau.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.charron.hameau.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_mines_attente",
+            "text": "text.v257.charron.mines_attente",
+            "choices": [
+              {
+                "text": "text.v257.charron.mines_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_mines_retour",
+            "text": "text.v257.charron.mines_retour",
+            "choices": [
+              {
+                "text": "text.v257.charron.mines_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -24039,6 +26079,84 @@
               {
                 "conditions": [
                   {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.caravane"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "weather",
+                    "id": "storm"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.orage"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.passeuse_du_pont"
+                  }
+                ],
+                "text": "text.v257.passeuse.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.passeuse_du_pont"
                   }
@@ -24048,7 +26166,65 @@
             ],
             "choices": [
               {
+                "text": "text.v257.passeuse.sujet.murmures",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "discover",
+                    "id": "discovery.v257.pont_des_murmures"
+                  }
+                ],
+                "next": "v257_murmures"
+              },
+              {
+                "text": "text.v257.passeuse.sujet.ambre",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "discover",
+                    "id": "discovery.v257.route_d_ambre"
+                  }
+                ],
+                "next": "v257_ambre"
+              },
+              {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_murmures",
+            "text": "text.v257.passeuse.murmures",
+            "choices": [
+              {
+                "text": "text.v257.passeuse.murmures.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.passeuse.murmures.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_ambre",
+            "text": "text.v257.passeuse.ambre",
+            "choices": [
+              {
+                "text": "text.v257.passeuse.ambre.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.passeuse.ambre.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -24060,6 +26236,25 @@
       {
         "id": "dialogue.foulonniere",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.eau_grise",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_eau_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.eau_grise"
+              }
+            ],
+            "node": "v257_eau_attente"
+          },
           {
             "conditions": [],
             "node": "accueil"
@@ -24073,6 +26268,84 @@
               {
                 "conditions": [
                   {
+                    "if": "corruptionAtLeast",
+                    "value": 3
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "weather",
+                    "id": "rain"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.pluie"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "text": "text.v257.foulonniere.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.foulonniere"
                   }
@@ -24082,7 +26355,82 @@
             ],
             "choices": [
               {
+                "text": "text.v257.foulonniere.eau.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.eau_grise"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 20
+                  },
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 3
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.foulonniere"
+                  }
+                ],
+                "effects": [],
+                "next": "v257_eau_offre"
+              },
+              {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_eau_offre",
+            "text": "text.v257.foulonniere.eau",
+            "choices": [
+              {
+                "text": "text.v257.foulonniere.eau.oui",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.eau_grise"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.eau_grise"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.foulonniere.eau.non",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_eau_attente",
+            "text": "text.v257.foulonniere.eau_attente",
+            "choices": [
+              {
+                "text": "text.v257.foulonniere.eau_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_eau_retour",
+            "text": "text.v257.foulonniere.eau_retour",
+            "choices": [
+              {
+                "text": "text.v257.foulonniere.eau_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -24094,6 +26442,25 @@
       {
         "id": "dialogue.guetteuse",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.lueur_derriere_l_eau",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_lueur_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.lueur_derriere_l_eau"
+              }
+            ],
+            "node": "v257_lueur_attente"
+          },
           {
             "conditions": [],
             "node": "accueil"
@@ -24107,6 +26474,97 @@
               {
                 "conditions": [
                   {
+                    "if": "questDone",
+                    "id": "quest.le_seuil"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.seuil"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "weather",
+                    "id": "mist"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.brume"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "phase",
+                    "id": "night"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.nuit"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "text": "text.v257.guetteuse.hiver"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.guetteuse"
                   }
@@ -24116,7 +26574,107 @@
             ],
             "choices": [
               {
+                "text": "text.v257.guetteuse.lueur.demande",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.lueur_derriere_l_eau"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 10
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.guetteuse"
+                  }
+                ],
+                "effects": [],
+                "next": "v257_lueur_offre"
+              },
+              {
+                "text": "text.v257.guetteuse.sujet.signaux",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "discover",
+                    "id": "discovery.v257.signaux"
+                  }
+                ],
+                "next": "v257_signaux"
+              },
+              {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_signaux",
+            "text": "text.v257.guetteuse.signaux",
+            "choices": [
+              {
+                "text": "text.v257.guetteuse.signaux.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.guetteuse.signaux.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_lueur_offre",
+            "text": "text.v257.guetteuse.lueur",
+            "choices": [
+              {
+                "text": "text.v257.guetteuse.lueur.oui",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.lueur_derriere_l_eau"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.lueur_derriere_l_eau"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.guetteuse.lueur.non",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_lueur_attente",
+            "text": "text.v257.guetteuse.lueur_attente",
+            "choices": [
+              {
+                "text": "text.v257.guetteuse.lueur_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_lueur_retour",
+            "text": "text.v257.guetteuse.lueur_retour",
+            "choices": [
+              {
+                "text": "text.v257.guetteuse.lueur_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -24128,6 +26686,44 @@
       {
         "id": "dialogue.hospitalier",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.abbe_renverse",
+                "step": "retour"
+              }
+            ],
+            "node": "v257_abbe_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v257.moines_du_dessous",
+                "step": "choix"
+              }
+            ],
+            "node": "v257_moines_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.abbe_renverse"
+              }
+            ],
+            "node": "v257_abbe_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.v257.moines_du_dessous"
+              }
+            ],
+            "node": "v257_moines_attente"
+          },
           {
             "conditions": [],
             "node": "accueil"
@@ -24142,6 +26738,97 @@
                 "conditions": [
                   {
                     "if": "fact",
+                    "id": "fact.v257.abbe.nomme"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.abbe_nomme"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v257.abbe.efface"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.abbe_efface"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "corruptionAtLeast",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.corruption"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "spring"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.printemps"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "summer"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.ete"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "autumn"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.automne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "season",
+                    "id": "winter"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "text": "text.v257.hospitalier.hiver"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
                     "id": "fact.met.frere_hospitalier"
                   }
                 ],
@@ -24150,7 +26837,237 @@
             ],
             "choices": [
               {
+                "text": "text.v257.hospitalier.moines.demande",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.moines_du_dessous"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 20
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.frere_hospitalier"
+                  }
+                ],
+                "effects": [],
+                "next": "v257_moines_offre"
+              },
+              {
+                "text": "text.v257.hospitalier.abbe.demande",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.abbe_renverse"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v257.moines_du_dessous"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 25
+                  }
+                ],
+                "effects": [],
+                "next": "v257_abbe_offre"
+              },
+              {
+                "text": "text.v257.hospitalier.sujet.abbaye",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "discover",
+                    "id": "discovery.v257.abbaye_avant"
+                  }
+                ],
+                "next": "v257_abbaye"
+              },
+              {
                 "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_abbaye",
+            "text": "text.v257.hospitalier.abbaye",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.abbaye.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "accueil"
+              },
+              {
+                "text": "text.v257.hospitalier.abbaye.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moines_offre",
+            "text": "text.v257.hospitalier.moines",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.moines.oui",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.moines_du_dessous"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.moines_du_dessous"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.hospitalier.moines.non",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moines_attente",
+            "text": "text.v257.hospitalier.moines_attente",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.moines_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_moines_choix",
+            "text": "text.v257.hospitalier.moines_choix",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.moines_choix.nommer",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.abbe.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.abbe.nomme"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.abbe.decide"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.frere_hospitalier",
+                    "value": 1
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 30
+                  }
+                ],
+                "next": "v257_moines_nomme"
+              },
+              {
+                "text": "text.v257.hospitalier.moines_choix.effacer",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.v257.abbe.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.abbe.efface"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v257.abbe.decide"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.relique_de_la_chapelle",
+                    "value": 1
+                  }
+                ],
+                "next": "v257_moines_efface"
+              }
+            ]
+          },
+          {
+            "id": "v257_moines_nomme",
+            "text": "text.v257.hospitalier.moines_nomme",
+            "choices": []
+          },
+          {
+            "id": "v257_moines_efface",
+            "text": "text.v257.hospitalier.moines_efface",
+            "choices": []
+          },
+          {
+            "id": "v257_abbe_offre",
+            "text": "text.v257.hospitalier.abbe",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.abbe.oui",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v257.abbe_renverse"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v257.abbe_renverse"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v257.hospitalier.abbe.non",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_abbe_attente",
+            "text": "text.v257.hospitalier.abbe_attente",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.abbe_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v257_abbe_retour",
+            "text": "text.v257.hospitalier.abbe_retour",
+            "choices": [
+              {
+                "text": "text.v257.hospitalier.abbe_retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -27524,6 +30441,1115 @@
             "id": "fact.v2283.monture"
           }
         ]
+      },
+      {
+        "id": "quest.v257.sous_les_paves",
+        "name": "text.v257.quest.sous_les_paves.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 7
+          }
+        ],
+        "steps": [
+          {
+            "id": "collecteur",
+            "text": "text.v257.quest.sous_les_paves.collecteur",
+            "objective": {
+              "kind": "reach",
+              "id": "galerie_du_collecteur"
+            },
+            "effects": []
+          },
+          {
+            "id": "passeur",
+            "text": "text.v257.quest.sous_les_paves.passeur",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.passeur_des_contrebandiers.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.registre_du_passeur"
+              }
+            ]
+          },
+          {
+            "id": "choix",
+            "text": "text.v257.quest.sous_les_paves.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.v257.egouts.decide"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 300
+          },
+          {
+            "do": "giveMoney",
+            "value": 120
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.ce_qui_remonte",
+        "name": "text.v257.quest.ce_qui_remonte.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 8
+          },
+          {
+            "if": "questDone",
+            "id": "quest.peaux_pour_l_auberge"
+          }
+        ],
+        "steps": [
+          {
+            "id": "rats",
+            "text": "text.v257.quest.ce_qui_remonte.rats",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "rat",
+              "value": 6
+            },
+            "effects": []
+          },
+          {
+            "id": "bete",
+            "text": "text.v257.quest.ce_qui_remonte.bete",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.bete_de_la_citerne.vaincue"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.citerne_ancienne"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.ce_qui_remonte.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.aubergiste"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 320
+          },
+          {
+            "do": "giveMoney",
+            "value": 160
+          },
+          {
+            "do": "giveItem",
+            "id": "item.ragout_de_l_auberge",
+            "value": 3
+          },
+          {
+            "do": "trust",
+            "id": "npc.aubergiste",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.ce_que_le_lac_garde",
+        "name": "text.v257.quest.ce_que_le_lac_garde.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 12
+          },
+          {
+            "if": "questDone",
+            "id": "quest.lettre_au_fond_du_lac"
+          }
+        ],
+        "steps": [
+          {
+            "id": "bassins",
+            "text": "text.v257.quest.ce_que_le_lac_garde.bassins",
+            "objective": {
+              "kind": "reach",
+              "id": "bassins_des_roseaux"
+            },
+            "effects": []
+          },
+          {
+            "id": "capitaine",
+            "text": "text.v257.quest.ce_que_le_lac_garde.capitaine",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.capitaine_des_pilleurs.vaincu"
+            },
+            "effects": []
+          },
+          {
+            "id": "cale",
+            "text": "text.v257.quest.ce_que_le_lac_garde.cale",
+            "objective": {
+              "kind": "reach",
+              "id": "cale_de_l_epave"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.sacoche_de_guerin"
+              }
+            ]
+          },
+          {
+            "id": "choix",
+            "text": "text.v257.quest.ce_que_le_lac_garde.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.v257.lac.decide"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 480
+          },
+          {
+            "do": "giveMoney",
+            "value": 240
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.pendentif_du_lac",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.rondache_du_lac",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.lueur_derriere_l_eau",
+        "name": "text.v257.quest.lueur_derriere_l_eau.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 10
+          }
+        ],
+        "steps": [
+          {
+            "id": "rideau",
+            "text": "text.v257.quest.lueur_derriere_l_eau.rideau",
+            "objective": {
+              "kind": "reach",
+              "id": "salle_du_rideau"
+            },
+            "effects": []
+          },
+          {
+            "id": "gardien",
+            "text": "text.v257.quest.lueur_derriere_l_eau.gardien",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.gardien_de_la_grotte.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.cristaux_de_la_cascade"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.lueur_derriere_l_eau.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.guetteuse"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 340
+          },
+          {
+            "do": "giveMoney",
+            "value": 170
+          },
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.filon_des_disparus",
+        "name": "text.v257.quest.filon_des_disparus.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 20
+          }
+        ],
+        "steps": [
+          {
+            "id": "entree",
+            "text": "text.v257.quest.filon_des_disparus.entree",
+            "objective": {
+              "kind": "reach",
+              "id": "galerie_d_entree"
+            },
+            "effects": []
+          },
+          {
+            "id": "pilleurs",
+            "text": "text.v257.quest.filon_des_disparus.pilleurs",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.chef_des_pilleurs.vaincu"
+            },
+            "effects": []
+          },
+          {
+            "id": "filons",
+            "text": "text.v257.quest.filon_des_disparus.filons",
+            "objective": {
+              "kind": "reach",
+              "id": "galerie_des_filons"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.lampe_de_mathieu"
+              }
+            ]
+          },
+          {
+            "id": "eboulis",
+            "text": "text.v257.quest.filon_des_disparus.eboulis",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.bete_des_eboulis.vaincue"
+            },
+            "effects": []
+          },
+          {
+            "id": "coeur",
+            "text": "text.v257.quest.filon_des_disparus.coeur",
+            "objective": {
+              "kind": "reach",
+              "id": "coeur_de_cristal"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.chant_des_cristaux"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.filon_des_disparus.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.charron_hameau"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1700
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          },
+          {
+            "do": "reputation",
+            "id": "villagers",
+            "value": 40
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.huile_d_eclat",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.elixir_de_garde",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.pierre_a_aiguiser",
+            "value": 6
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.le_sacristain",
+        "name": "text.v257.quest.le_sacristain.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 6
+          }
+        ],
+        "steps": [
+          {
+            "id": "dalle",
+            "text": "text.v257.quest.le_sacristain.dalle",
+            "objective": {
+              "kind": "reach",
+              "id": "crypte_de_la_chapelle"
+            },
+            "effects": []
+          },
+          {
+            "id": "sacristain",
+            "text": "text.v257.quest.le_sacristain.sacristain",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.sacristain.apaise"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.priere_du_sacristain"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.le_sacristain.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.pretre"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 220
+          },
+          {
+            "do": "giveMoney",
+            "value": 110
+          },
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.moines_du_dessous",
+        "name": "text.v257.quest.moines_du_dessous.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 20
+          }
+        ],
+        "steps": [
+          {
+            "id": "gisants",
+            "text": "text.v257.quest.moines_du_dessous.gisants",
+            "objective": {
+              "kind": "reach",
+              "id": "galerie_des_gisants"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.necrologe_efface"
+              }
+            ]
+          },
+          {
+            "id": "ossuaire",
+            "text": "text.v257.quest.moines_du_dessous.ossuaire",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.gardien_de_l_ossuaire.vaincu"
+            },
+            "effects": []
+          },
+          {
+            "id": "tombeau",
+            "text": "text.v257.quest.moines_du_dessous.tombeau",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.abbe_sans_repos.apaise"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.aveu_de_l_abbe"
+              }
+            ]
+          },
+          {
+            "id": "choix",
+            "text": "text.v257.quest.moines_du_dessous.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.v257.abbe.decide"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1600
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.ce_que_gardent_les_eclats",
+        "name": "text.v257.quest.ce_que_gardent_les_eclats.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 22
+          },
+          {
+            "if": "questDone",
+            "id": "quest.le_seuil"
+          }
+        ],
+        "steps": [
+          {
+            "id": "galeries",
+            "text": "text.v257.quest.ce_que_gardent_les_eclats.galeries",
+            "objective": {
+              "kind": "reach",
+              "id": "galeries_cristallines"
+            },
+            "effects": []
+          },
+          {
+            "id": "ours",
+            "text": "text.v257.quest.ce_que_gardent_les_eclats.ours",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ours_des_eclats.vaincu"
+            },
+            "effects": []
+          },
+          {
+            "id": "salle",
+            "text": "text.v257.quest.ce_que_gardent_les_eclats.salle",
+            "objective": {
+              "kind": "reach",
+              "id": "salle_des_eclats_geants"
+            },
+            "effects": []
+          },
+          {
+            "id": "veilleur",
+            "text": "text.v257.quest.ce_que_gardent_les_eclats.veilleur",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.veilleur_des_eclats.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.chant_du_seuil"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.ce_que_gardent_les_eclats.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.ysarn"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 2000
+          },
+          {
+            "do": "giveMoney",
+            "value": 800
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.elixir_du_seuil",
+            "value": 2
+          },
+          {
+            "do": "giveItem",
+            "id": "item.huile_d_eclat",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.pierres_a_l_envers",
+        "name": "text.v257.quest.pierres_a_l_envers.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 24
+          },
+          {
+            "if": "questDone",
+            "id": "quest.le_seuil"
+          }
+        ],
+        "steps": [
+          {
+            "id": "place",
+            "text": "text.v257.quest.pierres_a_l_envers.place",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_de_la_place"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_place"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "gue",
+            "text": "text.v257.quest.pierres_a_l_envers.gue",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_du_gue"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_gue"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "arbre",
+            "text": "text.v257.quest.pierres_a_l_envers.arbre",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_de_l_arbre"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_arbre"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "rosace",
+            "text": "text.v257.quest.pierres_a_l_envers.rosace",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_de_la_rosace"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_rosace"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "noyes",
+            "text": "text.v257.quest.pierres_a_l_envers.noyes",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_des_noyes"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_noyes"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "cercle",
+            "text": "text.v257.quest.pierres_a_l_envers.cercle",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_du_cercle"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.stele_cercle"
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.pierres_a_l_envers.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.archiviste"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1500
+          },
+          {
+            "do": "giveMoney",
+            "value": 600
+          },
+          {
+            "do": "giveGuildPoints",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.voix_du_moulin",
+        "name": "text.v257.quest.voix_du_moulin.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 24
+          },
+          {
+            "if": "questDone",
+            "id": "quest.le_seuil"
+          }
+        ],
+        "steps": [
+          {
+            "id": "albe",
+            "text": "text.v257.quest.voix_du_moulin.albe",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": []
+          },
+          {
+            "id": "felure",
+            "text": "text.v257.quest.voix_du_moulin.felure",
+            "objective": {
+              "kind": "reach",
+              "id": "felure_renversee"
+            },
+            "effects": []
+          },
+          {
+            "id": "gardien",
+            "text": "text.v257.quest.voix_du_moulin.gardien",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.reflet_du_gardien.vaincu"
+            },
+            "effects": []
+          },
+          {
+            "id": "rosace",
+            "text": "text.v257.quest.voix_du_moulin.rosace",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.secret.stele_de_la_rosace"
+            },
+            "effects": []
+          },
+          {
+            "id": "moulin",
+            "text": "text.v257.quest.voix_du_moulin.moulin",
+            "objective": {
+              "kind": "reach",
+              "id": "envers_du_village"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.moulin_renverse"
+              }
+            ]
+          },
+          {
+            "id": "odile",
+            "text": "text.v257.quest.voix_du_moulin.odile",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.v257.moulin.decide"
+            },
+            "effects": []
+          },
+          {
+            "id": "fin",
+            "text": "text.v257.quest.voix_du_moulin.fin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 2400
+          },
+          {
+            "do": "giveMoney",
+            "value": 1000
+          },
+          {
+            "do": "reputation",
+            "id": "villagers",
+            "value": 50
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.elixir_du_seuil",
+            "value": 2
+          },
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 4
+          },
+          {
+            "do": "giveItem",
+            "id": "item.eclat_de_seuil",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.ombre_de_brunot",
+        "name": "text.v257.quest.ombre_de_brunot.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 25
+          },
+          {
+            "if": "questDone",
+            "id": "quest.le_vieux_brunot"
+          }
+        ],
+        "steps": [
+          {
+            "id": "foret",
+            "text": "text.v257.quest.ombre_de_brunot.foret",
+            "objective": {
+              "kind": "reach",
+              "id": "envers_de_la_foret"
+            },
+            "effects": []
+          },
+          {
+            "id": "ombre",
+            "text": "text.v257.quest.ombre_de_brunot.ombre",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ombre_du_vieux_brunot.vaincue"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.ecorce_morte"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.ombre_de_brunot.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1800
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          },
+          {
+            "do": "reputation",
+            "id": "rangers",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.reflet_de_machefer",
+        "name": "text.v257.quest.reflet_de_machefer.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 25
+          },
+          {
+            "if": "questDone",
+            "id": "quest.tour_et_camp"
+          }
+        ],
+        "steps": [
+          {
+            "id": "fort",
+            "text": "text.v257.quest.reflet_de_machefer.fort",
+            "objective": {
+              "kind": "reach",
+              "id": "envers_du_fort"
+            },
+            "effects": []
+          },
+          {
+            "id": "reflet",
+            "text": "text.v257.quest.reflet_de_machefer.reflet",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.reflet_de_machefer.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.compte_de_machefer"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.reflet_de_machefer.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.capitaine"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1800
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          },
+          {
+            "do": "reputation",
+            "id": "guard",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.abbe_renverse",
+        "name": "text.v257.quest.abbe_renverse.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 25
+          },
+          {
+            "if": "questDone",
+            "id": "quest.v257.moines_du_dessous"
+          }
+        ],
+        "steps": [
+          {
+            "id": "abbaye",
+            "text": "text.v257.quest.abbe_renverse.abbaye",
+            "objective": {
+              "kind": "reach",
+              "id": "envers_de_l_abbaye"
+            },
+            "effects": []
+          },
+          {
+            "id": "abbe",
+            "text": "text.v257.quest.abbe_renverse.abbe",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.abbe_renverse.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.chapelet_inverse"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.abbe_renverse.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.frere_hospitalier"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1800
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          }
+        ]
+      },
+      {
+        "id": "quest.v257.eau_grise",
+        "name": "text.v257.quest.eau_grise.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 20
+          },
+          {
+            "if": "corruptionAtLeast",
+            "value": 3
+          }
+        ],
+        "steps": [
+          {
+            "id": "cercle",
+            "text": "text.v257.quest.eau_grise.cercle",
+            "objective": {
+              "kind": "reach",
+              "id": "cercle_des_pierres_levees"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v257.eau_grise"
+              }
+            ]
+          },
+          {
+            "id": "echos",
+            "text": "text.v257.quest.eau_grise.echos",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "echo",
+              "value": 4
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.v257.quest.eau_grise.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.foulonniere"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 1500
+          },
+          {
+            "do": "giveMoney",
+            "value": 600
+          },
+          {
+            "do": "giveItem",
+            "id": "item.eclat_de_seuil",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -27638,6 +31664,110 @@
       {
         "id": "discovery.v292.griffes_de_brunot",
         "text": "text.v292.discovery.griffes_de_brunot"
+      },
+      {
+        "id": "discovery.v257.registre_du_passeur",
+        "text": "text.v257.discovery.registre_du_passeur"
+      },
+      {
+        "id": "discovery.v257.citerne_ancienne",
+        "text": "text.v257.discovery.citerne_ancienne"
+      },
+      {
+        "id": "discovery.v257.sacoche_de_guerin",
+        "text": "text.v257.discovery.sacoche_de_guerin"
+      },
+      {
+        "id": "discovery.v257.cristaux_de_la_cascade",
+        "text": "text.v257.discovery.cristaux_de_la_cascade"
+      },
+      {
+        "id": "discovery.v257.lampe_de_mathieu",
+        "text": "text.v257.discovery.lampe_de_mathieu"
+      },
+      {
+        "id": "discovery.v257.chant_des_cristaux",
+        "text": "text.v257.discovery.chant_des_cristaux"
+      },
+      {
+        "id": "discovery.v257.priere_du_sacristain",
+        "text": "text.v257.discovery.priere_du_sacristain"
+      },
+      {
+        "id": "discovery.v257.necrologe_efface",
+        "text": "text.v257.discovery.necrologe_efface"
+      },
+      {
+        "id": "discovery.v257.aveu_de_l_abbe",
+        "text": "text.v257.discovery.aveu_de_l_abbe"
+      },
+      {
+        "id": "discovery.v257.chant_du_seuil",
+        "text": "text.v257.discovery.chant_du_seuil"
+      },
+      {
+        "id": "discovery.v257.stele_place",
+        "text": "text.v257.discovery.stele_place"
+      },
+      {
+        "id": "discovery.v257.stele_gue",
+        "text": "text.v257.discovery.stele_gue"
+      },
+      {
+        "id": "discovery.v257.stele_arbre",
+        "text": "text.v257.discovery.stele_arbre"
+      },
+      {
+        "id": "discovery.v257.stele_rosace",
+        "text": "text.v257.discovery.stele_rosace"
+      },
+      {
+        "id": "discovery.v257.stele_noyes",
+        "text": "text.v257.discovery.stele_noyes"
+      },
+      {
+        "id": "discovery.v257.stele_cercle",
+        "text": "text.v257.discovery.stele_cercle"
+      },
+      {
+        "id": "discovery.v257.moulin_renverse",
+        "text": "text.v257.discovery.moulin_renverse"
+      },
+      {
+        "id": "discovery.v257.ecorce_morte",
+        "text": "text.v257.discovery.ecorce_morte"
+      },
+      {
+        "id": "discovery.v257.compte_de_machefer",
+        "text": "text.v257.discovery.compte_de_machefer"
+      },
+      {
+        "id": "discovery.v257.chapelet_inverse",
+        "text": "text.v257.discovery.chapelet_inverse"
+      },
+      {
+        "id": "discovery.v257.eau_grise",
+        "text": "text.v257.discovery.eau_grise"
+      },
+      {
+        "id": "discovery.v257.carriers_et_mineurs",
+        "text": "text.v257.discovery.carriers_et_mineurs"
+      },
+      {
+        "id": "discovery.v257.pont_des_murmures",
+        "text": "text.v257.discovery.pont_des_murmures"
+      },
+      {
+        "id": "discovery.v257.route_d_ambre",
+        "text": "text.v257.discovery.route_d_ambre"
+      },
+      {
+        "id": "discovery.v257.signaux",
+        "text": "text.v257.discovery.signaux"
+      },
+      {
+        "id": "discovery.v257.abbaye_avant",
+        "text": "text.v257.discovery.abbaye_avant"
       }
     ],
     "scenes": [

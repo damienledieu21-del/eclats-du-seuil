@@ -14,6 +14,9 @@ namespace EdS.World
         /// <summary>Sous-lot V2.42.1 : corruption de la zone (null : aucune, ou une autre zone que la sienne).</summary>
         private CorruptionBook? _corruption;
 
+        /// <summary>Relecture de la PR #270 : la corruption de la zone de l'histoire, gardée aussi dans un intérieur (répliques des PNJ).</summary>
+        private CorruptionBook? _storyCorruption;
+
         /// <summary>Paliers vus par la session (annonces), ou null avant le premier tick.</summary>
         private Dictionary<string, int>? _corruptionSeen;
 
@@ -31,6 +34,7 @@ namespace EdS.World
             if (book?.Challenge?.Boss is Boss guardian && System.Linq.Enumerable.Any(guardian.Forms, f => f.Id == _character.Id))
                 throw new ArgumentException($"Personnage « {_character.Id} » : identité d'une forme du gardien de la source.", nameof(book));
             _corruption = book != null && book.ZoneId == Definition?.Id ? book : null;
+            _storyCorruption = book != null && (book.ZoneId == Definition?.Id || book.ZoneId == _storyZone) ? book : null;
             _corruptionSeen = null;
             _corruptionViewsDay = -1;
         }
@@ -79,6 +83,22 @@ namespace EdS.World
                 _corruptionViewsOf = _character.Corruption;
                 _corruptionViewsDay = day;
                 return _corruptionViews;
+            }
+        }
+
+        /// <summary>V2.57 (histoire en schéma 17) : terres corrompues aujourd'hui (palier 1 ou plus, la source non comptée) ; 0 sans corruption.</summary>
+        public int CorruptedLands
+        {
+            get
+            {
+                // Relecture de la PR #270 : la corruption de la zone de l'histoire (la surface), même depuis un intérieur, un dessous ou
+                // l'Envers, où le catalogue n'est pas actif : les répliques d'Odile, de Maëlle ou d'Albe chez elles en dépendent.
+                if (!(_storyCorruption is CorruptionBook book)) return 0;
+                long day = Today;
+                long[] since = CorruptionRules.CorruptedSince(book, _character.Corruption);
+                int count = 0;
+                for (int i = 0; i < book.Areas.Count; i++) if (CorruptionRules.StageAt(since[i], book, day) > 0) count++;
+                return count;
             }
         }
 

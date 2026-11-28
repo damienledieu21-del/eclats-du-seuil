@@ -124,10 +124,10 @@ public class V261SuitesDuSeuilTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((18, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
-        Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
+        Assert.Equal((17, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((17, "0.29.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((16, "0.39.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.49.0-provisoire", Texts.ContentVersion);   // corruption (V2.42.1) : 0.47.0 (0.46.0 : reprise des caravanes, #243) ; caravanes (V2.41.1) : 0.45.0 ; plats de fête (F6) : 0.39.0 ; étal des fêtes (F4) : 0.38.0 ; fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
+        Assert.Equal((17, "0.40.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.50.0-provisoire", Texts.ContentVersion);   // corruption (V2.42.1) : 0.47.0 (0.46.0 : reprise des caravanes, #243) ; caravanes (V2.41.1) : 0.45.0 ; plats de fête (F6) : 0.39.0 ; étal des fêtes (F4) : 0.38.0 ; fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.26.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(33, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
@@ -224,7 +224,7 @@ public class V261SuitesDuSeuilTests
     public void Histoire_en_schema_11_et_schema_10_encore_lu_avec_seize_repliques()
     {
         StoryBook book = Book(Vallons);
-        Assert.Equal((19, 28, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        Assert.Equal((23, 31, 23), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
         // Version 10 : 16 répliques au plus ; Gaspard en a 28 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot ; compagnons : la quête de lien ; V2.28c (4) : l'offre de la vallée) : refusé au chemin précis du dialogue.
         JsonObject ten = StoryJson();
         ten["schemaVersion"] = 10;

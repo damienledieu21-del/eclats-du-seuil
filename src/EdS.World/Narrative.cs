@@ -349,6 +349,12 @@ namespace EdS.World
         /// gagné (inscription, promotion) n'est alors pas affiché d'office (revue Codex de la PR #193 : un seul titre affiché).
         /// </summary>
         bool OtherTitleShown { get; }
+
+        /// <summary>V2.57 (histoire en schéma 17) : rang de la saison du monde (0 : printemps … 3 : hiver).</summary>
+        int SeasonIndex { get; }
+
+        /// <summary>V2.57 (schéma 17) : terres corrompues aujourd'hui (palier 1 ou plus, sans la source) ; 0 sans corruption.</summary>
+        int CorruptedLands { get; }
     }
 
     /// <summary>
@@ -1428,6 +1434,9 @@ namespace EdS.World
             ConditionKind.ContestRound => _world.Festival == c.Id && _world.FestivalRound(c.Id) == c.Value,   // sous-lot V2.10 : la rotation des concours
             // Concours de pâtisserie : une pâtisserie de sa main (signée de son nom), de la qualité demandée.
             ConditionKind.HasSigned => _world.CharacterId is string me && _world.Inventory.CountSigned(c.Id, me, c.Quality) > 0,
+            ConditionKind.Season => StoryValidator.Seasons[_world.SeasonIndex] == c.Id,   // V2.57 (schéma 17)
+            ConditionKind.CorruptionAtLeast => _world.CorruptedLands >= c.Value,
+            ConditionKind.CorruptionBelow => _world.CorruptedLands < c.Value,
             _ => _world.IsPassageOpen(c.Id),
         };
 

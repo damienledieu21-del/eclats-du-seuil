@@ -51,7 +51,7 @@ public class FetesMoteurTests
     public void Les_douze_fetes_mettent_le_monde_en_fete()
     {
         StoryBook story = Story.Value;
-        Assert.Equal("0.39.0-provisoire", story.ContentVersion);   // V2.40 : passerelle des Ronces
+        Assert.Equal("0.40.0-provisoire", story.ContentVersion);   // V2.40 : passerelle des Ronces
         FeastBook b = Feasts.Value;
         Assert.All(b.Feasts, f =>
         {

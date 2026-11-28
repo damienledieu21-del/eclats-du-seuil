@@ -122,7 +122,7 @@ namespace EdS.Runtime
             ["veuve"] = true, ["fermiere"] = true, ["maitresse"] = true, ["herboriste"] = true, ["habitant"] = true, ["habitante"] = true,
             ["boulanger"] = false, ["pretre"] = false, ["renart"] = false, ["gaspard"] = false, ["capitaine"] = false, ["doyen"] = false,
             ["fermier"] = false, ["intendant"] = false, ["armurier"] = false, ["thibaut"] = false, ["deserteur"] = false, ["archiviste"] = false,
-            ["ysarn"] = false, ["aubergiste"] = false, ["mathurin"] = false, ["anselme"] = false,
+            ["ysarn"] = false, ["aubergiste"] = false, ["mathurin"] = false, ["anselme"] = false, ["aubin"] = false,   // V2.57 : Frère Aubin, l'hospitalier
             // Lot C (réponses de Damien du 17 novembre 2026) : le personnel de l'auberge et les voyageurs de passage.
             ["serveuse"] = true, ["perrine"] = true, ["palefrenier"] = false, ["huguet"] = false,
             ["voyageur"] = false, ["baudouin"] = false, ["voyageuse"] = true, ["aveline"] = true,

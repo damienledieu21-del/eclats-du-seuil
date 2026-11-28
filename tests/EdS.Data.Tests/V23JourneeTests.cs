@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((16, 16, "0.39.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((17, 17, "0.40.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -118,7 +118,7 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 60, 200);   // lot C (17 novembre 2026) : 183 (abris et retrouvailles des voyageurs et d'Huguet, PNJ de la ville)   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
+        Assert.InRange(lines.Count, 60, 300);   // V2.57 (27 novembre 2026) : 264 (saisons, corruption, suites des quêtes) ; lot C (17 novembre 2026) : 183 (abris et retrouvailles des voyageurs et d'Huguet, PNJ de la ville)   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
         Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)
@@ -136,7 +136,10 @@ public sealed class V23JourneeTests : IDisposable
             || (l.Text.StartsWith("text.v243.", StringComparison.Ordinal) && l.Text.EndsWith(".retrouvailles", StringComparison.Ordinal))
             // V2.14 : ou les retrouvailles des PNJ des boutiques et du marché, ou un moment de la journée (Colin, le soir : tout est vendu).
             || (l.Text.StartsWith("text.v214.", StringComparison.Ordinal) && (l.Text.EndsWith(".retrouvailles", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Phase)))
-            || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))));
+            || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))
+            // V2.57 : ou une saison, un temps, un moment, la corruption, ou la suite d'une quête (un fait ou une quête finie).
+            || (l.Text.StartsWith("text.v257.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Season or ConditionKind.CorruptionAtLeast
+                or ConditionKind.Weather or ConditionKind.Phase or ConditionKind.QuestDone || (c.Kind == ConditionKind.Fact && !c.Id.StartsWith("fact.met.", StringComparison.Ordinal))))));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
