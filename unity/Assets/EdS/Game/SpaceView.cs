@@ -232,6 +232,7 @@ namespace EdS.Game
             Pavements();
             Fields();
             if (!_envers) Villagers(map);   // essai réaliste 8 : les villageois du bourg (V2.51b : personne dans l'Envers)
+            ResidentsOf(map);   // V2.58 : les habitants du Bourg et des hameaux, construits autour de la caméra
             if (!_envers) Livestock(map);   // sous-lot V2.9 (2e vague) : vaches, chevaux, chiens, corbeaux, cris de la ferme
             NightDecor(space, map);   // sous-lot V2.1 : lanternes, réverbères, feux follets, hiboux
             WeatherDecor();   // sous-lot V2.2 : flaques le long des chemins
@@ -2027,6 +2028,7 @@ namespace EdS.Game
         {
             _grass?.Draw(camera);   // essai réaliste 4 : l'herbe en brins proche de la caméra
             Walk(deltaTime);   // essai réaliste 8 : les passants du bourg
+            ResidentsStep(camera, player, deltaTime);   // V2.58 : les habitants qui suivent leur journée
             if (_indoor) Flicker();
             if (_cave) CaveDaylight(1f - StyleWorld.NightShare);   // V2.46 : le jour du rideau d'eau suit l'heure   // intérieurs : le feu, les bougies et les lanternes vacillent
             foreach (StyleGrass crop in _crops) crop.Draw(camera);   // Vallons agrandis : le blé des champs
