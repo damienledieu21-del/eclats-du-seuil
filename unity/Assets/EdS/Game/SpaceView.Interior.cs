@@ -912,7 +912,7 @@ namespace EdS.Game
                     : l.Kind == InteriorLightKind.Lantern ? new Color(1f, 0.74f, 0.45f) : new Color(0.85f, 0.9f, 1f);
                 float strength = (float)l.Intensity * power;
                 light.intensity = strength;
-                light.shadows = l.Kind == InteriorLightKind.Fire && !Application.isMobilePlatform ? LightShadows.Soft : LightShadows.None;
+                light.shadows = l.Kind == InteriorLightKind.Fire && !Application.isMobilePlatform && PerfRules.FireShadows(DeviceQuality.Tier) ? LightShadows.Soft : LightShadows.None;   // V2.53 : pas sur un PC modeste (six vues de la pièce par image)
                 if (l.Kind != InteriorLightKind.Window)
                     _flickers.Add((light, strength, 13.7f * index + 3.1f, l.Kind == InteriorLightKind.Fire ? 5.5f : 3f));
                 index++;

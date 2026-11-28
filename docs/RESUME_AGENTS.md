@@ -72,6 +72,7 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.36.0-contenu-0.6
 | Combat dans l'espace | `docs/COMBAT_ESPACE.md` | `grep -n "portée" docs/COMBAT_ESPACE.md` |
 | Réseau, serveur | `docs/RESEAU.md`, `src/EdS.Net`, `src/EdS.Server` | `grep -n "Version" src/EdS.Net/Protocol.cs` |
 | Unity | `docs/UNITY.md`, `tests/EdS.Unity.CompileCheck` | `find src -name "*.asmdef"` |
+| Performances (audit, Profiler, F9) | `docs/PERFS.md`, `src/EdS.Runtime/PerfRules.cs` | `grep -n "PC modeste" docs/PERFS.md` |
 | Limites connues d'un lot | `docs/LIMITES_LOT_*.md` | `grep -ni "limite" docs/LIMITES_LOT_12.md` |
 | Périmètre, crédits, builds CI | `docs/PERIMETRE.md`, `docs/CREDITS.md` | `grep -n "^#" docs/PERIMETRE.md` |
 | Tests | `tests/EdS.{Domain,Data,Simulation}.Tests` | `grep -rn "\[Trait(\"Category\"" tests` |
